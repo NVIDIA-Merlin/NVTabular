@@ -17,21 +17,20 @@ import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
+from merlin.dag import Node
+from merlin.schema import Schema, Tags
 from nvtabular.dispatch import (
     DataFrameType,
-    _arange,
-    _concat_columns,
-    _random_state,
-    _read_parquet_dispatch,
+    arange,
+    concat_columns,
+    random_state,
+    read_parquet_dispatch,
 )
 
-from ..tags import Tags
 from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
-
-CATEGORICAL = Tags.CATEGORICAL
 
 
 class TargetEncoding(StatOperator):
@@ -143,8 +142,9 @@ class TargetEncoding(StatOperator):
     ):
         super().__init__()
 
-        self.target = [target] if isinstance(target, str) else target
-        self.dependency = self.target
+        target = Node.construct_from(target)
+        self.dependency = target
+        self.target = target
 
         self.target_mean = target_mean
         self.kfold = kfold or 3
@@ -164,10 +164,10 @@ class TargetEncoding(StatOperator):
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
-        self.target = self.target.names if isinstance(self.target, ColumnSelector) else self.target
+
         if self.target_mean is None:
             # calculate the mean if we don't have it already
-            moments = _custom_moments(ddf[self.target])
+            moments = _custom_moments(ddf[self.target_columns])
 
         col_groups = col_selector.grouped_names
 
@@ -194,7 +194,7 @@ class TargetEncoding(StatOperator):
             ddf,
             nvt_cat.FitOptions(
                 col_groups,
-                self.target,
+                self.target_columns,
                 ["count", "sum"],
                 self.out_path,
                 0,
@@ -215,19 +215,68 @@ class TargetEncoding(StatOperator):
     def dependencies(self):
         return self.dependency
 
-    def output_column_names(self, columns):
-        if hasattr(self.target, "output_columns"):
-            self.target = self.target.output_columns
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
+        return parents_selector
 
-        ret = []
-        for cat in columns.grouped_names:
-            cat = [cat] if isinstance(cat, str) else cat
-            ret.extend(self._make_te_name(cat.names if isinstance(cat, ColumnSelector) else cat))
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+
+        for group in col_selector.grouped_names:
+            group = ColumnSelector(group)
+            tag = nvt_cat._make_name(*group.names, sep=self.name_sep)
+
+            for target_name in self.target_columns:
+                result_name = f"TE_{tag}_{target_name}"
+                column_mapping[result_name] = [target_name, *group.names]
 
         if self.kfold > 1 and not self.drop_folds:
-            ret.append(self.fold_name)
+            column_mapping[self.fold_name] = []
 
-        return ColumnSelector(ret)
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            new_schema = super()._compute_dtype(col_schema, input_schema)
+        else:
+            # fold only, setting the np.int
+            new_schema = col_schema.with_dtype(np.uint8)
+        return new_schema
+
+    def _compute_tags(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_tags(input_schema[source_col_name].tags + self.output_tags)
+        return col_schema
+
+    @property
+    def output_dtype(self):
+        return self.out_dtype or np.float32
+
+    @property
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    @property
+    def target_columns(self):
+        if self.target.output_schema is not None:
+            return self.target.output_schema.column_names
+        elif self.target.selector is not None:
+            return self.target.selector.names
+        else:
+            return []
+
+    def _compute_properties(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_properties(input_schema[source_col_name].properties)
+        return col_schema
 
     def set_storage_path(self, new_path, copy=False):
         self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)
@@ -237,12 +286,9 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}
 
-    def _make_te_name(self, cat_group):
-        tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        target = self.target
-        if isinstance(self.target, list):
-            target = ColumnSelector(self.target)
-        return [f"TE_{tag}_{x}" for x in target.names]
+    def _make_te_name(self, cat_group, target_columns, name_sep):
+        tag = nvt_cat._make_name(*cat_group, sep=name_sep)
+        return [f"TE_{tag}_{x}" for x in target_columns]
 
     def _op_group_logic(self, cat_group, df, y_mean, fit_folds, group_ind):
         # Define name of new TE column
@@ -252,13 +298,13 @@ class TargetEncoding(StatOperator):
             out_col = self.out_col[group_ind]
             out_col = [out_col] if isinstance(out_col, str) else out_col
             # ToDo Test
-            if len(out_col) != len(self.target):
+            if len(out_col) != len(self.target_columns):
                 raise ValueError("out_col and target are different sizes.")
         else:
-            out_col = self._make_te_name(cat_group)
+            out_col = self._make_te_name(cat_group, self.target_columns, self.name_sep)
 
         # Initialize new data
-        _read_pq_func = _read_parquet_dispatch(df)
+        _read_pq_func = read_parquet_dispatch(df)
         tmp = "__tmp__"
 
         if fit_folds:
@@ -269,7 +315,7 @@ class TargetEncoding(StatOperator):
             agg_each_fold = nvt_cat._read_groupby_stat_df(
                 path_folds, storage_name_folds, self.cat_cache, _read_pq_func
             )
-            agg_each_fold.columns = cols + ["count_y"] + [x + "_sum_y" for x in self.target]
+            agg_each_fold.columns = cols + ["count_y"] + [x + "_sum_y" for x in self.target_columns]
         else:
             cols = cat_group
 
@@ -279,12 +325,14 @@ class TargetEncoding(StatOperator):
         agg_all = nvt_cat._read_groupby_stat_df(
             path_all, storage_name_all, self.cat_cache, _read_pq_func
         )
-        agg_all.columns = cat_group + ["count_y_all"] + [x + "_sum_y_all" for x in self.target]
+        agg_all.columns = (
+            cat_group + ["count_y_all"] + [x + "_sum_y_all" for x in self.target_columns]
+        )
 
         if fit_folds:
             agg_each_fold = agg_each_fold.merge(agg_all, on=cat_group, how="left")
             agg_each_fold["count_y_all"] = agg_each_fold["count_y_all"] - agg_each_fold["count_y"]
-            for i, x in enumerate(self.target):
+            for i, x in enumerate(self.target_columns):
                 agg_each_fold[x + "_sum_y_all"] = (
                     agg_each_fold[x + "_sum_y_all"] - agg_each_fold[x + "_sum_y"]
                 )
@@ -294,19 +342,19 @@ class TargetEncoding(StatOperator):
 
             agg_each_fold = agg_each_fold.drop(
                 ["count_y_all", "count_y"]
-                + [x + "_sum_y" for x in self.target]
-                + [x + "_sum_y_all" for x in self.target],
+                + [x + "_sum_y" for x in self.target_columns]
+                + [x + "_sum_y_all" for x in self.target_columns],
                 axis=1,
             )
             tran_df = df[cols + [tmp]].merge(agg_each_fold, on=cols, how="left")
             del agg_each_fold
         else:
-            for i, x in enumerate(self.target):
+            for i, x in enumerate(self.target_columns):
                 agg_all[out_col[i]] = (agg_all[x + "_sum_y_all"] + self.p_smooth * y_mean[x]) / (
                     agg_all["count_y_all"] + self.p_smooth
                 )
             agg_all = agg_all.drop(
-                ["count_y_all"] + [x + "_sum_y_all" for x in self.target], axis=1
+                ["count_y_all"] + [x + "_sum_y_all" for x in self.target_columns], axis=1
             )
             tran_df = df[cols + [tmp]].merge(agg_all, on=cols, how="left")
             del agg_all
@@ -314,7 +362,7 @@ class TargetEncoding(StatOperator):
         # TODO: There is no need to perform the `agg_each_fold.merge(agg_all, ...)` merge
         #     for every partition.  We can/should cache the result for better performance.
 
-        for i, x in enumerate(self.target):
+        for i, x in enumerate(self.target_columns):
             tran_df[out_col[i]] = tran_df[out_col[i]].fillna(y_mean[x])
         if self.out_dtype is not None:
             tran_df[out_col] = tran_df[out_col].astype(self.out_dtype)
@@ -330,7 +378,7 @@ class TargetEncoding(StatOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
-        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        df[tmp] = arange(len(df), like_df=df, dtype="int32")
 
         fit_folds = self.kfold > 1
         if fit_folds:
@@ -348,19 +396,20 @@ class TargetEncoding(StatOperator):
                 cat_group = [cat_group]
 
             if new_df is None:
-                new_df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind)
+                new_df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind).astype(
+                    self.output_dtype
+                )
             else:
-                _df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind)
-                new_df = _concat_columns([new_df, _df])
+                _df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind).astype(
+                    self.output_dtype
+                )
+                new_df = concat_columns([new_df, _df])
 
         # Drop temporary columns
         df.drop(columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True)
         if fit_folds and not self.drop_folds:
             new_df[self.fold_name] = df[self.fold_name]
         return new_df
-
-    def _get_tags(self):
-        return [CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -374,9 +423,9 @@ def _add_fold(s, kfold, fold_seed=None):
     if fold_seed is None:
         # If we don't have a specific seed,
         # just use a simple modulo-based mapping
-        fold = _arange(len(s), like_df=s, dtype=typ)
+        fold = arange(len(s), like_df=s, dtype=typ)
         np.mod(fold, kfold, out=fold)
         return fold
     else:
-        state = _random_state(fold_seed, like_df=s)
-        return state.choice(_arange(kfold, like_df=s, dtype=typ), len(s))
+        state = random_state(fold_seed, like_df=s)
+        return state.choice(arange(kfold, like_df=s, dtype=typ), len(s))

@@ -1,0 +1,125 @@
+#
+# Copyright (c) 2021, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import os
+
+from merlin.dag import postorder_iter_nodes
+
+# this needs to be before any modules that import protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+from google.protobuf import text_format  # noqa
+
+import merlin.systems.triton.model_config_pb2 as model_config  # noqa
+from merlin.dag import Graph  # noqa
+from merlin.systems.triton.export import _convert_dtype  # noqa
+
+
+class Ensemble:
+    def __init__(self, ops, schema, name="ensemble_model", label_columns=None):
+        self.graph = Graph(ops)
+        self.graph.construct_schema(schema)
+        self.name = name
+        self.label_columns = label_columns or []
+
+    def export(self, export_path, version=1):
+        # Create ensemble config
+        ensemble_config = model_config.ModelConfig(
+            name=self.name,
+            platform="ensemble",
+            # max_batch_size=configs[0].max_batch_size
+        )
+
+        for col_name, col_schema in self.graph.input_schema.column_schemas.items():
+            ensemble_config.input.append(
+                model_config.ModelInput(
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, -1]
+                )
+            )
+
+        for col_name, col_schema in self.graph.output_schema.column_schemas.items():
+            ensemble_config.output.append(
+                model_config.ModelOutput(
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, -1]
+                )
+            )
+
+        # Build node id lookup table
+        postorder_nodes = list(postorder_iter_nodes(self.graph.output_node))
+
+        node_idx = 0
+        node_id_lookup = {}
+        for node in postorder_nodes:
+            if node.exportable:
+                node_id_lookup[node] = node_idx
+                node_idx += 1
+
+        node_configs = []
+        # Export node configs and add ensemble steps
+        for node in postorder_nodes:
+            if node.exportable:
+                node_id = node_id_lookup.get(node, None)
+                node_name = f"{node_id}_{node.export_name}"
+
+                found = False
+                for step in ensemble_config.ensemble_scheduling.step:
+                    if step.model_name == node_name:
+                        found = True
+                if found:
+                    continue
+
+                node_config = node.export(export_path, node_id=node_id, version=version)
+
+                config_step = model_config.ModelEnsembling.Step(
+                    model_name=node_name, model_version=-1
+                )
+
+                for input_col_name in node.input_schema.column_names:
+                    source = _find_column_source(node.parents_with_dependencies, input_col_name)
+                    source_id = node_id_lookup.get(source, None)
+                    in_suffix = f"_{source_id}" if source_id is not None else ""
+                    config_step.input_map[input_col_name] = input_col_name + in_suffix
+
+                for output_col_name in node.output_schema.column_names:
+                    out_suffix = (
+                        f"_{node_id}" if node_id is not None and node_id < node_idx - 1 else ""
+                    )
+                    config_step.output_map[output_col_name] = output_col_name + out_suffix
+
+                ensemble_config.ensemble_scheduling.step.append(config_step)
+                node_configs.append(node_config)
+
+        # Write the ensemble config file
+        ensemble_path = os.path.join(export_path, self.name)
+        os.makedirs(ensemble_path, exist_ok=True)
+        os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
+
+        with open(os.path.join(ensemble_path, "config.pbtxt"), "w") as o:
+            text_format.PrintMessage(ensemble_config, o)
+
+        return (ensemble_config, node_configs)
+
+
+def _find_column_source(upstream_nodes, column_name):
+    source_node = None
+    for upstream_node in upstream_nodes:
+        if column_name in upstream_node.output_columns.names:
+            source_node = upstream_node
+            break
+
+    if source_node and not source_node.exportable:
+        return _find_column_source(source_node.parents_with_dependencies, column_name)
+    else:
+        return source_node

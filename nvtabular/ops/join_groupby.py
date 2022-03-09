@@ -15,19 +15,24 @@
 #
 
 import dask.dataframe as dd
-import numpy
+import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
-from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
+from merlin.schema import Schema
+from nvtabular.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
 
-from ..tags import Tags
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
-CONTINUOUS = Tags.CONTINUOUS
+AGG_DTYPES = {
+    "count": np.int32,
+    "std": np.float32,
+    "var": np.float32,
+    "mean": np.float32,
+}
 
 
 class JoinGroupby(StatOperator):
@@ -163,13 +168,20 @@ class JoinGroupby(StatOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
-        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        df[tmp] = arange(len(df), like_df=df, dtype="int32")
 
-        cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-            col_selector, df.columns, self.name_sep
-        )
+        cat_names = []
+        multi_col_group = {}
+        for col_name in col_selector.grouped_names:
+            if isinstance(col_name, (list, tuple)):
+                name = nvt_cat._make_name(*col_name, sep=self.name_sep)
+                if name not in cat_names and all(col in df.columns for col in col_name):
+                    cat_names.append(name)
+                    multi_col_group[name] = col_name
+            elif col_name in df.columns:
+                cat_names.append(col_name)
 
-        _read_pq_func = _read_parquet_dispatch(df)
+        _read_pq_func = read_parquet_dispatch(df)
         for name in cat_names:
             new_part = type(df)()
             storage_name = self.storage_name.get(name, name)
@@ -188,28 +200,60 @@ class JoinGroupby(StatOperator):
             tran_df.drop(columns=selection_l + [tmp], inplace=True)
             new_cols = [c for c in tran_df.columns if c not in new_df.columns]
             new_part = tran_df[new_cols].reset_index(drop=True)
-            new_df = _concat_columns([new_df, new_part])
+            for col in new_part.columns:
+                for agg in list(AGG_DTYPES.keys()):
+                    if col.endswith(f"{self.name_sep}{agg}"):
+                        new_dtype = AGG_DTYPES.get(agg, new_part[col].dtype)
+                        new_part[col] = new_part[col].astype(new_dtype)
+            new_df = concat_columns([new_df, new_part])
         df.drop(columns=[tmp], inplace=True)
         return new_df
 
     def dependencies(self):
         return self.cont_cols
 
-    def output_column_names(self, columns):
-        # TODO: the names here are defined in categorify/mid_level_groupby
-        # refactor to have a common implementation
-        output = []
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
+        return parents_selector
 
-        for name in columns.grouped_names:
-            if isinstance(name, (tuple, list)):
-                name = nvt_cat._make_name(*name, sep=self.name_sep)
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        for group in col_selector.grouped_names:
+            if isinstance(group, (tuple, list)):
+                name = nvt_cat._make_name(*group, sep=self.name_sep)
+                group = [*group]
+            else:
+                name = group
+                group = [group]
+
             for cont in self.cont_names.names:
                 for stat in self.stats:
                     if stat == "count":
-                        output.append(f"{name}_{stat}")
+                        column_mapping[f"{name}_{stat}"] = [*group]
                     else:
-                        output.append(f"{name}_{cont}_{stat}")
-        return ColumnSelector(output)
+                        column_mapping[f"{name}_{cont}_{stat}"] = [cont, *group]
+
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        new_schema = super()._compute_dtype(col_schema, input_schema)
+
+        dtype = new_schema.dtype
+        is_list = new_schema.is_list
+
+        for agg in list(AGG_DTYPES.keys()):
+            if col_schema.name.endswith(f"{self.name_sep}{agg}"):
+                dtype = AGG_DTYPES.get(agg, dtype)
+                is_list = False
+                break
+
+        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
@@ -218,12 +262,6 @@ class JoinGroupby(StatOperator):
     def clear(self):
         self.categories = {}
         self.storage_name = {}
-
-    def output_tags(self):
-        return [Tags.CONTINUOUS]
-
-    def output_dtype(self):
-        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

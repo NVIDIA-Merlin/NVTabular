@@ -18,6 +18,7 @@ import random
 import string
 
 import numpy as np
+import pandas as pd
 import psutil
 
 try:
@@ -25,26 +26,31 @@ try:
 except ImportError:
     cupy = np
 
+try:
+    import cudf
+except ImportError:
+    cudf = pd
+
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
+from merlin.io import Dataset
 from nvtabular.dispatch import (
     HAS_GPU,
-    _concat,
-    _is_list_dtype,
-    _make_df,
-    _make_series,
-    _pull_apart_list,
+    concat,
     create_multihot_col,
+    is_list_dtype,
+    make_df,
+    make_series,
+    pull_apart_list,
 )
 
-from ..io.dataset import Dataset
 from ..utils import device_mem_size
 
 
 class UniformDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
-        ser = _make_df(np.random.uniform(min_val, max_val, size=num_rows))[0]
+        ser = make_df(np.random.uniform(min_val, max_val, size=num_rows))[0]
         ser = ser.astype(dtype)
         return ser
 
@@ -59,7 +65,7 @@ class PowerLawDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
         gamma = 1 - self.alpha
         # range 1.0 - 2.0 to avoid using 0, which represents unknown, null, None
-        ser = _make_df(cupy.random.uniform(0.0, 1.0, size=num_rows))[0]
+        ser = make_df(cupy.random.uniform(0.0, 1.0, size=num_rows))[0]
         factor = cupy.power(max_val, gamma) - cupy.power(min_val, gamma)
         ser = (ser * factor.item()) + cupy.power(min_val, gamma).item()
         exp = 1.0 / gamma
@@ -89,7 +95,7 @@ class DatasetGen:
         size = number of rows wanted
         conts_rep = list of tuples representing values of each column
         """
-        df = _make_df()
+        df = make_df()
         for col in conts_rep:
             dist = col.distro or self.dist
             for y in range(col.width):
@@ -97,7 +103,7 @@ class DatasetGen:
                     size, min_val=col.min_val, max_val=col.max_val, dtype=col.dtype
                 )
                 ser.name = col.name if y == 0 else f"{col.name}_{y}"
-                df = _concat([df, ser], axis=1)
+                df = concat([df, ser], axis=1)
         return df
 
     def create_cats(self, size, cats_rep, entries=False):
@@ -108,7 +114,7 @@ class DatasetGen:
                   minimum and maximum categorical string length
         """
         # should alpha also be exposed? related to dist... should be part of that
-        df = _make_df()
+        df = make_df()
         for col in cats_rep:
             # if mh resets size
             col_size = size
@@ -124,19 +130,23 @@ class DatasetGen:
                     ser = dist.create_col(
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
                     )
-                    ser = _make_df(np.ceil(ser))[0]
+                    ser = make_df(np.ceil(ser))[0]
                 # sum returns numpy dtype
                 col_size = int(ser.sum())
-                offs = _make_df(cupy.cumsum(ser.values))[0]
+                offs = make_df(cupy.cumsum(ser.values))[0]
                 offs = offs.astype("int32")
             if HAS_GPU:
                 ser = dist.create_col(
-                    col_size, dtype=np.long, min_val=0, max_val=col.cardinality
+                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
                 ).ceil()
             else:
-                ser = dist.create_col(col_size, dtype=np.long, min_val=0, max_val=col.cardinality)
-                ser = _make_df(np.ceil(ser))[0]
+                ser = dist.create_col(
+                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
+                )
+                ser = make_df(np.ceil(ser))[0]
                 ser = ser.astype("int32")
+            if col.permutate_index:
+                ser = self.permutate_index(ser)
             if entries:
                 cat_names = self.create_cat_entries(
                     col.cardinality, min_size=col.min_entry_size, max_size=col.max_entry_size
@@ -146,11 +156,11 @@ class DatasetGen:
                 # create multi_column from offs and ser
                 ser = create_multihot_col(offs, ser)
             ser.name = col.name
-            df = _concat([df, ser], axis=1)
+            df = concat([df, ser], axis=1)
         return df
 
     def create_labels(self, size, labs_rep):
-        df = _make_df()
+        df = make_df()
         for col in labs_rep:
             dist = col.distro or self.dist
             if HAS_GPU:
@@ -159,20 +169,20 @@ class DatasetGen:
                 ).ceil()
             else:
                 ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality)
-                ser = _make_df(np.ceil(ser))[0]
+                ser = make_df(np.ceil(ser))[0]
             ser.name = col.name
             ser = ser.astype(col.dtype)
-            df = _concat([df, ser], axis=1)
+            df = concat([df, ser], axis=1)
         return df
 
     def merge_cats_encoding(self, ser, cats):
         # df and cats are both series
         # set cats to dfs
         offs = None
-        if _is_list_dtype(ser.dtype) or _is_list_dtype(ser):
-            ser, offs = _pull_apart_list(ser)
-        ser = _make_df({"vals": ser})
-        cats = _make_df({"names": cats})
+        if is_list_dtype(ser.dtype) or is_list_dtype(ser):
+            ser, offs = pull_apart_list(ser)
+        ser = make_df({"vals": ser})
+        cats = make_df({"names": cats})
         cats["vals"] = cats.index
         ser = ser.merge(cats, on=["vals"], how="left")
 
@@ -197,11 +207,11 @@ class DatasetGen:
         conts_rep = cols["conts"] if "conts" in cols else None
         cats_rep = cols["cats"] if "cats" in cols else None
         labs_rep = cols["labels"] if "labels" in cols else None
-        df = _make_df()
+        df = make_df()
         if conts_rep:
-            df = _concat([df, self.create_conts(size, conts_rep)], axis=1)
+            df = concat([df, self.create_conts(size, conts_rep)], axis=1)
         if cats_rep:
-            df = _concat(
+            df = concat(
                 [
                     df,
                     self.create_cats(size, cats_rep=cats_rep, entries=entries),
@@ -209,7 +219,7 @@ class DatasetGen:
                 axis=1,
             )
         if labs_rep:
-            df = _concat([df, self.create_labels(size, labs_rep)], axis=1)
+            df = concat([df, self.create_labels(size, labs_rep)], axis=1)
         return df
 
     def full_df_create(
@@ -265,13 +275,13 @@ class DatasetGen:
                 x = min(batch, size)
                 # ensure stopping at desired cardinality
                 x = min(x, size - completed_vocab)
-                ser = _make_series(
+                ser = make_series(
                     self.create_cat_entries(
                         x, min_size=col.min_entry_size, max_size=col.max_entry_size
                     )
                 )
                 # turn series to dataframe to keep index count
-                ser = _make_df({f"{col.name}": ser, "idx": ser.index + completed_vocab})
+                ser = make_df({f"{col.name}": ser, "idx": ser.index + completed_vocab})
                 file_path = os.path.join(output, f"{col.name}_vocab_{file_count}.parquet")
                 completed_vocab = completed_vocab + ser.shape[0]
                 file_count = file_count + 1
@@ -331,7 +341,7 @@ class DatasetGen:
         """
         size = 0
         for col in row.columns:
-            if _is_list_dtype(row[col].dtype):
+            if is_list_dtype(row[col].dtype):
                 # second from last position is max list length
                 # find correct cats_rep by scanning through all for column name
                 tar = self.find_target_rep(col, cats_rep)
@@ -347,6 +357,18 @@ class DatasetGen:
             if name == rep.name:
                 return rep
         return None
+
+    def permutate_index(self, ser):
+        name = ser.name
+        ser.name = "ind"
+        ind = ser.drop_duplicates().values
+        ind_random = cupy.random.permutation(ind)
+        df_map = cudf.DataFrame({"ind": ind, "ind_random": ind_random})
+        if not HAS_GPU:
+            ser = cudf.DataFrame(ser)
+        ser = ser.merge(df_map, how="left", left_on="ind", right_on="ind")["ind_random"]
+        ser.name = name
+        return ser
 
 
 DISTRO_TYPES = {"powerlaw": PowerLawDistro, "uniform": UniformDistro}
@@ -395,6 +417,8 @@ class CatCol(Col):
         multi_max=None,
         multi_avg=None,
         distro=None,
+        min_val=0,
+        permutate_index=False,
     ):
         super().__init__(name, dtype, distro)
         self.cardinality = cardinality
@@ -405,6 +429,8 @@ class CatCol(Col):
         self.multi_min = multi_min
         self.multi_max = multi_max
         self.multi_avg = multi_avg
+        self.min_val = min_val
+        self.permutate_index = permutate_index
 
 
 class LabelCol(Col):
@@ -442,6 +468,8 @@ def _get_cols_from_schema(schema, distros=None):
             multi_min:
             multi_max:
             multi_avg:
+            min_val:
+            permutate_index:
 
     labels:
         col_name:
