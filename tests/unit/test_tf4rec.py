@@ -95,6 +95,7 @@ def test_tf4rec():
                 column_mapping[col_name + "_age_days"] = [col_name]
             return column_mapping
 
+        @property
         def dependencies(self):
             return ["prod_first_event_time_ts"]
 
