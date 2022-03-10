@@ -209,6 +209,7 @@ class JoinGroupby(StatOperator):
         df.drop(columns=[tmp], inplace=True)
         return new_df
 
+    @property
     def dependencies(self):
         return self.cont_cols
 
