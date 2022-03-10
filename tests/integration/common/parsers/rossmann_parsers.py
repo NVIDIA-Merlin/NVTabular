@@ -51,8 +51,6 @@ class RossBenchPytorch(StandardBenchmark):
         epoch = epoch.split()[1]
         t_loss = self.loss(epoch, float(t_loss.split(": ")[1]))
         v_loss = self.loss(epoch, float(v_loss.split(": ")[1]), l_type="valid")
-        # t_rmspe = self.rmspe(epoch, float(t_rmspe.split(": ")[1]))
-        # v_rmspe = self.rmspe(epoch, float(v_rmspe.split(": ")[1].split(".")[0]))
         return [t_loss, v_loss, t_rmspe, v_rmspe]
 
     def get_epochs(self, output):
