@@ -231,6 +231,7 @@ intersphinx_mapping = {
     "cudf": ("https://docs.rapids.ai/api/cudf/stable/", None),
     "distributed": ("https://distributed.dask.org/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
+    "merlin-core": ("https://nvidia-merlin.github.io/core/", None),
 }
 
 autodoc_inherit_docstrings = False
