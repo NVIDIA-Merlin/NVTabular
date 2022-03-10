@@ -212,6 +212,7 @@ class TargetEncoding(StatOperator):
         for col in dask_stats[1].index:
             self.means[col] = float(dask_stats[1]["mean"].loc[col])
 
+    @property
     def dependencies(self):
         return self.dependency
 
