@@ -83,6 +83,7 @@ class LambdaOp(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
+    @property
     def dependencies(self):
         return self.dependency
 
@@ -107,7 +108,7 @@ class LambdaOp(Operator):
         return "LambdaOp"
 
     def column_mapping(self, col_selector):
-        filtered_selector = self._remove_deps(col_selector, self.dependencies())
+        filtered_selector = self._remove_deps(col_selector, self.dependencies)
         return super().column_mapping(filtered_selector)
 
     def _remove_deps(self, col_selector, dependencies):
