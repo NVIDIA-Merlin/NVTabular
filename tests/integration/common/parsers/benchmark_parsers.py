@@ -150,15 +150,6 @@ def is_float(str_to_flt):
         return False
 
 
-# def send_results(db, bench_info, results_list):
-#     for results in results_list:
-#         if isinstance(results, list):
-#             for result in results:
-#                 db.addResult(bench_info, result)
-#         else:
-#             db.addResult(bench_info, results)
-
-
 def send_results(db, bench_info, results_list):
     # only one entry because entries are split by Bench info
     new_results_list = results_list
