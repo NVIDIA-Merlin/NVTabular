@@ -82,6 +82,7 @@ class DifferenceLag(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
+    @property
     def dependencies(self):
         return self.partition_cols
 
