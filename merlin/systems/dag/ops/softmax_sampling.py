@@ -30,6 +30,7 @@ class SoftmaxSampling(PipelineableInferenceOperator):
             relevance_col, temperature=temperature, topk=topk, _input_col=input_col
         )
 
+    @property
     def dependencies(self):
         return self.relevance_col
 

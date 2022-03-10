@@ -37,6 +37,7 @@ class FilterCandidates(PipelineableInferenceOperator):
         input_col = parameters["input_col"]
         return FilterCandidates(filter_out_col, input_col)
 
+    @property
     def dependencies(self):
         return self.filter_out
 
