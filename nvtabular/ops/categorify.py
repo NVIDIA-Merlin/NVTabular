@@ -35,9 +35,9 @@ from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
+from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.schema import Schema, Tags
 from nvtabular import dispatch
-from nvtabular.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from nvtabular.utils import device_mem_size, run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -293,7 +293,7 @@ class Categorify(StatOperator):
             raise ValueError("cannot use freq_threshold param together with max_size param")
 
         if self.num_buckets is not None:
-            # See: nvtabular.dispatch.hash_series
+            # See: merlin.core.dispatch.hash_series
             warnings.warn(
                 "Performing a hash-based transformation. Do not "
                 "expect Categorify to be consistent on GPU and CPU "

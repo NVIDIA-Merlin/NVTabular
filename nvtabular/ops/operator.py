@@ -18,8 +18,8 @@ from __future__ import annotations
 from typing import Optional
 
 import nvtabular as nvt
+from merlin.core.dispatch import DataFrameType
 from merlin.dag import BaseOperator, ColumnSelector
-from nvtabular.dispatch import DataFrameType
 
 
 class Operator(BaseOperator):

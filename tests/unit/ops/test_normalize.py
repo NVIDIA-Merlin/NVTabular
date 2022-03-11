@@ -21,8 +21,8 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.io
+from merlin.core.dispatch import HAS_GPU, flatten_list_column, flatten_list_column_values
 from nvtabular import ColumnSelector, dispatch, ops
-from nvtabular.dispatch import HAS_GPU, flatten_list_column, flatten_list_column_values
 from tests.conftest import assert_eq
 
 if HAS_GPU:
