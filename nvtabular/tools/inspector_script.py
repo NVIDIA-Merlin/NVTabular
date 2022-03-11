@@ -25,7 +25,7 @@ from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
 import nvtabular.tools.dataset_inspector as datains
-from nvtabular.io import Dataset
+from merlin.io import Dataset
 from nvtabular.utils import device_mem_size, get_rmm_size
 
 

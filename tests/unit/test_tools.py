@@ -9,7 +9,7 @@ import pytest
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
 from merlin.core.dispatch import HAS_GPU, concat, is_string_dtype, make_df, pull_apart_list
-from nvtabular.io import Dataset
+from merlin.io import Dataset
 
 json_sample = {
     "conts": {

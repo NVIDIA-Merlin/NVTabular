@@ -66,11 +66,11 @@ class Workflow:
         workflow = nvtabular.Workflow(cat_features + cont_features + "label")
 
         # calculate statistics on the training dataset
-        workflow.fit(nvtabular.io.Dataset(TRAIN_PATH))
+        workflow.fit(merlin.io.Dataset(TRAIN_PATH))
 
         # transform the training and validation datasets and write out as parquet
-        workflow.transform(nvtabular.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
-        workflow.transform(nvtabular.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
+        workflow.transform(merlin.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
+        workflow.transform(merlin.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
 
     Parameters
     ----------

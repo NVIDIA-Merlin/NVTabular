@@ -20,7 +20,6 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
 from merlin.core.dispatch import HAS_GPU, flatten_list_column, flatten_list_column_values
 from nvtabular import ColumnSelector, dispatch, ops
 from tests.conftest import assert_eq
@@ -42,7 +41,7 @@ else:
 def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, cpu):
     df = dataset.to_ddf().compute()
     cont_features = op_columns >> ops.NormalizeMinMax()
-    processor = nvtabular.Workflow(cont_features)
+    processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     new_gdf.index = df.index  # Make sure index is aligned for checks
@@ -62,7 +61,7 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_features = op_columns >> ops.Normalize()
-    processor = nvtabular.Workflow(cont_features)
+    processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
 
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -111,7 +110,7 @@ def test_normalize_lists(tmpdir, cpu):
 def test_normalize_std_zero(cpu):
     df = pd.DataFrame({"a": 7 * [10]})
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(["a"] >> ops.Normalize())
+    processor = nvt.Workflow(["a"] >> ops.Normalize())
     processor.fit(dataset)
     result = processor.transform(dataset).compute()["a"]
     assert (result == 0).all()
@@ -124,7 +123,7 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
     df = dispatch.make_df({"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1.0, 0.0, 1.0, 0.0]})
 
     cont_features = op_columns >> ops.Normalize()
-    processor = nvtabular.Workflow(cont_features)
+    processor = nvt.Workflow(cont_features)
     dataset = nvt.Dataset(df)
     processor.fit(dataset)
 
