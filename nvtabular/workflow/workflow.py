@@ -38,10 +38,10 @@ from merlin.core.utils import (
     global_dask_client,
     set_client_deprecated,
 )
+from merlin.core.worker import clean_worker_cache
 from merlin.dag import Graph
 from merlin.io import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
