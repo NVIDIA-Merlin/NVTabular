@@ -33,14 +33,14 @@ from dask.core import flatten
 
 import nvtabular
 from merlin.core.dispatch import concat_columns, is_list_dtype, list_val_dtype
-from merlin.dag import Graph
-from merlin.io import Dataset
-from nvtabular.ops import StatOperator
-from nvtabular.utils import (
+from merlin.core.utils import (
     ensure_optimize_dataframe_graph,
     global_dask_client,
     set_client_deprecated,
 )
+from merlin.dag import Graph
+from merlin.io import Dataset
+from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode
 

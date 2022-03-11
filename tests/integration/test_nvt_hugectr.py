@@ -42,9 +42,9 @@ from sklearn.model_selection import train_test_split
 
 import nvtabular as nvt
 import tests.conftest as test_utils
+from merlin.core.utils import download_file
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
-from nvtabular.utils import download_file
 
 DIR = "/model/"
 DATA_DIR = DIR + "data/"

@@ -25,8 +25,8 @@ from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
 import nvtabular.tools.dataset_inspector as datains
+from merlin.core.utils import device_mem_size, get_rmm_size
 from merlin.io import Dataset
-from nvtabular.utils import device_mem_size, get_rmm_size
 
 
 def setup_rmm_pool(client, device_pool_size):

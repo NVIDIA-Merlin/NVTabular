@@ -36,9 +36,9 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
+from merlin.core.utils import device_mem_size, run_on_worker
 from merlin.schema import Schema, Tags
 from nvtabular import dispatch
-from nvtabular.utils import device_mem_size, run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnSelector, Operator
