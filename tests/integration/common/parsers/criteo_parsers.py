@@ -13,13 +13,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import re
 
-from .benchmark_parsers import BenchFastAI, Benchmark, create_bench_result
+from tests.integration.common.parsers.benchmark_parsers import (
+    BenchFastAI,
+    Benchmark,
+    StandardBenchmark,
+    create_bench_result,
+)
+
+decimal_regex = "[0-9]+\.?[0-9]*|\.[0-9]+"  # noqa pylint: disable=W1401
 
 
 class CriteoBenchFastAI(BenchFastAI):
-    def __init__(self, val=6, split=None):
-        super().__init__("Criteo", val=val, split=split)
+    def __init__(self, name="CriteoFastAI", val=6, split=None):
+        self.name = name
+        self.val = val
+        self.split = split
+
+    def get_info(self, output):
+        bench_infos = []
+        losses = []
+        for line in output:
+            if "run_time" in line:
+                bench_infos.append(line)
+            if "loss" in line and "Train" in line and "Valid" in line:
+                losses.append(line)
+        loss_dict = {}
+        if losses:
+            for loss in losses:
+                t_loss, v_loss = self.get_loss(loss)
+                loss_dict["loss_train"] = t_loss
+                loss_dict["loss_valid"] = v_loss
+        if bench_infos:
+            bench_infos = self.get_dl_timing(bench_infos[-1:], optionals=loss_dict)
+        return bench_infos
 
     def get_epoch(self, line):
         epoch, t_loss, v_loss, roc, aps, o_time = line.split()
@@ -27,20 +55,22 @@ class CriteoBenchFastAI(BenchFastAI):
         v_loss = self.loss(epoch, float(v_loss), l_type="valid")
         roc = self.roc_auc(epoch, float(roc))
         aps = self.aps(epoch, float(aps))
-        o_time = self.time(epoch, o_time, time_format="%H:%M:%S")
         return [t_loss, v_loss, roc, aps, o_time]
+
+    def get_loss(self, line):
+        epoch, t_loss, v_loss, roc, aps, o_time = line.split()
+        t_loss = float(t_loss)
+        v_loss = float(v_loss)
+        return [t_loss, v_loss]
 
 
 class CriteoBenchHugeCTR(Benchmark):
-    def __init__(self):
-        super().__init__("HugeCTR")
-
     def get_epochs(self, output):
         epochs = []
         for line in output:
             if "AUC" in line:
                 epochs.append(self.get_epoch(line))
-        return epochs
+        return epochs[-1:]
 
     def get_epoch(self, line):
         split_line = line.split(",")
@@ -50,3 +80,54 @@ class CriteoBenchHugeCTR(Benchmark):
             f"{self.name}_auc", [("iteration", iteration)], auc, "percent"
         )
         return [bres_auc]
+
+
+class CriteoTensorflow(StandardBenchmark):
+    def __init__(self, name="CriteoTensorFlow"):
+        self.name = name
+
+    def get_loss(self, line):
+        loss = line.split("-")[-1]
+        loss = loss.split(":")[-1]
+        losses = re.findall(decimal_regex, loss)
+        losses = losses or []
+        return float(losses[-1])
+
+
+class CriteoTorch(StandardBenchmark):
+    def __init__(self, name="CriteoTorch"):
+        self.name = name
+
+    def get_info(self, output):
+        bench_infos = []
+        losses = []
+        for line in output:
+            if "run_time" in line:
+                bench_infos.append(line)
+            if "loss" in line and "Train" in line and "Valid" in line:
+                losses.append(line)
+        loss_dict = {}
+        if losses:
+            for idx, loss in enumerate(losses):
+                t_loss, v_loss = self.get_loss(loss)
+                loss_dict["loss_train"] = t_loss
+                loss_dict["loss_valid"] = v_loss
+        if bench_infos:
+            bench_infos = self.get_dl_timing(bench_infos[-1:], optionals=loss_dict)
+        return bench_infos
+
+    def get_loss(self, line):
+        # Epoch 00. Train loss: 0.1944. Valid loss: 0.1696.
+        loss_parse = line.split(". ")
+        epoch = loss_parse[0].split(" ")[-1]
+        train_loss = loss_parse[1].split(":")[-1]
+        valid_loss = loss_parse[2].split(":")[-1]
+
+        epoch = re.findall(decimal_regex, epoch)[-1]
+        train_loss = re.findall(decimal_regex, train_loss)[-1]
+        valid_loss = re.findall(decimal_regex, valid_loss)[-1]
+
+        epoch = int(epoch)
+        train_loss = float(train_loss)
+        valid_loss = float(valid_loss)
+        return [train_loss, valid_loss]
