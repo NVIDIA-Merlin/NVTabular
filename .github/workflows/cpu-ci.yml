@@ -45,6 +45,9 @@ jobs:
     - name: Lint with isort
       run: |
         isort -c .
+    - name: Lint with interrogate
+      run: |
+        interrogate -viImMpPsSCn -f 25.0 nvtabular
     - name: Lint with codespell
       run: |
         codespell
