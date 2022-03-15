@@ -23,15 +23,15 @@ except ImportError:
 import dask.dataframe as dd
 import pandas as pd
 
+from merlin.schema import Schema
 from nvtabular.dispatch import (
     DataFrameType,
     ExtData,
-    _arange,
-    _convert_data,
-    _create_nvt_dataset,
-    _detect_format,
-    _read_dispatch,
-    _to_host,
+    arange,
+    convert_data,
+    create_merlin_dataset,
+    detect_format,
+    to_host,
 )
 
 from .operator import ColumnSelector, Operator
@@ -100,10 +100,10 @@ class JoinExternal(Operator):
     ):
         super(JoinExternal).__init__()
         self.on = on
-        self.df_ext = _create_nvt_dataset(df_ext)
+        self.df_ext = create_merlin_dataset(df_ext)
         self.on_ext = on_ext or self.on
         self.how = how
-        self.kind_ext = kind_ext or _detect_format(self.df_ext)
+        self.kind_ext = kind_ext or detect_format(self.df_ext)
         self.columns_ext = columns_ext
         self.drop_duplicates_ext = drop_duplicates_ext
         self.cache = cache
@@ -116,49 +116,22 @@ class JoinExternal(Operator):
             raise ValueError("Only left join is currently supported.")
         if not isinstance(self.kind_ext, ExtData):
             raise ValueError("kind_ext option not recognized.")
+        super().__init__()
 
     @property
     def _ext(self):
 
         if self._ext_cache is not None:
             # Return cached result if present
-            return _convert_data(self._ext_cache, cpu=self.cpu)
+            return convert_data(self._ext_cache, cpu=self.cpu)
 
-        if self.kind_ext == ExtData.DATASET:
-            # Use Dataset.to_ddf
-            _dataset = self.df_ext
-            if self.cpu:
-                _dataset.to_cpu()
-            else:
-                _dataset.to_gpu()
-            _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
-        elif self.kind_ext in (
-            ExtData.ARROW,
-            ExtData.CUDF,
-            ExtData.DASK_CUDF,
-            ExtData.PANDAS,
-            ExtData.DASK_PANDAS,
-        ):
-            _ext = _check_partition_count(_convert_data(self.df_ext, cpu=self.cpu))
+        # Use Dataset.to_ddf
+        _dataset = self.df_ext
+        if self.cpu:
+            _dataset.to_cpu()
         else:
-            if self.kind_ext == ExtData.PARQUET:
-                # Read from parquet dataset
-                kwargs = {
-                    "split_row_groups": False,
-                    "index": False,
-                    "gather_statistics": False,
-                    "columns": self.columns_ext,
-                }
-                kwargs.update(self.kwargs)
-                reader = _read_dispatch(cpu=self.cpu, collection=True)
-            elif self.kind_ext == ExtData.CSV:
-                # Read from CSV dataset
-                kwargs = {"usecols": self.columns_ext}
-                kwargs.update(self.kwargs)
-                reader = _read_dispatch(cpu=self.cpu, collection=True, fmt="csv")
-            else:
-                raise ValueError("Disk format not yet supported")
-            _ext = _check_partition_count(reader(self.df_ext, **kwargs))
+            _dataset.to_gpu()
+        _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
 
         # Take subset of columns if a list is specified
         if self.columns_ext:
@@ -173,7 +146,7 @@ class JoinExternal(Operator):
 
         # Cache and return
         if self.cache == "host":
-            self._ext_cache = _to_host(_ext)
+            self._ext_cache = to_host(_ext)
         elif self.cache == "device" or self.kind_ext not in (ExtData.PARQUET, ExtData.CSV):
             self._ext_cache = _ext
         return _ext
@@ -188,7 +161,7 @@ class JoinExternal(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
-        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        df[tmp] = arange(len(df), like_df=df, dtype="int32")
         new_df = self._merge(df, self._ext)
         new_df = new_df.sort_values(tmp)
         new_df.drop(columns=[tmp], inplace=True)
@@ -198,18 +171,45 @@ class JoinExternal(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
+        return parents_selector
+
+    def compute_output_schema(self, input_schema, col_selector, prev_output_schema=None):
+        # must load in the schema from the external dataset
+        input_schema = input_schema + self.df_ext.schema
+        return super().compute_output_schema(input_schema, col_selector, prev_output_schema)
+
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
 
         # This maintains the order which set() does not
-        combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
+        combined_col_names = dict.fromkeys(col_selector.names + list(ext_columns)).keys()
 
-        return ColumnSelector(list(combined))
+        for col_name in combined_col_names:
+            column_mapping[col_name] = [col_name]
 
-    def compute_output_schema(self, input_schema, col_selector):
-        # must load in the schema from the external dataset
-        input_schema = input_schema + self.df_ext.schema
-        return super().compute_output_schema(input_schema, col_selector)
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        if col_schema.name in input_schema.column_names:
+            return super()._compute_dtype(col_schema, input_schema)
+        else:
+            col_dtype = self.df_ext.schema.column_schemas[col_schema.name].dtype
+            return col_schema.with_dtype(col_dtype)
+
+    def _compute_tags(self, col_schema, input_schema):
+        return col_schema
+
+    def _compute_properties(self, col_schema, input_schema):
+        return col_schema
 
 
 def _check_partition_count(df):

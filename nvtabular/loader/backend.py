@@ -27,18 +27,17 @@ try:
 except ImportError:
     cp = np
 
+from merlin.io import DataFrameIter, shuffle_df
+from merlin.schema import Tags
 from nvtabular.dispatch import (
     HAS_GPU,
-    _concat,
-    _generate_local_seed,
-    _is_list_dtype,
-    _make_df,
-    _pull_apart_list,
     annotate,
+    concat,
+    generate_local_seed,
+    is_list_dtype,
+    make_df,
+    pull_apart_list,
 )
-from nvtabular.io.shuffle import _shuffle_df
-from nvtabular.ops import _get_embedding_order
-from nvtabular.tags import Tags
 
 
 def _num_steps(num_samples, step_size):
@@ -70,8 +69,7 @@ class ChunkQueue:
         self.put_wait = put_wait
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
-        indices = dataloader._gather_indices_for_dev(0)
-        self.itr = dataloader.data.to_iter(indices=indices, epochs=epochs)
+        self.itr = dataloader._data_iter(epochs)
         self.dataloader = dataloader
 
     def __len__(self):
@@ -126,14 +124,14 @@ class ChunkQueue:
             if self.stopped:
                 return
 
-            if spill and not spill.empty:
+            if spill is not None and not spill.empty:
                 chunks.insert(0, spill)
 
-            chunks = _concat(chunks)
+            chunks = concat(chunks)
             chunks.reset_index(drop=True, inplace=True)
             chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
             if self.shuffle:
-                chunks = _shuffle_df(chunks)
+                chunks = shuffle_df(chunks)
 
             if len(chunks) > 0:
                 chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
@@ -174,13 +172,17 @@ class ChunkQueue:
     def get_batch_div_chunk(self, chunks, batch_size):
         # TODO: is there a way to do this using cupy?
         spill_idx = int(chunks.shape[0] / batch_size) * batch_size
-        spill = _make_df(chunks.iloc[spill_idx:])
-        chunks = _make_df(chunks.iloc[:spill_idx])
+        spill = make_df(chunks.iloc[spill_idx:])
+        chunks = make_df(chunks.iloc[:spill_idx])
         if not chunks.empty:
             chunks.reset_index(drop=True, inplace=True)
         if not spill.empty:
             spill.reset_index(drop=True, inplace=True)
         return chunks, spill
+
+
+def _get_dataset_schema(dataset):
+    return dataset.schema if hasattr(dataset, "schema") else None
 
 
 # TODO: implement as metaclass and assign methods to children
@@ -207,7 +209,9 @@ class DataLoader:
         sparse_as_dense=False,
     ):
         self.data = dataset
-        self.indices = cp.arange(dataset.to_ddf().npartitions)
+        self.schema = _get_dataset_schema(dataset)
+        # self.data is ddf format
+        self.indices = cp.arange(self.data.npartitions)
         self.drop_last = drop_last
         self.device = (device or 0) if HAS_GPU else "cpu"
         self.sparse_names = sparse_names or []
@@ -217,9 +221,15 @@ class DataLoader:
         self.global_rank = global_rank or 0
         self._epochs = 1
 
-        self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
-        self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
-        self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGETS).column_names
+        self.cat_names = cat_names or (
+            self.schema.select_by_tag(Tags.CATEGORICAL).column_names if self.schema else []
+        )
+        self.cont_names = cont_names or (
+            self.schema.select_by_tag(Tags.CONTINUOUS).column_names if self.schema else []
+        )
+        self.label_names = label_names or (
+            self.schema.select_by_tag(Tags.TARGET).column_names if self.schema else []
+        )
 
         if not self.cat_names and not self.cont_names:
             raise ValueError(
@@ -310,12 +320,12 @@ class DataLoader:
 
     @annotate("_shuffle_indices", color="darkgreen", domain="nvt_python")
     def _shuffle_indices(self):
-        _generate_local_seed(self.global_rank, self.global_size)
+        generate_local_seed(self.global_rank, self.global_size)
         if self.seed_fn:
             new_seed = self.seed_fn()
             cp.random.seed(new_seed)
         cp.random.shuffle(self.indices)
-        _generate_local_seed(self.global_rank, self.global_size)
+        generate_local_seed(self.global_rank, self.global_size)
 
     def __iter__(self):
         self.stop()
@@ -339,6 +349,12 @@ class DataLoader:
 
     def __next__(self):
         return self._get_next_batch()
+
+    def _data_iter(self, epochs):
+        indices = self._gather_indices_for_dev(0)
+        if hasattr(self.data, "to_iter"):
+            return self.data.to_iter(indices=indices, epochs=epochs)
+        return DataFrameIter(self.data, epochs=epochs)
 
     def _fetch_chunk(self):
         chunks = self._buff.get()
@@ -531,11 +547,11 @@ class DataLoader:
     def _separate_list_columns(self, gdf):
         lists, scalars = [], []
         for col in gdf.columns:
-            if _is_list_dtype(gdf[col]):
+            if is_list_dtype(gdf[col]):
                 lists.append(col)
             else:
                 scalars.append(col)
-        return _get_embedding_order(scalars), _get_embedding_order(lists)
+        return scalars, lists
 
     @annotate("_create_tensors", color="darkgreen", domain="nvt_python")
     def _create_tensors(self, gdf):
@@ -547,7 +563,7 @@ class DataLoader:
         workflow_nodes = (self.cat_names, self.cont_names, self.label_names)
         dtypes = (self._LONG_DTYPE, self._FLOAT32_DTYPE, self._FLOAT32_DTYPE)
         tensors = []
-        offsets = _make_df(device=self.device)
+        offsets = make_df(device=self.device)
         for column_names, dtype in zip(workflow_nodes, dtypes):
             if len(column_names) == 0:
                 tensors.append(None)
@@ -566,10 +582,10 @@ class DataLoader:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-                    leaves, col_offsets = _pull_apart_list(column)
+                    leaves, col_offsets = pull_apart_list(column, device=self.device)
                     if isinstance(leaves[0], list):
 
-                        leaves, nest_offsets = _pull_apart_list(leaves)
+                        leaves, nest_offsets = pull_apart_list(leaves, device=self.device)
                         col_offsets = nest_offsets.iloc[col_offsets[:]]
                     offsets[column_name] = col_offsets.reset_index(drop=True)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)

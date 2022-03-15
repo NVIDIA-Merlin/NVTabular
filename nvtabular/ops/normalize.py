@@ -16,16 +16,18 @@
 import dask.dataframe as dd
 import numpy
 
+from merlin.dag import Supports
+from merlin.schema import Tags
+
 from ..dispatch import (
     DataFrameType,
-    _encode_list_column,
-    _flatten_list_column_values,
-    _is_list_dtype,
     annotate,
+    encode_list_column,
+    flatten_list_column_values,
+    is_list_dtype,
 )
-from ..tags import Tags
 from .moments import _custom_moments
-from .operator import ColumnSelector, Operator, Supports
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -65,19 +67,19 @@ class Normalize(StatOperator):
         new_df = type(df)()
         for name in col_selector.names:
             values = df[name]
-            list_col = _is_list_dtype(values)
+            list_col = is_list_dtype(values)
             if list_col:
-                values = _flatten_list_column_values(values)
+                values = flatten_list_column_values(values)
 
             if self.stds[name] > 0:
                 values = (values - self.means[name]) / (self.stds[name])
             else:
                 values = values - self.means[name]
 
-            values = values.astype("float32")
+            values = values.astype(self.output_dtype)
 
             if list_col:
-                values = _encode_list_column(df[name], values)
+                values = encode_list_column(df[name], values)
 
             new_df[name] = values
         return new_df
@@ -95,11 +97,13 @@ class Normalize(StatOperator):
         self.means = {}
         self.stds = {}
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    @property
+    def output_dtype(self):
+        return numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -134,7 +138,7 @@ class NormalizeMinMax(StatOperator):
                 new_df[name] = (df[name] - self.mins[name]) / dif
             elif dif == 0:
                 new_df[name] = df[name] / (2 * df[name])
-            new_df[name] = new_df[name].astype("float32")
+            new_df[name] = new_df[name].astype(self.output_dtype)
         return new_df
 
     transform.__doc__ = Operator.transform.__doc__
@@ -167,11 +171,13 @@ class NormalizeMinMax(StatOperator):
             | Supports.GPU_DATAFRAME
         )
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    @property
+    def output_dtype(self):
+        return numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
