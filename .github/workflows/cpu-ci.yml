@@ -34,7 +34,7 @@ jobs:
         python -m pip uninstall protobuf -y
         python -m pip install --no-binary=protobuf protobuf
         python -m pip install tritonclient[all]
-        python -m pip install torch tensorflow
+        python -m pip install torch tensorflow-cpu
         python -m pip install numpy==1.20.3
     - name: Lint with flake8
       run: |
