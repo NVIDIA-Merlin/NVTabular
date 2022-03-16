@@ -1,0 +1,2259 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# NVTabular demo on RecSys2020 Challenge\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.\n",
+    "\n",
+    "### RecSys2020 Challenge\n",
+    "\n",
+    "The [RecSys](https://recsys.acm.org/) conference is the leading data science conference for recommender systems and organizes an annual competiton in recommender systems. The [RecSys Challenge 2020](https://recsys-twitter.com/), hosted by Twitter, was about predicting interactions of ~200 mio. tweet-user pairs. NVIDIA's team scored 1st place. The team explained the solution in the [blogpost](https://medium.com/rapids-ai/winning-solution-of-recsys2020-challenge-gpu-accelerated-feature-engineering-and-training-for-cd67c5a87b1f) and published the code on [github](https://github.com/rapidsai/deeplearning/tree/main/RecSys2020).\n",
+    "\n",
+    "### Downloading the dataset\n",
+    "\n",
+    "The dataset has to be downloaded from the original source, provided by Twitter. You need to create an account on the [RecSys Challenge 2020 website](https://recsys-twitter.com/). Twitter needs to (manually) approve your account, which can take a few days. After your account is approved, you can download the data [here](https://recsys-twitter.com/data/show-downloads). We will use only the `training.tsv` file, as we cannot make submissions anymore.\n",
+    "\n",
+    "### Learning objectives\n",
+    "\n",
+    "This notebook covers the end-2-end pipeline, from loading the original .tsv file to training the models, with NVTabular, [cuDF](https://github.com/rapidsai/cudf), [dask](https://dask.org/) and [XGBoost](https://xgboost.readthedocs.io/). We demonstrate multi-GPU support for NVTabular and new `nvt.ops`, implemented based on the success of our RecSys2020 solution.\n",
+    "1. **NVTabular** to preprocess the original .tsv file.\n",
+    "2. **dask_cudf** to split the preprocessed data into a training and validation set.\n",
+    "3. **NVTabular** to create additional features with only **~70 lines of code**.\n",
+    "4. **dask_cudf** / **XGBoost on GPU** to train our model."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Getting Started"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# External Dependencies\n",
+    "import time\n",
+    "import glob\n",
+    "import gc\n",
+    "\n",
+    "import cupy as cp          # CuPy is an implementation of NumPy-compatible multi-dimensional array on GPU\n",
+    "import cudf                # cuDF is an implementation of Pandas-like Dataframe on GPU\n",
+    "import rmm                 # library for pre-allocating memory on GPU\n",
+    "import dask                # dask is an open-source library to nateively scale Python on multiple workers/nodes\n",
+    "import dask_cudf           # dask_cudf uses dask to scale cuDF dataframes on multiple workers/nodes\n",
+    "\n",
+    "import numpy as np\n",
+    "# NVTabular is the core library, we will use here for feature engineering/preprocessing on GPU\n",
+    "import nvtabular as nvt\n",
+    "import xgboost as xgb\n",
+    "\n",
+    "# More dask / dask_cluster related libraries to scale NVTabular\n",
+    "from dask_cuda import LocalCUDACluster\n",
+    "from dask.distributed import Client\n",
+    "from dask.distributed import wait\n",
+    "from dask.utils import parse_bytes\n",
+    "from dask.delayed import delayed\n",
+    "from nvtabular.utils import device_mem_size"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's have a short look on the libary versions and setup, we will use."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'0+untagged.1.ga6296e3'"
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cudf.__version__"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'8.0.0'"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cp.__version__"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'1.3.0-SNAPSHOT'"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "xgb.__version__"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'2.30.0'"
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "dask.__version__"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We ran this example with 1x Quadro GV100 GPUs with each having 32GB of GPU memory."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Wed Dec 16 13:33:38 2020       \r\n",
+      "+-----------------------------------------------------------------------------+\r\n",
+      "| NVIDIA-SMI 450.66       Driver Version: 450.66       CUDA Version: 11.0     |\r\n",
+      "|-------------------------------+----------------------+----------------------+\r\n",
+      "| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |\r\n",
+      "| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |\r\n",
+      "|                               |                      |               MIG M. |\r\n",
+      "|===============================+======================+======================|\r\n",
+      "|   0  Quadro GV100        Off  | 00000000:15:00.0 Off |                  Off |\r\n",
+      "| 43%   49C    P2    36W / 250W |     13MiB / 32508MiB |      0%      Default |\r\n",
+      "|                               |                      |                  N/A |\r\n",
+      "+-------------------------------+----------------------+----------------------+\r\n",
+      "                                                                               \r\n",
+      "+-----------------------------------------------------------------------------+\r\n",
+      "| Processes:                                                                  |\r\n",
+      "|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |\r\n",
+      "|        ID   ID                                                   Usage      |\r\n",
+      "|=============================================================================|\r\n",
+      "+-----------------------------------------------------------------------------+\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!nvidia-smi"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "              total        used        free      shared  buff/cache   available\r\n",
+      "Mem:       48020048     2510916    23450004        5556    22059128    44912768\r\n",
+      "Swap:       1003516     1003504          12\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!free"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "time_total_start = time.time()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We define our base directory, containing the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "BASE_DIR = '/raid/data/recsys2020/'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we initalize our local cuda cluster."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table style=\"border: 2px solid white;\">\n",
+       "<tr>\n",
+       "<td style=\"vertical-align: top; border: 0px solid white\">\n",
+       "<h3 style=\"text-align: left;\">Client</h3>\n",
+       "<ul style=\"text-align: left; list-style: none; margin: 0; padding: 0;\">\n",
+       "  <li><b>Scheduler: </b>tcp://127.0.0.1:39099</li>\n",
+       "  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>\n",
+       "</ul>\n",
+       "</td>\n",
+       "<td style=\"vertical-align: top; border: 0px solid white\">\n",
+       "<h3 style=\"text-align: left;\">Cluster</h3>\n",
+       "<ul style=\"text-align: left; list-style:none; margin: 0; padding: 0;\">\n",
+       "  <li><b>Workers: </b>1</li>\n",
+       "  <li><b>Cores: </b>1</li>\n",
+       "  <li><b>Memory: </b>49.17 GB</li>\n",
+       "</ul>\n",
+       "</td>\n",
+       "</tr>\n",
+       "</table>"
+      ],
+      "text/plain": [
+       "<Client: 'tcp://127.0.0.1:39099' processes=1 threads=1, memory=49.17 GB>"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cluster = LocalCUDACluster(\n",
+    "    protocol=\"tcp\"\n",
+    ")\n",
+    "client = Client(cluster)\n",
+    "client"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Preparing our dataset"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The original data format had multiple inefficiencies, resulting in requiring more disk space and memory:\n",
+    "1. The file format is `.tsv`, an uncompressed, text-based format. The `parquet` file format stores tabular data in a compressed, column-oriented format. This saves a significant amount of disk space which results in fewer i/o operations and faster execution.\n",
+    "2. Some categorical features, such as tweet_id, user_id are hashed to String values (e.g. `cfcd208495d565ef66e7dff9f98764da`). These long Strings require significant amount of disk space/memory. We can encode the Categories as Integer values using `Categorify`. Representing the String `cfcd208495d565ef66e7dff9f98764da` as an Integer `0` can save up 90% in memory. Although other categorical features are no long hashes, they are still Strings (e.g. tweet_type) and we will represent them as Integers, as well.\n",
+    "3. In our experiments, the text_tokens were not a significant feature and we will drop the column before we split the data."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we define the column names in the original .tsv file. The .tsv file has no header and we need to specify the names."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features = [\n",
+    "    'text_tokens',    ###############\n",
+    "    'hashtags',       #Tweet Features\n",
+    "    'tweet_id',       #\n",
+    "    'media',          #\n",
+    "    'links',          #\n",
+    "    'domains',        #\n",
+    "    'tweet_type',     #\n",
+    "    'language',       #\n",
+    "    'timestamp',      ###############\n",
+    "    'a_user_id',              ###########################\n",
+    "    'a_follower_count',       #Engaged With User Features\n",
+    "    'a_following_count',      #\n",
+    "    'a_is_verified',          #\n",
+    "    'a_account_creation',     ###########################\n",
+    "    'b_user_id',              #######################\n",
+    "    'b_follower_count',       #Engaging User Features\n",
+    "    'b_following_count',      #\n",
+    "    'b_is_verified',          #\n",
+    "    'b_account_creation',     #######################\n",
+    "    'b_follows_a',    #################### Engagement Features\n",
+    "    'reply',          #Target Reply\n",
+    "    'retweet',        #Target Retweet    \n",
+    "    'retweet_comment',#Target Retweet with comment\n",
+    "    'like',           #Target Like\n",
+    "                      ####################\n",
+    "]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We define two helper function, we apply in our NVTabular workflow:\n",
+    "1. splitmedia2 splits the entries in media by `\\t` and keeps only the first two values (if available),\n",
+    "2. count_token counts the number of token in a column (e.g. how many hashtags are in a tweet),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def splitmedia(col):\n",
+    "    if col.shape[0] == 0:\n",
+    "        return(col)\n",
+    "    else:\n",
+    "        return(col.str.split('\\t')[0].fillna('') + '_' + col.str.split('\\t')[1].fillna(''))\n",
+    "    \n",
+    "def count_token(col,token):\n",
+    "    not_null = col.isnull()==0\n",
+    "    return ((col.str.count(token)+1)*not_null).fillna(0)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We will define our data processing pipeline with NVTabular.<br><br>\n",
+    "We count the number of tokens in the columns hashtags, domains, links. We use the `count_token` helper function in a `lambda` function. Finally, we rename the column names to avoid duplicated names."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "count_features = (\n",
+    "    nvt.ColumnGroup(['hashtags', 'domains', 'links']) >> \n",
+    "    (lambda col: count_token(col,'\\t')) >> \n",
+    "    nvt.ops.Rename(postfix = '_count_t')\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We apply splitmedia function to split the media."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "split_media = nvt.ColumnGroup(['media']) >> (lambda col: splitmedia(col))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We encode categorical columns as a small, continuous integer to save memory. Some categorical columns contain long hashes of type String as values to preserve the privacy of the users (e.g. userId, language, etc.). Long hashes of type String requires significant amount of memory to store. We encode/map the Strings to continuous Integer to save significant memory.\n",
+    "<br><br>\n",
+    "Before we can apply `Categorify`, we need to fill na/missing values in the columns `hashtags`, `domains` and `links`. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "multihot_filled = ['hashtags', 'domains', 'links'] >> nvt.ops.FillMissing()\n",
+    "cat_features = (\n",
+    "    split_media + multihot_filled + ['language', 'tweet_type', 'tweet_id', 'a_user_id', 'b_user_id'] >> \n",
+    "    nvt.ops.Categorify()\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We want to fill na/missing values in the label columns as well."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "label_name = ['reply', 'retweet', 'retweet_comment', 'like']\n",
+    "label_name_feature = label_name >> nvt.ops.FillMissing()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We extract the weekday from the timestamp."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "weekday = (\n",
+    "    nvt.ColumnGroup(['timestamp']) >> \n",
+    "    (lambda col: cudf.to_datetime(col, unit='s').dt.weekday) >> \n",
+    "    nvt.ops.Rename(postfix = '_wd')\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can visualize our pipeline."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/svg+xml": [
+       "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n",
+       "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n",
+       " \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n",
+       "<!-- Generated by graphviz version 2.42.3 (20191010.1750)\n",
+       " -->\n",
+       "<!-- Title: %3 Pages: 1 -->\n",
+       "<svg width=\"1229pt\" height=\"404pt\"\n",
+       " viewBox=\"0.00 0.00 1228.88 404.00\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+       "<g id=\"graph0\" class=\"graph\" transform=\"scale(1 1) rotate(0) translate(4 400)\">\n",
+       "<title>%3</title>\n",
+       "<polygon fill=\"white\" stroke=\"transparent\" points=\"-4,4 -4,-400 1224.88,-400 1224.88,4 -4,4\"/>\n",
+       "<!-- 0 -->\n",
+       "<g id=\"node1\" class=\"node\">\n",
+       "<title>0</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1043.64\" cy=\"-162\" rx=\"40.09\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1043.64\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n",
+       "</g>\n",
+       "<!-- 14 -->\n",
+       "<g id=\"node16\" class=\"node\">\n",
+       "<title>14</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"782.64\" cy=\"-90\" rx=\"27\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"782.64\" y=\"-86.3\" font-family=\"Times,serif\" font-size=\"14.00\">+</text>\n",
+       "</g>\n",
+       "<!-- 0&#45;&gt;14 -->\n",
+       "<g id=\"edge14\" class=\"edge\">\n",
+       "<title>0&#45;&gt;14</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1010.06,-151.99C960.21,-138.62 867.14,-113.66 816.91,-100.19\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"817.73,-96.79 807.16,-97.58 815.91,-103.55 817.73,-96.79\"/>\n",
+       "</g>\n",
+       "<!-- 15 -->\n",
+       "<g id=\"node2\" class=\"node\">\n",
+       "<title>15</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1126.64\" cy=\"-234\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1126.64\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 15&#45;&gt;0 -->\n",
+       "<g id=\"edge1\" class=\"edge\">\n",
+       "<title>15&#45;&gt;0</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1107.81,-217.12C1096.51,-207.59 1081.98,-195.33 1069.6,-184.89\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1071.73,-182.11 1061.83,-178.34 1067.22,-187.46 1071.73,-182.11\"/>\n",
+       "</g>\n",
+       "<!-- 1 -->\n",
+       "<g id=\"node3\" class=\"node\">\n",
+       "<title>1</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"876.64\" cy=\"-234\" rx=\"181.17\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"876.64\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[reply, retweet, retweet_comment...]</text>\n",
+       "</g>\n",
+       "<!-- 8 -->\n",
+       "<g id=\"node14\" class=\"node\">\n",
+       "<title>8</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"850.64\" cy=\"-162\" rx=\"51.99\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"850.64\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">FillMissing</text>\n",
+       "</g>\n",
+       "<!-- 1&#45;&gt;8 -->\n",
+       "<g id=\"edge6\" class=\"edge\">\n",
+       "<title>1&#45;&gt;8</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M870.22,-215.7C867.29,-207.81 863.76,-198.3 860.5,-189.55\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"863.76,-188.26 857,-180.1 857.2,-190.7 863.76,-188.26\"/>\n",
+       "</g>\n",
+       "<!-- 2 -->\n",
+       "<g id=\"node4\" class=\"node\">\n",
+       "<title>2</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"137.64\" cy=\"-306\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"137.64\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 10 -->\n",
+       "<g id=\"node11\" class=\"node\">\n",
+       "<title>10</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"493.64\" cy=\"-234\" rx=\"27\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"493.64\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">+</text>\n",
+       "</g>\n",
+       "<!-- 2&#45;&gt;10 -->\n",
+       "<g id=\"edge7\" class=\"edge\">\n",
+       "<title>2&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M180.94,-296.49C252,-282.51 392.04,-254.98 457.86,-242.04\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"458.63,-245.45 467.76,-240.09 457.28,-238.58 458.63,-245.45\"/>\n",
+       "</g>\n",
+       "<!-- 13 -->\n",
+       "<g id=\"node5\" class=\"node\">\n",
+       "<title>13</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"78.64\" cy=\"-378\" rx=\"78.79\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"78.64\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[media]</text>\n",
+       "</g>\n",
+       "<!-- 13&#45;&gt;2 -->\n",
+       "<g id=\"edge2\" class=\"edge\">\n",
+       "<title>13&#45;&gt;2</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M92.93,-360.05C100.1,-351.54 108.93,-341.07 116.84,-331.68\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"119.72,-333.69 123.49,-323.79 114.37,-329.18 119.72,-333.69\"/>\n",
+       "</g>\n",
+       "<!-- 3 -->\n",
+       "<g id=\"node6\" class=\"node\">\n",
+       "<title>3</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1126.64\" cy=\"-306\" rx=\"94.48\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1126.64\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[timestamp]</text>\n",
+       "</g>\n",
+       "<!-- 3&#45;&gt;15 -->\n",
+       "<g id=\"edge15\" class=\"edge\">\n",
+       "<title>3&#45;&gt;15</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1126.64,-287.7C1126.64,-279.98 1126.64,-270.71 1126.64,-262.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1130.14,-262.1 1126.64,-252.1 1123.14,-262.1 1130.14,-262.1\"/>\n",
+       "</g>\n",
+       "<!-- 4 -->\n",
+       "<g id=\"node7\" class=\"node\">\n",
+       "<title>4</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"288.64\" cy=\"-306\" rx=\"51.99\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"288.64\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">FillMissing</text>\n",
+       "</g>\n",
+       "<!-- 4&#45;&gt;10 -->\n",
+       "<g id=\"edge8\" class=\"edge\">\n",
+       "<title>4&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M324.35,-292.81C362.62,-279.74 422.9,-259.16 460.26,-246.4\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"461.81,-249.57 470.15,-243.02 459.55,-242.94 461.81,-249.57\"/>\n",
+       "</g>\n",
+       "<!-- 9 -->\n",
+       "<g id=\"node8\" class=\"node\">\n",
+       "<title>9</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"318.64\" cy=\"-378\" rx=\"143.77\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"318.64\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[hashtags, domains, links]</text>\n",
+       "</g>\n",
+       "<!-- 9&#45;&gt;4 -->\n",
+       "<g id=\"edge3\" class=\"edge\">\n",
+       "<title>9&#45;&gt;4</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M311.23,-359.7C307.85,-351.81 303.77,-342.3 300.02,-333.55\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"303.13,-331.92 295.97,-324.1 296.7,-334.67 303.13,-331.92\"/>\n",
+       "</g>\n",
+       "<!-- 5 -->\n",
+       "<g id=\"node9\" class=\"node\">\n",
+       "<title>5</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"868.64\" cy=\"-306\" rx=\"143.77\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"868.64\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[hashtags, domains, links]</text>\n",
+       "</g>\n",
+       "<!-- 11 -->\n",
+       "<g id=\"node13\" class=\"node\">\n",
+       "<title>11</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"626.64\" cy=\"-234\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"626.64\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 5&#45;&gt;11 -->\n",
+       "<g id=\"edge10\" class=\"edge\">\n",
+       "<title>5&#45;&gt;11</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M814.33,-289.29C772.32,-277.14 714.72,-260.48 674.45,-248.83\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"675.18,-245.4 664.6,-245.98 673.23,-252.12 675.18,-245.4\"/>\n",
+       "</g>\n",
+       "<!-- 6 -->\n",
+       "<g id=\"node10\" class=\"node\">\n",
+       "<title>6</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"558.64\" cy=\"-162\" rx=\"48.19\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"558.64\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Categorify</text>\n",
+       "</g>\n",
+       "<!-- 6&#45;&gt;14 -->\n",
+       "<g id=\"edge12\" class=\"edge\">\n",
+       "<title>6&#45;&gt;14</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M594.63,-149.75C637.25,-136.44 707.66,-114.43 749.15,-101.47\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"750.29,-104.78 758.8,-98.45 748.21,-98.09 750.29,-104.78\"/>\n",
+       "</g>\n",
+       "<!-- 10&#45;&gt;6 -->\n",
+       "<g id=\"edge4\" class=\"edge\">\n",
+       "<title>10&#45;&gt;6</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M507.43,-218.15C515.86,-209.07 526.85,-197.24 536.48,-186.87\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"539.28,-189 543.52,-179.29 534.15,-184.24 539.28,-189\"/>\n",
+       "</g>\n",
+       "<!-- 7 -->\n",
+       "<g id=\"node12\" class=\"node\">\n",
+       "<title>7</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"715.64\" cy=\"-162\" rx=\"40.09\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"715.64\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n",
+       "</g>\n",
+       "<!-- 7&#45;&gt;14 -->\n",
+       "<g id=\"edge11\" class=\"edge\">\n",
+       "<title>7&#45;&gt;14</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M730.85,-145.12C739.83,-135.73 751.35,-123.7 761.24,-113.36\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"764.03,-115.51 768.42,-105.86 758.97,-110.67 764.03,-115.51\"/>\n",
+       "</g>\n",
+       "<!-- 11&#45;&gt;7 -->\n",
+       "<g id=\"edge5\" class=\"edge\">\n",
+       "<title>11&#45;&gt;7</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M646.84,-217.12C659.16,-207.43 675.06,-194.92 688.47,-184.37\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"690.75,-187.03 696.44,-178.1 686.42,-181.53 690.75,-187.03\"/>\n",
+       "</g>\n",
+       "<!-- 8&#45;&gt;14 -->\n",
+       "<g id=\"edge13\" class=\"edge\">\n",
+       "<title>8&#45;&gt;14</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M834.87,-144.76C825.74,-135.37 814.12,-123.41 804.16,-113.15\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"806.42,-110.45 796.94,-105.72 801.4,-115.33 806.42,-110.45\"/>\n",
+       "</g>\n",
+       "<!-- 12 -->\n",
+       "<g id=\"node15\" class=\"node\">\n",
+       "<title>12</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"532.64\" cy=\"-306\" rx=\"174.37\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"532.64\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[language, tweet_type, tweet_id...]</text>\n",
+       "</g>\n",
+       "<!-- 12&#45;&gt;10 -->\n",
+       "<g id=\"edge9\" class=\"edge\">\n",
+       "<title>12&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M523,-287.7C518.33,-279.32 512.64,-269.1 507.52,-259.9\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"510.56,-258.18 502.64,-251.14 504.45,-261.58 510.56,-258.18\"/>\n",
+       "</g>\n",
+       "<!-- 16 -->\n",
+       "<g id=\"node17\" class=\"node\">\n",
+       "<title>16</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"782.64\" cy=\"-18\" rx=\"247.76\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"782.64\" y=\"-14.3\" font-family=\"Times,serif\" font-size=\"14.00\">output cols=[hashtags_count_t, domains_count_t, links_count_t...]</text>\n",
+       "</g>\n",
+       "<!-- 14&#45;&gt;16 -->\n",
+       "<g id=\"edge16\" class=\"edge\">\n",
+       "<title>14&#45;&gt;16</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M782.64,-71.7C782.64,-63.98 782.64,-54.71 782.64,-46.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"786.14,-46.1 782.64,-36.1 779.14,-46.1 786.14,-46.1\"/>\n",
+       "</g>\n",
+       "</g>\n",
+       "</svg>\n"
+      ],
+      "text/plain": [
+       "<graphviz.dot.Digraph at 0x7fe0c83cf5d0>"
+      ]
+     },
+     "execution_count": 19,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "output = count_features+cat_features+label_name_feature+weekday\n",
+    "(output).graph"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Our calculation workflow looks correct. But we want to keep columns, which are not used in our pipeline (for `a_follower_count` or `b_follows_a`. Therefore, we include all columns in features, which are not part of our pipeline (except of `text_tokens`)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['timestamp',\n",
+       " 'a_follower_count',\n",
+       " 'a_following_count',\n",
+       " 'a_is_verified',\n",
+       " 'a_account_creation',\n",
+       " 'b_follower_count',\n",
+       " 'b_following_count',\n",
+       " 'b_is_verified',\n",
+       " 'b_account_creation',\n",
+       " 'b_follows_a']"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "remaining_columns = [x for x in features if x not in (output.columns+['text_tokens'])]\n",
+    "remaining_columns"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We initialize our NVTabular workflow."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proc = nvt.Workflow(output+remaining_columns)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We initialize a nvt.Dataset. The engine is `csv` as the `.tsv` file has a similar structure. The `.tsv` file uses the special character `\\x01` to separate columns. There is no header in the file and we define column names with the parameter `names`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "trains_itrs = nvt.Dataset(BASE_DIR + 'training.tsv', \n",
+    "                          header=None, \n",
+    "                          names=features, \n",
+    "                          engine='csv', \n",
+    "                          sep='\\x01', \n",
+    "                          part_size='1GB')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we collect the training dataset statistics."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 19.1 s, sys: 1.11 s, total: 20.2 s\n",
+      "Wall time: 2min 14s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "time_preproc_start = time.time()\n",
+    "proc.fit(trains_itrs)\n",
+    "time_preproc = time.time()-time_preproc_start"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next, we apply the transformation to the dataset and persist it to disk.<br><br>\n",
+    "We define the output datatypes for continuous columns to save memory. We can define the output datatypes as a dict and parse it to the `to_parquet` function."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dict_dtypes = {}\n",
+    "for col in label_name + ['media', 'language', 'tweet_type', 'tweet_id', \n",
+    "                         'a_user_id', 'b_user_id', 'hashtags', 'domains', \n",
+    "                         'links', 'timestamp', 'a_follower_count', \n",
+    "                         'a_following_count', 'a_account_creation',\n",
+    "                         'b_follower_count', 'b_following_count', 'b_account_creation']:\n",
+    "    dict_dtypes[col] = np.uint32"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/cudf/core/column/string.py:1993: UserWarning: `expand` parameter defatults to True.\n",
+      "  warnings.warn(\"`expand` parameter defatults to True.\")\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 1min 17s, sys: 37.9 s, total: 1min 55s\n",
+      "Wall time: 2min 20s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "time_preproc_start = time.time()\n",
+    "proc.transform(trains_itrs).to_parquet(output_path=BASE_DIR + 'preprocess/', dtypes=dict_dtypes)\n",
+    "time_preproc += time.time()-time_preproc_start"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can take a look in the output folder."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "_metadata\t part.1.parquet   part.30.parquet  part.41.parquet\r\n",
+      "part.0.parquet\t part.20.parquet  part.31.parquet  part.42.parquet\r\n",
+      "part.10.parquet  part.21.parquet  part.32.parquet  part.43.parquet\r\n",
+      "part.11.parquet  part.22.parquet  part.33.parquet  part.44.parquet\r\n",
+      "part.12.parquet  part.23.parquet  part.34.parquet  part.45.parquet\r\n",
+      "part.13.parquet  part.24.parquet  part.35.parquet  part.46.parquet\r\n",
+      "part.14.parquet  part.25.parquet  part.36.parquet  part.4.parquet\r\n",
+      "part.15.parquet  part.26.parquet  part.37.parquet  part.5.parquet\r\n",
+      "part.16.parquet  part.27.parquet  part.38.parquet  part.6.parquet\r\n",
+      "part.17.parquet  part.28.parquet  part.39.parquet  part.7.parquet\r\n",
+      "part.18.parquet  part.29.parquet  part.3.parquet   part.8.parquet\r\n",
+      "part.19.parquet  part.2.parquet   part.40.parquet  part.9.parquet\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $BASE_DIR/preprocess"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Splitting dataset into training and test"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We split the training data by time into a train and validation set. The first 5 days are train and the last 2 days are for validation. We use the weekday for it. The first day of the dataset is a Thursday (weekday id = 3) and the last day is Wednesday (weekday id = 2). Therefore, we split the weekday ids 1 and 2 into the validation set."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 7.12 s, sys: 301 ms, total: 7.42 s\n",
+      "Wall time: 1min 2s\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "175"
+      ]
+     },
+     "execution_count": 27,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "time_split_start = time.time()\n",
+    "\n",
+    "df = dask_cudf.read_parquet(BASE_DIR + 'preprocess/*.parquet')\n",
+    "if 'text_tokens' in list(df.columns):\n",
+    "    df = df.drop('text_tokens', axis=1)\n",
+    "VALID_DOW = [1, 2]\n",
+    "\n",
+    "valid = df[df['timestamp_wd'].isin(VALID_DOW)].reset_index(drop=True)\n",
+    "train = df[~df['timestamp_wd'].isin(VALID_DOW)].reset_index(drop=True)\n",
+    "train = train.sort_values([\"b_user_id\", \"timestamp\"]).reset_index(drop=True)\n",
+    "valid = valid.sort_values([\"b_user_id\", \"timestamp\"]).reset_index(drop=True)\n",
+    "train.to_parquet(BASE_DIR + 'nv_train/')\n",
+    "valid.to_parquet(BASE_DIR + 'nv_valid/')\n",
+    "time_split = time.time()-time_split_start\n",
+    "\n",
+    "del train; del valid\n",
+    "gc.collect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Feature Engineering "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Wed Dec 16 13:39:20 2020       \n",
+      "+-----------------------------------------------------------------------------+\n",
+      "| NVIDIA-SMI 450.66       Driver Version: 450.66       CUDA Version: 11.0     |\n",
+      "|-------------------------------+----------------------+----------------------+\n",
+      "| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |\n",
+      "| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |\n",
+      "|                               |                      |               MIG M. |\n",
+      "|===============================+======================+======================|\n",
+      "|   0  Quadro GV100        Off  | 00000000:15:00.0 Off |                  Off |\n",
+      "| 42%   53C    P2    48W / 250W |   1439MiB / 32508MiB |      0%      Default |\n",
+      "|                               |                      |                  N/A |\n",
+      "+-------------------------------+----------------------+----------------------+\n",
+      "                                                                               \n",
+      "+-----------------------------------------------------------------------------+\n",
+      "| Processes:                                                                  |\n",
+      "|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |\n",
+      "|        ID   ID                                                   Usage      |\n",
+      "|=============================================================================|\n",
+      "+-----------------------------------------------------------------------------+\n"
+     ]
+    }
+   ],
+   "source": [
+    "!nvidia-smi"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now, we can apply the actual feature engineering. We define our data pipelines."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We count encode the columns *media*, *tweet_type*, *language*, *a_user_id*, *b_user_id*. CountEncoding is explained [here](https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_4_CountEncoding.ipynb)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "count_encode = (\n",
+    "    ['media', 'tweet_type', 'language', 'a_user_id', 'b_user_id'] >> \n",
+    "    nvt.ops.JoinGroupby(cont_names=['reply'],stats=[\"count\"], out_path='./')\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We transform timestamp to datetime type."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "datetime = nvt.ColumnGroup(['timestamp']) >> (lambda col: cudf.to_datetime(col.astype('int32'), unit='s'))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We extract hour from datetime.<br>\n",
+    "We extract minute from datetime.<br>\n",
+    "We extract seconds from datetime"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "hour = datetime >> (lambda col: col.dt.hour) >> nvt.ops.Rename(postfix = '_hour')\n",
+    "minute = datetime >> (lambda col: col.dt.minute) >> nvt.ops.Rename(postfix = '_minute')\n",
+    "seconds = datetime >> (lambda col: col.dt.second) >> nvt.ops.Rename(postfix = '_second')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We difference encode *b_follower_count, b_following_count, language* grouped by *b_user_id*. DifferenceEncoding is explained [here](https://github.com/rapidsai/tdeeplearning/blob/main/RecSys2020Tutorial/05_2_TimeSeries_Differences.ipynb). First, we need to transform the datatype to float32 to prevent overflow/underflow. After DifferenceEncoding, we want to fill NaN values with 0."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "diff_lag = (\n",
+    "    nvt.ColumnGroup(['b_follower_count','b_following_count','language']) >> \n",
+    "    (lambda col: col.astype('float32')) >> \n",
+    "    nvt.ops.DifferenceLag(partition_cols=['b_user_id'], shift = [1, -1]) >> \n",
+    "    nvt.ops.FillMissing(fill_val=0)\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We need to transform the LABEL_COLUMNS into boolean (0/1) targets."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "LABEL_COLUMNS = ['reply', 'retweet', 'retweet_comment', 'like'] \n",
+    "labels = nvt.ColumnGroup(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We apply TargetEncoding with kfold of 5 and smoothing of 20. TargetEncoding is explained in [here](https://medium.com/rapids-ai/target-encoding-with-rapids-cuml-do-more-with-your-categorical-data-8c762c79e784) and [here](https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_3_TargetEncoding.ipynb)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 34,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "target_encode = (\n",
+    "    ['media', 'tweet_type', 'language', 'a_user_id', 'b_user_id', \n",
+    "     ['domains','language','b_follows_a','tweet_type','media','a_is_verified']] >>\n",
+    "    nvt.ops.TargetEncoding(\n",
+    "        labels,\n",
+    "        kfold=5,\n",
+    "        p_smooth=20,\n",
+    "        out_dtype=\"float32\",\n",
+    "    )\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We visualize our NVTabular workflow. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 35,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/svg+xml": [
+       "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n",
+       "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n",
+       " \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n",
+       "<!-- Generated by graphviz version 2.42.3 (20191010.1750)\n",
+       " -->\n",
+       "<!-- Title: %3 Pages: 1 -->\n",
+       "<svg width=\"1849pt\" height=\"404pt\"\n",
+       " viewBox=\"0.00 0.00 1848.81 404.00\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+       "<g id=\"graph0\" class=\"graph\" transform=\"scale(1 1) rotate(0) translate(4 400)\">\n",
+       "<title>%3</title>\n",
+       "<polygon fill=\"white\" stroke=\"transparent\" points=\"-4,4 -4,-400 1844.81,-400 1844.81,4 -4,4\"/>\n",
+       "<!-- 0 -->\n",
+       "<g id=\"node1\" class=\"node\">\n",
+       "<title>0</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1659.48\" cy=\"-234\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1659.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 1 -->\n",
+       "<g id=\"node3\" class=\"node\">\n",
+       "<title>1</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1425.48\" cy=\"-162\" rx=\"67.69\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1425.48\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">TargetEncoding</text>\n",
+       "</g>\n",
+       "<!-- 0&#45;&gt;1 -->\n",
+       "<g id=\"edge3\" class=\"edge\">\n",
+       "<title>0&#45;&gt;1</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1621.88,-221.75C1582.97,-210.11 1521.86,-191.83 1478.15,-178.76\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1479.13,-175.4 1468.54,-175.88 1477.12,-182.1 1479.13,-175.4\"/>\n",
+       "</g>\n",
+       "<!-- 10 -->\n",
+       "<g id=\"node14\" class=\"node\">\n",
+       "<title>10</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1072.48\" cy=\"-90\" rx=\"27\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1072.48\" y=\"-86.3\" font-family=\"Times,serif\" font-size=\"14.00\">+</text>\n",
+       "</g>\n",
+       "<!-- 0&#45;&gt;10 -->\n",
+       "<g id=\"edge13\" class=\"edge\">\n",
+       "<title>0&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1638.41,-217.43C1609.41,-196.88 1554.84,-161.3 1502.48,-144 1362.82,-97.85 1185.62,-91.28 1109.72,-90.75\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1109.71,-87.25 1099.7,-90.71 1109.69,-94.25 1109.71,-87.25\"/>\n",
+       "</g>\n",
+       "<!-- 3 -->\n",
+       "<g id=\"node2\" class=\"node\">\n",
+       "<title>3</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1659.48\" cy=\"-306\" rx=\"181.17\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1659.48\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[reply, retweet, retweet_comment...]</text>\n",
+       "</g>\n",
+       "<!-- 3&#45;&gt;0 -->\n",
+       "<g id=\"edge1\" class=\"edge\">\n",
+       "<title>3&#45;&gt;0</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1659.48,-287.7C1659.48,-279.98 1659.48,-270.71 1659.48,-262.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1662.98,-262.1 1659.48,-252.1 1655.98,-262.1 1662.98,-262.1\"/>\n",
+       "</g>\n",
+       "<!-- 1&#45;&gt;10 -->\n",
+       "<g id=\"edge14\" class=\"edge\">\n",
+       "<title>1&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1373.01,-150.6C1300.39,-136.19 1171.12,-110.56 1108.48,-98.14\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1108.79,-94.63 1098.3,-96.12 1107.43,-101.5 1108.79,-94.63\"/>\n",
+       "</g>\n",
+       "<!-- 6 -->\n",
+       "<g id=\"node4\" class=\"node\">\n",
+       "<title>6</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1425.48\" cy=\"-234\" rx=\"165.97\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1425.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[media, tweet_type, language...]</text>\n",
+       "</g>\n",
+       "<!-- 6&#45;&gt;1 -->\n",
+       "<g id=\"edge2\" class=\"edge\">\n",
+       "<title>6&#45;&gt;1</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1425.48,-215.7C1425.48,-207.98 1425.48,-198.71 1425.48,-190.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1428.98,-190.1 1425.48,-180.1 1421.98,-190.1 1428.98,-190.1\"/>\n",
+       "</g>\n",
+       "<!-- 2 -->\n",
+       "<g id=\"node5\" class=\"node\">\n",
+       "<title>2</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"953.48\" cy=\"-234\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"953.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 17 -->\n",
+       "<g id=\"node17\" class=\"node\">\n",
+       "<title>17</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"963.48\" cy=\"-162\" rx=\"40.09\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"963.48\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n",
+       "</g>\n",
+       "<!-- 2&#45;&gt;17 -->\n",
+       "<g id=\"edge21\" class=\"edge\">\n",
+       "<title>2&#45;&gt;17</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M955.95,-215.7C957.05,-207.98 958.38,-198.71 959.61,-190.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"963.09,-190.5 961.04,-180.1 956.16,-189.51 963.09,-190.5\"/>\n",
+       "</g>\n",
+       "<!-- 11 -->\n",
+       "<g id=\"node6\" class=\"node\">\n",
+       "<title>11</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1072.48\" cy=\"-306\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1072.48\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 11&#45;&gt;2 -->\n",
+       "<g id=\"edge4\" class=\"edge\">\n",
+       "<title>11&#45;&gt;2</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1047.53,-290.33C1030.12,-280.08 1006.66,-266.28 987.53,-255.03\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"989.2,-251.95 978.8,-249.9 985.65,-257.98 989.2,-251.95\"/>\n",
+       "</g>\n",
+       "<!-- 9 -->\n",
+       "<g id=\"node13\" class=\"node\">\n",
+       "<title>9</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1072.48\" cy=\"-234\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1072.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 11&#45;&gt;9 -->\n",
+       "<g id=\"edge7\" class=\"edge\">\n",
+       "<title>11&#45;&gt;9</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1072.48,-287.7C1072.48,-279.98 1072.48,-270.71 1072.48,-262.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1075.98,-262.1 1072.48,-252.1 1068.98,-262.1 1075.98,-262.1\"/>\n",
+       "</g>\n",
+       "<!-- 14 -->\n",
+       "<g id=\"node20\" class=\"node\">\n",
+       "<title>14</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1191.48\" cy=\"-234\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1191.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 11&#45;&gt;14 -->\n",
+       "<g id=\"edge18\" class=\"edge\">\n",
+       "<title>11&#45;&gt;14</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1097.43,-290.33C1114.84,-280.08 1138.3,-266.28 1157.43,-255.03\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1159.31,-257.98 1166.16,-249.9 1155.76,-251.95 1159.31,-257.98\"/>\n",
+       "</g>\n",
+       "<!-- 4 -->\n",
+       "<g id=\"node7\" class=\"node\">\n",
+       "<title>4</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"552.48\" cy=\"-234\" rx=\"165.97\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"552.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[media, tweet_type, language...]</text>\n",
+       "</g>\n",
+       "<!-- 12 -->\n",
+       "<g id=\"node15\" class=\"node\">\n",
+       "<title>12</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"810.48\" cy=\"-162\" rx=\"56.59\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"810.48\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">JoinGroupby</text>\n",
+       "</g>\n",
+       "<!-- 4&#45;&gt;12 -->\n",
+       "<g id=\"edge16\" class=\"edge\">\n",
+       "<title>4&#45;&gt;12</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M611.02,-217.12C655.48,-205.05 716.04,-188.62 758.73,-177.04\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"759.91,-180.35 768.64,-174.35 758.07,-173.59 759.91,-180.35\"/>\n",
+       "</g>\n",
+       "<!-- 5 -->\n",
+       "<g id=\"node8\" class=\"node\">\n",
+       "<title>5</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"495.48\" cy=\"-162\" rx=\"51.99\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"495.48\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">FillMissing</text>\n",
+       "</g>\n",
+       "<!-- 5&#45;&gt;10 -->\n",
+       "<g id=\"edge12\" class=\"edge\">\n",
+       "<title>5&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M543.68,-155.15C656.56,-141.46 936.03,-107.55 1036.11,-95.41\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1036.54,-98.89 1046.04,-94.21 1035.69,-91.94 1036.54,-98.89\"/>\n",
+       "</g>\n",
+       "<!-- 15 -->\n",
+       "<g id=\"node9\" class=\"node\">\n",
+       "<title>15</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"307.48\" cy=\"-234\" rx=\"61.99\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"307.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">DifferenceLag</text>\n",
+       "</g>\n",
+       "<!-- 15&#45;&gt;5 -->\n",
+       "<g id=\"edge5\" class=\"edge\">\n",
+       "<title>15&#45;&gt;5</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M344.17,-219.34C374.97,-207.87 419.03,-191.46 451.67,-179.31\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"453.26,-182.46 461.41,-175.69 450.82,-175.9 453.26,-182.46\"/>\n",
+       "</g>\n",
+       "<!-- 7 -->\n",
+       "<g id=\"node10\" class=\"node\">\n",
+       "<title>7</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"810.48\" cy=\"-234\" rx=\"74.99\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"810.48\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[reply]</text>\n",
+       "</g>\n",
+       "<!-- 7&#45;&gt;12 -->\n",
+       "<g id=\"edge17\" class=\"edge\">\n",
+       "<title>7&#45;&gt;12</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M810.48,-215.7C810.48,-207.98 810.48,-198.71 810.48,-190.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"813.98,-190.1 810.48,-180.1 806.98,-190.1 813.98,-190.1\"/>\n",
+       "</g>\n",
+       "<!-- 8 -->\n",
+       "<g id=\"node11\" class=\"node\">\n",
+       "<title>8</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"227.48\" cy=\"-306\" rx=\"50.89\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"227.48\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 8&#45;&gt;15 -->\n",
+       "<g id=\"edge19\" class=\"edge\">\n",
+       "<title>8&#45;&gt;15</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M245.63,-289.12C256.12,-279.94 269.5,-268.23 281.13,-258.06\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"283.62,-260.53 288.84,-251.31 279.01,-255.26 283.62,-260.53\"/>\n",
+       "</g>\n",
+       "<!-- 13 -->\n",
+       "<g id=\"node12\" class=\"node\">\n",
+       "<title>13</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"227.48\" cy=\"-378\" rx=\"227.46\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"227.48\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[b_follower_count, b_following_count, language]</text>\n",
+       "</g>\n",
+       "<!-- 13&#45;&gt;8 -->\n",
+       "<g id=\"edge6\" class=\"edge\">\n",
+       "<title>13&#45;&gt;8</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M227.48,-359.7C227.48,-351.98 227.48,-342.71 227.48,-334.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"230.98,-334.1 227.48,-324.1 223.98,-334.1 230.98,-334.1\"/>\n",
+       "</g>\n",
+       "<!-- 20 -->\n",
+       "<g id=\"node16\" class=\"node\">\n",
+       "<title>20</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1072.48\" cy=\"-162\" rx=\"40.09\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1072.48\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n",
+       "</g>\n",
+       "<!-- 9&#45;&gt;20 -->\n",
+       "<g id=\"edge23\" class=\"edge\">\n",
+       "<title>9&#45;&gt;20</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1072.48,-215.7C1072.48,-207.98 1072.48,-198.71 1072.48,-190.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1075.98,-190.1 1072.48,-180.1 1068.98,-190.1 1075.98,-190.1\"/>\n",
+       "</g>\n",
+       "<!-- 21 -->\n",
+       "<g id=\"node22\" class=\"node\">\n",
+       "<title>21</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1072.48\" cy=\"-18\" rx=\"241.56\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1072.48\" y=\"-14.3\" font-family=\"Times,serif\" font-size=\"14.00\">output cols=[media_count, tweet_type_count, language_count...]</text>\n",
+       "</g>\n",
+       "<!-- 10&#45;&gt;21 -->\n",
+       "<g id=\"edge24\" class=\"edge\">\n",
+       "<title>10&#45;&gt;21</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1072.48,-71.7C1072.48,-63.98 1072.48,-54.71 1072.48,-46.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1075.98,-46.1 1072.48,-36.1 1068.98,-46.1 1075.98,-46.1\"/>\n",
+       "</g>\n",
+       "<!-- 12&#45;&gt;10 -->\n",
+       "<g id=\"edge8\" class=\"edge\">\n",
+       "<title>12&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M852.28,-149.83C903.7,-136.09 990.03,-113.03 1037.89,-100.24\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1039.02,-103.56 1047.78,-97.6 1037.21,-96.8 1039.02,-103.56\"/>\n",
+       "</g>\n",
+       "<!-- 20&#45;&gt;10 -->\n",
+       "<g id=\"edge9\" class=\"edge\">\n",
+       "<title>20&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1072.48,-143.7C1072.48,-135.98 1072.48,-126.71 1072.48,-118.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1075.98,-118.1 1072.48,-108.1 1068.98,-118.1 1075.98,-118.1\"/>\n",
+       "</g>\n",
+       "<!-- 17&#45;&gt;10 -->\n",
+       "<g id=\"edge10\" class=\"edge\">\n",
+       "<title>17&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M985.54,-146.83C1002.75,-135.78 1026.75,-120.36 1045.18,-108.53\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1047.2,-111.39 1053.72,-103.05 1043.42,-105.5 1047.2,-111.39\"/>\n",
+       "</g>\n",
+       "<!-- 18 -->\n",
+       "<g id=\"node18\" class=\"node\">\n",
+       "<title>18</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1181.48\" cy=\"-162\" rx=\"40.09\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1181.48\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n",
+       "</g>\n",
+       "<!-- 18&#45;&gt;10 -->\n",
+       "<g id=\"edge11\" class=\"edge\">\n",
+       "<title>18&#45;&gt;10</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1159.42,-146.83C1142.21,-135.78 1118.21,-120.36 1099.78,-108.53\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1101.54,-105.5 1091.24,-103.05 1097.76,-111.39 1101.54,-105.5\"/>\n",
+       "</g>\n",
+       "<!-- 19 -->\n",
+       "<g id=\"node19\" class=\"node\">\n",
+       "<title>19</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"1072.48\" cy=\"-378\" rx=\"94.48\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"1072.48\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[timestamp]</text>\n",
+       "</g>\n",
+       "<!-- 19&#45;&gt;11 -->\n",
+       "<g id=\"edge15\" class=\"edge\">\n",
+       "<title>19&#45;&gt;11</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1072.48,-359.7C1072.48,-351.98 1072.48,-342.71 1072.48,-334.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1075.98,-334.1 1072.48,-324.1 1068.98,-334.1 1075.98,-334.1\"/>\n",
+       "</g>\n",
+       "<!-- 14&#45;&gt;18 -->\n",
+       "<g id=\"edge22\" class=\"edge\">\n",
+       "<title>14&#45;&gt;18</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M1189.01,-215.7C1187.91,-207.98 1186.58,-198.71 1185.35,-190.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"1188.8,-189.51 1183.92,-180.1 1181.87,-190.5 1188.8,-189.51\"/>\n",
+       "</g>\n",
+       "<!-- 16 -->\n",
+       "<g id=\"node21\" class=\"node\">\n",
+       "<title>16</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"387.48\" cy=\"-306\" rx=\"90.98\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"387.48\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[b_user_id]</text>\n",
+       "</g>\n",
+       "<!-- 16&#45;&gt;15 -->\n",
+       "<g id=\"edge20\" class=\"edge\">\n",
+       "<title>16&#45;&gt;15</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M368.11,-288.05C357.84,-279.07 345.07,-267.9 333.91,-258.12\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"335.95,-255.26 326.12,-251.31 331.34,-260.53 335.95,-255.26\"/>\n",
+       "</g>\n",
+       "</g>\n",
+       "</svg>\n"
+      ],
+      "text/plain": [
+       "<graphviz.dot.Digraph at 0x7fdf1f837c50>"
+      ]
+     },
+     "execution_count": 35,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "output = count_encode+hour+minute+seconds+diff_lag+labels+target_encode\n",
+    "(output).graph"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We want to keep all columns of the input dataset. Therefore, we extract all column names from the first input parquet file."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "241"
+      ]
+     },
+     "execution_count": 36,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df_tmp = cudf.read_parquet(BASE_DIR + '/nv_train/part.0.parquet')\n",
+    "all_input_columns = df_tmp.columns\n",
+    "del df_tmp\n",
+    "gc.collect()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['hashtags_count_t',\n",
+       " 'domains_count_t',\n",
+       " 'links_count_t',\n",
+       " 'media',\n",
+       " 'hashtags',\n",
+       " 'domains',\n",
+       " 'links',\n",
+       " 'language',\n",
+       " 'tweet_type',\n",
+       " 'tweet_id',\n",
+       " 'a_user_id',\n",
+       " 'b_user_id',\n",
+       " 'timestamp_wd',\n",
+       " 'timestamp',\n",
+       " 'a_follower_count',\n",
+       " 'a_following_count',\n",
+       " 'a_is_verified',\n",
+       " 'a_account_creation',\n",
+       " 'b_follower_count',\n",
+       " 'b_following_count',\n",
+       " 'b_is_verified',\n",
+       " 'b_account_creation',\n",
+       " 'b_follows_a']"
+      ]
+     },
+     "execution_count": 37,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "remaining_columns = [x for x in all_input_columns if x not in (output.columns+['text_tokens'])]\n",
+    "remaining_columns"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We initialize our NVTabular workflow and add the \"remaining\" columns to it."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 38,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proc = nvt.Workflow(output+remaining_columns)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We initialize the train and valid as NVTabular datasets."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 39,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_dataset = nvt.Dataset(glob.glob(BASE_DIR + 'nv_train/*.parquet'), \n",
+    "                            engine='parquet', \n",
+    "                            part_size=\"2GB\")\n",
+    "valid_dataset = nvt.Dataset(glob.glob(BASE_DIR + 'nv_valid/*.parquet'), \n",
+    "                            engine='parquet', \n",
+    "                            part_size=\"2GB\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We collect statistics from our train dataset."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "{'media': './/categories/cat_stats.media.parquet', 'tweet_type': './/categories/cat_stats.tweet_type.parquet', 'language': './/categories/cat_stats.language.parquet', 'a_user_id': './/categories/cat_stats.a_user_id.parquet', 'b_user_id': './/categories/cat_stats.b_user_id.parquet', 'domains_language_b_follows_a_tweet_type_media_a_is_verified': './/categories/cat_stats.domains_language_b_follows_a_tweet_type_media_a_is_verified.parquet', '__fold___media': './/categories/cat_stats.__fold___media.parquet', '__fold___tweet_type': './/categories/cat_stats.__fold___tweet_type.parquet', '__fold___language': './/categories/cat_stats.__fold___language.parquet', '__fold___a_user_id': './/categories/cat_stats.__fold___a_user_id.parquet', '__fold___b_user_id': './/categories/cat_stats.__fold___b_user_id.parquet', '__fold___domains_language_b_follows_a_tweet_type_media_a_is_verified': './/categories/cat_stats.__fold___domains_language_b_follows_a_tweet_type_media_a_is_verified.parquet'}\n",
+      "CPU times: user 12.1 s, sys: 420 ms, total: 12.5 s\n",
+      "Wall time: 1min 6s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "time_fe_start = time.time()\n",
+    "proc.fit(train_dataset)\n",
+    "time_fe = time.time()-time_fe_start"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The columns *a_is_verified*, *b_is_verified* and *b_follows_a* have the datatype boolean. XGBoost does not support boolean datatypes and we need convert them to int8. We can define the output datatypes as a dict and parse it to the `.to_parquet` function."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dict_dtypes = {}\n",
+    "for col in ['a_is_verified','b_is_verified','b_follows_a']:\n",
+    "    dict_dtypes[col] = np.int8"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We apply the transformation to the train and valid datasets."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 42,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/cudf/core/join/join.py:368: UserWarning: can't safely cast column from right with type int64 to uint32, upcasting to int64\n",
+      "  \"right\", dtype_r, dtype_l, libcudf_join_type\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 2min 15s, sys: 1min 33s, total: 3min 49s\n",
+      "Wall time: 3min 52s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "time_fe_start = time.time()\n",
+    "proc.transform(train_dataset).to_parquet(output_path=BASE_DIR + 'nv_train_fe/', dtypes=dict_dtypes)\n",
+    "proc.transform(valid_dataset).to_parquet(output_path=BASE_DIR + 'nv_valid_fe/', dtypes=dict_dtypes)\n",
+    "time_fe += time.time()-time_fe_start"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Training our model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "After the preprocessing and feature engineering is done, we can train a model to predict our targets. We load our datasets with `dask_cudf`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 43,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train = dask_cudf.read_parquet(BASE_DIR + 'nv_train_fe/*.parquet')\n",
+    "valid = dask_cudf.read_parquet(BASE_DIR + 'nv_valid_fe/*.parquet')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 44,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "a_is_verified    int8\n",
+       "b_is_verified    int8\n",
+       "b_follows_a      int8\n",
+       "dtype: object"
+      ]
+     },
+     "execution_count": 44,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "train[['a_is_verified','b_is_verified','b_follows_a']].dtypes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Some columns are only used for feature engineering. Therefore, we define the columns we want to ignore for training."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dont_use =[\n",
+    "    '__null_dask_index__',\n",
+    "    'text_tokens',\n",
+    "    'timestamp',\n",
+    "    'a_account_creation',\n",
+    "    'b_account_creation',\n",
+    "    'hashtags',\n",
+    "    'tweet_id',\n",
+    "    'links',\n",
+    "    'domains',\n",
+    "    'a_user_id',\n",
+    "    'b_user_id',\n",
+    "    'timestamp_wd',\n",
+    "    'timestamp_to_datetime',\n",
+    "    'a_following_count_a_ff_rate',\n",
+    "    'b_following_count_b_ff_rate'\n",
+    "]\n",
+    "dont_use = [x for x in train.columns if x in dont_use]\n",
+    "label_names = ['reply', 'retweet', 'retweet_comment', 'like']"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We drop the columns, which are not required for training."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Our experiments show that we require only 10% of the training dataset. Our feature engineering, such as TargetEncoding, uses the training datasets and leverage the information of the full dataset. In the competition, we trained our models with higher ratio (20% and 50%), but we could not observe an improvement in performance.<br><br>\n",
+    "We sample the training dataset to 10% of the size and drop all columns, which we do not want to use."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 46,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "65129018\n",
+      "6503397\n",
+      "Using 51 features\n"
+     ]
+    }
+   ],
+   "source": [
+    "SAMPLE_RATIO = 0.1\n",
+    "SEED = 1\n",
+    "\n",
+    "if SAMPLE_RATIO < 1.0:\n",
+    "    train['sample'] = train['tweet_id'].map_partitions(lambda cudf_df: cudf_df.hash_encode(stop=10))\n",
+    "    print(len(train))\n",
+    "    \n",
+    "    train = train[train['sample']<10*SAMPLE_RATIO]\n",
+    "    train, = dask.persist(train)\n",
+    "    print(len(train))\n",
+    "\n",
+    "\n",
+    "Y_train = train[label_names]\n",
+    "Y_train, = dask.persist(Y_train)    \n",
+    "    \n",
+    "train = train.drop(['sample']+label_names+dont_use,axis=1)\n",
+    "train, = dask.persist(train)\n",
+    "\n",
+    "print('Using %i features'%(train.shape[1]))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Similar to the training dataset, our experiments show that 35% of our validation dataset is enough to get a good estimate of the performance metric. 35% of the validation dataset has a similar size as the test set of the RecSys2020 competition. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 47,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "24900853\n",
+      "9974114\n"
+     ]
+    }
+   ],
+   "source": [
+    "SAMPLE_RATIO = 0.35\n",
+    "SEED = 1\n",
+    "if SAMPLE_RATIO < 1.0:\n",
+    "    print(len(valid))\n",
+    "    valid['sample'] = valid['tweet_id'].map_partitions(lambda cudf_df: cudf_df.hash_encode(stop=10))\n",
+    "    \n",
+    "    valid = valid[valid['sample']<10*SAMPLE_RATIO]\n",
+    "    valid, = dask.persist(valid)\n",
+    "    print(len(valid))\n",
+    "    \n",
+    "Y_valid = valid[label_names]\n",
+    "Y_valid, = dask.persist(Y_valid)\n",
+    "\n",
+    "valid = valid.drop(['sample']+label_names+dont_use,axis=1)\n",
+    "valid, = dask.persist(valid)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We initialize our XGBoost parameter."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 48,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "XGB Version 1.3.0-SNAPSHOT\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('XGB Version',xgb.__version__)\n",
+    "\n",
+    "xgb_parms = { \n",
+    "    'max_depth':8, \n",
+    "    'learning_rate':0.1, \n",
+    "    'subsample':0.8,\n",
+    "    'colsample_bytree':0.3, \n",
+    "    'eval_metric':'logloss',\n",
+    "    'objective':'binary:logistic',\n",
+    "    'tree_method':'gpu_hist',\n",
+    "    'predictor' : 'gpu_predictor'\n",
+    "}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 49,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train,valid = dask.persist(train,valid)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We train our XGBoost models. The challenge requires to predict 4 targets, does a user\n",
+    "1. like a tweet\n",
+    "2. reply a tweet\n",
+    "3. comment a tweet\n",
+    "4. comment and reply a tweet"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We train 4x XGBoost models for 300 rounds on a GPU."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 50,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "#########################\n",
+      "### reply\n",
+      "#########################\n",
+      "Creating DMatrix...\n",
+      "Took 1.2 seconds\n",
+      "Training...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/distributed/client.py:3530: RuntimeWarning: coroutine 'Client._update_scheduler_info' was never awaited\n",
+      "  self.sync(self._update_scheduler_info)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Took 18.4 seconds\n",
+      "Predicting...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/distributed/worker.py:3382: UserWarning: Large object of size 4.15 MB detected in task graph: \n",
+      "  [<function _predict_async.<locals>.mapped_predict  ... titions>, True]\n",
+      "Consider scattering large objects ahead of time\n",
+      "with client.scatter to reduce scheduler burden and \n",
+      "keep data on workers\n",
+      "\n",
+      "    future = client.submit(func, big_data)    # bad\n",
+      "\n",
+      "    big_future = client.scatter(big_data)     # good\n",
+      "    future = client.submit(func, big_future)  # good\n",
+      "  % (format_bytes(len(b)), s)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Took 0.4 seconds\n",
+      "#########################\n",
+      "### retweet\n",
+      "#########################\n",
+      "Creating DMatrix...\n",
+      "Took 0.2 seconds\n",
+      "Training...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/distributed/client.py:3530: RuntimeWarning: coroutine 'Client._update_scheduler_info' was never awaited\n",
+      "  self.sync(self._update_scheduler_info)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Took 18.0 seconds\n",
+      "Predicting...\n",
+      "Took 0.5 seconds\n",
+      "#########################\n",
+      "### retweet_comment\n",
+      "#########################\n",
+      "Creating DMatrix...\n",
+      "Took 0.2 seconds\n",
+      "Training...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/distributed/client.py:3530: RuntimeWarning: coroutine 'Client._update_scheduler_info' was never awaited\n",
+      "  self.sync(self._update_scheduler_info)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Took 17.0 seconds\n",
+      "Predicting...\n",
+      "Took 0.4 seconds\n",
+      "#########################\n",
+      "### like\n",
+      "#########################\n",
+      "Creating DMatrix...\n",
+      "Took 0.2 seconds\n",
+      "Training...\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/opt/conda/envs/rapids/lib/python3.7/site-packages/distributed/client.py:3530: RuntimeWarning: coroutine 'Client._update_scheduler_info' was never awaited\n",
+      "  self.sync(self._update_scheduler_info)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Took 18.3 seconds\n",
+      "Predicting...\n",
+      "Took 0.5 seconds\n",
+      "CPU times: user 4.36 s, sys: 86.2 ms, total: 4.45 s\n",
+      "Wall time: 1min 15s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "time_train_start = time.time()\n",
+    "\n",
+    "NROUND = 300\n",
+    "VERBOSE_EVAL = 50    \n",
+    "preds = []\n",
+    "for i in range(4):\n",
+    "\n",
+    "    name = label_names[i]\n",
+    "    print('#'*25);print('###',name);print('#'*25)\n",
+    "       \n",
+    "    start = time.time(); print('Creating DMatrix...')\n",
+    "    dtrain = xgb.dask.DaskDMatrix(client,data=train,label=Y_train.iloc[:, i])\n",
+    "    print('Took %.1f seconds'%(time.time()-start))\n",
+    "             \n",
+    "    start = time.time(); print('Training...')\n",
+    "    model = xgb.dask.train(client, xgb_parms, \n",
+    "                           dtrain=dtrain,\n",
+    "                           num_boost_round=NROUND,\n",
+    "                           verbose_eval=VERBOSE_EVAL) \n",
+    "    print('Took %.1f seconds'%(time.time()-start))\n",
+    "        \n",
+    "    start = time.time(); print('Predicting...')\n",
+    "    preds.append(xgb.dask.predict(client,model,valid))\n",
+    "    print('Took %.1f seconds'%(time.time()-start))\n",
+    "        \n",
+    "    del model, dtrain\n",
+    "\n",
+    "time_train = time.time()-time_train_start"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 51,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "yvalid = Y_valid[label_names].values.compute()\n",
+    "oof = cp.array([i.values.compute() for i in preds]).T"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 52,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(9974114, 4)"
+      ]
+     },
+     "execution_count": 52,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "yvalid.shape"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The hosts of the RecSys2020 competition provide code for calculating the performance metric `PRAUC` and `RCE`. We optimized the code to speed up the calculation, as well. Using cuDF / cupy, we calculate the performance metric on the GPU."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 53,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.metrics import auc\n",
+    "\n",
+    "def precision_recall_curve(y_true,y_pred):\n",
+    "    y_true = y_true.astype('float32')\n",
+    "    ids = cp.argsort(-y_pred) \n",
+    "    y_true = y_true[ids]\n",
+    "    y_pred = y_pred[ids]\n",
+    "    y_pred = cp.flip(y_pred,axis=0)\n",
+    "\n",
+    "    acc_one = cp.cumsum(y_true)\n",
+    "    sum_one = cp.sum(y_true)\n",
+    "    \n",
+    "    precision = cp.flip(acc_one/cp.cumsum(cp.ones(len(y_true))),axis=0)\n",
+    "    precision[:-1] = precision[1:]\n",
+    "    precision[-1] = 1.\n",
+    "\n",
+    "    recall = cp.flip(acc_one/sum_one,axis=0)\n",
+    "    recall[:-1] = recall[1:]\n",
+    "    recall[-1] = 0\n",
+    "    n = (recall==1).sum()\n",
+    "    \n",
+    "    return precision[n-1:],recall[n-1:],y_pred[n:]\n",
+    "\n",
+    "def compute_prauc(pred, gt):\n",
+    "    prec, recall, thresh = precision_recall_curve(gt, pred)\n",
+    "    recall, prec = cp.asnumpy(recall), cp.asnumpy(prec)\n",
+    "\n",
+    "    prauc = auc(recall, prec)\n",
+    "    return prauc\n",
+    "\n",
+    "def log_loss(y_true,y_pred,eps=1e-7, normalize=True, sample_weight=None):\n",
+    "    y_true = y_true.astype('int32')\n",
+    "    y_pred = cp.clip(y_pred, eps, 1 - eps)\n",
+    "    if y_pred.ndim == 1:\n",
+    "        y_pred = cp.expand_dims(y_pred, axis=1)\n",
+    "    if y_pred.shape[1] == 1:\n",
+    "        y_pred = cp.hstack([1 - y_pred, y_pred])\n",
+    "\n",
+    "    y_pred /= cp.sum(y_pred, axis=1, keepdims=True)\n",
+    "    loss = -cp.log(y_pred)[cp.arange(y_pred.shape[0]), y_true]\n",
+    "    return _weighted_sum(loss, sample_weight, normalize).item()\n",
+    "\n",
+    "def _weighted_sum(sample_score, sample_weight, normalize):\n",
+    "    if normalize:\n",
+    "        return cp.average(sample_score, weights=sample_weight)\n",
+    "    elif sample_weight is not None:\n",
+    "        return cp.dot(sample_score, sample_weight)\n",
+    "    else:\n",
+    "        return sample_score.sum()\n",
+    "\n",
+    "def compute_rce_fast(pred, gt):\n",
+    "    cross_entropy = log_loss(gt, pred)\n",
+    "    yt = cp.mean(gt).item()\n",
+    "    # cross_entropy and yt are single numbers (no arrays) and using CPU is fast\n",
+    "    strawman_cross_entropy = -(yt*np.log(yt) + (1 - yt)*np.log(1 - yt))\n",
+    "    return (1.0 - cross_entropy/strawman_cross_entropy)*100.0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Finally, we calculate the performance metric PRAUC and RCE for each target."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 54,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "reply                PRAUC:0.11758 RCE:14.40124\n",
+      "retweet              PRAUC:0.48555 RCE:25.54706\n",
+      "retweet_comment      PRAUC:0.04052 RCE:8.95954\n",
+      "like                 PRAUC:0.75744 RCE:23.85922\n"
+     ]
+    }
+   ],
+   "source": [
+    "txt = ''\n",
+    "for i in range(4):\n",
+    "    prauc = compute_prauc(oof[:,i], yvalid[:, i])\n",
+    "    rce   = compute_rce_fast(oof[:,i], yvalid[:, i]).item()\n",
+    "    txt_ = f\"{label_names[i]:20} PRAUC:{prauc:.5f} RCE:{rce:.5f}\"\n",
+    "    print(txt_)\n",
+    "    txt += txt_ + '\\n'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 55,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "time_total = time.time()-time_total_start"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 56,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Total time: 749.91s\n",
+      "\n",
+      "1. Preprocessing:       275.32s\n",
+      "2. Splitting:           62.49s\n",
+      "3. Feature engineering: 298.58s\n",
+      "4. Training:            75.21s\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('Total time: {:.2f}s'.format(time_total))\n",
+    "print()\n",
+    "print('1. Preprocessing:       {:.2f}s'.format(time_preproc))\n",
+    "print('2. Splitting:           {:.2f}s'.format(time_split))\n",
+    "print('3. Feature engineering: {:.2f}s'.format(time_fe))\n",
+    "print('4. Training:            {:.2f}s'.format(time_train))"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.io.dataset &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>nvtabular.io.dataset</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nvtabular.io.dataset</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">dask</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">tokenize</span>
+<span class="kn">from</span> <span class="nn">dask.dataframe.core</span> <span class="kn">import</span> <span class="n">new_dd_object</span>
+<span class="kn">from</span> <span class="nn">dask.highlevelgraph</span> <span class="kn">import</span> <span class="n">HighLevelGraph</span>
+<span class="kn">from</span> <span class="nn">dask.utils</span> <span class="kn">import</span> <span class="n">natural_sort_key</span><span class="p">,</span> <span class="n">parse_bytes</span>
+<span class="kn">from</span> <span class="nn">fsspec.core</span> <span class="kn">import</span> <span class="n">get_fs_token_paths</span>
+<span class="kn">from</span> <span class="nn">fsspec.utils</span> <span class="kn">import</span> <span class="n">stringify_path</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">_convert_data</span><span class="p">,</span> <span class="n">_hex_to_int</span><span class="p">,</span> <span class="n">_is_dataframe_object</span>
+<span class="kn">from</span> <span class="nn">nvtabular.io.shuffle</span> <span class="kn">import</span> <span class="n">_check_shuffle_arg</span>
+<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">global_dask_client</span>
+
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span>
+<span class="kn">from</span> <span class="nn">.csv</span> <span class="kn">import</span> <span class="n">CSVDatasetEngine</span>
+<span class="kn">from</span> <span class="nn">.dask</span> <span class="kn">import</span> <span class="n">_ddf_to_dataset</span><span class="p">,</span> <span class="n">_simple_shuffle</span>
+<span class="kn">from</span> <span class="nn">.dataframe_engine</span> <span class="kn">import</span> <span class="n">DataFrameDatasetEngine</span>
+<span class="kn">from</span> <span class="nn">.parquet</span> <span class="kn">import</span> <span class="n">ParquetDatasetEngine</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cudf</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">cudf</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="n">LOG</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;nvtabular&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset">[docs]</a><span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Universal external-data wrapper for NVTabular</span>
+
+<span class="sd">    The NVTabular `Workflow` and `DataLoader`-related APIs require all</span>
+<span class="sd">    external data to be converted to the universal `Dataset` type.  The</span>
+<span class="sd">    main purpose of this class is to abstract away the raw format of the</span>
+<span class="sd">    data, and to allow other NVTabular classes to reliably materialize a</span>
+<span class="sd">    `dask_cudf.DataFrame` collection (and/or collection-based iterator)</span>
+<span class="sd">    on demand.</span>
+
+<span class="sd">    A new `Dataset` object can be initialized from a variety of different</span>
+<span class="sd">    raw-data formats. To initialize an object from a directory path or</span>
+<span class="sd">    file list, the `engine` argument should be used to specify either</span>
+<span class="sd">    &quot;parquet&quot; or &quot;csv&quot; format.  If the first argument contains a list</span>
+<span class="sd">    of files with a suffix of either &quot;parquet&quot; or &quot;csv&quot;, the engine can</span>
+<span class="sd">    be inferred::</span>
+
+<span class="sd">        # Initialize Dataset with a parquet-dataset directory.</span>
+<span class="sd">        # must specify engine=&quot;parquet&quot;</span>
+<span class="sd">        dataset = Dataset(&quot;/path/to/data_pq&quot;, engine=&quot;parquet&quot;)</span>
+
+<span class="sd">        # Initialize Dataset with list of csv files.</span>
+<span class="sd">        # engine=&quot;csv&quot; argument is optional</span>
+<span class="sd">        dataset = Dataset([&quot;file_0.csv&quot;, &quot;file_1.csv&quot;])</span>
+
+<span class="sd">    Since NVTabular leverages `fsspec` as a file-system interface,</span>
+<span class="sd">    the underlying data can be stored either locally, or in a remote/cloud</span>
+<span class="sd">    data store.  To read from remote storage, like gds or s3, the</span>
+<span class="sd">    appropriate protocol should be prepended to the `Dataset` path</span>
+<span class="sd">    argument(s), and any special backend parameters should be passed</span>
+<span class="sd">    in a `storage_options` dictionary::</span>
+
+<span class="sd">        # Initialize Dataset with s3 parquet data</span>
+<span class="sd">        dataset = Dataset(</span>
+<span class="sd">            &quot;s3://bucket/path&quot;,</span>
+<span class="sd">            engine=&quot;parquet&quot;,</span>
+<span class="sd">            storage_options={&#39;anon&#39;: True, &#39;use_ssl&#39;: False},</span>
+<span class="sd">        )</span>
+
+<span class="sd">    By default, both parquet and csv-based data will be converted to</span>
+<span class="sd">    a Dask-DataFrame collection with a maximum partition size of</span>
+<span class="sd">    roughly 12.5 percent of the total memory on a single device.  The</span>
+<span class="sd">    partition size can be changed to a different fraction of total</span>
+<span class="sd">    memory on a single device with the `part_mem_fraction` argument.</span>
+<span class="sd">    Alternatively, a specific byte size can be specified with the</span>
+<span class="sd">    `part_size` argument::</span>
+
+<span class="sd">        # Dataset partitions will be ~10% single-GPU memory (or smaller)</span>
+<span class="sd">        dataset = Dataset(&quot;bigfile.parquet&quot;, part_mem_fraction=0.1)</span>
+
+<span class="sd">        # Dataset partitions will be ~1GB (or smaller)</span>
+<span class="sd">        dataset = Dataset(&quot;bigfile.parquet&quot;, part_size=&quot;1GB&quot;)</span>
+
+<span class="sd">    Note that, if both the fractional and literal options are used</span>
+<span class="sd">    at the same time, `part_size` will take precedence.  Also, for</span>
+<span class="sd">    parquet-formatted data, the partitioning is done at the row-</span>
+<span class="sd">    group level, and the byte-size of the first row-group (after</span>
+<span class="sd">    CuDF conversion) is used to map all other partitions.</span>
+<span class="sd">    Therefore, if the distribution of row-group sizes is not</span>
+<span class="sd">    uniform, the partition sizes will not be balanced.</span>
+
+<span class="sd">    In addition to handling data stored on disk, a `Dataset` object</span>
+<span class="sd">    can also be initialized from an existing CuDF/Pandas DataFrame,</span>
+<span class="sd">    or from a Dask-DataFrame collection (e.g. `dask_cudf.DataFrame`).</span>
+<span class="sd">    For these in-memory formats, the size/number of partitions will</span>
+<span class="sd">    not be modified.  That is, a CuDF/Pandas DataFrame (or PyArrow</span>
+<span class="sd">    Table) will produce a single-partition collection, while the</span>
+<span class="sd">    number/size of a Dask-DataFrame collection will be preserved::</span>
+
+<span class="sd">        # Initialize from CuDF DataFrame (creates 1 partition)</span>
+<span class="sd">        gdf = cudf.DataFrame(...)</span>
+<span class="sd">        dataset = Dataset(gdf)</span>
+
+<span class="sd">        # Initialize from Dask-CuDF DataFrame (preserves partitions)</span>
+<span class="sd">        ddf = dask_cudf.read_parquet(...)</span>
+<span class="sd">        dataset = Dataset(ddf)</span>
+
+<span class="sd">    Since the `Dataset` API can both ingest and output a Dask</span>
+<span class="sd">    collection, it is straightforward to transform data either before</span>
+<span class="sd">    or after an NVTabular workflow is executed. This means that some</span>
+<span class="sd">    complex pre-processing operations, that are not yet supported</span>
+<span class="sd">    in NVTabular, can still be accomplished with the Dask-CuDF API::</span>
+
+<span class="sd">        # Sort input data before final Dataset initialization</span>
+<span class="sd">        # Warning: Global sorting requires significant device memory!</span>
+<span class="sd">        ddf = Dataset(&quot;/path/to/data_pq&quot;, engine=&quot;parquet&quot;).to_ddf()</span>
+<span class="sd">        ddf = ddf.sort_values(&quot;user_rank&quot;, ignore_index=True)</span>
+<span class="sd">        dataset = Dataset(ddf)</span>
+
+<span class="sd">    `Dataset Optimization Tips (DOTs)`</span>
+
+<span class="sd">    The NVTabular dataset should be created from Parquet files in order</span>
+<span class="sd">    to get the best possible performance, preferably with a row group size</span>
+<span class="sd">    of around 128MB.  While NVTabular also supports reading from CSV files,</span>
+<span class="sd">    reading CSV can be over twice as slow as reading from Parquet. Take a</span>
+<span class="sd">    look at this notebook_ for an example of transforming the original Criteo</span>
+<span class="sd">    CSV dataset into a new Parquet dataset optimized for use with NVTabular.</span>
+
+<span class="sd">    .. _notebook: https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    path_or_source : str, list of str, or &lt;dask.dataframe|cudf|pd&gt;.DataFrame</span>
+<span class="sd">        Dataset path (or list of paths), or a DataFrame. If string,</span>
+<span class="sd">        should specify a specific file or directory path. If this is a</span>
+<span class="sd">        directory path, the directory structure must be flat (nested</span>
+<span class="sd">        directories are not yet supported).</span>
+<span class="sd">    engine : str or DatasetEngine</span>
+<span class="sd">        DatasetEngine object or string identifier of engine. Current</span>
+<span class="sd">        string options include: (&quot;parquet&quot;, &quot;csv&quot;, &quot;avro&quot;). This argument</span>
+<span class="sd">        is ignored if path_or_source is a DataFrame type.</span>
+<span class="sd">    npartitions : int</span>
+<span class="sd">        Desired number of Dask-collection partitions to produce in</span>
+<span class="sd">        the ``to_ddf`` method when ``path_or_source`` corresponds to a</span>
+<span class="sd">        DataFrame type.  This argument is ignored for file-based</span>
+<span class="sd">        ``path_or_source`` input.</span>
+<span class="sd">    part_size : str or int</span>
+<span class="sd">        Desired size (in bytes) of each Dask partition.</span>
+<span class="sd">        If None, part_mem_fraction will be used to calculate the</span>
+<span class="sd">        partition size.  Note that the underlying engine may allow</span>
+<span class="sd">        other custom kwargs to override this argument. This argument</span>
+<span class="sd">        is ignored if path_or_source is a DataFrame type.</span>
+<span class="sd">    part_mem_fraction : float (default 0.125)</span>
+<span class="sd">        Fractional size of desired dask partitions (relative</span>
+<span class="sd">        to GPU memory capacity). Ignored if part_size is passed</span>
+<span class="sd">        directly. Note that the underlying engine may allow other</span>
+<span class="sd">        custom kwargs to override this argument. This argument</span>
+<span class="sd">        is ignored if path_or_source is a DataFrame type. If</span>
+<span class="sd">        ``cpu=True``, this value will be relative to the total</span>
+<span class="sd">        host memory detected by the client process.</span>
+<span class="sd">    storage_options: None or dict</span>
+<span class="sd">        Further parameters to pass to the bytes backend. This argument</span>
+<span class="sd">        is ignored if path_or_source is a DataFrame type.</span>
+<span class="sd">    cpu : bool</span>
+<span class="sd">        WARNING: Experimental Feature!</span>
+<span class="sd">        Whether NVTabular should keep all data in cpu memory when</span>
+<span class="sd">        the Dataset is converted to an internal Dask collection. The</span>
+<span class="sd">        default value is False, unless ``cudf`` and ``dask_cudf``</span>
+<span class="sd">        are not installed (in which case the default is True). In the</span>
+<span class="sd">        future, if True, NVTabular will NOT use any available GPU</span>
+<span class="sd">        devices for down-stream processing.</span>
+<span class="sd">        NOTE: Down-stream ops and output do not yet support a</span>
+<span class="sd">        Dataset generated with ``cpu=True``.</span>
+<span class="sd">    base_dataset : Dataset</span>
+<span class="sd">        Optional reference to the original &quot;base&quot; Dataset object used</span>
+<span class="sd">        to construct the current Dataset instance.  This object is</span>
+<span class="sd">        used to preserve file-partition mapping information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">path_or_source</span><span class="p">,</span>
+        <span class="n">engine</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">npartitions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">part_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">part_mem_fraction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">storage_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dtypes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">cpu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">base_dataset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span> <span class="o">=</span> <span class="n">dtypes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
+
+        <span class="c1"># Check if we are keeping data in cpu memory</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="n">cpu</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="n">cudf</span> <span class="ow">is</span> <span class="kc">None</span>
+
+        <span class="c1"># Keep track of base dataset (optional)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_dataset</span> <span class="o">=</span> <span class="n">base_dataset</span> <span class="ow">or</span> <span class="bp">self</span>
+
+        <span class="c1"># For now, lets warn the user that &quot;cpu mode&quot; is experimental</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Initializing an NVTabular Dataset in CPU mode.&quot;</span>
+                <span class="s2">&quot;This is an experimental feature with extremely limited support!&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">npartitions</span> <span class="o">=</span> <span class="n">npartitions</span> <span class="ow">or</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path_or_source</span><span class="p">,</span> <span class="n">dask</span><span class="o">.</span><span class="n">dataframe</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_dataframe_object</span><span class="p">(</span>
+            <span class="n">path_or_source</span>
+        <span class="p">):</span>
+            <span class="c1"># User is passing in a &lt;dask.dataframe|cudf|pd&gt;.DataFrame</span>
+            <span class="c1"># Use DataFrameDatasetEngine</span>
+            <span class="n">_path_or_source</span> <span class="o">=</span> <span class="n">_convert_data</span><span class="p">(</span>
+                <span class="n">path_or_source</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span> <span class="n">to_collection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="n">npartitions</span>
+            <span class="p">)</span>
+            <span class="c1"># Check if this is a collection that has now moved between host &lt;-&gt; device</span>
+            <span class="n">moved_collection</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path_or_source</span><span class="p">,</span> <span class="n">dask</span><span class="o">.</span><span class="n">dataframe</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_path_or_source</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">path_or_source</span><span class="o">.</span><span class="n">_meta</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">part_size</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;part_size is ignored for DataFrame input.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">part_mem_fraction</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;part_mem_fraction is ignored for DataFrame input.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">DataFrameDatasetEngine</span><span class="p">(</span>
+                <span class="n">_path_or_source</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span> <span class="n">moved_collection</span><span class="o">=</span><span class="n">moved_collection</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">part_size</span><span class="p">:</span>
+                <span class="c1"># If a specific partition size is given, use it directly</span>
+                <span class="n">part_size</span> <span class="o">=</span> <span class="n">parse_bytes</span><span class="p">(</span><span class="n">part_size</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># If a fractional partition size is given, calculate part_size</span>
+                <span class="n">part_mem_fraction</span> <span class="o">=</span> <span class="n">part_mem_fraction</span> <span class="ow">or</span> <span class="mf">0.125</span>
+                <span class="k">assert</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">part_mem_fraction</span> <span class="o">&lt;</span> <span class="mf">1.0</span>
+                <span class="k">if</span> <span class="n">part_mem_fraction</span> <span class="o">&gt;</span> <span class="mf">0.25</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="s2">&quot;Using very large partitions sizes for Dask. &quot;</span>
+                        <span class="s2">&quot;Memory-related errors are likely.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">part_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">)</span> <span class="o">*</span> <span class="n">part_mem_fraction</span><span class="p">)</span>
+
+            <span class="c1"># Engine-agnostic path handling</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="n">path_or_source</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">):</span>
+                <span class="n">paths</span> <span class="o">=</span> <span class="n">stringify_path</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span><span class="p">]</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">natural_sort_key</span><span class="p">)</span>
+
+            <span class="n">storage_options</span> <span class="o">=</span> <span class="n">storage_options</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="c1"># If engine is not provided, try to infer from end of paths[0]</span>
+            <span class="k">if</span> <span class="n">engine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">engine</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">engine</span> <span class="o">==</span> <span class="s2">&quot;parquet&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">ParquetDatasetEngine</span><span class="p">(</span>
+                        <span class="n">paths</span><span class="p">,</span> <span class="n">part_size</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">engine</span> <span class="o">==</span> <span class="s2">&quot;csv&quot;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">CSVDatasetEngine</span><span class="p">(</span>
+                        <span class="n">paths</span><span class="p">,</span> <span class="n">part_size</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">engine</span> <span class="o">==</span> <span class="s2">&quot;avro&quot;</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="kn">from</span> <span class="nn">.avro</span> <span class="kn">import</span> <span class="n">AvroDatasetEngine</span>
+                    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                            <span class="s2">&quot;Failed to import AvroDatasetEngine. Make sure uavro is installed.&quot;</span>
+                        <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">AvroDatasetEngine</span><span class="p">(</span>
+                        <span class="n">paths</span><span class="p">,</span> <span class="n">part_size</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only parquet, csv, and avro supported (for now).&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">engine</span><span class="p">(</span>
+                    <span class="n">paths</span><span class="p">,</span> <span class="n">part_size</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span>
+                <span class="p">)</span>
+
+<div class="viewcode-block" id="Dataset.to_ddf"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.to_ddf">[docs]</a>    <span class="k">def</span> <span class="nf">to_ddf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convert `Dataset` object to `dask_cudf.DataFrame`</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        columns : str or list(str); default None</span>
+<span class="sd">            Columns to include in output `DataFrame`. If not specified,</span>
+<span class="sd">            the output will contain all known columns in the Dataset.</span>
+<span class="sd">        shuffle : bool; default False</span>
+<span class="sd">            Whether to shuffle the order of partitions in the output</span>
+<span class="sd">            `dask_cudf.DataFrame`.  Note that this does not shuffle</span>
+<span class="sd">            the rows within each partition. This is because the data</span>
+<span class="sd">            is not actually loaded into memory for this operation.</span>
+<span class="sd">        seed : int; Optional</span>
+<span class="sd">            The random seed to use if `shuffle=True`.  If nothing</span>
+<span class="sd">            is specified, the current system time will be used by the</span>
+<span class="sd">            `random` std library.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Use DatasetEngine to create ddf</span>
+        <span class="n">ddf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+
+        <span class="c1"># Shuffle the partitions of ddf (optional)</span>
+        <span class="k">if</span> <span class="n">shuffle</span> <span class="ow">and</span> <span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Start with ordered partitions</span>
+            <span class="n">inds</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span><span class="p">))</span>
+
+            <span class="c1"># Use random std library to reorder partitions</span>
+            <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+            <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">inds</span><span class="p">)</span>
+
+            <span class="c1"># Construct new high-level graph (HLG)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">_name</span>
+            <span class="n">new_name</span> <span class="o">=</span> <span class="s2">&quot;shuffle-partitions-&quot;</span> <span class="o">+</span> <span class="n">tokenize</span><span class="p">(</span><span class="n">ddf</span><span class="p">)</span>
+            <span class="n">dsk</span> <span class="o">=</span> <span class="p">{(</span><span class="n">new_name</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">ind</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ind</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">inds</span><span class="p">)}</span>
+
+            <span class="n">new_graph</span> <span class="o">=</span> <span class="n">HighLevelGraph</span><span class="o">.</span><span class="n">from_collections</span><span class="p">(</span><span class="n">new_name</span><span class="p">,</span> <span class="n">dsk</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">ddf</span><span class="p">])</span>
+
+            <span class="c1"># Convert the HLG to a Dask collection</span>
+            <span class="n">divisions</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">ddf</span> <span class="o">=</span> <span class="n">new_dd_object</span><span class="p">(</span><span class="n">new_graph</span><span class="p">,</span> <span class="n">new_name</span><span class="p">,</span> <span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="n">divisions</span><span class="p">)</span>
+
+        <span class="c1"># Special dtype conversion (optional)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="p">:</span>
+            <span class="n">_meta</span> <span class="o">=</span> <span class="n">_set_dtypes</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ddf</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="n">_set_dtypes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">_meta</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ddf</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">file_partition_map</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">_file_partition_map</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">partition_lens</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">_partition_lens</span>
+
+    <span class="k">def</span> <span class="nf">to_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;Changing an NVTabular Dataset to CPU mode.&quot;</span>
+            <span class="s2">&quot;This is an experimental feature with extremely limited support!&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">to_cpu</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">to_gpu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">to_gpu</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Dataset.shuffle_by_keys"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.shuffle_by_keys">[docs]</a>    <span class="k">def</span> <span class="nf">shuffle_by_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">hive_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Shuffle the in-memory Dataset so that all unique-key</span>
+<span class="sd">        combinations are moved to the same partition.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        keys : list(str)</span>
+<span class="sd">            Column names to shuffle by.</span>
+<span class="sd">        hive_data : bool; default None</span>
+<span class="sd">            Whether the dataset is backed by a hive-partitioned</span>
+<span class="sd">            dataset (with the keys encoded in the directory structure).</span>
+<span class="sd">            By default, the Dataset&#39;s `file_partition_map` property will</span>
+<span class="sd">            be inspected to infer this setting. When `hive_data` is True,</span>
+<span class="sd">            the number of output partitions will correspond to the number</span>
+<span class="sd">            of unique key combinations in the dataset.</span>
+<span class="sd">        npartitions : int; default None</span>
+<span class="sd">            Number of partitions in the output Dataset. For hive-partitioned</span>
+<span class="sd">            data, this value should be &lt;= the number of unique key</span>
+<span class="sd">            combinations (the default), otherwise it will be ignored. For</span>
+<span class="sd">            data that is not hive-partitioned, the ``npartitions`` input</span>
+<span class="sd">            should be &lt;= the orginal partition count, otherwise it will be</span>
+<span class="sd">            ignored.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Make sure we are dealing with a list</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">keys</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="n">keys</span>
+
+        <span class="c1"># Start with default ddf</span>
+        <span class="n">ddf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">npartitions</span><span class="p">:</span>
+            <span class="n">npartitions</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span><span class="p">,</span> <span class="n">npartitions</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">hive_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="c1"># The keys may be encoded in the directory names.</span>
+            <span class="c1"># Let&#39;s use the file_partition_map to extract this info.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">_mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_partition_map</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">_mapping</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">hive_data</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Failed to extract hive-partition mapping!&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+            <span class="c1"># If we have a `_mapping` available, check if the</span>
+            <span class="c1"># file names include information about all our keys</span>
+            <span class="n">hive_mapping</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">_mapping</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">_key</span><span class="p">,</span> <span class="n">_val</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                        <span class="k">if</span> <span class="n">_key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                            <span class="n">hive_mapping</span><span class="p">[</span><span class="n">_key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_val</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">hive_mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
+
+                <span class="c1"># Generate hive-mapping DataFrame summary</span>
+                <span class="n">hive_mapping</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">)(</span><span class="n">hive_mapping</span><span class="p">)</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">hive_mapping</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                    <span class="n">typ</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
+                    <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+                        <span class="n">hive_mapping</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">hive_mapping</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">typ</span><span class="p">)</span>
+
+                <span class="c1"># Generate simple-shuffle plan</span>
+                <span class="n">target_mapping</span> <span class="o">=</span> <span class="n">hive_mapping</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">target_mapping</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;_partition&quot;</span>
+                <span class="n">hive_mapping</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;_sort&quot;</span>
+                <span class="n">target_mapping</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">plan</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">hive_mapping</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+                    <span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">target_mapping</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;_sort&quot;</span><span class="p">)[</span><span class="s2">&quot;_partition&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="s2">&quot;to_pandas&quot;</span><span class="p">):</span>
+                    <span class="n">plan</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+
+                <span class="c1"># Deal with repartitioning</span>
+                <span class="k">if</span> <span class="n">npartitions</span> <span class="ow">and</span> <span class="n">npartitions</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_mapping</span><span class="p">):</span>
+                    <span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">npartitions</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">divs</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+                    <span class="n">partitions</span> <span class="o">=</span> <span class="n">divs</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="n">partitions</span><span class="p">[(</span><span class="n">plan</span> <span class="o">&gt;=</span> <span class="n">divs</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">values</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">divs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span>
+                    <span class="n">plan</span> <span class="o">=</span> <span class="n">partitions</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">plan</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
+                    <span class="n">plan</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Plan is a unique 1:1 ddf partition mapping.</span>
+                    <span class="c1"># We already have shuffled data.</span>
+                    <span class="k">return</span> <span class="bp">self</span>
+
+                <span class="c1"># TODO: We should avoid shuffling the original ddf and</span>
+                <span class="c1"># instead construct a new (more-efficent) graph to read</span>
+                <span class="c1"># multiple files from each partition directory at once.</span>
+                <span class="c1"># Generally speaking, we can optimize this code path</span>
+                <span class="c1"># much further.</span>
+                <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">_simple_shuffle</span><span class="p">(</span><span class="n">ddf</span><span class="p">,</span> <span class="n">plan</span><span class="p">),</span> <span class="n">client</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">)</span>
+
+        <span class="c1"># Warn user if there is an unused global</span>
+        <span class="c1"># Dask client available</span>
+        <span class="k">if</span> <span class="n">global_dask_client</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;A global dask.distributed client has been detected, but the &quot;</span>
+                <span class="s2">&quot;single-threaded scheduler is being used for this shuffle operation. &quot;</span>
+                <span class="s2">&quot;Please use the `client` argument to initialize a `Dataset` and/or &quot;</span>
+                <span class="s2">&quot;`Workflow` object with distributed-execution enabled.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Fall back to dask.dataframe algorithm</span>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="n">npartitions</span><span class="p">),</span> <span class="n">client</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.repartition"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.repartition">[docs]</a>    <span class="k">def</span> <span class="nf">repartition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">partition_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Repartition the underlying ddf, and return a new Dataset</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        npartitions : int; default None</span>
+<span class="sd">            Number of partitions in output ``Dataset``. Only used if</span>
+<span class="sd">            ``partition_size`` isn’t specified.</span>
+<span class="sd">        partition_size : int or str; default None</span>
+<span class="sd">            Max number of bytes of memory for each partition. Use</span>
+<span class="sd">            numbers or strings like &#39;5MB&#39;. If specified, ``npartitions``</span>
+<span class="sd">            will be ignored.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">clear_divisions</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">repartition</span><span class="p">(</span>
+                <span class="n">npartitions</span><span class="o">=</span><span class="n">npartitions</span><span class="p">,</span>
+                <span class="n">partition_size</span><span class="o">=</span><span class="n">partition_size</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.merge"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.merge">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Merge two Dataset objects</span>
+
+<span class="sd">        Produces a new Dataset object. If the ``cpu`` Dataset attributes</span>
+<span class="sd">        do not match, the right side will be modified. See Dask-Dataframe</span>
+<span class="sd">        ``merge`` documentation for more information. Example usage::</span>
+
+<span class="sd">            ds_1 = Dataset(&quot;file.parquet&quot;)</span>
+<span class="sd">            ds_2 = Dataset(cudf.DataFrame(...))</span>
+<span class="sd">            ds_merged = Dataset.merge(ds_1, ds_2, on=&quot;foo&quot;, how=&quot;inner&quot;)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        left : Dataset</span>
+<span class="sd">            Left-side Dataset object.</span>
+<span class="sd">        right : Dataset</span>
+<span class="sd">            Right-side Dataset object.</span>
+<span class="sd">        **kwargs :</span>
+<span class="sd">            Key-word arguments to be passed through to Dask-Dataframe.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Ensure both Dataset objects are eith cudf or pandas based</span>
+        <span class="k">if</span> <span class="n">left</span><span class="o">.</span><span class="n">cpu</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">right</span><span class="o">.</span><span class="n">cpu</span><span class="p">:</span>
+            <span class="n">_right</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">right</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">())</span>
+            <span class="n">_right</span><span class="o">.</span><span class="n">to_cpu</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">left</span><span class="o">.</span><span class="n">cpu</span> <span class="ow">and</span> <span class="n">right</span><span class="o">.</span><span class="n">cpu</span><span class="p">:</span>
+            <span class="n">_right</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">right</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">())</span>
+            <span class="n">_right</span><span class="o">.</span><span class="n">to_gpu</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">left</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">clear_divisions</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="n">_right</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span><span class="o">.</span><span class="n">clear_divisions</span><span class="p">(),</span>
+                <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.to_iter"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.to_iter">[docs]</a>    <span class="k">def</span> <span class="nf">to_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_file_metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convert `Dataset` object to a `cudf.DataFrame` iterator.</span>
+
+<span class="sd">        Note that this method will use `to_ddf` to produce a</span>
+<span class="sd">        `dask_cudf.DataFrame`, and materialize a single partition for</span>
+<span class="sd">        each iteration.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        columns : str or list(str); default None</span>
+<span class="sd">            Columns to include in each `DataFrame`. If not specified,</span>
+<span class="sd">            the outputs will contain all known columns in the Dataset.</span>
+<span class="sd">        indices : list(int); default None</span>
+<span class="sd">            A specific list of partition indices to iterate over. If</span>
+<span class="sd">            nothing is specified, all partitions will be returned in</span>
+<span class="sd">            order (or the shuffled order, if `shuffle=True`).</span>
+<span class="sd">        shuffle : bool; default False</span>
+<span class="sd">            Whether to shuffle the order of `dask_cudf.DataFrame`</span>
+<span class="sd">            partitions used by the iterator.  If the `indices`</span>
+<span class="sd">            argument is specified, those indices correspond to the</span>
+<span class="sd">            partition indices AFTER the shuffle operation.</span>
+<span class="sd">        seed : int; Optional</span>
+<span class="sd">            The random seed to use if `shuffle=True`.  If nothing</span>
+<span class="sd">            is specified, the current system time will be used by the</span>
+<span class="sd">            `random` std library.</span>
+<span class="sd">        use_file_metadata : bool; Optional</span>
+<span class="sd">            Whether to allow the returned ``DataFrameIter`` object to</span>
+<span class="sd">            use file metadata from the ``base_dataset`` to estimate</span>
+<span class="sd">            the row-count. By default, the file-metadata</span>
+<span class="sd">            optimization will only be used if the current Dataset is</span>
+<span class="sd">            backed by a file-based engine. Otherwise, it is possible</span>
+<span class="sd">            that an intermediate transform has modified the row-count.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">columns</span><span class="p">]</span>
+
+        <span class="c1"># Try to extract the row-size metadata</span>
+        <span class="c1"># if we are not shuffling</span>
+        <span class="n">partition_lens_meta</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">shuffle</span> <span class="ow">and</span> <span class="n">use_file_metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="c1"># We are allowed to use file metadata to calculate</span>
+            <span class="c1"># partition sizes.  If `use_file_metadata` is None,</span>
+            <span class="c1"># we only use metadata if `self` is backed by a</span>
+            <span class="c1"># file-based engine (like &quot;parquet&quot;).  Otherwise,</span>
+            <span class="c1"># we cannot be &quot;sure&quot; that the metadata row-count</span>
+            <span class="c1"># is correct.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">use_file_metadata</span><span class="p">:</span>
+                    <span class="n">partition_lens_meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dataset</span><span class="o">.</span><span class="n">partition_lens</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">partition_lens_meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition_lens</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="n">DataFrameIter</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">),</span>
+            <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">,</span>
+            <span class="n">partition_lens</span><span class="o">=</span><span class="n">partition_lens_meta</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.to_parquet"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.to_parquet">[docs]</a>    <span class="k">def</span> <span class="nf">to_parquet</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="p">,</span>
+        <span class="n">shuffle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">preserve_files</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">output_files</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_files_per_proc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_threads</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">dtypes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">cats</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">conts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.parquet&quot;</span><span class="p">,</span>
+        <span class="n">partition_on</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;subgraph&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Writes out to a parquet dataset</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        output_path : string</span>
+<span class="sd">            Path to write processed/shuffled output data</span>
+<span class="sd">        shuffle : nvt.io.Shuffle enum</span>
+<span class="sd">            How to shuffle the output dataset. For all options,</span>
+<span class="sd">            other than `None` (which means no shuffling), the partitions</span>
+<span class="sd">            of the underlying dataset/ddf will be randomly ordered. If</span>
+<span class="sd">            `PER_PARTITION` is specified, each worker/process will also</span>
+<span class="sd">            shuffle the rows within each partition before splitting and</span>
+<span class="sd">            appending the data to a number (`out_files_per_proc`) of output</span>
+<span class="sd">            files. Output files are distinctly mapped to each worker process.</span>
+<span class="sd">            If `PER_WORKER` is specified, each worker will follow the same</span>
+<span class="sd">            procedure as `PER_PARTITION`, but will re-shuffle each file after</span>
+<span class="sd">            all data is persisted.  This results in a full shuffle of the</span>
+<span class="sd">            data processed by each worker.  To improve performace, this option</span>
+<span class="sd">            currently uses host-memory `BytesIO` objects for the intermediate</span>
+<span class="sd">            persist stage. The `FULL` option is not yet implemented.</span>
+<span class="sd">        partition_on : str or list(str)</span>
+<span class="sd">            Columns to use for hive-partitioning.  If this option is used,</span>
+<span class="sd">            `preserve_files`, `output_files`, and `out_files_per_proc` will</span>
+<span class="sd">            all be ignored.  Also, the `PER_WORKER` shuffle will not be</span>
+<span class="sd">            supported.</span>
+<span class="sd">        preserve_files : bool</span>
+<span class="sd">            Whether to preserve the original file-to-partition mapping of</span>
+<span class="sd">            the base dataset. This option requires `method=&quot;subgraph&quot;`, and is</span>
+<span class="sd">            only available if the base dataset is known, and if it corresponds</span>
+<span class="sd">            to csv or parquet format. If True, the `out_files_per_proc` option</span>
+<span class="sd">            will be ignored. Default is False.</span>
+<span class="sd">        output_files : dict, list or int</span>
+<span class="sd">            The total number of desired output files. This option requires</span>
+<span class="sd">            `method=&quot;subgraph&quot;`, and the default value will be the number of Dask</span>
+<span class="sd">            workers, multiplied by `out_files_per_proc`. For further output-file</span>
+<span class="sd">            control, this argument may also be used to pass a dictionary mapping</span>
+<span class="sd">            the output file names to partition indices, or a list of desired</span>
+<span class="sd">            output-file names.</span>
+<span class="sd">        out_files_per_proc : integer</span>
+<span class="sd">            Number of output files that each process will use to shuffle an input</span>
+<span class="sd">            partition. Deafult is 1. If `method=&quot;worker&quot;`, the total number of output</span>
+<span class="sd">            files will always be the total number of Dask workers, multiplied by this</span>
+<span class="sd">            argument. If `method=&quot;subgraph&quot;`, the total number of files is determined</span>
+<span class="sd">            by `output_files` (and `out_files_per_proc` must be 1 if a dictionary is</span>
+<span class="sd">            specified).</span>
+<span class="sd">        num_threads : integer</span>
+<span class="sd">            Number of IO threads to use for writing the output dataset.</span>
+<span class="sd">            For `0` (default), no dedicated IO threads will be used.</span>
+<span class="sd">        dtypes : dict</span>
+<span class="sd">            Dictionary containing desired datatypes for output columns.</span>
+<span class="sd">            Keys are column names, values are datatypes.</span>
+<span class="sd">        suffix : str or False</span>
+<span class="sd">            File-name extension to use for all output files. This argument</span>
+<span class="sd">            is ignored if a specific list of file names is specified using</span>
+<span class="sd">            the ``output_files`` option. If ``preserve_files=True``, this</span>
+<span class="sd">            suffix will be appended to the original name of each file,</span>
+<span class="sd">            unless the original extension is &quot;.csv&quot;, &quot;.parquet&quot;, &quot;.avro&quot;,</span>
+<span class="sd">            or &quot;.orc&quot; (in which case the old extension will be replaced).</span>
+<span class="sd">        cats : list of str, optional</span>
+<span class="sd">            List of categorical columns</span>
+<span class="sd">        conts : list of str, optional</span>
+<span class="sd">            List of continuous columns</span>
+<span class="sd">        labels : list of str, optional</span>
+<span class="sd">            List of label columns</span>
+<span class="sd">        method : {&quot;subgraph&quot;, &quot;worker&quot;}</span>
+<span class="sd">            General algorithm to use for the parallel graph execution. In order</span>
+<span class="sd">            to minimize memory pressure, `to_parquet` will use a `&quot;subgraph&quot;` by</span>
+<span class="sd">            default. This means that we segment the full Dask task graph into a</span>
+<span class="sd">            distinct subgraph for each output file (or output-file group). Then,</span>
+<span class="sd">            each of these subgraphs is executed, in full, by the same worker (as</span>
+<span class="sd">            a single large task). In some cases, it may be more ideal to prioritize</span>
+<span class="sd">            concurrency. In that case, a worker-based approach can be used by</span>
+<span class="sd">            specifying `method=&quot;worker&quot;`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Check that method (algorithm) is valid</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;subgraph&quot;</span><span class="p">,</span> <span class="s2">&quot;worker&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> not a recognized method for `Dataset.to_parquet`&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Deal with method-specific defaults</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;worker&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">output_files</span> <span class="ow">or</span> <span class="n">preserve_files</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;output_files and preserve_files require `method=&#39;subgraph&#39;`&quot;</span><span class="p">)</span>
+            <span class="n">output_files</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="n">preserve_files</span> <span class="ow">and</span> <span class="n">output_files</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot specify both preserve_files and output_files.&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="p">(</span><span class="n">output_files</span> <span class="ow">or</span> <span class="n">preserve_files</span><span class="p">):</span>
+            <span class="c1"># Default &quot;subgraph&quot; behavior - Set output_files to the</span>
+            <span class="c1"># total umber of workers, multiplied by out_files_per_proc</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">nworkers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">workers</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">nworkers</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">output_files</span> <span class="o">=</span> <span class="n">nworkers</span> <span class="o">*</span> <span class="p">(</span><span class="n">out_files_per_proc</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Check shuffle argument</span>
+        <span class="n">shuffle</span> <span class="o">=</span> <span class="n">_check_shuffle_arg</span><span class="p">(</span><span class="n">shuffle</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_files</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="n">output_files</span> <span class="ow">and</span> <span class="n">preserve_files</span><span class="p">):</span>
+            <span class="c1"># Do not shuffle partitions if we are preserving files or</span>
+            <span class="c1"># if a specific file-partition mapping is already specified</span>
+            <span class="n">ddf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ddf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span>
+
+        <span class="c1"># Replace None/False suffix argument with &quot;&quot;</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="n">suffix</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># Deal with `method==&quot;subgraph&quot;`.</span>
+        <span class="c1"># Convert `output_files` argument to a dict mapping</span>
+        <span class="k">if</span> <span class="n">output_files</span><span class="p">:</span>
+
+            <span class="c1">#   NOTES on `output_files`:</span>
+            <span class="c1">#</span>
+            <span class="c1"># - If a list of file names is specified, a contiguous range of</span>
+            <span class="c1">#   output partitions will be mapped to each file. The same</span>
+            <span class="c1">#   procedure is used if an integer is specified, but the file</span>
+            <span class="c1">#   names will be written as &quot;part_*&quot;.</span>
+            <span class="c1">#</span>
+            <span class="c1"># - When `output_files` is used, the `output_files_per_proc`</span>
+            <span class="c1">#   argument will be interpreted as the desired number of output</span>
+            <span class="c1">#   files to write within the same task at run time (enabling</span>
+            <span class="c1">#   input partitions to be shuffled into multiple output files).</span>
+            <span class="c1">#</span>
+            <span class="c1"># - Passing a list or integer to `output_files` will preserve</span>
+            <span class="c1">#   the original ordering of the input data as long as</span>
+            <span class="c1">#   `out_files_per_proc` is set to `1` (or `None`), and</span>
+            <span class="c1">#   `shuffle==None`.</span>
+            <span class="c1">#</span>
+            <span class="c1"># - If a dictionary is specified, excluded partition indices</span>
+            <span class="c1">#   will not be written to disk.</span>
+            <span class="c1">#</span>
+            <span class="c1"># - To map multiple output files to a range of input partitions,</span>
+            <span class="c1">#   dictionary-input keys should correspond to a tuple of file</span>
+            <span class="c1">#   names.</span>
+
+            <span class="c1"># Use out_files_per_proc to calculate how</span>
+            <span class="c1"># many output files should be written within the</span>
+            <span class="c1"># same subgraph.  Note that we must a</span>
+            <span class="n">files_per_task</span> <span class="o">=</span> <span class="n">out_files_per_proc</span> <span class="ow">or</span> <span class="mi">1</span>
+            <span class="n">required_npartitions</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_files</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">required_npartitions</span> <span class="o">=</span> <span class="n">output_files</span>
+                <span class="n">files_per_task</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">files_per_task</span><span class="p">,</span> <span class="n">output_files</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_files</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">required_npartitions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output_files</span><span class="p">)</span>
+                <span class="n">files_per_task</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">files_per_task</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">output_files</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">out_files_per_proc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Cannot specify out_files_per_proc if output_files is &quot;</span>
+                    <span class="s2">&quot;defined as a dictionary mapping. Please define each &quot;</span>
+                    <span class="s2">&quot;key in output_files as a tuple of file names if you &quot;</span>
+                    <span class="s2">&quot;wish to have those files written by the same process.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Repartition ddf if necessary</span>
+            <span class="k">if</span> <span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&lt;</span> <span class="n">required_npartitions</span><span class="p">:</span>
+                <span class="n">ddf</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">clear_divisions</span><span class="p">()</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="n">npartitions</span><span class="o">=</span><span class="n">required_npartitions</span><span class="p">)</span>
+
+            <span class="c1"># Construct an output_files dictionary if necessary</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_files</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">output_files</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;part_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">suffix</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">output_files</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_files</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">new</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">split</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">output_files</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">output_files</span><span class="p">),</span> <span class="n">files_per_task</span><span class="p">):</span>
+                    <span class="n">fns</span> <span class="o">=</span> <span class="n">output_files</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">files_per_task</span><span class="p">]</span>
+                    <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">split</span>
+                    <span class="n">stop</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="n">split</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">fns</span><span class="p">),</span> <span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span><span class="p">)</span>
+                    <span class="n">new</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">fns</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+                <span class="n">output_files</span> <span class="o">=</span> <span class="n">new</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># Don&#39;t add a suffix later - Names already include it</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_files</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">output_files</span><span class="p">)</span><span class="si">}</span><span class="s2"> not a supported type for `output_files`.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># If we are preserving files, use the stored dictionary,</span>
+        <span class="c1"># or use file_partition_map to extract the mapping</span>
+        <span class="k">elif</span> <span class="n">preserve_files</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">_output_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dataset</span><span class="o">.</span><span class="n">file_partition_map</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;`to_parquet(..., preserve_files=True)` is not currently supported &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;for datasets with a </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_dataset</span><span class="o">.</span><span class="n">engine</span><span class="p">)</span><span class="si">}</span><span class="s2"> engine. Check &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;that `dataset.base_dataset` is backed by csv or parquet files.&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                <span class="n">output_files</span> <span class="o">=</span> <span class="n">_output_files</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">output_files</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">fn</span><span class="p">,</span> <span class="n">rgs</span> <span class="ow">in</span> <span class="n">_output_files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">split_fn</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">split_fn</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;avro&quot;</span><span class="p">,</span> <span class="s2">&quot;orc&quot;</span><span class="p">,</span> <span class="s2">&quot;csv&quot;</span><span class="p">):</span>
+                        <span class="n">output_files</span><span class="p">[</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">split_fn</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="n">rgs</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">output_files</span><span class="p">[</span><span class="n">fn</span> <span class="o">+</span> <span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="n">rgs</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># Don&#39;t add a suffix later - Names already include it</span>
+
+        <span class="k">if</span> <span class="n">dtypes</span><span class="p">:</span>
+            <span class="n">_meta</span> <span class="o">=</span> <span class="n">_set_dtypes</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="n">dtypes</span><span class="p">)</span>
+            <span class="n">ddf</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="n">_set_dtypes</span><span class="p">,</span> <span class="n">dtypes</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">_meta</span><span class="p">)</span>
+
+        <span class="n">fs</span> <span class="o">=</span> <span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">output_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">fs</span><span class="o">.</span><span class="n">mkdirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Output dask_cudf DataFrame to dataset</span>
+        <span class="n">_ddf_to_dataset</span><span class="p">(</span>
+            <span class="n">ddf</span><span class="p">,</span>
+            <span class="n">fs</span><span class="p">,</span>
+            <span class="n">output_path</span><span class="p">,</span>
+            <span class="n">shuffle</span><span class="p">,</span>
+            <span class="n">output_files</span><span class="p">,</span>
+            <span class="n">out_files_per_proc</span><span class="p">,</span>
+            <span class="n">cats</span> <span class="ow">or</span> <span class="p">[],</span>
+            <span class="n">conts</span> <span class="ow">or</span> <span class="p">[],</span>
+            <span class="n">labels</span> <span class="ow">or</span> <span class="p">[],</span>
+            <span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span>
+            <span class="n">num_threads</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span>
+            <span class="n">suffix</span><span class="o">=</span><span class="n">suffix</span><span class="p">,</span>
+            <span class="n">partition_on</span><span class="o">=</span><span class="n">partition_on</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.to_hugectr"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.to_hugectr">[docs]</a>    <span class="k">def</span> <span class="nf">to_hugectr</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="p">,</span>
+        <span class="n">cats</span><span class="p">,</span>
+        <span class="n">conts</span><span class="p">,</span>
+        <span class="n">labels</span><span class="p">,</span>
+        <span class="n">shuffle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">file_partition_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_files_per_proc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_threads</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">dtypes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Writes out to a hugectr dataset</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        output_path : string</span>
+<span class="sd">            Path to write processed/shuffled output data</span>
+<span class="sd">        cats : list of str</span>
+<span class="sd">            List of categorical columns</span>
+<span class="sd">        conts : list of str</span>
+<span class="sd">            List of continuous columns</span>
+<span class="sd">        labels : list of str</span>
+<span class="sd">            List of label columns</span>
+<span class="sd">        shuffle : nvt.io.Shuffle, optional</span>
+<span class="sd">            How to shuffle the output dataset. Shuffling is only</span>
+<span class="sd">            performed if the data is written to disk. For all options,</span>
+<span class="sd">            other than `None` (which means no shuffling), the partitions</span>
+<span class="sd">            of the underlying dataset/ddf will be randomly ordered. If</span>
+<span class="sd">            `PER_PARTITION` is specified, each worker/process will also</span>
+<span class="sd">            shuffle the rows within each partition before splitting and</span>
+<span class="sd">            appending the data to a number (`out_files_per_proc`) of output</span>
+<span class="sd">            files. Output files are distinctly mapped to each worker process.</span>
+<span class="sd">            If `PER_WORKER` is specified, each worker will follow the same</span>
+<span class="sd">            procedure as `PER_PARTITION`, but will re-shuffle each file after</span>
+<span class="sd">            all data is persisted.  This results in a full shuffle of the</span>
+<span class="sd">            data processed by each worker.  To improve performace, this option</span>
+<span class="sd">            currently uses host-memory `BytesIO` objects for the intermediate</span>
+<span class="sd">            persist stage. The `FULL` option is not yet implemented.</span>
+<span class="sd">        file_partition_map : dict</span>
+<span class="sd">            Dictionary mapping of output file names to partition indices</span>
+<span class="sd">            that should be written to that file name.  If this argument</span>
+<span class="sd">            is passed, only the partitions included in the dictionary</span>
+<span class="sd">            will be written to disk, and the `output_files_per_proc` argument</span>
+<span class="sd">            will be ignored.</span>
+<span class="sd">        out_files_per_proc : integer</span>
+<span class="sd">            Number of files to create (per process) after</span>
+<span class="sd">            shuffling the data</span>
+<span class="sd">        num_threads : integer</span>
+<span class="sd">            Number of IO threads to use for writing the output dataset.</span>
+<span class="sd">            For `0` (default), no dedicated IO threads will be used.</span>
+<span class="sd">        dtypes : dict</span>
+<span class="sd">            Dictionary containing desired datatypes for output columns.</span>
+<span class="sd">            Keys are column names, values are datatypes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># For now, we must move to the GPU to</span>
+        <span class="c1"># write an output dataset.</span>
+        <span class="c1"># TODO: Support CPU-mode output</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to_gpu</span><span class="p">()</span>
+
+        <span class="n">shuffle</span> <span class="o">=</span> <span class="n">_check_shuffle_arg</span><span class="p">(</span><span class="n">shuffle</span><span class="p">)</span>
+        <span class="n">ddf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dtypes</span><span class="p">:</span>
+            <span class="n">_meta</span> <span class="o">=</span> <span class="n">_set_dtypes</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="n">dtypes</span><span class="p">)</span>
+            <span class="n">ddf</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="n">_set_dtypes</span><span class="p">,</span> <span class="n">dtypes</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">_meta</span><span class="p">)</span>
+
+        <span class="n">fs</span> <span class="o">=</span> <span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">output_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">fs</span><span class="o">.</span><span class="n">mkdirs</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Output dask_cudf DataFrame to dataset,</span>
+        <span class="n">_ddf_to_dataset</span><span class="p">(</span>
+            <span class="n">ddf</span><span class="p">,</span>
+            <span class="n">fs</span><span class="p">,</span>
+            <span class="n">output_path</span><span class="p">,</span>
+            <span class="n">shuffle</span><span class="p">,</span>
+            <span class="n">file_partition_map</span><span class="p">,</span>
+            <span class="n">out_files_per_proc</span><span class="p">,</span>
+            <span class="n">cats</span><span class="p">,</span>
+            <span class="n">conts</span><span class="p">,</span>
+            <span class="n">labels</span><span class="p">,</span>
+            <span class="s2">&quot;hugectr&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span>
+            <span class="n">num_threads</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">num_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">num_rows</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">npartitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span><span class="o">.</span><span class="n">npartitions</span>
+
+<div class="viewcode-block" id="Dataset.validate_dataset"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.validate_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">validate_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Validate for efficient processing.</span>
+
+<span class="sd">        The purpose of this method is to validate that the Dataset object</span>
+<span class="sd">        meets the minimal requirements for efficient NVTabular processing.</span>
+<span class="sd">        For now, this criteria requires the data to be in parquet format.</span>
+
+<span class="sd">        Example Usage::</span>
+
+<span class="sd">            dataset = Dataset(&quot;/path/to/data_pq&quot;, engine=&quot;parquet&quot;)</span>
+<span class="sd">            assert validate_dataset(dataset)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        **kwargs :</span>
+<span class="sd">            Key-word arguments to pass down to the engine&#39;s validate_dataset</span>
+<span class="sd">            method. For the recommended parquet format, these arguments</span>
+<span class="sd">            include `add_metadata_file`, `row_group_max_size`, `file_min_size`,</span>
+<span class="sd">            and `require_metadata_file`. For more information, see</span>
+<span class="sd">            `ParquetDatasetEngine.validate_dataset`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        valid : bool</span>
+<span class="sd">            Whether or not the input dataset is valid for efficient NVTabular</span>
+<span class="sd">            processing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Check that the dataset format is Parquet</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="p">,</span> <span class="n">ParquetDatasetEngine</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;NVTabular is optimized for the parquet format. Please use &quot;</span>
+                <span class="s2">&quot;the to_parquet method to convert your dataset.&quot;</span>
+            <span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># Early return</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">validate_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Dataset.regenerate_dataset"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.regenerate_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">regenerate_dataset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="p">,</span>
+        <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">output_format</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+        <span class="n">compute</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;EXPERIMENTAL:</span>
+<span class="sd">        Regenerate an NVTabular Dataset for efficient processing by writing</span>
+<span class="sd">        out new Parquet files. In contrast to default ``to_parquet`` behavior,</span>
+<span class="sd">        this method preserves the original ordering.</span>
+
+<span class="sd">        Example Usage::</span>
+
+<span class="sd">            dataset = Dataset(&quot;/path/to/data_pq&quot;, engine=&quot;parquet&quot;)</span>
+<span class="sd">            dataset.regenerate_dataset(</span>
+<span class="sd">                out_path, part_size=&quot;1MiB&quot;, file_size=&quot;10MiB&quot;</span>
+<span class="sd">            )</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        output_path : string</span>
+<span class="sd">            Root directory path to use for the new (regenerated) dataset.</span>
+<span class="sd">        columns : list(string), optional</span>
+<span class="sd">            Subset of columns to include in the regenerated dataset.</span>
+<span class="sd">        output_format : string, optional</span>
+<span class="sd">            Format to use for regenerated dataset.  Only &quot;parquet&quot; (default)</span>
+<span class="sd">            is currently supported.</span>
+<span class="sd">        compute : bool, optional</span>
+<span class="sd">            Whether to compute the task graph or to return a Delayed object.</span>
+<span class="sd">            By default, the graph will be executed.</span>
+<span class="sd">        **kwargs :</span>
+<span class="sd">            Key-word arguments to pass down to the engine&#39;s regenerate_dataset</span>
+<span class="sd">            method. See `ParquetDatasetEngine.regenerate_dataset` for more</span>
+<span class="sd">            information.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result : int or Delayed</span>
+<span class="sd">            If `compute=True` (default), the return value will be an integer</span>
+<span class="sd">            corresponding to the number of generated data files.  If `False`,</span>
+<span class="sd">            the returned value will be a `Delayed` object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Check that the desired output format is Parquet</span>
+        <span class="k">if</span> <span class="n">output_format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;parquet&quot;</span><span class="p">]:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;NVTabular is optimized for the parquet format. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_format</span><span class="si">}</span><span class="s2"> is not yet a supported output format for &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;regenerate_dataset.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">ParquetDatasetEngine</span><span class="o">.</span><span class="n">regenerate_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">compute</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="Dataset.sample_dtypes"><a class="viewcode-back" href="../../../api/dataset.html#nvtabular.io.dataset.Dataset.sample_dtypes">[docs]</a>    <span class="k">def</span> <span class="nf">sample_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the real dtypes of the Dataset</span>
+
+<span class="sd">        Sample the partitions of the underlying Dask collection</span>
+<span class="sd">        until a non-empty partition is found. Then, use the first</span>
+<span class="sd">        ``n`` rows of that partition to infer dtype info. If no</span>
+<span class="sd">        non-empty partitions are found, use the Dask dtypes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_ddf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">partition_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">_ddf</span><span class="o">.</span><span class="n">npartitions</span><span class="p">):</span>
+            <span class="n">_head</span> <span class="o">=</span> <span class="n">_ddf</span><span class="o">.</span><span class="n">partitions</span><span class="p">[</span><span class="n">partition_index</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_head</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">_head</span><span class="o">.</span><span class="n">dtypes</span>
+        <span class="k">return</span> <span class="n">_ddf</span><span class="o">.</span><span class="n">dtypes</span></div>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_bind_dd_method</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Bind Dask-Dataframe method to the Dataset class&quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">meth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">_meth</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(),</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_meth</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">meth</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">meth</span><span class="p">)</span></div>
+
+
+<span class="c1"># Bind (simple) Dask-Dataframe Methods</span>
+<span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;compute&quot;</span><span class="p">,</span> <span class="s2">&quot;persist&quot;</span><span class="p">,</span> <span class="s2">&quot;head&quot;</span><span class="p">,</span> <span class="s2">&quot;tail&quot;</span><span class="p">]:</span>
+    <span class="n">Dataset</span><span class="o">.</span><span class="n">_bind_dd_method</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_set_dtypes</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">dtypes</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="s2">&quot;hex&quot;</span> <span class="ow">in</span> <span class="n">dtype</span><span class="p">):</span>
+            <span class="n">chunk</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_hex_to_int</span><span class="p">(</span><span class="n">chunk</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">chunk</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">chunk</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">chunk</span>
+
+
+<span class="k">class</span> <span class="nc">DataFrameIter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ddf</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">partition_lens</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indices</span> <span class="o">=</span> <span class="n">indices</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="nb">range</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">npartitions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ddf</span> <span class="o">=</span> <span class="n">ddf</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">columns</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">partition_lens</span> <span class="o">=</span> <span class="n">partition_lens</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition_lens</span><span class="p">:</span>
+            <span class="c1"># Use metadata-based partition-size information</span>
+            <span class="c1"># if/when it is available.  Note that this metadata</span>
+            <span class="c1"># will not be correct if rows where added or dropped</span>
+            <span class="c1"># after IO (within Ops).</span>
+            <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_lens</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ddf</span><span class="o">.</span><span class="n">npartitions</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ddf</span><span class="o">.</span><span class="n">partitions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ddf</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">:</span>
+            <span class="n">part</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ddf</span><span class="o">.</span><span class="n">get_partition</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">part</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">&quot;synchronous&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">part</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">&quot;synchronous&quot;</span><span class="p">)</span>
+        <span class="n">part</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.6.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
+      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
+      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="dataset.html">v0.6.1</a></dd>
+      <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

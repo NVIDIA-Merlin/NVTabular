@@ -1,0 +1,1305 @@
+{
+ "metadata": {
+  "file_extension": ".py",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.8"
+  },
+  "mimetype": "text/x-python",
+  "name": "python",
+  "npconvert_exporter": "python",
+  "pygments_lexer": "ipython3",
+  "version": 3
+ },
+ "nbformat": 3,
+ "nbformat_minor": 0,
+ "worksheets": [
+  {
+   "cells": [
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "# Copyright 2020 NVIDIA Corporation. All Rights Reserved.\n",
+      "#\n",
+      "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+      "# you may not use this file except in compliance with the License.\n",
+      "# You may obtain a copy of the License at\n",
+      "#\n",
+      "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+      "#\n",
+      "# Unless required by applicable law or agreed to in writing, software\n",
+      "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+      "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+      "# See the License for the specific language governing permissions and\n",
+      "# limitations under the License.\n",
+      "# =============================================================================="
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 1
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "# NVTabular / HugeCTR Criteo Example \n",
+      "Here we'll show how to use NVTabular first as a preprocessing library to prepare the [Criteo Display Advertising Challenge](https://www.kaggle.com/c/criteo-display-ad-challenge) dataset, and then train a model using HugeCTR.\n",
+      "\n",
+      "### Data Prep\n",
+      "Before we get started, make sure you've run the [optimize_criteo notebook](../optimize_criteo.ipynb), which will convert the tsv data published by Criteo into the parquet format that our accelerated readers prefer. It's fair to mention at this point that that notebook will take ~30 minutes to run. While we're hoping to release accelerated csv readers in the near future, we also believe that inefficiencies in existing data representations like csv are in no small part a consequence of inefficiencies in the existing hardware/software stack. Accelerating these pipelines on new hardware like GPUs may require us to make new choices about the representations we use to store that data, and parquet represents a strong alternative."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "# Standard Libraries\n",
+      "import os\n",
+      "from time import time\n",
+      "import re\n",
+      "import shutil\n",
+      "import glob\n",
+      "import warnings\n",
+      "\n",
+      "# External Dependencies\n",
+      "import numpy as np\n",
+      "import cupy as cp\n",
+      "import cudf\n",
+      "import dask_cudf\n",
+      "from dask_cuda import LocalCUDACluster\n",
+      "from dask.distributed import Client\n",
+      "from dask.utils import parse_bytes\n",
+      "from dask.delayed import delayed\n",
+      "import rmm\n",
+      "\n",
+      "# NVTabular\n",
+      "import nvtabular as nvt\n",
+      "import nvtabular.ops as ops\n",
+      "from nvtabular.io import Shuffle\n",
+      "from nvtabular.utils import _pynvml_mem_size, device_mem_size\n",
+      "\n",
+      "# HugeCTR\n",
+      "import sys\n",
+      "sys.path.append(\"/usr/local/hugectr/lib\")\n",
+      "from hugectr import Session, solver_parser_helper, get_learning_rate_scheduler"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 2
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "### Dataset and Dataset Schema\n",
+      "Once our data is ready, we'll define some high level parameters to describe where our data is and what it \"looks like\" at a high level."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "# define some information about where to get our data\n",
+      "BASE_DIR = \"/raid/criteo/tests/\"\n",
+      "input_path = os.path.join(BASE_DIR, \"crit_int_pq\")\n",
+      "dask_workdir = os.path.join(BASE_DIR, \"test_dask/workdir\")\n",
+      "output_path = os.path.join(BASE_DIR, \"test_dask/output\")\n",
+      "stats_path = os.path.join(BASE_DIR, \"test_dask/stats\")\n",
+      "\n",
+      "\n",
+      "#BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 800000))\n",
+      "#NUM_PARTS = int(os.environ.get('NUM_PARTS', 2))\n",
+      "NUM_TRAIN_DAYS = 23 # number of days worth of data to use for training, the rest will be used for validation\n",
+      "NUM_GPUS = [0,1,2,3,4,5,6,7]\n",
+      "\n",
+      "# define our dataset schema\n",
+      "CONTINUOUS_COLUMNS = ['I' + str(x) for x in range(1,14)]\n",
+      "CATEGORICAL_COLUMNS =  ['C' + str(x) for x in range(1,27)]\n",
+      "LABEL_COLUMNS = ['label']\n",
+      "COLUMNS = CONTINUOUS_COLUMNS + CATEGORICAL_COLUMNS + LABEL_COLUMNS\n",
+      "\n",
+      "# Make sure we have a clean worker space for Dask\n",
+      "if os.path.isdir(dask_workdir):\n",
+      "    shutil.rmtree(dask_workdir)\n",
+      "os.makedirs(dask_workdir)\n",
+      "\n",
+      "# Make sure we have a clean stats space for Dask\n",
+      "if os.path.isdir(stats_path):\n",
+      "    shutil.rmtree(stats_path)\n",
+      "os.mkdir(stats_path)\n",
+      "         \n",
+      "# Make sure we have a clean output path\n",
+      "if os.path.isdir(output_path):\n",
+      "    shutil.rmtree(output_path)\n",
+      "os.mkdir(output_path)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 3
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "! ls $BASE_DIR"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "crit_int_pq  NVTabular\ttest_dask\r\n"
+       ]
+      }
+     ],
+     "prompt_number": 4
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "fname = 'day_{}.parquet'\n",
+      "num_days = len([i for i in os.listdir(input_path) if re.match(fname.format('[0-9]{1,2}'), i) is not None])\n",
+      "train_paths = [os.path.join(input_path, fname.format(day)) for day in range(NUM_TRAIN_DAYS)]\n",
+      "valid_paths = [os.path.join(input_path, fname.format(day)) for day in range(NUM_TRAIN_DAYS, num_days)]\n",
+      "print(train_paths)\n",
+      "print(valid_paths)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "['/raid/criteo/tests/crit_int_pq/day_0.parquet', '/raid/criteo/tests/crit_int_pq/day_1.parquet', '/raid/criteo/tests/crit_int_pq/day_2.parquet', '/raid/criteo/tests/crit_int_pq/day_3.parquet', '/raid/criteo/tests/crit_int_pq/day_4.parquet', '/raid/criteo/tests/crit_int_pq/day_5.parquet', '/raid/criteo/tests/crit_int_pq/day_6.parquet', '/raid/criteo/tests/crit_int_pq/day_7.parquet', '/raid/criteo/tests/crit_int_pq/day_8.parquet', '/raid/criteo/tests/crit_int_pq/day_9.parquet', '/raid/criteo/tests/crit_int_pq/day_10.parquet', '/raid/criteo/tests/crit_int_pq/day_11.parquet', '/raid/criteo/tests/crit_int_pq/day_12.parquet', '/raid/criteo/tests/crit_int_pq/day_13.parquet', '/raid/criteo/tests/crit_int_pq/day_14.parquet', '/raid/criteo/tests/crit_int_pq/day_15.parquet', '/raid/criteo/tests/crit_int_pq/day_16.parquet', '/raid/criteo/tests/crit_int_pq/day_17.parquet', '/raid/criteo/tests/crit_int_pq/day_18.parquet', '/raid/criteo/tests/crit_int_pq/day_19.parquet', '/raid/criteo/tests/crit_int_pq/day_20.parquet', '/raid/criteo/tests/crit_int_pq/day_21.parquet', '/raid/criteo/tests/crit_int_pq/day_22.parquet']\n",
+        "['/raid/criteo/tests/crit_int_pq/day_23.parquet']\n"
+       ]
+      }
+     ],
+     "prompt_number": 5
+    },
+    {
+     "cell_type": "heading",
+     "level": 3,
+     "metadata": {},
+     "source": [
+      "Deploy a Distributed-Dask Cluster"
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "# Dask dashboard\n",
+      "dashboard_port = \"8787\"\n",
+      "\n",
+      "# Deploy a Single-Machine Multi-GPU Cluster\n",
+      "protocol = \"tcp\"             # \"tcp\" or \"ucx\"\n",
+      "visible_devices = \",\".join([str(n) for n in NUM_GPUS])  # Delect devices to place workers\n",
+      "device_limit_frac = 0.7      # Spill GPU-Worker memory to host at this limit.\n",
+      "device_pool_frac = 0.8\n",
+      "part_mem_frac = 0.15\n",
+      "\n",
+      "# Use total device size to calculate args.device_limit_frac\n",
+      "device_size = device_mem_size(kind=\"total\")\n",
+      "device_limit = int(device_limit_frac * device_size)\n",
+      "device_pool_size = int(device_pool_frac * device_size)\n",
+      "part_size = int(part_mem_frac * device_size)\n",
+      "\n",
+      "# Check if any device memory is already occupied\n",
+      "for dev in visible_devices.split(\",\"):\n",
+      "    fmem = _pynvml_mem_size(kind=\"free\", index=int(dev))\n",
+      "    used = (device_size - fmem) / 1e9\n",
+      "    if used > 1.0:\n",
+      "        warnings.warn(f\"BEWARE - {used} GB is already occupied on device {int(dev)}!\")\n",
+      "\n",
+      "cluster = None               # (Optional) Specify existing scheduler port\n",
+      "if cluster is None:\n",
+      "    cluster = LocalCUDACluster(\n",
+      "        protocol = protocol,\n",
+      "        n_workers=len(visible_devices.split(\",\")),\n",
+      "        CUDA_VISIBLE_DEVICES = visible_devices,\n",
+      "        device_memory_limit = device_limit,\n",
+      "        local_directory=dask_workdir,\n",
+      "        dashboard_address=\":\" + dashboard_port,\n",
+      "    )\n",
+      "\n",
+      "# Create the distributed client\n",
+      "client = Client(cluster)\n",
+      "client"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "html": [
+        "<table style=\"border: 2px solid white;\">\n",
+        "<tr>\n",
+        "<td style=\"vertical-align: top; border: 0px solid white\">\n",
+        "<h3 style=\"text-align: left;\">Client</h3>\n",
+        "<ul style=\"text-align: left; list-style: none; margin: 0; padding: 0;\">\n",
+        "  <li><b>Scheduler: </b>tcp://127.0.0.1:43467</li>\n",
+        "  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>\n",
+        "</ul>\n",
+        "</td>\n",
+        "<td style=\"vertical-align: top; border: 0px solid white\">\n",
+        "<h3 style=\"text-align: left;\">Cluster</h3>\n",
+        "<ul style=\"text-align: left; list-style:none; margin: 0; padding: 0;\">\n",
+        "  <li><b>Workers: </b>8</li>\n",
+        "  <li><b>Cores: </b>8</li>\n",
+        "  <li><b>Memory: </b>2.16 TB</li>\n",
+        "</ul>\n",
+        "</td>\n",
+        "</tr>\n",
+        "</table>"
+       ],
+       "output_type": "pyout",
+       "prompt_number": 6,
+       "text": [
+        "<Client: 'tcp://127.0.0.1:43467' processes=8 threads=8, memory=2.16 TB>"
+       ]
+      }
+     ],
+     "prompt_number": 6
+    },
+    {
+     "cell_type": "heading",
+     "level": 4,
+     "metadata": {},
+     "source": [
+      "Initilize Memory Pools"
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "# Initialize RMM pool on ALL workers\n",
+      "def _rmm_pool():\n",
+      "    rmm.reinitialize(\n",
+      "        # RMM may require the pool size to be a multiple of 256.\n",
+      "        pool_allocator=True,\n",
+      "        initial_pool_size=(device_pool_size // 256) * 256, # Use default size\n",
+      "    )\n",
+      "    \n",
+      "client.run(_rmm_pool)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "pyout",
+       "prompt_number": 7,
+       "text": [
+        "{'tcp://127.0.0.1:34419': None,\n",
+        " 'tcp://127.0.0.1:34529': None,\n",
+        " 'tcp://127.0.0.1:34703': None,\n",
+        " 'tcp://127.0.0.1:34721': None,\n",
+        " 'tcp://127.0.0.1:37447': None,\n",
+        " 'tcp://127.0.0.1:40953': None,\n",
+        " 'tcp://127.0.0.1:42517': None,\n",
+        " 'tcp://127.0.0.1:44611': None}"
+       ]
+      }
+     ],
+     "prompt_number": 7
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "### Preprocessing\n",
+      "At this point, our data still isn't in a form that's ideal for consumption by neural networks. The most pressing issues are missing values and the fact that our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices that can be leveraged by a learned embedding. Less pressing, but still important for learning dynamics, are the distributions of our continuous variables, which are distributed across multiple orders of magnitude and are uncentered (i.e. E[x] != 0).\n",
+      "\n",
+      "We can fix these issues in a conscise and GPU-accelerated manner with an NVTabular `Workflow`. We'll instantiate one with our current dataset schema, then symbolically add operations _on_ that schema. By setting all these `Ops` to use `replace=True`, the schema itself will remain unmodified, while the variables represented by each field in the schema will be transformed.\n",
+      "\n",
+      "#### Frequency Thresholding\n",
+      "One interesting thing worth pointing out is that we're using _frequency thresholding_ in our `Categorify` op. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency (which we've set here to be 15 occurrences throughout the dataset) to the _same_ index, keeping the model from overfitting to sparse signals."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "proc = nvt.Workflow(\n",
+      "    cat_names=CATEGORICAL_COLUMNS,\n",
+      "    cont_names=CONTINUOUS_COLUMNS,\n",
+      "    label_name=LABEL_COLUMNS,\n",
+      "    client = client)\n",
+      "\n",
+      "# log -> normalize continuous features. Note that doing this in the opposite\n",
+      "# order wouldn't make sense! Note also that we're zero filling continuous\n",
+      "# values before the log: this is a good time to remember that LogOp\n",
+      "# performs log(1+x), not log(x)\n",
+      "proc.add_cont_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])\n",
+      "\n",
+      "# categorification w/ MOD 10M\n",
+      "num_buckets = 10000000\n",
+      "proc.add_cat_preprocess([ops.Categorify(out_path=stats_path), ops.LambdaOp(op_name=\"MOD10M\", f=lambda col, gdf: col % num_buckets)])"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 8
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "Now instantiate dataset iterators to loop through our dataset (which we couldn't fit into GPU memory). We need to enforce the required HugeCTR data types, so we set them in a dictionary and give as an argument when creating our dataset"
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "dict_dtypes={}\n",
+      "\n",
+      "for col in CATEGORICAL_COLUMNS:\n",
+      "    dict_dtypes[col] = np.int64\n",
+      "    \n",
+      "for col in CONTINUOUS_COLUMNS:\n",
+      "    dict_dtypes[col] = np.float32\n",
+      "    \n",
+      "for col in LABEL_COLUMNS:\n",
+      "    dict_dtypes[col] = np.float32"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 9
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "train_dataset = nvt.Dataset(train_paths, engine='parquet', part_size=part_size)\n",
+      "valid_dataset = nvt.Dataset(valid_paths, engine='parquet', part_size=part_size)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 10
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "Now run them through our workflows to collect statistics on the train set, then transform and save to parquet files."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "output_train_dir = os.path.join(output_path, 'train/')\n",
+      "output_valid_dir = os.path.join(output_path, 'valid/')\n",
+      "! mkdir -p $output_train_dir\n",
+      "! mkdir -p $output_valid_dir"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 11
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "For reference, let's time it to see how long it takes..."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "%%time\n",
+      "proc.apply(train_dataset, shuffle=nvt.io.Shuffle.PER_PARTITION, output_format=\"parquet\", output_path=output_train_dir, dtypes=dict_dtypes)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "CPU times: user 18.6 s, sys: 1.84 s, total: 20.5 s\n",
+        "Wall time: 2min 49s\n"
+       ]
+      }
+     ],
+     "prompt_number": 12
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "%%time\n",
+      "proc.apply(valid_dataset, record_stats=False, shuffle=nvt.io.Shuffle.PER_PARTITION, output_format=\"parquet\", output_path=output_valid_dir, dtypes=dict_dtypes)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "CPU times: user 853 ms, sys: 260 ms, total: 1.11 s\n",
+        "Wall time: 11.9 s\n"
+       ]
+      }
+     ],
+     "prompt_number": 13
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "Get the embeddings table size, to configurate `slot_size_array` in `dlrm_fp32_64k.json`"
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "embeddings = [c[0] for c in ops.get_embedding_sizes(proc).values()]\n",
+      "embeddings = np.clip(a=embeddings, a_min=None, a_max=num_buckets).tolist()\n",
+      "print(embeddings)"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[10000000, 10000000, 3014529, 400781, 11, 2209, 11869, 148, 4, 977, 15, 38713, 10000000, 10000000, 10000000, 584616, 12883, 109, 37, 17177, 7425, 20266, 4, 7085, 1535, 64]\n"
+       ]
+      }
+     ],
+     "prompt_number": 14
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "And just like that, we have training and validation sets ready to feed to a model!"
+     ]
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "## HugeCTR\n",
+      "### Training\n",
+      "We'll run huge_ctr using the DLRM configuration file.\n",
+      "\n",
+      "First, we'll shutdown our Dask client from earlier to free up some memory so that we can share it with HugeCTR."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "client.shutdown()"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 15
+    },
+    {
+     "cell_type": "markdown",
+     "metadata": {},
+     "source": [
+      "Finally, we run HugeCTR. For reference, let's time it to see how long it takes..."
+     ]
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [
+      "%%time\n",
+      "# Set config file\n",
+      "json_file = \"dlrm_fp32_64k.json\"\n",
+      "# Set solver config\n",
+      "solver_config = solver_parser_helper(seed = 0,\n",
+      "                                     batchsize = 16384,\n",
+      "                                     batchsize_eval = 16384,\n",
+      "                                     model_file = \"\",\n",
+      "                                     embedding_files = [],\n",
+      "                                     vvgpu = [NUM_GPUS],\n",
+      "                                     use_mixed_precision = False,\n",
+      "                                     scaler = 1.0,\n",
+      "                                     i64_input_key = True,\n",
+      "                                     use_algorithm_search = True,\n",
+      "                                     use_cuda_graph = True,\n",
+      "                                     repeat_dataset = True\n",
+      "                                    )\n",
+      "# Set learning rate\n",
+      "lr_sch = get_learning_rate_scheduler(json_file)\n",
+      "# Train model\n",
+      "sess = Session(solver_config, json_file)\n",
+      "sess.start_data_reading()\n",
+      "for i in range(10000):\n",
+      "    lr = lr_sch.get_next()\n",
+      "    sess.set_learning_rate(lr)\n",
+      "    sess.train()\n",
+      "    if (i%100 == 0):\n",
+      "        loss = sess.get_current_loss()\n",
+      "        print(\"[HUGECTR][INFO] iter: {}; loss: {}\".format(i, loss))\n",
+      "    if (i%3000 == 0 and i != 0):\n",
+      "        metrics = sess.evaluation()\n",
+      "        print(\"[HUGECTR][INFO] iter: {}, {}\".format(i, metrics))"
+     ],
+     "language": "python",
+     "metadata": {},
+     "outputs": [
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 0; loss: 0.8532629609107971\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 100; loss: 0.13733375072479248\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 200; loss: 0.12044114619493484\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 300; loss: 0.1432936042547226\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 400; loss: 0.13736993074417114\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 500; loss: 0.13921479880809784\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 600; loss: 0.12881088256835938\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 700; loss: 0.12584912776947021\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 800; loss: 0.1269063502550125\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 900; loss: 0.1276361644268036\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1000; loss: 0.12601923942565918\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1100; loss: 0.12928898632526398\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1200; loss: 0.12370038777589798\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1300; loss: 0.13637907803058624\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1400; loss: 0.12262138724327087\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1500; loss: 0.12716645002365112\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1600; loss: 0.12878908216953278\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1700; loss: 0.13806402683258057\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1800; loss: 0.12637314200401306\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 1900; loss: 0.1234893649816513\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2000; loss: 0.12500672042369843\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2100; loss: 0.1271117925643921\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2200; loss: 0.12065654993057251\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2300; loss: 0.12455953657627106\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2400; loss: 0.13445869088172913\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2500; loss: 0.12091702222824097\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2600; loss: 0.1275034099817276\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2700; loss: 0.12200944125652313\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2800; loss: 0.12480510026216507\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 2900; loss: 0.12914004921913147\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3000; loss: 0.12693384289741516\n",
+        "[HUGECTR][INFO] iter: 3000, [('AUC', 0.7665499448776245)]\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3100; loss: 0.12380503118038177\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3200; loss: 0.12198879569768906\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3300; loss: 0.11890366673469543\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3400; loss: 0.11795458942651749\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3500; loss: 0.1266060322523117\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3600; loss: 0.1308339685201645\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3700; loss: 0.11925296485424042\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3800; loss: 0.12146525084972382\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 3900; loss: 0.1292012482881546\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4000; loss: 0.12852615118026733\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4100; loss: 0.128790944814682\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4200; loss: 0.13038936257362366\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4300; loss: 0.13004642724990845\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4400; loss: 0.12568017840385437\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4500; loss: 0.12528616189956665\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4600; loss: 0.12257300317287445\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4700; loss: 0.12529920041561127\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4800; loss: 0.12477346509695053\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 4900; loss: 0.12581917643547058\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5000; loss: 0.12937895953655243\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5100; loss: 0.12715725600719452\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5200; loss: 0.1305316984653473\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5300; loss: 0.12407000362873077\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5400; loss: 0.11724398285150528\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5500; loss: 0.1297476887702942\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5600; loss: 0.1252257376909256\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5700; loss: 0.13481514155864716\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5800; loss: 0.11881910264492035\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 5900; loss: 0.1231309324502945\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6000; loss: 0.11981914937496185\n",
+        "[HUGECTR][INFO] iter: 6000, [('AUC', 0.7478535175323486)]\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6100; loss: 0.12740889191627502\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6200; loss: 0.1184406653046608\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6300; loss: 0.1215326264500618\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6400; loss: 0.12018976360559464\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6500; loss: 0.12207344174385071\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6600; loss: 0.11936748027801514\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6700; loss: 0.1344636082649231\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6800; loss: 0.1235312819480896\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 6900; loss: 0.11865617334842682\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7000; loss: 0.12486278265714645\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7100; loss: 0.13070285320281982\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7200; loss: 0.12883560359477997\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7300; loss: 0.12401801347732544\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7400; loss: 0.12302699685096741\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7500; loss: 0.13381913304328918\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7600; loss: 0.12709784507751465\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7700; loss: 0.12482510507106781\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7800; loss: 0.12176606804132462\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 7900; loss: 0.12543131411075592\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8000; loss: 0.11884783953428268\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8100; loss: 0.1285083293914795\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8200; loss: 0.12941600382328033\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8300; loss: 0.1245264783501625\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8400; loss: 0.1230475902557373\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8500; loss: 0.1257411241531372\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8600; loss: 0.12116973102092743\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8700; loss: 0.12535282969474792\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8800; loss: 0.12397449463605881\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 8900; loss: 0.12262888252735138\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9000; loss: 0.11161893606185913\n",
+        "[HUGECTR][INFO] iter: 9000, [('AUC', 0.7808812856674194)]\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9100; loss: 0.13083060085773468\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9200; loss: 0.120280422270298\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9300; loss: 0.12189973145723343\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9400; loss: 0.11685363948345184\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9500; loss: 0.12826286256313324\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9600; loss: 0.11898329108953476\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9700; loss: 0.12399856001138687\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9800; loss: 0.11943891644477844\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "[HUGECTR][INFO] iter: 9900; loss: 0.12630650401115417\n"
+       ]
+      },
+      {
+       "output_type": "stream",
+       "stream": "stdout",
+       "text": [
+        "CPU times: user 8min 55s, sys: 45.3 s, total: 9min 40s\n",
+        "Wall time: 1min 39s\n"
+       ]
+      }
+     ],
+     "prompt_number": 16
+    },
+    {
+     "cell_type": "code",
+     "collapsed": false,
+     "input": [],
+     "language": "python",
+     "metadata": {},
+     "outputs": [],
+     "prompt_number": 17
+    }
+   ],
+   "metadata": {}
+  }
+ ]
+}

@@ -1,0 +1,607 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# NVTabular / HugeCTR Criteo Example \n",
+    "Here we'll show how to use NVTabular first as a preprocessing library to prepare the [Criteo Display Advertising Challenge](https://www.kaggle.com/c/criteo-display-ad-challenge) dataset, and then train a model using HugeCTR.\n",
+    "\n",
+    "### Data Prep\n",
+    "Before we get started, make sure you've run the [optimize_criteo notebook](../optimize_criteo.ipynb), which will convert the tsv data published by Criteo into the parquet format that our accelerated readers prefer. It's fair to mention at this point that that notebook will take ~30 minutes to run. While we're hoping to release accelerated csv readers in the near future, we also believe that inefficiencies in existing data representations like csv are in no small part a consequence of inefficiencies in the existing hardware/software stack. Accelerating these pipelines on new hardware like GPUs may require us to make new choices about the representations we use to store that data, and parquet represents a strong alternative."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Standard Libraries\n",
+    "import os\n",
+    "from time import time\n",
+    "import re\n",
+    "import shutil\n",
+    "import glob\n",
+    "import warnings\n",
+    "\n",
+    "# External Dependencies\n",
+    "import numpy as np\n",
+    "import cupy as cp\n",
+    "import cudf\n",
+    "import dask_cudf\n",
+    "from dask_cuda import LocalCUDACluster\n",
+    "from dask.distributed import Client\n",
+    "from dask.utils import parse_bytes\n",
+    "from dask.delayed import delayed\n",
+    "import rmm\n",
+    "\n",
+    "# NVTabular\n",
+    "import nvtabular as nvt\n",
+    "from nvtabular.ops import Categorify, Clip, FillMissing, HashBucket, LambdaOp, LogOp, Normalize, Rename, get_embedding_sizes\n",
+    "from nvtabular.io import Shuffle\n",
+    "from nvtabular.utils import _pynvml_mem_size, device_mem_size\n",
+    "\n",
+    "# HugeCTR\n",
+    "import hugectr\n",
+    "from mpi4py import MPI"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Dataset and Dataset Schema\n",
+    "Once our data is ready, we'll define some high level parameters to describe where our data is and what it \"looks like\" at a high level."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# define some information about where to get our data\n",
+    "BASE_DIR = \"/raid/criteo/tests/\"\n",
+    "input_path = os.path.join(BASE_DIR, \"crit_int_pq\")\n",
+    "dask_workdir = os.path.join(BASE_DIR, \"test_dask/workdir\")\n",
+    "output_path = os.path.join(BASE_DIR, \"test_dask/output\")\n",
+    "stats_path = os.path.join(BASE_DIR, \"test_dask/stats\")\n",
+    "\n",
+    "NUM_TRAIN_DAYS = 23 # number of days worth of data to use for training, the rest will be used for validation\n",
+    "\n",
+    "# Make sure we have a clean worker space for Dask\n",
+    "if os.path.isdir(dask_workdir):\n",
+    "    shutil.rmtree(dask_workdir)\n",
+    "os.makedirs(dask_workdir)\n",
+    "\n",
+    "# Make sure we have a clean stats space for Dask\n",
+    "if os.path.isdir(stats_path):\n",
+    "    shutil.rmtree(stats_path)\n",
+    "os.mkdir(stats_path)\n",
+    "         \n",
+    "# Make sure we have a clean output path\n",
+    "if os.path.isdir(output_path):\n",
+    "    shutil.rmtree(output_path)\n",
+    "os.mkdir(output_path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "! ls $BASE_DIR"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "fname = 'day_{}.parquet'\n",
+    "num_days = len([i for i in os.listdir(input_path) if re.match(fname.format('[0-9]{1,2}'), i) is not None])\n",
+    "train_paths = [os.path.join(input_path, fname.format(day)) for day in range(NUM_TRAIN_DAYS)]\n",
+    "valid_paths = [os.path.join(input_path, fname.format(day)) for day in range(NUM_TRAIN_DAYS, num_days)]\n",
+    "print(train_paths)\n",
+    "print(valid_paths)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Deploy a Distributed-Dask Cluster"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we configure and deploy a Dask Cluster. Please, [read this document](https://github.com/NVIDIA/NVTabular/blob/d419a4da29cf372f1547edc536729b0733560a44/bench/examples/MultiGPUBench.md) to know how to set the parameters."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Dask dashboard\n",
+    "dashboard_port = \"8787\"\n",
+    "\n",
+    "# Deploy a Single-Machine Multi-GPU Cluster\n",
+    "protocol = \"tcp\"             # \"tcp\" or \"ucx\"\n",
+    "NUM_GPUS = [0,1,2,3,4,5,6,7]\n",
+    "visible_devices = \",\".join([str(n) for n in NUM_GPUS])  # Delect devices to place workers\n",
+    "device_limit_frac = 0.7      # Spill GPU-Worker memory to host at this limit.\n",
+    "device_pool_frac = 0.8\n",
+    "part_mem_frac = 0.15\n",
+    "\n",
+    "# Use total device size to calculate args.device_limit_frac\n",
+    "device_size = device_mem_size(kind=\"total\")\n",
+    "device_limit = int(device_limit_frac * device_size)\n",
+    "device_pool_size = int(device_pool_frac * device_size)\n",
+    "part_size = int(part_mem_frac * device_size)\n",
+    "\n",
+    "# Check if any device memory is already occupied\n",
+    "for dev in visible_devices.split(\",\"):\n",
+    "    fmem = _pynvml_mem_size(kind=\"free\", index=int(dev))\n",
+    "    used = (device_size - fmem) / 1e9\n",
+    "    if used > 1.0:\n",
+    "        warnings.warn(f\"BEWARE - {used} GB is already occupied on device {int(dev)}!\")\n",
+    "\n",
+    "cluster = None               # (Optional) Specify existing scheduler port\n",
+    "if cluster is None:\n",
+    "    cluster = LocalCUDACluster(\n",
+    "        protocol = protocol,\n",
+    "        n_workers=len(visible_devices.split(\",\")),\n",
+    "        CUDA_VISIBLE_DEVICES = visible_devices,\n",
+    "        device_memory_limit = device_limit,\n",
+    "        local_directory=dask_workdir,\n",
+    "        dashboard_address=\":\" + dashboard_port,\n",
+    "    )\n",
+    "\n",
+    "# Create the distributed client\n",
+    "client = Client(cluster)\n",
+    "client"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Initilize Memory Pools"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Initialize RMM pool on ALL workers\n",
+    "def _rmm_pool():\n",
+    "    rmm.reinitialize(\n",
+    "        # RMM may require the pool size to be a multiple of 256.\n",
+    "        pool_allocator=True,\n",
+    "        initial_pool_size=(device_pool_size // 256) * 256, # Use default size\n",
+    "    )\n",
+    "    \n",
+    "client.run(_rmm_pool)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Preprocessing\n",
+    "At this point, our data still isn't in a form that's ideal for consumption by neural networks. The most pressing issues are missing values and the fact that our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices that can be leveraged by a learned embedding. Less pressing, but still important for learning dynamics, are the distributions of our continuous variables, which are distributed across multiple orders of magnitude and are uncentered (i.e. E[x] != 0).\n",
+    "\n",
+    "We can fix these issues in a conscise and GPU-accelerated manner with an NVTabular `Workflow`. We'll instantiate one with our current dataset schema, then symbolically add operations _on_ that schema. By setting all these `Ops` to use `replace=True`, the schema itself will remain unmodified, while the variables represented by each field in the schema will be transformed.\n",
+    "\n",
+    "#### Frequency Thresholding\n",
+    "One interesting thing worth pointing out is that we're using _frequency thresholding_ in our `Categorify` op. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency (which we've set here to be 15 occurrences throughout the dataset) to the _same_ index, keeping the model from overfitting to sparse signals."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# define our dataset schema\n",
+    "CONTINUOUS_COLUMNS = ['I' + str(x) for x in range(1,14)]\n",
+    "CATEGORICAL_COLUMNS =  ['C' + str(x) for x in range(1,27)]\n",
+    "LABEL_COLUMNS = ['label']\n",
+    "COLUMNS = CONTINUOUS_COLUMNS + CATEGORICAL_COLUMNS + LABEL_COLUMNS\n",
+    "\n",
+    "num_buckets=10000000\n",
+    "categorify_op = Categorify(out_path=stats_path, max_size=num_buckets)\n",
+    "cat_features = CATEGORICAL_COLUMNS >> categorify_op\n",
+    "cont_features = CONTINUOUS_COLUMNS >> FillMissing() >> Clip(min_value=0) >> Normalize()\n",
+    "features = cat_features + cont_features + LABEL_COLUMNS\n",
+    "\n",
+    "workflow = nvt.Workflow(features, client=client)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now instantiate dataset iterators to loop through our dataset (which we couldn't fit into GPU memory). We need to enforce the required HugeCTR data types, so we set them in a dictionary and give as an argument when creating our dataset"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "dict_dtypes={}\n",
+    "\n",
+    "for col in CATEGORICAL_COLUMNS:\n",
+    "    dict_dtypes[col] = np.int64\n",
+    "    \n",
+    "for col in CONTINUOUS_COLUMNS:\n",
+    "    dict_dtypes[col] = np.float32\n",
+    "    \n",
+    "for col in LABEL_COLUMNS:\n",
+    "    dict_dtypes[col] = np.float32"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "train_dataset = nvt.Dataset(train_paths, engine='parquet', part_size=part_size)\n",
+    "valid_dataset = nvt.Dataset(valid_paths, engine='parquet', part_size=part_size)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now run them through our workflows to collect statistics on the train set, then transform and save to parquet files."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "output_train_dir = os.path.join(output_path, 'train/')\n",
+    "output_valid_dir = os.path.join(output_path, 'valid/')\n",
+    "! mkdir -p $output_train_dir\n",
+    "! mkdir -p $output_valid_dir"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "For reference, let's time it to see how long it takes..."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%%time\n",
+    "workflow.fit(train_dataset)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "%%time\n",
+    "workflow.transform(train_dataset).to_parquet(output_path=output_train_dir,\n",
+    "                                         shuffle=nvt.io.Shuffle.PER_PARTITION, \n",
+    "                                         dtypes=dict_dtypes,\n",
+    "                                         cats=CATEGORICAL_COLUMNS,\n",
+    "                                         conts=CONTINUOUS_COLUMNS,\n",
+    "                                         labels=LABEL_COLUMNS)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "%%time\n",
+    "workflow.transform(valid_dataset).to_parquet(output_path=output_valid_dir, \n",
+    "                                             dtypes=dict_dtypes,\n",
+    "                                             cats=CATEGORICAL_COLUMNS,\n",
+    "                                             conts=CONTINUOUS_COLUMNS,\n",
+    "                                             labels=LABEL_COLUMNS)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Get the embeddings table size, to configurate HugeCTR"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "embeddings = [c[0] for c in categorify_op.get_embedding_sizes(CATEGORICAL_COLUMNS).values()]\n",
+    "embeddings = np.clip(a=embeddings, a_min=None, a_max=num_buckets).tolist()\n",
+    "print(embeddings)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "And just like that, we have training and validation sets ready to feed to a model!"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## HugeCTR\n",
+    "### Training\n",
+    "We'll run huge_ctr using the DLRM configuration file.\n",
+    "\n",
+    "First, we'll shutdown our Dask client from earlier to free up some memory so that we can share it with HugeCTR."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false,
+    "jupyter": {
+     "outputs_hidden": false
+    }
+   },
+   "outputs": [],
+   "source": [
+    "client.shutdown()\n",
+    "cluster.close()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Finally, we run HugeCTR. Please, look at the jupyter-lab console to see the HugeCTR output. For reference, let's time it to see how long it takes..."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%% time\n",
+    "solver = hugectr.solver_parser_helper(num_epochs = 0,\n",
+    "                                    max_iter = 10000,\n",
+    "                                    max_eval_batches = 100,\n",
+    "                                    batchsize_eval = 2720,\n",
+    "                                    batchsize = 2720,\n",
+    "                                    display = 1000,\n",
+    "                                    eval_interval = 3200,\n",
+    "                                    i64_input_key = True,\n",
+    "                                    use_mixed_precision = False,\n",
+    "                                    repeat_dataset = True)\n",
+    "optimizer = hugectr.optimizer.CreateOptimizer(optimizer_type = hugectr.Optimizer_t.SGD,\n",
+    "                                    use_mixed_precision = False)\n",
+    "model = hugectr.Model(solver, optimizer)\n",
+    "model.add(hugectr.Input(data_reader_type = hugectr.DataReaderType_t.Parquet,\n",
+    "                            source = \"/raid/criteo/tests/test_dask/output/train/_file_list.txt\",\n",
+    "                            eval_source = \"/raid/criteo/tests/test_dask/output/valid/_file_list.txt\",\n",
+    "                            check_type = hugectr.Check_t.Non,\n",
+    "                            label_dim = 1, label_name = \"label\",\n",
+    "                            dense_dim = 13, dense_name = \"dense\",\n",
+    "                            slot_size_array = [10000000, 10000000, 3014529, 400781, 11, 2209, 11869, 148, 4, 977, 15, 38713, 10000000, 10000000, 10000000, 584616, 12883, 109, 37, 17177, 7425, 20266, 4, 7085, 1535, 64],\n",
+    "                            data_reader_sparse_param_array = \n",
+    "                            [hugectr.DataReaderSparseParam(hugectr.DataReaderSparse_t.Localized, 30, 1, 26)],\n",
+    "                            sparse_names = [\"data1\"]))\n",
+    "model.add(hugectr.SparseEmbedding(embedding_type = hugectr.Embedding_t.LocalizedSlotSparseEmbeddingHash, \n",
+    "                            max_vocabulary_size_per_gpu = 15500000,\n",
+    "                            embedding_vec_size = 128,\n",
+    "                            combiner = 0,\n",
+    "                            sparse_embedding_name = \"sparse_embedding1\",\n",
+    "                            bottom_name = \"data1\"))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"dense\"],\n",
+    "                            top_names = [\"fc1\"],\n",
+    "                            num_output=512))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc1\"],\n",
+    "                            top_names = [\"relu1\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"relu1\"],\n",
+    "                            top_names = [\"fc2\"],\n",
+    "                            num_output=256))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc2\"],\n",
+    "                            top_names = [\"relu2\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"relu2\"],\n",
+    "                            top_names = [\"fc3\"],\n",
+    "                            num_output=128))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc3\"],\n",
+    "                            top_names = [\"relu3\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.Interaction,\n",
+    "                            bottom_names = [\"relu3\", \"sparse_embedding1\"],\n",
+    "                            top_names = [\"interaction1\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"interaction1\"],\n",
+    "                            top_names = [\"fc4\"],\n",
+    "                            num_output=1024))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc4\"],\n",
+    "                            top_names = [\"relu4\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"relu4\"],\n",
+    "                            top_names = [\"fc5\"],\n",
+    "                            num_output=1024))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc5\"],\n",
+    "                            top_names = [\"relu5\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"relu5\"],\n",
+    "                            top_names = [\"fc6\"],\n",
+    "                            num_output=512))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc6\"],\n",
+    "                            top_names = [\"relu6\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"relu6\"],\n",
+    "                            top_names = [\"fc7\"],\n",
+    "                            num_output=256))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.ReLU,\n",
+    "                            bottom_names = [\"fc7\"],\n",
+    "                            top_names = [\"relu7\"]))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.InnerProduct,\n",
+    "                            bottom_names = [\"relu7\"],\n",
+    "                            top_names = [\"fc8\"],\n",
+    "                            num_output=1))\n",
+    "model.add(hugectr.DenseLayer(layer_type = hugectr.Layer_t.BinaryCrossEntropyLoss,\n",
+    "                            bottom_names = [\"fc8\", \"label\"],\n",
+    "                            top_names = [\"loss\"]))\n",
+    "model.compile()\n",
+    "model.summary()\n",
+    "model.fit()"
+   ]
+  }
+ ],
+ "metadata": {
+  "file_extension": ".py",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.9"
+  },
+  "mimetype": "text/x-python",
+  "npconvert_exporter": "python",
+  "pygments_lexer": "ipython3",
+  "version": 3
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

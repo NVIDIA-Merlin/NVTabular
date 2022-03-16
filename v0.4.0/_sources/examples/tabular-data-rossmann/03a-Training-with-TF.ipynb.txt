@@ -1,0 +1,512 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# NVTabular demo on Rossmann data - TensorFlow\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Learning objectives\n",
+    "\n",
+    "In the previous notebooks ([01-Download-Convert.ipynb](https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb) and [02-ETL-with-NVTabular.ipynb](https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/02-ETL-with-NVTabular.ipynb)), we downloaded, preprocessed and created features for the dataset. Now, we are ready to train our deep learning model on the dataset. In this notebook, we use **TensorFlow** with the NVTabular data loader for TensorFlow to accelereate the training pipeline."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import math\n",
+    "import json\n",
+    "import nvtabular as nvt\n",
+    "import glob"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Loading NVTabular workflow\n",
+    "This time, we only need to define our data directories. We can load the data schema from the NVTabular workflow."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "DATA_DIR = os.environ.get(\"OUTPUT_DATA_DIR\", \"./data\")\n",
+    "INPUT_DATA_DIR = os.environ.get(\"INPUT_DATA_DIR\", \"./data\")\n",
+    "PREPROCESS_DIR = os.path.join(INPUT_DATA_DIR, 'ross_pre/')\n",
+    "PREPROCESS_DIR_TRAIN = os.path.join(PREPROCESS_DIR, 'train')\n",
+    "PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, 'valid')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "What files are available to train on in our directories?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "stats.json  train  valid\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $PREPROCESS_DIR"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.161477db0fd5490e97f37556fcf7b4d0.parquet  _metadata\r\n",
+      "_file_list.txt\t\t\t\t    _metadata.json\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $PREPROCESS_DIR_TRAIN"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.be8b50960cff4cbf987dce3de9f2300b.parquet  _metadata\r\n",
+      "_file_list.txt\t\t\t\t    _metadata.json\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $PREPROCESS_DIR_VALID"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We load the data schema and statistic information from `stats.json`. We created the file in the previous notebook `rossmann-store-sales-feature-engineering`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "stats = json.load(open(PREPROCESS_DIR + \"/stats.json\", \"r\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "CATEGORICAL_COLUMNS = stats['CATEGORICAL_COLUMNS']\n",
+    "CONTINUOUS_COLUMNS = stats['CONTINUOUS_COLUMNS']\n",
+    "LABEL_COLUMNS = stats['LABEL_COLUMNS']\n",
+    "COLUMNS = CATEGORICAL_COLUMNS + CONTINUOUS_COLUMNS + LABEL_COLUMNS"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form `(cardinality, embedding_size)`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'Assortment': [4, 16],\n",
+       " 'CompetitionMonthsOpen': [26, 16],\n",
+       " 'CompetitionOpenSinceYear': [24, 16],\n",
+       " 'Day': [32, 16],\n",
+       " 'DayOfWeek': [8, 16],\n",
+       " 'Events': [22, 16],\n",
+       " 'Month': [13, 16],\n",
+       " 'Promo2SinceYear': [9, 16],\n",
+       " 'Promo2Weeks': [27, 16],\n",
+       " 'PromoInterval': [4, 16],\n",
+       " 'Promo_bw': [7, 16],\n",
+       " 'Promo_fw': [7, 16],\n",
+       " 'SchoolHoliday_bw': [9, 16],\n",
+       " 'SchoolHoliday_fw': [9, 16],\n",
+       " 'State': [13, 16],\n",
+       " 'StateHoliday': [3, 16],\n",
+       " 'StateHoliday_bw': [4, 16],\n",
+       " 'StateHoliday_fw': [4, 16],\n",
+       " 'Store': [1116, 81],\n",
+       " 'StoreType': [5, 16],\n",
+       " 'Week': [53, 16],\n",
+       " 'Year': [4, 16]}"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "EMBEDDING_TABLE_SHAPES = stats['EMBEDDING_TABLE_SHAPES']\n",
+    "EMBEDDING_TABLE_SHAPES"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Training a Network\n",
+    "\n",
+    "Now that our data is preprocessed and saved out, we can leverage `dataset`s to read through the preprocessed parquet files in an online fashion to train neural networks.\n",
+    "\n",
+    "We'll start by setting some universal hyperparameters for our model and optimizer. These settings will be the same across all of the frameworks that we explore in the different notebooks."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "If you're interested in contributing to NVTabular, feel free to take this challenge on and submit a pull request if successful. 12% RMSPE is achievable using the Novograd optimizer, but we know of no Novograd implementation for TensorFlow that supports sparse gradients, and so we are not including that solution below."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "EMBEDDING_DROPOUT_RATE = 0.04\n",
+    "DROPOUT_RATES = [0.001, 0.01]\n",
+    "HIDDEN_DIMS = [1000, 500]\n",
+    "BATCH_SIZE = 65536\n",
+    "LEARNING_RATE = 0.001\n",
+    "EPOCHS = 25\n",
+    "\n",
+    "# TODO: Calculate on the fly rather than recalling from previous analysis.\n",
+    "MAX_SALES_IN_TRAINING_SET = 38722.0\n",
+    "MAX_LOG_SALES_PREDICTION = 1.2 * math.log(MAX_SALES_IN_TRAINING_SET + 1.0)\n",
+    "\n",
+    "TRAIN_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_TRAIN, '*.parquet')))\n",
+    "VALID_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_VALID, '*.parquet')))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## TensorFlow\n",
+    "<a id=\"TensorFlow\"></a>\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### TensorFlow: Preparing Datasets\n",
+    "\n",
+    "`KerasSequenceLoader` wraps a lightweight iterator around a `dataset` object to handle chunking, shuffling, and application of any workflows (which can be applied online as a preprocessing step). For column names, can use either a list of string names or a list of TensorFlow `feature_columns` that will be used to feed the network"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import tensorflow as tf\n",
+    "\n",
+    "# we can control how much memory to give tensorflow with this environment variable\n",
+    "# IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise\n",
+    "# it's too late and TF will have claimed all free GPU memory\n",
+    "os.environ['TF_MEMORY_ALLOCATION'] = \"8192\" # explicit MB\n",
+    "os.environ['TF_MEMORY_ALLOCATION'] = \"0.5\" # fraction of free memory\n",
+    "from nvtabular.loader.tensorflow import KerasSequenceLoader, KerasSequenceValidater\n",
+    "\n",
+    "# cheap wrapper to keep things some semblance of neat\n",
+    "def make_categorical_embedding_column(name, dictionary_size, embedding_dim):\n",
+    "    return tf.feature_column.embedding_column(\n",
+    "        tf.feature_column.categorical_column_with_identity(name, dictionary_size),\n",
+    "        embedding_dim\n",
+    "    )\n",
+    "\n",
+    "# instantiate our columns\n",
+    "categorical_columns = [\n",
+    "    make_categorical_embedding_column(name, *EMBEDDING_TABLE_SHAPES[name]) for\n",
+    "        name in CATEGORICAL_COLUMNS\n",
+    "]\n",
+    "continuous_columns = [\n",
+    "    tf.feature_column.numeric_column(name, (1,)) for name in CONTINUOUS_COLUMNS\n",
+    "]\n",
+    "\n",
+    "# feed them to our datasets\n",
+    "train_dataset = KerasSequenceLoader(\n",
+    "    TRAIN_PATHS, # you could also use a glob pattern\n",
+    "    feature_columns=categorical_columns+continuous_columns,\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    label_names=LABEL_COLUMNS,\n",
+    "    shuffle=True,\n",
+    "    buffer_size=0.06 # amount of data, as a fraction of GPU memory, to load at once\n",
+    ")\n",
+    "\n",
+    "valid_dataset = KerasSequenceLoader(\n",
+    "    VALID_PATHS, # you could also use a glob pattern\n",
+    "    feature_columns=categorical_columns+continuous_columns,\n",
+    "    batch_size=BATCH_SIZE*4,\n",
+    "    label_names=LABEL_COLUMNS,\n",
+    "    shuffle=False,\n",
+    "    buffer_size=0.06 # amount of data, as a fraction of GPU memory, to load at once\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### TensorFlow: Defining a Model\n",
+    "\n",
+    "Using Keras, we can define the layers of our model and their parameters explicitly. Here, for the sake of consistency, we'll mimic fast.ai's [TabularModel](https://docs.fast.ai/tabular.learner.html)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# DenseFeatures layer needs a dictionary of {feature_name: input}\n",
+    "categorical_inputs = {}\n",
+    "for column_name in CATEGORICAL_COLUMNS:\n",
+    "    categorical_inputs[column_name] = tf.keras.Input(name=column_name, shape=(1,), dtype=tf.int64)\n",
+    "categorical_embedding_layer = tf.keras.layers.DenseFeatures(categorical_columns)\n",
+    "categorical_x = categorical_embedding_layer(categorical_inputs)\n",
+    "categorical_x = tf.keras.layers.Dropout(EMBEDDING_DROPOUT_RATE)(categorical_x)\n",
+    "\n",
+    "# Just concatenating continuous, so can use a list\n",
+    "continuous_inputs = []\n",
+    "for column_name in CONTINUOUS_COLUMNS:\n",
+    "    continuous_inputs.append(tf.keras.Input(name=column_name, shape=(1,), dtype=tf.float32))\n",
+    "continuous_embedding_layer = tf.keras.layers.Concatenate(axis=1)\n",
+    "continuous_x = continuous_embedding_layer(continuous_inputs)\n",
+    "continuous_x = tf.keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.1)(continuous_x)\n",
+    "\n",
+    "# concatenate and build MLP\n",
+    "x = tf.keras.layers.Concatenate(axis=1)([categorical_x, continuous_x])\n",
+    "for dim, dropout_rate in zip(HIDDEN_DIMS, DROPOUT_RATES):\n",
+    "    x = tf.keras.layers.Dense(dim, activation='relu')(x)\n",
+    "    x = tf.keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.1)(x)\n",
+    "    x = tf.keras.layers.Dropout(dropout_rate)(x)\n",
+    "x = tf.keras.layers.Dense(1, activation='linear')(x)\n",
+    "\n",
+    "# TODO: Initialize model weights to fix saturation issues.\n",
+    "# For now, we'll just scale the output of our model directly before\n",
+    "# hitting the sigmoid.\n",
+    "x = 0.1 * x\n",
+    "\n",
+    "x = MAX_LOG_SALES_PREDICTION * tf.keras.activations.sigmoid(x)\n",
+    "\n",
+    "# combine all our inputs into a single list\n",
+    "# (note that you can still use .fit, .predict, etc. on a dict\n",
+    "# that maps input tensor names to input values)\n",
+    "inputs = list(categorical_inputs.values()) + continuous_inputs\n",
+    "tf_model = tf.keras.Model(inputs=inputs, outputs=x)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### TensorFlow: Training"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def rmspe_tf(y_true, y_pred):\n",
+    "    # map back into \"true\" space by undoing transform\n",
+    "    y_true = tf.exp(y_true) - 1\n",
+    "    y_pred = tf.exp(y_pred) - 1\n",
+    "\n",
+    "    percent_error = (y_true - y_pred) / y_true\n",
+    "    return tf.sqrt(tf.reduce_mean(percent_error**2))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Epoch 1/25\n",
+      "13/13 [==============================] - 7s 166ms/step - loss: 6.1835 - rmspe_tf: 0.8900\n",
+      "Epoch 2/25\n",
+      "13/13 [==============================] - 2s 166ms/step - loss: 5.3472 - rmspe_tf: 0.8925\n",
+      "Epoch 3/25\n",
+      "13/13 [==============================] - 2s 166ms/step - loss: 4.6994 - rmspe_tf: 0.8807\n",
+      "Epoch 4/25\n",
+      "13/13 [==============================] - 2s 162ms/step - loss: 3.8926 - rmspe_tf: 0.8565\n",
+      "Epoch 5/25\n",
+      "13/13 [==============================] - 2s 165ms/step - loss: 2.9031 - rmspe_tf: 0.8123\n",
+      "Epoch 6/25\n",
+      "13/13 [==============================] - 2s 164ms/step - loss: 1.8590 - rmspe_tf: 0.7358\n",
+      "Epoch 7/25\n",
+      "13/13 [==============================] - 2s 161ms/step - loss: 0.9700 - rmspe_tf: 0.6148\n",
+      "Epoch 8/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.3942 - rmspe_tf: 0.4515\n",
+      "Epoch 9/25\n",
+      "13/13 [==============================] - 2s 164ms/step - loss: 0.1273 - rmspe_tf: 0.2961\n",
+      "Epoch 10/25\n",
+      "13/13 [==============================] - 2s 161ms/step - loss: 0.0468 - rmspe_tf: 0.2237\n",
+      "Epoch 11/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0347 - rmspe_tf: 0.2213\n",
+      "Epoch 12/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0342 - rmspe_tf: 0.2298\n",
+      "Epoch 13/25\n",
+      "13/13 [==============================] - 2s 164ms/step - loss: 0.0325 - rmspe_tf: 0.2151\n",
+      "Epoch 14/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0293 - rmspe_tf: 0.2076\n",
+      "Epoch 15/25\n",
+      "13/13 [==============================] - 2s 164ms/step - loss: 0.0274 - rmspe_tf: 0.1980\n",
+      "Epoch 16/25\n",
+      "13/13 [==============================] - 2s 161ms/step - loss: 0.0261 - rmspe_tf: 0.1939\n",
+      "Epoch 17/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0252 - rmspe_tf: 0.1875\n",
+      "Epoch 18/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0245 - rmspe_tf: 0.1830\n",
+      "Epoch 19/25\n",
+      "13/13 [==============================] - 2s 165ms/step - loss: 0.0241 - rmspe_tf: 0.1885\n",
+      "Epoch 20/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0236 - rmspe_tf: 0.1814\n",
+      "Epoch 21/25\n",
+      "13/13 [==============================] - 2s 166ms/step - loss: 0.0231 - rmspe_tf: 0.1797\n",
+      "Epoch 22/25\n",
+      "13/13 [==============================] - 2s 161ms/step - loss: 0.0227 - rmspe_tf: 0.1823\n",
+      "Epoch 23/25\n",
+      "13/13 [==============================] - 2s 164ms/step - loss: 0.0224 - rmspe_tf: 0.1754\n",
+      "Epoch 24/25\n",
+      "13/13 [==============================] - 2s 164ms/step - loss: 0.0221 - rmspe_tf: 0.1745\n",
+      "Epoch 25/25\n",
+      "13/13 [==============================] - 2s 163ms/step - loss: 0.0223 - rmspe_tf: 0.1740\n",
+      "run_time: 67.14452314376831 - rows: 76 - epochs: 25 - dl_thru: 28.29717020897987\n",
+      "CPU times: user 2min 52s, sys: 11.7 s, total: 3min 4s\n",
+      "Wall time: 1min 7s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "from time import time\n",
+    "\n",
+    "optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)\n",
+    "tf_model.compile(optimizer, 'mse', metrics=[rmspe_tf])\n",
+    "\n",
+    "validation_callback = KerasSequenceValidater(valid_dataset)\n",
+    "start = time()\n",
+    "history = tf_model.fit(\n",
+    "    train_dataset,\n",
+    "    callbacks=[validation_callback],\n",
+    "    epochs=EPOCHS,\n",
+    ")\n",
+    "t_final = time() - start\n",
+    "total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed\n",
+    "print(f\"run_time: {t_final} - rows: {total_rows} - epochs: {EPOCHS} - dl_thru: { (EPOCHS * total_rows) / t_final}\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "file_extension": ".py",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.6"
+  },
+  "mimetype": "text/x-python",
+  "name": "python",
+  "npconvert_exporter": "python",
+  "pygments_lexer": "ipython3",
+  "version": 3
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

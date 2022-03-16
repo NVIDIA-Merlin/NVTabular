@@ -1,0 +1,555 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:00.158056Z",
+     "iopub.status.busy": "2020-12-09T23:34:00.157495Z",
+     "iopub.status.idle": "2020-12-09T23:34:00.159833Z",
+     "shell.execute_reply": "2020-12-09T23:34:00.159365Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# NVTabular demo on Rossmann data - PyTorch\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Learning objectives\n",
+    "\n",
+    "In the previous notebooks ([01-Download-Convert.ipynb](https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb) and [02-ETL-with-NVTabular.ipynb](https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/02-ETL-with-NVTabular.ipynb)), we downloaded, preprocessed and created features for the dataset. Now, we are ready to train our deep learning model on the dataset. In this notebook, we use **PyTorch** with the NVTabular data loader for PyTorch to accelereate the training pipeline."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:00.163145Z",
+     "iopub.status.busy": "2020-12-09T23:34:00.162689Z",
+     "iopub.status.idle": "2020-12-09T23:34:02.057533Z",
+     "shell.execute_reply": "2020-12-09T23:34:02.057909Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import math\n",
+    "import json\n",
+    "import nvtabular as nvt\n",
+    "import glob"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Loading NVTabular workflow\n",
+    "This time, we only need to define our data directories. We can load the data schema from the NVTabular workflow."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:02.062672Z",
+     "iopub.status.busy": "2020-12-09T23:34:02.062080Z",
+     "iopub.status.idle": "2020-12-09T23:34:02.064319Z",
+     "shell.execute_reply": "2020-12-09T23:34:02.063911Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "DATA_DIR = os.environ.get(\"OUTPUT_DATA_DIR\", \"./data\")\n",
+    "INPUT_DATA_DIR = os.environ.get(\"INPUT_DATA_DIR\", \"./data\")\n",
+    "PREPROCESS_DIR = os.path.join(INPUT_DATA_DIR, \"ross_pre/\")\n",
+    "PREPROCESS_DIR_TRAIN = os.path.join(PREPROCESS_DIR, \"train\")\n",
+    "PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, \"valid\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "What files are available to train on in our directories?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:02.068105Z",
+     "iopub.status.busy": "2020-12-09T23:34:02.067594Z",
+     "iopub.status.idle": "2020-12-09T23:34:02.619485Z",
+     "shell.execute_reply": "2020-12-09T23:34:02.619836Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "stats.json  train  valid\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $PREPROCESS_DIR"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:02.627413Z",
+     "iopub.status.busy": "2020-12-09T23:34:02.623677Z",
+     "iopub.status.idle": "2020-12-09T23:34:03.158154Z",
+     "shell.execute_reply": "2020-12-09T23:34:03.158496Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.161477db0fd5490e97f37556fcf7b4d0.parquet  _metadata\n",
+      "_file_list.txt\t\t\t\t    _metadata.json\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $PREPROCESS_DIR_TRAIN"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:03.164912Z",
+     "iopub.status.busy": "2020-12-09T23:34:03.161637Z",
+     "iopub.status.idle": "2020-12-09T23:34:03.700836Z",
+     "shell.execute_reply": "2020-12-09T23:34:03.701213Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.be8b50960cff4cbf987dce3de9f2300b.parquet  _metadata\n",
+      "_file_list.txt\t\t\t\t    _metadata.json\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls $PREPROCESS_DIR_VALID"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We load the data schema and statistic information from `stats.json`. We created the file in the previous notebook `rossmann-store-sales-feature-engineering`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:03.724731Z",
+     "iopub.status.busy": "2020-12-09T23:34:03.715161Z",
+     "iopub.status.idle": "2020-12-09T23:34:03.727038Z",
+     "shell.execute_reply": "2020-12-09T23:34:03.726599Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "stats = json.load(open(PREPROCESS_DIR + \"/stats.json\", \"r\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:03.730696Z",
+     "iopub.status.busy": "2020-12-09T23:34:03.730253Z",
+     "iopub.status.idle": "2020-12-09T23:34:03.732468Z",
+     "shell.execute_reply": "2020-12-09T23:34:03.732102Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "CATEGORICAL_COLUMNS = stats[\"CATEGORICAL_COLUMNS\"]\n",
+    "CONTINUOUS_COLUMNS = stats[\"CONTINUOUS_COLUMNS\"]\n",
+    "LABEL_COLUMNS = stats[\"LABEL_COLUMNS\"]\n",
+    "COLUMNS = CATEGORICAL_COLUMNS + CONTINUOUS_COLUMNS + LABEL_COLUMNS"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form `(cardinality, embedding_size)`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2020-12-09T23:34:03.736225Z",
+     "iopub.status.busy": "2020-12-09T23:34:03.735788Z",
+     "iopub.status.idle": "2020-12-09T23:34:03.757466Z",
+     "shell.execute_reply": "2020-12-09T23:34:03.757088Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'Assortment': [4, 16],\n",
+       " 'CompetitionMonthsOpen': [26, 16],\n",
+       " 'CompetitionOpenSinceYear': [24, 16],\n",
+       " 'Day': [32, 16],\n",
+       " 'DayOfWeek': [8, 16],\n",
+       " 'Events': [22, 16],\n",
+       " 'Month': [13, 16],\n",
+       " 'Promo2SinceYear': [9, 16],\n",
+       " 'Promo2Weeks': [27, 16],\n",
+       " 'PromoInterval': [4, 16],\n",
+       " 'Promo_bw': [7, 16],\n",
+       " 'Promo_fw': [7, 16],\n",
+       " 'SchoolHoliday_bw': [9, 16],\n",
+       " 'SchoolHoliday_fw': [9, 16],\n",
+       " 'State': [13, 16],\n",
+       " 'StateHoliday': [3, 16],\n",
+       " 'StateHoliday_bw': [4, 16],\n",
+       " 'StateHoliday_fw': [4, 16],\n",
+       " 'Store': [1116, 81],\n",
+       " 'StoreType': [5, 16],\n",
+       " 'Week': [53, 16],\n",
+       " 'Year': [4, 16]}"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "EMBEDDING_TABLE_SHAPES = stats[\"EMBEDDING_TABLE_SHAPES\"]\n",
+    "EMBEDDING_TABLE_SHAPES"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Training a Network\n",
+    "\n",
+    "Now that our data is preprocessed and saved out, we can leverage `dataset`s to read through the preprocessed parquet files in an online fashion to train neural networks.\n",
+    "\n",
+    "We'll start by setting some universal hyperparameters for our model and optimizer. These settings will be the same across all of the frameworks that we explore in the different notebooks."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "EMBEDDING_DROPOUT_RATE = 0.04\n",
+    "DROPOUT_RATES = [0.001, 0.01]\n",
+    "HIDDEN_DIMS = [1000, 500]\n",
+    "BATCH_SIZE = 65536\n",
+    "LEARNING_RATE = 0.001\n",
+    "EPOCHS = 25\n",
+    "\n",
+    "# TODO: Calculate on the fly rather than recalling from previous analysis.\n",
+    "MAX_SALES_IN_TRAINING_SET = 38722.0\n",
+    "MAX_LOG_SALES_PREDICTION = 1.2 * math.log(MAX_SALES_IN_TRAINING_SET + 1.0)\n",
+    "\n",
+    "TRAIN_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_TRAIN, \"*.parquet\")))\n",
+    "VALID_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_VALID, \"*.parquet\")))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## PyTorch<a id=\"PyTorch\"></a>\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### PyTorch: Preparing Datasets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import torch\n",
+    "from nvtabular.loader.torch import TorchAsyncItr, DLDataLoader\n",
+    "from nvtabular.framework_utils.torch.models import Model\n",
+    "from nvtabular.framework_utils.torch.utils import process_epoch\n",
+    "\n",
+    "# TensorItrDataset returns a single batch of x_cat, x_cont, y.\n",
+    "\n",
+    "train_dataset = TorchAsyncItr(\n",
+    "    nvt.Dataset(TRAIN_PATHS),\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    cats=CATEGORICAL_COLUMNS,\n",
+    "    conts=CONTINUOUS_COLUMNS,\n",
+    "    labels=LABEL_COLUMNS,\n",
+    ")\n",
+    "train_loader = DLDataLoader(\n",
+    "    train_dataset, batch_size=None, collate_fn=lambda x: x, pin_memory=False, num_workers=0\n",
+    ")\n",
+    "\n",
+    "valid_dataset = TorchAsyncItr(\n",
+    "    nvt.Dataset(VALID_PATHS),\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    cats=CATEGORICAL_COLUMNS,\n",
+    "    conts=CONTINUOUS_COLUMNS,\n",
+    "    labels=LABEL_COLUMNS,\n",
+    ")\n",
+    "valid_loader = DLDataLoader(\n",
+    "    valid_dataset, batch_size=None, collate_fn=lambda x: x, pin_memory=False, num_workers=0\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### PyTorch: Defining a Model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "model = Model(\n",
+    "    embedding_table_shapes=EMBEDDING_TABLE_SHAPES,\n",
+    "    num_continuous=len(CONTINUOUS_COLUMNS),\n",
+    "    emb_dropout=EMBEDDING_DROPOUT_RATE,\n",
+    "    layer_hidden_dims=HIDDEN_DIMS,\n",
+    "    layer_dropout_rates=DROPOUT_RATES,\n",
+    "    max_output=MAX_LOG_SALES_PREDICTION,\n",
+    ").to(\"cuda\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### PyTorch: Training"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def rmspe_func(y_pred, y):\n",
+    "    \"Return y_pred and y to non-log space and compute RMSPE\"\n",
+    "    y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1\n",
+    "    pct_var = (y_pred - y) / y\n",
+    "    return (pct_var ** 2).mean().pow(0.5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": [
+     "flake8-noqa-cell"
+    ]
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 00. Train loss: 8.2353. Train RMSPE: inf. Valid loss: 4.6918. Valid RMSPE: 0.8720.\n",
+      "run_time: 2.8103976249694824 - rows: 844338 - epochs: 25 - dl_thru: 300433.6441570856\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 01. Train loss: 3.9518. Train RMSPE: 0.8210. Valid loss: 3.5244. Valid RMSPE: 0.8308.\n",
+      "run_time: 1.7620582580566406 - rows: 844338 - epochs: 25 - dl_thru: 479177.1192237499\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 02. Train loss: 2.5495. Train RMSPE: 0.7655. Valid loss: 2.0343. Valid RMSPE: 0.7342.\n",
+      "run_time: 1.744666576385498 - rows: 844338 - epochs: 25 - dl_thru: 483953.78889486834\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 03. Train loss: 1.2480. Train RMSPE: 0.6372. Valid loss: 0.7330. Valid RMSPE: 0.5311.\n",
+      "run_time: 1.74592924118042 - rows: 844338 - epochs: 25 - dl_thru: 483603.79108442244\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 04. Train loss: 0.4000. Train RMSPE: 0.4666. Valid loss: 0.2494. Valid RMSPE: 0.3945.\n",
+      "run_time: 1.74570631980896 - rows: 844338 - epochs: 25 - dl_thru: 483665.5458132268\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 05. Train loss: 0.1837. Train RMSPE: inf. Valid loss: 0.1510. Valid RMSPE: 0.4358.\n",
+      "run_time: 1.7406132221221924 - rows: 844338 - epochs: 25 - dl_thru: 485080.76881696057\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 06. Train loss: 0.1635. Train RMSPE: inf. Valid loss: 0.1332. Valid RMSPE: 0.3840.\n",
+      "run_time: 1.7466964721679688 - rows: 844338 - epochs: 25 - dl_thru: 483391.3696247538\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 07. Train loss: 0.1364. Train RMSPE: inf. Valid loss: 0.1120. Valid RMSPE: 0.3286.\n",
+      "run_time: 1.7637887001037598 - rows: 844338 - epochs: 25 - dl_thru: 478707.0015531506\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 08. Train loss: 0.1204. Train RMSPE: 0.4360. Valid loss: 0.0997. Valid RMSPE: 0.3041.\n",
+      "run_time: 1.7595922946929932 - rows: 844338 - epochs: 25 - dl_thru: 479848.65729780705\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 09. Train loss: 0.1117. Train RMSPE: 0.3887. Valid loss: 0.0952. Valid RMSPE: 0.2937.\n",
+      "run_time: 1.7458832263946533 - rows: 844338 - epochs: 25 - dl_thru: 483616.5370255634\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 10. Train loss: 0.1035. Train RMSPE: inf. Valid loss: 0.0812. Valid RMSPE: 0.2911.\n",
+      "run_time: 1.758488655090332 - rows: 844338 - epochs: 25 - dl_thru: 480149.8136231235\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 11. Train loss: 0.0978. Train RMSPE: 0.3773. Valid loss: 0.0739. Valid RMSPE: 0.2733.\n",
+      "run_time: 1.7456979751586914 - rows: 844338 - epochs: 25 - dl_thru: 483667.8577938123\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 12. Train loss: 0.0925. Train RMSPE: 0.3671. Valid loss: 0.0693. Valid RMSPE: 0.2753.\n",
+      "run_time: 1.7409119606018066 - rows: 844338 - epochs: 25 - dl_thru: 484997.5295178771\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 13. Train loss: 0.0902. Train RMSPE: 0.3725. Valid loss: 0.0722. Valid RMSPE: 0.2833.\n",
+      "run_time: 1.7457911968231201 - rows: 844338 - epochs: 25 - dl_thru: 483642.0309235564\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 14. Train loss: 0.0869. Train RMSPE: 0.3538. Valid loss: 0.0663. Valid RMSPE: 0.2507.\n",
+      "run_time: 1.7432737350463867 - rows: 844338 - epochs: 25 - dl_thru: 484340.4584292283\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 15. Train loss: 0.0923. Train RMSPE: inf. Valid loss: 0.0786. Valid RMSPE: 0.2623.\n",
+      "run_time: 1.748652458190918 - rows: 844338 - epochs: 25 - dl_thru: 482850.66368963703\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 16. Train loss: 0.0858. Train RMSPE: inf. Valid loss: 0.0583. Valid RMSPE: 0.2369.\n",
+      "run_time: 1.7407851219177246 - rows: 844338 - epochs: 25 - dl_thru: 485032.86785323656\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 17. Train loss: 0.0765. Train RMSPE: inf. Valid loss: 0.0522. Valid RMSPE: 0.2330.\n",
+      "run_time: 1.7414436340332031 - rows: 844338 - epochs: 25 - dl_thru: 484849.45679493726\n",
+      "Total batches: 12\n",
+      "Total batches: 0\n",
+      "Epoch 18. Train loss: 0.0725. Train RMSPE: 0.3219. Valid loss: 0.0564. Valid RMSPE: 0.2332.\n",
+      "run_time: 1.742950439453125 - rows: 844338 - epochs: 25 - dl_thru: 484430.2975504701\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "from time import time\n",
+    "\n",
+    "for epoch in range(EPOCHS):\n",
+    "    start = time()\n",
+    "    train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)\n",
+    "    train_rmspe = rmspe_func(y_pred, y)\n",
+    "    valid_loss, y_pred, y = process_epoch(valid_loader, model, train=False)\n",
+    "    valid_rmspe = rmspe_func(y_pred, y)\n",
+    "    print(\n",
+    "        f\"Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Train RMSPE: {train_rmspe:.4f}. Valid loss: {valid_loss:.4f}. Valid RMSPE: {valid_rmspe:.4f}.\"\n",
+    "    )\n",
+    "    t_final = time() - start\n",
+    "    total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed\n",
+    "    print(\n",
+    "        f\"run_time: {t_final} - rows: {total_rows} - epochs: {EPOCHS} - dl_thru: {total_rows / t_final}\"\n",
+    "    )"
+   ]
+  }
+ ],
+ "metadata": {
+  "file_extension": ".py",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.8"
+  },
+  "mimetype": "text/x-python",
+  "name": "python",
+  "npconvert_exporter": "python",
+  "pygments_lexer": "ipython3",
+  "version": 3
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

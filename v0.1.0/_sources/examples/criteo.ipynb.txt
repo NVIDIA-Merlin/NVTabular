@@ -1,0 +1,494 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Criteo Example \n",
+    "Here we'll show how to use NVTabular first as a preprocessing library to prepare the [Criteo Display Advertising Challenge](https://www.kaggle.com/c/criteo-display-ad-challenge) dataset, and then as a dataloader to train a FastAI model on the prepared data. The large memory footprint of the Criteo dataset presents a great opportunity to highlight the advantages of the online fashion in which NVTabular loads and transforms data.\n",
+    "\n",
+    "### Data Prep\n",
+    "Before we get started, make sure you've run the [`optimize_criteo` notebook](./optimize_criteo.ipynb), which will convert the tsv data published by Criteo into the parquet format that our accelerated readers prefer. It's fair to mention at this point that that notebook will take ~4 hours to run. While we're hoping to release accelerated csv readers in the near future, we also believe that inefficiencies in existing data representations like csv are in no small part a consequence of inefficiencies in the existing hardware/software stack. Accelerating these pipelines on new hardware like GPUs may require us to make new choices about the representations we use to store that data, and parquet represents a strong alternative."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Quick Aside: Clearing Cache\n",
+    "The following line is not strictly necessary, but is included for those who want to validate NVIDIA's benchmarks. We start by clearing the existing cache to start as \"fresh\" as possible. If you're having trouble running it, try executing the container with the `--priveleged` flag."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/bin/sh: 1: cannot create /proc/sys/vm/drop_caches: Read-only file system\n"
+     ]
+    }
+   ],
+   "source": [
+    "!sync; echo 3 > /proc/sys/vm/drop_caches"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/conda/envs/rapids/lib/python3.7/site-packages/numba/cuda/envvars.py:17: NumbaWarning: \n",
+      "Environment variables with the 'NUMBAPRO' prefix are deprecated and consequently ignored, found use of NUMBAPRO_NVVM=/usr/local/cuda/nvvm/lib64/libnvvm.so.\n",
+      "\n",
+      "For more information about alternatives visit: ('http://numba.pydata.org/numba-doc/latest/cuda/overview.html', '#cudatoolkit-lookup')\n",
+      "  warnings.warn(errors.NumbaWarning(msg))\n",
+      "/conda/envs/rapids/lib/python3.7/site-packages/numba/cuda/envvars.py:17: NumbaWarning: \n",
+      "Environment variables with the 'NUMBAPRO' prefix are deprecated and consequently ignored, found use of NUMBAPRO_LIBDEVICE=/usr/local/cuda/nvvm/libdevice/.\n",
+      "\n",
+      "For more information about alternatives visit: ('http://numba.pydata.org/numba-doc/latest/cuda/overview.html', '#cudatoolkit-lookup')\n",
+      "  warnings.warn(errors.NumbaWarning(msg))\n"
+     ]
+    }
+   ],
+   "source": [
+    "import os\n",
+    "from time import time\n",
+    "import re\n",
+    "import glob\n",
+    "import warnings\n",
+    "\n",
+    "# tools for data preproc/loading\n",
+    "import torch\n",
+    "import rmm\n",
+    "import nvtabular as nvt\n",
+    "from nvtabular.ops import Normalize, FillMissing, Categorify, Moments, Median, Encoder, LogOp, ZeroFill\n",
+    "from nvtabular.torch_dataloader import FileItrDataset, DLCollator, DLDataLoader\n",
+    "\n",
+    "# tools for training\n",
+    "from fastai.basic_train import Learner\n",
+    "from fastai.basic_data import DataBunch\n",
+    "from fastai.tabular import TabularModel\n",
+    "from fastai.metrics import accuracy"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Initializing the Memory Pool\n",
+    "For applications like the one that follows where RAPIDS will be the only workhorse user of GPU memory and resource, a good best practices is to use the RAPIDS Memory Manager library `rmm` to allocate a dedicated pool of GPU memory that allows for fast, asynchronous memory management. Here, we'll dedicate 80% of free GPU memory to this pool to make sure we get the most utilization possible."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * rmm.get_info().free)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Dataset and Dataset Schema\n",
+    "Once our data is ready, we'll define some high level parameters to describe where our data is and what it \"looks like\" at a high level."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# define some information about where to get our data\n",
+    "INPUT_DATA_DIR = os.environ.get('INPUT_DATA_DIR', '/data')\n",
+    "OUTPUT_DATA_DIR = os.environ.get('OUTPUT_DATA_DIR', '/processed') # where we'll save our procesed data to\n",
+    "NUM_TRAIN_DAYS = 23 # number of days worth of data to use for training, the rest will be used for validation\n",
+    "\n",
+    "# define our dataset schema\n",
+    "CONTINUOUS_COLUMNS = ['I' + str(x) for x in range(1,14)]\n",
+    "CATEGORICAL_COLUMNS =  ['C' + str(x) for x in range(1,27)]\n",
+    "LABEL_COLUMNS = ['label']\n",
+    "COLUMNS = CONTINUOUS_COLUMNS + CATEGORICAL_COLUMNS + LABEL_COLUMNS"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "_metadata\tday_12.parquet\tday_17.parquet\tday_21.parquet\tday_5.parquet\n",
+      "day_0.parquet\tday_13.parquet\tday_18.parquet\tday_22.parquet\tday_6.parquet\n",
+      "day_1.parquet\tday_14.parquet\tday_19.parquet\tday_23.parquet\tday_7.parquet\n",
+      "day_10.parquet\tday_15.parquet\tday_2.parquet\tday_3.parquet\tday_8.parquet\n",
+      "day_11.parquet\tday_16.parquet\tday_20.parquet\tday_4.parquet\tday_9.parquet\n"
+     ]
+    }
+   ],
+   "source": [
+    "! ls $INPUT_DATA_DIR"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fname = 'day_{}.parquet'\n",
+    "num_days = len([i for i in os.listdir(INPUT_DATA_DIR) if re.match(fname.format('[0-9]{1,2}'), i) is not None])\n",
+    "train_paths = [os.path.join(INPUT_DATA_DIR, fname.format(day)) for day in range(NUM_TRAIN_DAYS)]\n",
+    "valid_paths = [os.path.join(INPUT_DATA_DIR, fname.format(day)) for day in range(NUM_TRAIN_DAYS, num_days)]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Preprocessing\n",
+    "At this point, our data still isn't in a form that's ideal for consumption by neural networks. The most pressing issues are missing values and the fact that our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices that can be leveraged by a learned embedding. Less pressing, but still important for learning dynamics, are the distributions of our continuous variables, which are distributed across multiple orders of magnitude and are uncentered (i.e. E[x] != 0).\n",
+    "\n",
+    "We can fix these issues in a conscise and GPU-accelerated manner with an NVTabular `Workflow`. We'll instantiate one with our current dataset schema, then symbolically add operations _on_ that schema. By setting all these `Ops` to use `replace=True`, the schema itself will remain unmodified, while the variables represented by each field in the schema will be transformed.\n",
+    "\n",
+    "#### Frequency Thresholding\n",
+    "One interesting thing worth pointing out is that we're using _frequency thresholding_ in our `Categorify` op. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency (which we've set here to be 15 occurrences throughout the dataset) to the _same_ index, keeping the model from overfitting to sparse signals."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proc = nvt.Workflow(\n",
+    "    cat_names=CATEGORICAL_COLUMNS,\n",
+    "    cont_names=CONTINUOUS_COLUMNS,\n",
+    "    label_name=LABEL_COLUMNS,\n",
+    "    to_cpu=False)\n",
+    "\n",
+    "# log -> normalize continuous features. Note that doing this in the opposite\n",
+    "# order wouldn't make sense! Note also that we're zero filling continuous\n",
+    "# values before the log: this is a good time to remember that LogOp\n",
+    "# performs log(1+x), not log(x)\n",
+    "proc.add_cont_feature([ZeroFill(), LogOp()])\n",
+    "proc.add_cont_preprocess(Normalize())\n",
+    "\n",
+    "# categorification with frequency thresholding\n",
+    "proc.add_cat_preprocess(Categorify(use_frequency=True, freq_threshold=15))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now instantiate dataset iterators to loop through our dataset (which we couldn't fit into GPU memory)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_ds_iterator = nvt.dataset(train_paths, engine='parquet', gpu_memory_frac=0.2)\n",
+    "valid_ds_iterator = nvt.dataset(valid_paths, engine='parquet', gpu_memory_frac=0.2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now run them through our workflows to collect statistics on the train set, then transform and save to parquet files."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "output_train_dir = os.path.join(OUTPUT_DATA_DIR, 'train/')\n",
+    "output_valid_dir = os.path.join(OUTPUT_DATA_DIR, 'valid/')\n",
+    "! mkdir -p $output_train_dir\n",
+    "! mkdir -p $output_valid_dir"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "For reference, let's time it to see how long it takes..."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 22min 5s, sys: 14min 6s, total: 36min 12s\n",
+      "Wall time: 28min 58s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "proc.apply(train_ds_iterator, apply_offline=True, record_stats=True, shuffle=True, output_path=output_train_dir, num_out_files=35)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 33.5 s, sys: 24.5 s, total: 58 s\n",
+      "Wall time: 43.5 s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "proc.apply(valid_ds_iterator, apply_offline=True, record_stats=False, shuffle=True, output_path=output_valid_dir, num_out_files=35)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "And just like that, we have training and validation sets ready to feed to a model!"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Deep Learning\n",
+    "### Data Loading\n",
+    "We'll start by using the parquet files we just created to feed an NVTabular `FileItrDataset`, which will looop through the files in chunks. First, we'll reinitialize our memory pool from earlier to free up some memory so that we can share it with PyTorch."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "rmm.reinitialize(pool_allocator=False)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_paths = glob.glob(os.path.join(output_train_dir, \"*.parquet\"))\n",
+    "valid_paths = glob.glob(os.path.join(output_valid_dir, \"*.parquet\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_data_itrs = [FileItrDataset(path, names=COLUMNS, engine='parquet', batch_size=1600000, sep=\"\\t\") for path in train_paths]\n",
+    "valid_data_itrs = [FileItrDataset(path, names=COLUMNS, engine='parquet', batch_size=1600000, sep=\"\\t\") for path in train_paths]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we chain these iterators together use PyTorch's `ChainDataset`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_dataset = torch.utils.data.ChainDataset(train_data_itrs)\n",
+    "valid_dataset = torch.utils.data.ChainDataset(valid_data_itrs)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "NVTabular's `DLCollator` maps the output of these iterators into the tensors expected by FastAI. We'll use it a `collate_fn` when we instantiate a `DLDataLoader`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dlc = DLCollator(preproc=proc, apply_ops=False)\n",
+    "train_dataloader = DLDataLoader(train_dataset, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0)\n",
+    "valid_dataloader = DLDataLoader(valid_dataset, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0)\n",
+    "databunch = DataBunch(train_dataloader, valid_dataloader, collate_fn=dlc.gdf_col, device=\"cuda\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we have data ready to be fed to our model online!"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Training\n",
+    "One extra handy functionality of NVTabular is the ability to use the stats collected by the `Categorify` op to define embedding dictionary sizes (i.e. the number of rows of your embedding table). It even includes a heuristic for computing a good embedding size (i.e. the number of columns of your embedding table) based off of the number of categories."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "embeddings = [x[1] for x in proc.df_ops['Categorify'].get_emb_sz(proc.stats[\"categories\"], proc.columns_ctx['categorical']['base'])]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "model = TabularModel(emb_szs=embeddings, n_cont=len(CONTINUOUS_COLUMNS), out_sz=2, layers=[512, 256])\n",
+    "learn =  Learner(databunch, model, metrics=[accuracy])\n",
+    "learn.loss_func = torch.nn.CrossEntropyLoss()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: left;\">\n",
+       "      <th>epoch</th>\n",
+       "      <th>train_loss</th>\n",
+       "      <th>valid_loss</th>\n",
+       "      <th>accuracy</th>\n",
+       "      <th>time</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <td>0</td>\n",
+       "      <td>0.122840</td>\n",
+       "      <td>0.121734</td>\n",
+       "      <td>0.967229</td>\n",
+       "      <td>2:18:33</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learning_rate = 1.32e-2\n",
+    "epochs = 1\n",
+    "start = time()\n",
+    "learn.fit_one_cycle(epochs, learning_rate)\n",
+    "t_final = time() - start\n",
+    "print(t_final)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### "
+   ]
+  }
+ ],
+ "metadata": {
+  "file_extension": ".py",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.6"
+  },
+  "mimetype": "text/x-python",
+  "name": "python",
+  "npconvert_exporter": "python",
+  "pygments_lexer": "ipython3",
+  "version": 3
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

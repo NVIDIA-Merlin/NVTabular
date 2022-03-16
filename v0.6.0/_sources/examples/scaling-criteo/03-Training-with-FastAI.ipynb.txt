@@ -1,0 +1,378 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# Scaling Criteo: Training with FastAI\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "We observed that training pipelines can be slow as the dataloader is a bottleneck. NVTabular provides a highly optimized dataloader to accelerate training pipelines. We can use the PyTorch dataloader for FastAI models.\n",
+    "\n",
+    "We have already discussed the NVTabular dataloaders in more detail in our [Getting Started with Movielens notebooks](https://github.com/NVIDIA/NVTabular/tree/main/examples/getting-started-movielens).<br><br>\n",
+    "\n",
+    "We will use the same techniques to train a deep learning model for the [Criteo 1TB Click Logs dataset](https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/).\n",
+    "\n",
+    "### Learning objectives\n",
+    "\n",
+    "In this notebook, we learn how to:\n",
+    "\n",
+    "- Use **NVTabular dataloader** with FastAI Tabular model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## NVTabular dataloader for PyTorch / FastAI\n",
+    "\n",
+    "When training pipelines with PyTorch, the dataloader cannot prepare sequential batches fast enough, so the GPU is not fully utilized. To combat this issue, we’ve developed a highly customized tabular dataloader, `TorchAsyncItr`, to accelerate existing pipelines in PyTorch. The NVTabular dataloader is capable of:\n",
+    "\n",
+    "- removing bottlenecks from dataloading by processing large chunks of data at a time instead of item by item\n",
+    "- processing datasets that don’t fit within the GPU or CPU memory by streaming from the disk\n",
+    "- reading data directly into the GPU memory and removing CPU-GPU communication\n",
+    "- preparing batch asynchronously into the GPU to avoid CPU-GPU communication\n",
+    "- supporting commonly used formats such as parquet\n",
+    "- integrating easily into existing PyTorch training pipelines by using a similar API as the native PyTorch dataloader"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "from time import time\n",
+    "import glob\n",
+    "\n",
+    "# tools for data preproc/loading\n",
+    "import torch\n",
+    "import nvtabular as nvt\n",
+    "from nvtabular.ops import get_embedding_sizes\n",
+    "from nvtabular.loader.torch import TorchAsyncItr, DLDataLoader\n",
+    "from nvtabular.framework_utils.torch.utils import FastaiTransform\n",
+    "\n",
+    "# tools for training\n",
+    "from fastai.basics import Learner\n",
+    "from fastai.tabular.model import TabularModel\n",
+    "from fastai.tabular.data import TabularDataLoaders\n",
+    "from fastai.metrics import RocAucBinary, APScoreBinary"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Dataset and Dataset Schema\n",
+    "Once our data is ready, we'll define some high level parameters to describe where our data is and what it \"looks like\" at a high level."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Data Loading\n",
+    "We'll start by using the parquet files we just created to feed an NVTabular `TorchAsyncItr`, which will loop through the files in chunks. First, we'll reinitialize our memory pool from earlier to free up some memory so that we can share it with PyTorch."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "CONTINUOUS_COLUMNS = [\"I\" + str(x) for x in range(1, 14)]\n",
+    "CATEGORICAL_COLUMNS = [\"C\" + str(x) for x in range(1, 27)]\n",
+    "LABEL_COLUMNS = [\"label\"]\n",
+    "BASE_DIR = os.environ.get(\"BASE_DIR\", \"/raid/data/criteo\")\n",
+    "BATCH_SIZE = int(os.environ.get(\"BATCH_SIZE\", 400000))\n",
+    "PARTS_PER_CHUNK = int(os.environ.get(\"PARTS_PER_CHUNK\", 2))\n",
+    "input_path = os.path.join(BASE_DIR, \"test_dask/output\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_paths = glob.glob(os.path.join(input_path, \"train\", \"*.parquet\"))\n",
+    "valid_paths = glob.glob(os.path.join(input_path, \"valid\", \"*.parquet\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_data = nvt.Dataset(train_paths, engine=\"parquet\", part_mem_fraction=0.04 / PARTS_PER_CHUNK)\n",
+    "valid_data = nvt.Dataset(valid_paths, engine=\"parquet\", part_mem_fraction=0.04 / PARTS_PER_CHUNK)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_data_itrs = TorchAsyncItr(\n",
+    "    train_data,\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    cats=CATEGORICAL_COLUMNS,\n",
+    "    conts=CONTINUOUS_COLUMNS,\n",
+    "    labels=LABEL_COLUMNS,\n",
+    "    parts_per_chunk=PARTS_PER_CHUNK,\n",
+    ")\n",
+    "valid_data_itrs = TorchAsyncItr(\n",
+    "    valid_data,\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    cats=CATEGORICAL_COLUMNS,\n",
+    "    conts=CONTINUOUS_COLUMNS,\n",
+    "    labels=LABEL_COLUMNS,\n",
+    "    parts_per_chunk=PARTS_PER_CHUNK,\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def gen_col(batch):\n",
+    "    return (batch[0], batch[1], batch[2].long())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_dataloader = DLDataLoader(\n",
+    "    train_data_itrs,\n",
+    "    collate_fn=FastaiTransform(train_data_itrs).transform,\n",
+    "    batch_size=None,\n",
+    "    pin_memory=False,\n",
+    "    num_workers=0\n",
+    ")\n",
+    "valid_dataloader = DLDataLoader(\n",
+    "    valid_data_itrs,\n",
+    "    collate_fn=FastaiTransform(valid_data_itrs).transform,\n",
+    "    batch_size=None,\n",
+    "    pin_memory=False,\n",
+    "    num_workers=0\n",
+    ")\n",
+    "databunch = TabularDataLoaders(train_dataloader, valid_dataloader)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we have data ready to be fed to our model online!"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Training\n",
+    "One extra handy functionality of NVTabular is the ability to use the stats collected by the `Categorify` op to define embedding dictionary sizes (i.e. the number of rows of your embedding table). It even includes a heuristic for computing a good embedding size (i.e. the number of columns of your embedding table) based off of the number of categories."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workflow = nvt.Workflow.load(os.path.join(input_path, \"workflow\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[[10000000, 16],\n",
+       " [10000000, 16],\n",
+       " [707291, 16],\n",
+       " [218510, 16],\n",
+       " [11, 16],\n",
+       " [2209, 16],\n",
+       " [9798, 16],\n",
+       " [72, 16],\n",
+       " [4, 16],\n",
+       " [954, 16],\n",
+       " [15, 16],\n",
+       " [29612, 16],\n",
+       " [10000000, 16],\n",
+       " [4553157, 16],\n",
+       " [10000000, 16],\n",
+       " [291641, 16],\n",
+       " [10904, 16],\n",
+       " [91, 16],\n",
+       " [35, 16],\n",
+       " [15050, 16],\n",
+       " [7190, 16],\n",
+       " [19547, 16],\n",
+       " [4, 16],\n",
+       " [6492, 16],\n",
+       " [1317, 16],\n",
+       " [63, 16]]"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "embeddings = list(get_embedding_sizes(workflow).values())\n",
+    "# We limit the output dimension to 16\n",
+    "embeddings = [[emb[0], min(16, emb[1])] for emb in embeddings]\n",
+    "embeddings"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "model = TabularModel(\n",
+    "    emb_szs=embeddings, n_cont=len(CONTINUOUS_COLUMNS), out_sz=2, layers=[512, 256]\n",
+    ").cuda()\n",
+    "learn = Learner(\n",
+    "    databunch,\n",
+    "    model,\n",
+    "    loss_func=torch.nn.CrossEntropyLoss(),\n",
+    "    metrics=[RocAucBinary(), APScoreBinary()],\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: left;\">\n",
+       "      <th>epoch</th>\n",
+       "      <th>train_loss</th>\n",
+       "      <th>valid_loss</th>\n",
+       "      <th>roc_auc_score</th>\n",
+       "      <th>average_precision_score</th>\n",
+       "      <th>time</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <td>0</td>\n",
+       "      <td>0.126882</td>\n",
+       "      <td>0.124364</td>\n",
+       "      <td>0.776688</td>\n",
+       "      <td>0.136667</td>\n",
+       "      <td>10:00</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "run_time: 600.2940483093262 - rows: 395405518 - epochs: 1 - dl_thru: 658686.3873023959\n"
+     ]
+    }
+   ],
+   "source": [
+    "learning_rate = 1.32e-2\n",
+    "epochs = 1\n",
+    "start = time()\n",
+    "learn.fit(epochs, learning_rate)\n",
+    "t_final = time() - start\n",
+    "total_rows = train_data_itrs.num_rows_processed + valid_data_itrs.num_rows_processed\n",
+    "print(\n",
+    "    f\"run_time: {t_final} - rows: {total_rows} - epochs: {epochs} - dl_thru: {total_rows / t_final}\"\n",
+    ")"
+   ]
+  }
+ ],
+ "metadata": {
+  "file_extension": ".py",
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  },
+  "mimetype": "text/x-python",
+  "name": "python",
+  "npconvert_exporter": "python",
+  "pygments_lexer": "ipython3",
+  "version": 3
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

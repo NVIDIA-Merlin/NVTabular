@@ -1,0 +1,820 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# Getting Started MovieLens: ETL with NVTabular\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.<br><br>\n",
+    "\n",
+    "Deep Learning models require the input feature in a specific format. Categorical features needs to be continuous integers (0, ..., |C|) to use them with an embedding layer. We will use NVTabular to preprocess the categorical features.<br><br>\n",
+    "\n",
+    "One other challenge is multi-hot categorical features. A product can have multiple categories assigned, but the number of categories per product varies. For example, a movie can have one or multiple genres:<br>\n",
+    "Father of the Bride Part II: \\[Comedy\\]<br>\n",
+    "Toy Story: \\[Adventure, Animation, Children, Comedy, Fantasy\\]<br>\n",
+    "Jumanji: \\[Adventure, Children, Fantasy\\]<br><br>\n",
+    "One strategy is often to use only the first category or the most frequent ones. However, a better strategy is to use all provided categories per datapoint. [RAPID cuDF](https://github.com/rapidsai/cudf) added list support in its [latest release v0.16](https://medium.com/rapids-ai/two-years-in-a-snap-rapids-0-16-ae797795a5c4) and  NVTabular now supports multi-hot categorical features. <br><br>\n",
+    "\n",
+    "### Learning objectives\n",
+    "\n",
+    "In this notebook, we learn how to `Categorify` single-hot and multi-hot categorical input features with NVTabular\n",
+    "- Learn NVTabular for using GPU-accelerated ETL (Preprocess and Feature Engineering)\n",
+    "- Get familiar with NVTabular's high-level API\n",
+    "- Join two dataframes with `JoinExternal` operator\n",
+    "- Preprocess single-hot categorical input features with NVTabular\n",
+    "- Preprocess multi-hot categorical input features with NVTabular\n",
+    "- Use `LambdaOp` for custom row-wise dataframe manipulations with NVTabular"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### NVTabular\n",
+    "\n",
+    "With the rapid growth in scale of industry datasets, deep learning (DL) recommender models have started to gain advantages over traditional methods by capitalizing on large amounts of training data.\n",
+    "\n",
+    "The current challenges for training large-scale recommenders include:\n",
+    "\n",
+    "* **Huge datasets:** Commercial recommenders are trained on huge datasets, often several terabytes in scale.\n",
+    "* **Complex data preprocessing and feature engineering pipelines:** Datasets need to be preprocessed and transformed into a form relevant to be used with DL models and frameworks. In addition, feature engineering creates an extensive set of new features from existing ones, requiring multiple iterations to arrive at an optimal solution.\n",
+    "* **Input bottleneck:** Data loading, if not well optimized, can be the slowest part of the training process, leading to under-utilization of high-throughput computing devices such as GPUs.\n",
+    "* **Extensive repeated experimentation:** The whole data engineering, training, and evaluation process is generally repeated many times, requiring significant time and computational resources.\n",
+    "\n",
+    "**NVTabular** is a library for fast tabular data tranformation and loading, manipulating terabyte-scale datasets quickly. It provides best practices for feature engineering and preprocessing and a high-level abstraction to simplify code accelerating computation on the GPU using the RAPIDS cuDF library.\n",
+    "\n",
+    "<img src='https://developer.nvidia.com/blog/wp-content/uploads/2020/07/recommender-system-training-pipeline-1.png'>\n",
+    "\n",
+    "### Why using NVTabular?\n",
+    "\n",
+    "NVTabular offers multiple advantages to support your Feature Engineering and Preprocessing:\n",
+    "1. **Larger than memory datasets**: Your dataset size can be larger than host/GPU memory. NVTabular reads the data from disk and stores the processed files to disk. It will execute your pipeline without exceeding the memory boundaries.\n",
+    "2. **Speed**: NVTabular will execute your pipeline on GPU. We experienced 10x-100x speed-up\n",
+    "3. **Easy-to-use**: NVTabular implemented common feature engineering and preprocessing operators and provides high-level APIs ready to use"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Getting Started"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# External dependencies\n",
+    "import os\n",
+    "import cudf                 # cuDF is an implementation of Pandas-like Dataframe on GPU\n",
+    "import time\n",
+    "import gc\n",
+    "import shutil\n",
+    "import numpy as np\n",
+    "\n",
+    "import nvtabular as nvt\n",
+    "\n",
+    "from os import path"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We define our base input directory, containing the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "INPUT_DATA_DIR = os.environ.get('INPUT_DATA_DIR', os.path.expanduser(\"~/nvt-examples/movielens/data/\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>movieId</th>\n",
+       "      <th>genres</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1</td>\n",
+       "      <td>[Adventure, Animation, Children, Comedy, Fantasy]</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>2</td>\n",
+       "      <td>[Adventure, Children, Fantasy]</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>3</td>\n",
+       "      <td>[Comedy, Romance]</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>4</td>\n",
+       "      <td>[Comedy, Drama, Romance]</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>5</td>\n",
+       "      <td>[Comedy]</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   movieId                                             genres\n",
+       "0        1  [Adventure, Animation, Children, Comedy, Fantasy]\n",
+       "1        2                     [Adventure, Children, Fantasy]\n",
+       "2        3                                  [Comedy, Romance]\n",
+       "3        4                           [Comedy, Drama, Romance]\n",
+       "4        5                                           [Comedy]"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "movies= cudf.read_parquet(os.path.join(INPUT_DATA_DIR, \"movies_converted.parquet\"))\n",
+    "movies.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Defining our Preprocessing Pipeline\n",
+    "The first step is to define the feature engineering and preprocessing pipeline.<br><br>\n",
+    "NVTabular has already implemented multiple calculations, called `ops`. An `op` can be applied to a `ColumnGroup` from an overloaded `>>` operator, which in turn returns a new `ColumnGroup`. A `ColumnGroup` is a list of column names as text.<br><br>\n",
+    "**Example:**<br>\n",
+    "```python\n",
+    "features = [ column_name, ...] >> op1 >> op2 >> ...\n",
+    "```\n",
+    "\n",
+    "This may sounds more complicated as it is. Let's define our first pipeline for the MovieLens dataset."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Currently, our dataset consists of two separate dataframes. First, we use the `JoinExternal` operator to `left-join` the metadata (genres) to our rating dataset."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "CATEGORICAL_COLUMNS = ['userId', 'movieId']\n",
+    "LABEL_COLUMNS = ['rating']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "joined = (\n",
+    "    ['userId', 'movieId'] >> \n",
+    "    nvt.ops.JoinExternal(movies, on=['movieId'])\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Data pipelines are **Directed Acyclic Graphs (DAGs)**. We can visualize them with `graphviz`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/svg+xml": [
+       "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n",
+       "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n",
+       " \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n",
+       "<!-- Generated by graphviz version 2.43.0 (0)\n",
+       " -->\n",
+       "<!-- Title: %3 Pages: 1 -->\n",
+       "<svg width=\"382pt\" height=\"188pt\"\n",
+       " viewBox=\"0.00 0.00 382.37 188.00\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+       "<g id=\"graph0\" class=\"graph\" transform=\"scale(1 1) rotate(0) translate(4 184)\">\n",
+       "<title>%3</title>\n",
+       "<polygon fill=\"white\" stroke=\"transparent\" points=\"-4,4 -4,-184 378.37,-184 378.37,4 -4,4\"/>\n",
+       "<!-- 0 -->\n",
+       "<g id=\"node1\" class=\"node\">\n",
+       "<title>0</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"187.18\" cy=\"-162\" rx=\"143.77\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"187.18\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[userId, movieId]</text>\n",
+       "</g>\n",
+       "<!-- 1 -->\n",
+       "<g id=\"node2\" class=\"node\">\n",
+       "<title>1</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"187.18\" cy=\"-90\" rx=\"68.49\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"187.18\" y=\"-86.3\" font-family=\"Times,serif\" font-size=\"14.00\">JoinExternal</text>\n",
+       "</g>\n",
+       "<!-- 0&#45;&gt;1 -->\n",
+       "<g id=\"edge1\" class=\"edge\">\n",
+       "<title>0&#45;&gt;1</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M187.18,-143.7C187.18,-135.98 187.18,-126.71 187.18,-118.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"190.68,-118.1 187.18,-108.1 183.68,-118.1 190.68,-118.1\"/>\n",
+       "</g>\n",
+       "<!-- 2 -->\n",
+       "<g id=\"node3\" class=\"node\">\n",
+       "<title>2</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"187.18\" cy=\"-18\" rx=\"187.37\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"187.18\" y=\"-14.3\" font-family=\"Times,serif\" font-size=\"14.00\">output cols=[genres, userId, movieId]</text>\n",
+       "</g>\n",
+       "<!-- 1&#45;&gt;2 -->\n",
+       "<g id=\"edge2\" class=\"edge\">\n",
+       "<title>1&#45;&gt;2</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M187.18,-71.7C187.18,-63.98 187.18,-54.71 187.18,-46.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"190.68,-46.1 187.18,-36.1 183.68,-46.1 190.68,-46.1\"/>\n",
+       "</g>\n",
+       "</g>\n",
+       "</svg>\n"
+      ],
+      "text/plain": [
+       "<graphviz.dot.Digraph at 0x7fc41c941dc0>"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "joined.graph"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Embedding Layers of neural networks require that categorical features are contiguous, incremental Integers: 0, 1, 2, ... , |C|-1. We need to ensure that our categorical features fullfil the requirement.<br>\n",
+    "\n",
+    "Currently, our genres are a list of Strings. In addition, we should transform the single-hot categorical features userId and movieId, as well.<br>\n",
+    "NVTabular provides the operator `Categorify`, which provides this functionality with a high-level API out of the box. In NVTabular release v0.3, list support was added for multi-hot categorical features. Both works in the same way with no need for changes.\n",
+    "\n",
+    "\n",
+    "Next, we will add `Categorify`  for our categorical features (single hot: userId, movieId and multi-hot: genres)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cat_features = joined >> nvt.ops.Categorify()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The ratings are on a scale between 1-5. We want to predict a binary target with 1 for ratings `>3` and 0 for  ratings `<=3`. We use the [LambdaOp](https://nvidia.github.io/NVTabular/main/api/ops/lambdaop.html) for it."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ratings = nvt.ColumnGroup(['rating']) >> (lambda col: (col>3).astype('int8'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/svg+xml": [
+       "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n",
+       "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n",
+       " \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n",
+       "<!-- Generated by graphviz version 2.43.0 (0)\n",
+       " -->\n",
+       "<!-- Title: %3 Pages: 1 -->\n",
+       "<svg width=\"441pt\" height=\"332pt\"\n",
+       " viewBox=\"0.00 0.00 440.92 332.00\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+       "<g id=\"graph0\" class=\"graph\" transform=\"scale(1 1) rotate(0) translate(4 328)\">\n",
+       "<title>%3</title>\n",
+       "<polygon fill=\"white\" stroke=\"transparent\" points=\"-4,4 -4,-328 436.92,-328 436.92,4 -4,4\"/>\n",
+       "<!-- 0 -->\n",
+       "<g id=\"node1\" class=\"node\">\n",
+       "<title>0</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"277.28\" cy=\"-162\" rx=\"59.59\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"277.28\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Categorify</text>\n",
+       "</g>\n",
+       "<!-- 3 -->\n",
+       "<g id=\"node4\" class=\"node\">\n",
+       "<title>3</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"196.28\" cy=\"-90\" rx=\"27\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"196.28\" y=\"-86.3\" font-family=\"Times,serif\" font-size=\"14.00\">+</text>\n",
+       "</g>\n",
+       "<!-- 0&#45;&gt;3 -->\n",
+       "<g id=\"edge3\" class=\"edge\">\n",
+       "<title>0&#45;&gt;3</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M258.5,-144.76C246.99,-134.83 232.18,-122.02 219.89,-111.4\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"222.09,-108.68 212.24,-104.79 217.51,-113.97 222.09,-108.68\"/>\n",
+       "</g>\n",
+       "<!-- 1 -->\n",
+       "<g id=\"node2\" class=\"node\">\n",
+       "<title>1</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"289.28\" cy=\"-234\" rx=\"68.49\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"289.28\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">JoinExternal</text>\n",
+       "</g>\n",
+       "<!-- 1&#45;&gt;0 -->\n",
+       "<g id=\"edge1\" class=\"edge\">\n",
+       "<title>1&#45;&gt;0</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M286.32,-215.7C284.99,-207.98 283.4,-198.71 281.93,-190.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"285.35,-189.37 280.21,-180.1 278.45,-190.55 285.35,-189.37\"/>\n",
+       "</g>\n",
+       "<!-- 2 -->\n",
+       "<g id=\"node3\" class=\"node\">\n",
+       "<title>2</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"289.28\" cy=\"-306\" rx=\"143.77\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"289.28\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[userId, movieId]</text>\n",
+       "</g>\n",
+       "<!-- 2&#45;&gt;1 -->\n",
+       "<g id=\"edge2\" class=\"edge\">\n",
+       "<title>2&#45;&gt;1</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M289.28,-287.7C289.28,-279.98 289.28,-270.71 289.28,-262.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"292.78,-262.1 289.28,-252.1 285.78,-262.1 292.78,-262.1\"/>\n",
+       "</g>\n",
+       "<!-- 6 -->\n",
+       "<g id=\"node7\" class=\"node\">\n",
+       "<title>6</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"196.28\" cy=\"-18\" rx=\"196.07\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"196.28\" y=\"-14.3\" font-family=\"Times,serif\" font-size=\"14.00\">output cols=[genres, userId, movieId...]</text>\n",
+       "</g>\n",
+       "<!-- 3&#45;&gt;6 -->\n",
+       "<g id=\"edge6\" class=\"edge\">\n",
+       "<title>3&#45;&gt;6</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M196.28,-71.7C196.28,-63.98 196.28,-54.71 196.28,-46.11\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"199.78,-46.1 196.28,-36.1 192.78,-46.1 199.78,-46.1\"/>\n",
+       "</g>\n",
+       "<!-- 5 -->\n",
+       "<g id=\"node5\" class=\"node\">\n",
+       "<title>5</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"127.28\" cy=\"-162\" rx=\"61.19\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"127.28\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">LambdaOp</text>\n",
+       "</g>\n",
+       "<!-- 5&#45;&gt;3 -->\n",
+       "<g id=\"edge4\" class=\"edge\">\n",
+       "<title>5&#45;&gt;3</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M143.63,-144.41C152.91,-135 164.63,-123.12 174.65,-112.94\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"177.39,-115.15 181.92,-105.57 172.41,-110.24 177.39,-115.15\"/>\n",
+       "</g>\n",
+       "<!-- 4 -->\n",
+       "<g id=\"node6\" class=\"node\">\n",
+       "<title>4</title>\n",
+       "<ellipse fill=\"none\" stroke=\"black\" cx=\"104.28\" cy=\"-234\" rx=\"98.58\" ry=\"18\"/>\n",
+       "<text text-anchor=\"middle\" x=\"104.28\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">input cols=[rating]</text>\n",
+       "</g>\n",
+       "<!-- 4&#45;&gt;5 -->\n",
+       "<g id=\"edge5\" class=\"edge\">\n",
+       "<title>4&#45;&gt;5</title>\n",
+       "<path fill=\"none\" stroke=\"black\" d=\"M109.97,-215.7C112.53,-207.9 115.62,-198.51 118.47,-189.83\"/>\n",
+       "<polygon fill=\"black\" stroke=\"black\" points=\"121.87,-190.7 121.66,-180.1 115.22,-188.51 121.87,-190.7\"/>\n",
+       "</g>\n",
+       "</g>\n",
+       "</svg>\n"
+      ],
+      "text/plain": [
+       "<graphviz.dot.Digraph at 0x7fc41c941f70>"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "output = cat_features+ratings\n",
+    "(output).graph"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We initialize our NVTabular `workflow`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workflow = nvt.Workflow(output)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Running the pipeline"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In general, the `Op`s in our `Workflow` will require measurements of statistical properties of our data in order to be leveraged. For example, the `Normalize` op requires measurements of the dataset mean and standard deviation, and the `Categorify` op requires an accounting of all the categories a particular feature can manifest. However, we frequently need to measure these properties across datasets which are too large to fit into GPU memory (or CPU memory for that matter) at once.\n",
+    "\n",
+    "NVTabular solves this by providing the `Dataset` class, which breaks a set of parquet or csv files into into a collection of `cudf.DataFrame` chunks that can fit in device memory. The main purpose of this class is to abstract away the raw format of the data, and to allow other NVTabular classes to reliably materialize a dask_cudf.DataFrame collection (and/or collection-based iterator) on demand. Under the hood, the data decomposition corresponds to the construction of a [dask_cudf.DataFrame](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) object.  By representing our dataset as a lazily-evaluated [Dask](https://dask.org/) collection, we can handle the calculation of complex global statistics (and later, can also iterate over the partitions while feeding data into a neural network). `part_size` defines the size read into GPU-memory at once."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now instantiate dataset iterators to loop through our dataset (which we couldn't fit into GPU memory). HugeCTR expect the categorical input columns as `int64` and continuous/label columns as `float32` We need to enforce the required HugeCTR data types, so we set them in a dictionary and give as an argument when creating our dataset."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dict_dtypes={}\n",
+    "\n",
+    "for col in CATEGORICAL_COLUMNS:\n",
+    "    dict_dtypes[col] = np.int64\n",
+    "    \n",
+    "for col in LABEL_COLUMNS:\n",
+    "    dict_dtypes[col] = np.float32"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_dataset = nvt.Dataset([os.path.join(INPUT_DATA_DIR, \"train.parquet\")], part_size=\"100MB\")\n",
+    "valid_dataset = nvt.Dataset([os.path.join(INPUT_DATA_DIR, \"valid.parquet\")], part_size=\"100MB\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now that we have our datasets, we'll apply our `Workflow` to them and save the results out to parquet files for fast reading at train time. Similar to the `scikit learn` API, we collect the statistics of our train dataset with `.fit`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 1.86 s, sys: 520 ms, total: 2.38 s\n",
+      "Wall time: 2.4 s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "workflow.fit(train_dataset)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We clear our output directories."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Make sure we have a clean output path\n",
+    "if path.exists(os.path.join(INPUT_DATA_DIR, \"train\")): \n",
+    "    shutil.rmtree(os.path.join(INPUT_DATA_DIR, \"train\"))\n",
+    "if path.exists(os.path.join(INPUT_DATA_DIR, \"valid\")): \n",
+    "    shutil.rmtree(os.path.join(INPUT_DATA_DIR, \"valid\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We transform our workflow with `.transform`. We are going to add only `'userId', 'movieId'` columns to `_metadata.json`, because this json file will be needed for HugeCTR training to obtain the required information from all the rows in each parquet file."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 3 µs, sys: 2 µs, total: 5 µs\n",
+      "Wall time: 6.2 µs\n"
+     ]
+    }
+   ],
+   "source": [
+    "%time\n",
+    "workflow.transform(train_dataset).to_parquet(output_path=os.path.join(INPUT_DATA_DIR, \"train\"), \n",
+    "                                             shuffle=nvt.io.Shuffle.PER_PARTITION,\n",
+    "                                             cats=['userId', 'movieId'],\n",
+    "                                             labels=['rating'],\n",
+    "                                             dtypes=dict_dtypes\n",
+    "                                            )"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 3 µs, sys: 1 µs, total: 4 µs\n",
+      "Wall time: 8.11 µs\n"
+     ]
+    }
+   ],
+   "source": [
+    "%time\n",
+    "workflow.transform(valid_dataset).to_parquet(output_path=os.path.join(INPUT_DATA_DIR, \"valid\"),\n",
+    "                                             shuffle=False,\n",
+    "                                             cats=['userId', 'movieId'],\n",
+    "                                             labels=['rating'],\n",
+    "                                             dtypes=dict_dtypes\n",
+    "                                            )"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can take a look in the output dir."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the next notebooks, we will train a deep learning model. Our training pipeline requires information about the data schema to define the neural network architecture. We will save the NVTabular workflow to disk tha we can restore it in the next notebooks."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workflow.save(os.path.join(INPUT_DATA_DIR, \"workflow\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Checking the pre-processing outputs"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can take a look on the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(['/root/nvt-examples/movielens/data/train/0.357e7356348f4a4e8a7a7f6bdd964147.parquet'],\n",
+       " ['/root/nvt-examples/movielens/data/valid/0.373584d22fb14160b01129e5f88cfb5b.parquet'])"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import glob\n",
+    "\n",
+    "TRAIN_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, \"train\", \"*.parquet\")))\n",
+    "VALID_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, \"valid\", \"*.parquet\")))\n",
+    "TRAIN_PATHS, VALID_PATHS"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can see, that genres are a list of Integers"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>genres</th>\n",
+       "      <th>userId</th>\n",
+       "      <th>movieId</th>\n",
+       "      <th>rating</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>[3, 9, 13]</td>\n",
+       "      <td>141684</td>\n",
+       "      <td>149</td>\n",
+       "      <td>1.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>[3, 6, 17]</td>\n",
+       "      <td>56510</td>\n",
+       "      <td>663</td>\n",
+       "      <td>1.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>[9]</td>\n",
+       "      <td>72536</td>\n",
+       "      <td>3903</td>\n",
+       "      <td>1.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>[6, 16]</td>\n",
+       "      <td>147013</td>\n",
+       "      <td>5191</td>\n",
+       "      <td>1.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>[9, 16]</td>\n",
+       "      <td>141353</td>\n",
+       "      <td>17652</td>\n",
+       "      <td>1.0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "       genres  userId  movieId  rating\n",
+       "0  [3, 9, 13]  141684      149     1.0\n",
+       "1  [3, 6, 17]   56510      663     1.0\n",
+       "2         [9]   72536     3903     1.0\n",
+       "3     [6, 16]  147013     5191     1.0\n",
+       "4     [9, 16]  141353    17652     1.0"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df = cudf.read_parquet(TRAIN_PATHS[0])\n",
+    "df.head()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

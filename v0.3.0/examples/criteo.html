@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criteo Example &mdash; NVTabular 2020 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="NVTabular demo on Rossmann data" href="rossmann.html" />
+    <link rel="prev" title="Examples" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../HowItWorks.html">How it Works</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Criteo Example</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Data-Prep">Data Prep</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Initializing-the-Memory-Pool">Initializing the Memory Pool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Dataset-and-Dataset-Schema">Dataset and Dataset Schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Preprocessing">Preprocessing</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Frequency-Thresholding">Frequency Thresholding</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Data-Loading">Data Loading</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Training">Training</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="rossmann.html">Rossmann Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multigpu.html">Multi-GPU Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hugectr.html">HugeCTR Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outbrain.html">Outbrain Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="recsys2020.html">RecSys2020 Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Examples</a> &raquo;</li>
+      <li>Criteo Example</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt .copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2020 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Criteo-Example">
+<h1>Criteo Example<a class="headerlink" href="#Criteo-Example" title="Permalink to this headline"></a></h1>
+<p>Here we’ll show how to use NVTabular first as a preprocessing library to prepare the <a class="reference external" href="https://www.kaggle.com/c/criteo-display-ad-challenge">Criteo Display Advertising Challenge</a> dataset, and then as a dataloader to train a FastAI model on the prepared data. The large memory footprint of the Criteo dataset presents a great opportunity to highlight the advantages of the online fashion in which NVTabular loads and transforms data.</p>
+<div class="section" id="Data-Prep">
+<h2>Data Prep<a class="headerlink" href="#Data-Prep" title="Permalink to this headline"></a></h2>
+<p>Before we get started, make sure you’ve run the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb">optimize_criteo</a> notebook, which will convert the tsv data published by Criteo into the parquet format that our accelerated readers prefer. It’s fair to mention at this point that that notebook will take around 30 minutes to run. While we’re hoping to release accelerated csv readers in the near future, we also believe that inefficiencies in existing data
+representations like csv are in no small part a consequence of inefficiencies in the existing hardware/software stack. Accelerating these pipelines on new hardware like GPUs may require us to make new choices about the representations we use to store that data, and parquet represents a strong alternative.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="c1"># tools for data preproc/loading</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">rmm</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">Normalize</span><span class="p">,</span>  <span class="n">Categorify</span><span class="p">,</span>  <span class="n">LogOp</span><span class="p">,</span> <span class="n">FillMissing</span><span class="p">,</span> <span class="n">Clip</span><span class="p">,</span> <span class="n">get_embedding_sizes</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">TorchAsyncItr</span><span class="p">,</span> <span class="n">DLDataLoader</span>
+<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span><span class="p">,</span> <span class="n">get_rmm_size</span>
+
+<span class="c1"># tools for training</span>
+<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">Learner</span>
+<span class="kn">from</span> <span class="nn">fastai.tabular.model</span> <span class="kn">import</span> <span class="n">TabularModel</span>
+<span class="kn">from</span> <span class="nn">fastai.tabular.data</span> <span class="kn">import</span> <span class="n">TabularDataLoaders</span>
+<span class="kn">from</span> <span class="nn">fastai.metrics</span> <span class="kn">import</span> <span class="n">accuracy</span>
+<span class="kn">from</span> <span class="nn">fastai.callback.progress</span> <span class="kn">import</span> <span class="n">ProgressCallback</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Initializing-the-Memory-Pool">
+<h2>Initializing the Memory Pool<a class="headerlink" href="#Initializing-the-Memory-Pool" title="Permalink to this headline"></a></h2>
+<p>For applications like the one that follows where RAPIDS will be the only workhorse user of GPU memory and resource, a best practice is to use the RAPIDS Memory Manager library <code class="docutils literal notranslate"><span class="pre">rmm</span></code> to allocate a dedicated pool of GPU memory that allows for fast, asynchronous memory management. Here, we’ll dedicate 80% of free GPU memory to this pool to make sure we get the most utilization possible.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span><span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">initial_pool_size</span><span class="o">=</span><span class="n">get_rmm_size</span><span class="p">(</span><span class="mf">0.8</span> <span class="o">*</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;free&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/conda/envs/rapids/lib/python3.7/site-packages/nvtabular/utils.py:47: UserWarning: get_memory_info is not supported. Using total device memory from NVML.
+  warnings.warn(&#34;get_memory_info is not supported. Using total device memory from NVML.&#34;)
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Dataset-and-Dataset-Schema">
+<h2>Dataset and Dataset Schema<a class="headerlink" href="#Dataset-and-Dataset-Schema" title="Permalink to this headline"></a></h2>
+<p>Once our data is ready, we’ll define some high level parameters to describe where our data is and what it “looks like” at a high level.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define some information about where to get our data</span>
+<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;INPUT_DATA_DIR&#39;</span><span class="p">,</span> <span class="s1">&#39;/raid/criteo/&#39;</span><span class="p">)</span>
+<span class="n">OUTPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;OUTPUT_DATA_DIR&#39;</span><span class="p">,</span> <span class="s1">&#39;/raid/test_dask&#39;</span><span class="p">)</span> <span class="c1"># where we&#39;ll save our procesed data to</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;BATCH_SIZE&#39;</span><span class="p">,</span> <span class="mi">800000</span><span class="p">))</span>
+<span class="n">PARTS_PER_CHUNK</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;PARTS_PER_CHUNK&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">NUM_TRAIN_DAYS</span> <span class="o">=</span> <span class="mi">23</span> <span class="c1"># number of days worth of data to use for training, the rest will be used for validation</span>
+
+<span class="c1"># define our dataset schema</span>
+<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;I&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">14</span><span class="p">)]</span>
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span>  <span class="p">[</span><span class="s1">&#39;C&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">27</span><span class="p">)]</span>
+<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span>
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span> ls <span class="nv">$INPUT_DATA_DIR</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+_metadata       day_12.parquet  day_17.parquet  day_21.parquet  day_5.parquet
+day_0.parquet   day_13.parquet  day_18.parquet  day_22.parquet  day_6.parquet
+day_1.parquet   day_14.parquet  day_19.parquet  day_23.parquet  day_7.parquet
+day_10.parquet  day_15.parquet  day_2.parquet   day_3.parquet   day_8.parquet
+day_11.parquet  day_16.parquet  day_20.parquet  day_4.parquet   day_9.parquet
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fname</span> <span class="o">=</span> <span class="s1">&#39;day_</span><span class="si">{}</span><span class="s1">.parquet&#39;</span>
+<span class="n">num_days</span> <span class="o">=</span> <span class="nb">len</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">)</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;[0-9]{1,2}&#39;</span><span class="p">),</span> <span class="n">i</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">])</span>
+<span class="n">train_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">day</span><span class="p">))</span> <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NUM_TRAIN_DAYS</span><span class="p">)]</span>
+<span class="n">valid_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">day</span><span class="p">))</span> <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NUM_TRAIN_DAYS</span><span class="p">,</span> <span class="n">num_days</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Preprocessing">
+<h2>Preprocessing<a class="headerlink" href="#Preprocessing" title="Permalink to this headline"></a></h2>
+<p>At this point, our data still isn’t in a form that’s ideal for consumption by neural networks. The most pressing issues are missing values and the fact that our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices that can be leveraged by a learned embedding. Less pressing, but still important for learning dynamics, are the distributions of our continuous variables, which are distributed across multiple orders of
+magnitude and are uncentered (i.e. E[x] != 0).</p>
+<p>We can fix these issues in a conscise and GPU-accelerated manner with an NVTabular <code class="docutils literal notranslate"><span class="pre">Workflow</span></code>. We’ll instantiate one with our current dataset schema, then symbolically add operations <em>on</em> that schema. By setting all these <code class="docutils literal notranslate"><span class="pre">Ops</span></code> to use <code class="docutils literal notranslate"><span class="pre">replace=True</span></code>, the schema itself will remain unmodified, while the variables represented by each field in the schema will be transformed.</p>
+<div class="section" id="Frequency-Thresholding">
+<h3>Frequency Thresholding<a class="headerlink" href="#Frequency-Thresholding" title="Permalink to this headline"></a></h3>
+<p>One interesting thing worth pointing out is that we’re using <em>frequency thresholding</em> in our <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency (which we’ve set here to be 15 occurrences throughout the dataset) to the <em>same</em> index, keeping the model from overfitting to sparse signals.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
+    <span class="n">label_name</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span>
+
+<span class="c1"># log -&gt; normalize continuous features. Note that doing this in the opposite</span>
+<span class="c1"># order wouldn&#39;t make sense! Note also that we&#39;re zero filling continuous</span>
+<span class="c1"># values before the log: this is a good time to remember that LogOp</span>
+<span class="c1"># performs log(1+x), not log(x)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">add_cont_feature</span><span class="p">([</span><span class="n">FillMissing</span><span class="p">(),</span> <span class="n">Clip</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">LogOp</span><span class="p">()])</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">add_cont_preprocess</span><span class="p">(</span><span class="n">Normalize</span><span class="p">())</span>
+
+<span class="c1"># categorification with frequency thresholding</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">add_cat_preprocess</span><span class="p">(</span><span class="n">Categorify</span><span class="p">(</span><span class="n">freq_threshold</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">out_path</span><span class="o">=</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<p>Now instantiate dataset iterators to loop through our dataset (which we couldn’t fit into GPU memory)</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_paths</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">,</span> <span class="n">part_mem_fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)</span>
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid_paths</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">,</span> <span class="n">part_mem_fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Now run them through our workflows to collect statistics on the train set, then transform and save to parquet files.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output_train_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s1">&#39;train/&#39;</span><span class="p">)</span>
+<span class="n">output_valid_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s1">&#39;valid/&#39;</span><span class="p">)</span>
+<span class="o">!</span> mkdir -p <span class="nv">$output_train_dir</span>
+<span class="o">!</span> mkdir -p <span class="nv">$output_valid_dir</span>
+</pre></div>
+</div>
+</div>
+<p>For reference, let’s time it to see how long it takes…</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_PARTITION</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="n">output_train_dir</span><span class="p">,</span> <span class="n">out_files_per_proc</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+CPU times: user 11min 40s, sys: 13min 36s, total: 25min 17s
+Wall time: 26min 26s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">,</span> <span class="n">record_stats</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_PARTITION</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="n">output_valid_dir</span><span class="p">,</span> <span class="n">out_files_per_proc</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+CPU times: user 18.1 s, sys: 40.2 s, total: 58.3 s
+Wall time: 1min 1s
+</pre></div></div>
+</div>
+<p>And just like that, we have training and validation sets ready to feed to a model!</p>
+<div class="section" id="Deep-Learning">
+<h4>Deep Learning<a class="headerlink" href="#Deep-Learning" title="Permalink to this headline"></a></h4>
+</div>
+</div>
+</div>
+<div class="section" id="Data-Loading">
+<h2>Data Loading<a class="headerlink" href="#Data-Loading" title="Permalink to this headline"></a></h2>
+<p>We’ll start by using the parquet files we just created to feed an NVTabular <code class="docutils literal notranslate"><span class="pre">TorchAsyncItr</span></code>, which will loop through the files in chunks. First, we’ll reinitialize our memory pool from earlier to free up some memory so that we can share it with PyTorch.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span><span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">initial_pool_size</span><span class="o">=</span><span class="mf">0.3</span> <span class="o">*</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;free&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/conda/envs/rapids/lib/python3.7/site-packages/nvtabular/utils.py:47: UserWarning: get_memory_info is not supported. Using total device memory from NVML.
+  warnings.warn(&#34;get_memory_info is not supported. Using total device memory from NVML.&#34;)
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_paths</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_train_dir</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">))</span>
+<span class="n">valid_paths</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_valid_dir</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_data</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_paths</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_mem_fraction</span><span class="o">=</span><span class="mf">0.04</span><span class="o">/</span><span class="n">PARTS_PER_CHUNK</span><span class="p">)</span>
+<span class="n">valid_data</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid_paths</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_mem_fraction</span><span class="o">=</span><span class="mf">0.04</span><span class="o">/</span><span class="n">PARTS_PER_CHUNK</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_data_itrs</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
+    <span class="n">train_data</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="n">PARTS_PER_CHUNK</span>
+<span class="p">)</span>
+<span class="n">valid_data_itrs</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
+    <span class="n">valid_data</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="n">PARTS_PER_CHUNK</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">gen_col</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">batch</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">long</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataloader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span><span class="n">train_data_itrs</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="n">gen_col</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">valid_dataloader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span><span class="n">valid_data_itrs</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="n">gen_col</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">databunch</span> <span class="o">=</span> <span class="n">TabularDataLoaders</span><span class="p">(</span><span class="n">train_dataloader</span><span class="p">,</span> <span class="n">valid_dataloader</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Now we have data ready to be fed to our model online!</p>
+</div>
+<div class="section" id="Training">
+<h2>Training<a class="headerlink" href="#Training" title="Permalink to this headline"></a></h2>
+<p>One extra handy functionality of NVTabular is the ability to use the stats collected by the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op to define embedding dictionary sizes (i.e. the number of rows of your embedding table). It even includes a heuristic for computing a good embedding size (i.e. the number of columns of your embedding table) based off of the number of categories.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">embeddings</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">TabularModel</span><span class="p">(</span><span class="n">emb_szs</span><span class="o">=</span><span class="n">embeddings</span><span class="p">,</span> <span class="n">n_cont</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">),</span> <span class="n">out_sz</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">])</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+<span class="n">learn</span> <span class="o">=</span>  <span class="n">Learner</span><span class="p">(</span><span class="n">databunch</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">loss_func</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">(),</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">accuracy</span><span class="p">],</span> <span class="n">cbs</span><span class="o">=</span><span class="n">ProgressCallback</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.callback.schedule</span> <span class="kn">import</span> <span class="n">fit_one_cycle</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">1.32e-2</span>
+<span class="n">epochs</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+<span class="c1">#learn.fit(epochs, learning_rate)</span>
+<span class="n">fit_one_cycle</span><span class="p">(</span><span class="n">learn</span><span class="p">,</span> <span class="n">n_epoch</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span> <span class="n">lr_max</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">t_final</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[0, 0.12467262893915176, 0.12468979507684708, 0.9666252732276917, &#39;2:26:41&#39;]
+8801.142189741135
+</pre></div></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="rossmann.html" class="btn btn-neutral float-right" title="NVTabular demo on Rossmann data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.3.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../v0.2.0/index.html">v0.2.0</a></dd>
+      <dd><a href="criteo.html">v0.3.0</a></dd>
+      <dd><a href="../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="../../v0.6.1/index.html">v0.6.1</a></dd>
+      <dd><a href="../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

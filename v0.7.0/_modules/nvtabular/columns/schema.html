@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.columns.schema &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>nvtabular.columns.schema</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nvtabular.columns.schema</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Text</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="c1"># this needs to be before any modules that import protobuf</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;python&quot;</span>
+<span class="kn">from</span> <span class="nn">google.protobuf</span> <span class="kn">import</span> <span class="n">json_format</span><span class="p">,</span> <span class="n">text_format</span>  <span class="c1"># noqa</span>
+<span class="kn">from</span> <span class="nn">google.protobuf.any_pb2</span> <span class="kn">import</span> <span class="n">Any</span>  <span class="c1"># noqa</span>
+<span class="kn">from</span> <span class="nn">google.protobuf.struct_pb2</span> <span class="kn">import</span> <span class="n">Struct</span>  <span class="c1"># noqa</span>
+<span class="kn">from</span> <span class="nn">tensorflow_metadata.proto.v0</span> <span class="kn">import</span> <span class="n">schema_pb2</span>  <span class="c1"># noqa</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular.tags</span> <span class="kn">import</span> <span class="n">Tags</span>  <span class="c1"># noqa</span>
+
+
+<span class="k">def</span> <span class="nf">register_extra_metadata</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">):</span>
+    <span class="n">filtered_properties</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;domain&quot;</span><span class="p">}</span>
+    <span class="n">msg_struct</span> <span class="o">=</span> <span class="n">Struct</span><span class="p">()</span>
+    <span class="c1"># must pack message into &quot;Any&quot; type</span>
+    <span class="n">any_pack</span> <span class="o">=</span> <span class="n">Any</span><span class="p">()</span>
+    <span class="n">any_pack</span><span class="o">.</span><span class="n">Pack</span><span class="p">(</span><span class="n">json_format</span><span class="o">.</span><span class="n">ParseDict</span><span class="p">(</span><span class="n">filtered_properties</span><span class="p">,</span> <span class="n">msg_struct</span><span class="p">))</span>
+    <span class="c1"># extra_metadata only takes type &quot;Any&quot; messages</span>
+    <span class="n">feature</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">extra_metadata</span><span class="o">.</span><span class="n">add</span><span class="p">()</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span><span class="n">any_pack</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">feature</span>
+
+
+<span class="k">def</span> <span class="nf">register_list</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">_is_list</span><span class="p">):</span>
+        <span class="n">min_length</span><span class="p">,</span> <span class="n">max_length</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="s2">&quot;min_length&quot;</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+            <span class="n">min_length</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;min_length&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;max_length&quot;</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+            <span class="n">max_length</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;max_length&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">min_length</span> <span class="ow">and</span> <span class="n">max_length</span> <span class="ow">and</span> <span class="n">min_length</span> <span class="o">==</span> <span class="n">max_length</span><span class="p">:</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">schema_pb2</span><span class="o">.</span><span class="n">FixedShape</span><span class="p">()</span>
+            <span class="n">dim</span> <span class="o">=</span> <span class="n">shape</span><span class="o">.</span><span class="n">dim</span><span class="o">.</span><span class="n">add</span><span class="p">()</span>
+            <span class="n">dim</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">min_length</span>
+            <span class="n">feature</span><span class="o">.</span><span class="n">shape</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">min_length</span> <span class="ow">and</span> <span class="n">max_length</span> <span class="ow">and</span> <span class="n">min_length</span> <span class="o">&lt;</span> <span class="n">max_length</span><span class="p">:</span>
+            <span class="n">feature</span><span class="o">.</span><span class="n">value_count</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span><span class="n">schema_pb2</span><span class="o">.</span><span class="n">ValueCount</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">min_length</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">max_length</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if no min max available set dummy value, to signal this is list</span>
+            <span class="n">feature</span><span class="o">.</span><span class="n">value_count</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span><span class="n">schema_pb2</span><span class="o">.</span><span class="n">ValueCount</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">feature</span>
+
+
+<span class="k">def</span> <span class="nf">set_protobuf_float</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">):</span>
+    <span class="n">domain</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;domain&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">feature</span><span class="o">.</span><span class="n">float_domain</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span>
+        <span class="n">schema_pb2</span><span class="o">.</span><span class="n">FloatDomain</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">column_schema</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="nb">min</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="nb">max</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">feature</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">schema_pb2</span><span class="o">.</span><span class="n">FeatureType</span><span class="o">.</span><span class="n">FLOAT</span>
+    <span class="k">return</span> <span class="n">feature</span>
+
+
+<span class="k">def</span> <span class="nf">set_protobuf_int</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">):</span>
+    <span class="n">domain</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;domain&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">feature</span><span class="o">.</span><span class="n">int_domain</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span>
+        <span class="n">schema_pb2</span><span class="o">.</span><span class="n">IntDomain</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">column_schema</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="nb">min</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="nb">max</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="n">is_categorical</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">tags</span>
+                <span class="ow">or</span> <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="o">.</span><span class="n">value</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">tags</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">feature</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">schema_pb2</span><span class="o">.</span><span class="n">FeatureType</span><span class="o">.</span><span class="n">INT</span>
+    <span class="k">return</span> <span class="n">feature</span>
+
+
+<span class="k">def</span> <span class="nf">register_dtype</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">):</span>
+    <span class="c1">#  column_schema is a dict, changes are held</span>
+    <span class="c1">#  TODO: this double check can be refactored</span>
+    <span class="k">if</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">_is_list</span><span class="p">:</span>
+            <span class="n">feature</span> <span class="o">=</span> <span class="n">proto_dict</span><span class="p">[</span><span class="s2">&quot;list&quot;</span><span class="p">](</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="s2">&quot;kind&quot;</span><span class="p">):</span>
+            <span class="n">string_name</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">_dtype</span><span class="o">.</span><span class="n">_kind_name</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="s2">&quot;item&quot;</span><span class="p">):</span>
+            <span class="n">string_name</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">())</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">string_name</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">):</span>
+            <span class="n">string_name</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported dtype for column schema: </span><span class="si">{</span><span class="n">column_schema</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">string_name</span> <span class="ow">in</span> <span class="n">proto_dict</span><span class="p">:</span>
+            <span class="n">feature</span> <span class="o">=</span> <span class="n">proto_dict</span><span class="p">[</span><span class="n">string_name</span><span class="p">](</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">feature</span>
+
+
+<span class="n">proto_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="n">register_list</span><span class="p">,</span>
+    <span class="s2">&quot;float&quot;</span><span class="p">:</span> <span class="n">set_protobuf_float</span><span class="p">,</span>
+    <span class="s2">&quot;int&quot;</span><span class="p">:</span> <span class="n">set_protobuf_int</span><span class="p">,</span>
+    <span class="s2">&quot;uint&quot;</span><span class="p">:</span> <span class="n">set_protobuf_int</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">create_protobuf_feature</span><span class="p">(</span><span class="n">column_schema</span><span class="p">):</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">schema_pb2</span><span class="o">.</span><span class="n">Feature</span><span class="p">()</span>
+    <span class="n">feature</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">register_dtype</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+    <span class="n">annotation</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">annotation</span>
+    <span class="n">annotation</span><span class="o">.</span><span class="n">tag</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">tag</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">tags</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="c1"># can be instantiated with no values</span>
+    <span class="c1"># if  so, unnecessary to dump</span>
+    <span class="c1"># import pdb; pdb.set_trace()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">feature</span> <span class="o">=</span> <span class="n">register_extra_metadata</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="n">feature</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">feature</span>
+
+
+<div class="viewcode-block" id="ColumnSchema"><a class="viewcode-back" href="../../../api/columns/schema.html#nvtabular.columns.schema.ColumnSchema">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ColumnSchema</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A schema containing metadata of a dataframe column.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">Text</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Text</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">_is_list</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">_normalize_tags</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="ow">or</span> <span class="p">[])</span>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">with_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ColumnSchema&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ColumnSchema</span><span class="p">(</span>
+            <span class="n">name</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">_is_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_is_list</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">with_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ColumnSchema&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">tags</span><span class="p">]</span>
+
+        <span class="n">tags</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span> <span class="o">+</span> <span class="n">tags</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">ColumnSchema</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">_is_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_is_list</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">with_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">properties</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;properties must be in dict format, key: value&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Using new dictionary to avoid passing old ref to new schema</span>
+        <span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ColumnSchema</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="n">properties</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">_is_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_is_list</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">with_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">is_list</span> <span class="o">=</span> <span class="n">is_list</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_list</span>
+        <span class="k">return</span> <span class="n">ColumnSchema</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">_is_list</span><span class="o">=</span><span class="n">is_list</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Schema"><a class="viewcode-back" href="../../../api/columns/schema.html#nvtabular.columns.schema.Schema">[docs]</a><span class="k">class</span> <span class="nc">Schema</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A collection of column schemas for a dataset.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">column_schemas</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">column_schemas</span> <span class="o">=</span> <span class="n">column_schemas</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column_schemas</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span> <span class="o">=</span> <span class="n">column_schemas</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column_schemas</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">column_schema</span> <span class="ow">in</span> <span class="n">column_schemas</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">column_schema</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="n">column_schema</span> <span class="o">=</span> <span class="n">ColumnSchema</span><span class="p">(</span><span class="n">column_schema</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">column_schema</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">column_schema</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;The `column_schemas` parameter must be a list or dict.&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">selector</span><span class="p">:</span>
+            <span class="n">schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+                <span class="n">schema</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_by_name</span><span class="p">(</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">selector</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+                <span class="n">schema</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_by_tag</span><span class="p">(</span><span class="n">selector</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">schema</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">apply_inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">selector</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_by_name</span><span class="p">(</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">select_by_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">tags</span><span class="p">]</span>
+
+        <span class="n">selected_schemas</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">column_schema</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">x</span> <span class="ow">in</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">tags</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">):</span>
+                <span class="n">selected_schemas</span><span class="p">[</span><span class="n">column_schema</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">column_schema</span>
+
+        <span class="k">return</span> <span class="n">Schema</span><span class="p">(</span><span class="n">selected_schemas</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">select_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">names</span><span class="p">]</span>
+
+        <span class="n">selected_schemas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">names</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">Schema</span><span class="p">(</span><span class="n">selected_schemas</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">read_protobuf</span><span class="p">(</span><span class="n">schema_path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">schema_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">schema</span> <span class="o">=</span> <span class="n">schema_pb2</span><span class="o">.</span><span class="n">Schema</span><span class="p">()</span>
+            <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">schema</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">schema</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">load_protobuf</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">schema_path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Schema&quot;</span><span class="p">:</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">schema_path</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">schema_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">schema_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">schema_path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="n">schema_path</span> <span class="o">=</span> <span class="n">schema_path</span> <span class="o">/</span> <span class="s2">&quot;schema.pbtxt&quot;</span>
+            <span class="n">schema</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">read_protobuf</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">feature</span><span class="p">:</span>
+            <span class="n">_is_list</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">properties</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">feat</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">tag</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+            <span class="c1"># only one item should ever be in extra_metadata</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">feat</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">extra_metadata</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feat</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: extra_metadata should have 1 item, has </span><span class="se">\</span>
+<span class="s2">                    </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">feat</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">extra_metadata</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">feat</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">extra_metadata</span><span class="p">:</span>
+                <span class="n">properties</span> <span class="o">=</span> <span class="n">json_format</span><span class="o">.</span><span class="n">MessageToDict</span><span class="p">(</span><span class="n">feat</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">extra_metadata</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+            <span class="c1"># what domain</span>
+            <span class="c1"># load the domain values</span>
+            <span class="n">shape_name</span> <span class="o">=</span> <span class="n">feat</span><span class="o">.</span><span class="n">WhichOneof</span><span class="p">(</span><span class="s2">&quot;shape_type&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">shape_name</span><span class="p">:</span>
+                <span class="n">_is_list</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">field_name</span> <span class="o">=</span> <span class="n">feat</span><span class="o">.</span><span class="n">WhichOneof</span><span class="p">(</span><span class="s2">&quot;domain_info&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">field_name</span><span class="p">:</span>
+                <span class="n">domain_values</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">feat</span><span class="p">,</span> <span class="n">field_name</span><span class="p">)</span>
+                <span class="c1"># if zero no values were passed</span>
+                <span class="k">if</span> <span class="n">domain_values</span><span class="o">.</span><span class="n">max</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">properties</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="n">domain_values</span><span class="o">.</span><span class="n">min</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="n">domain_values</span><span class="o">.</span><span class="n">max</span><span class="p">}</span>
+                <span class="k">if</span> <span class="n">feat</span><span class="o">.</span><span class="n">type</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">feat</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int</span>
+                    <span class="k">elif</span> <span class="n">feat</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float</span>
+            <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ColumnSchema</span><span class="p">(</span>
+                    <span class="n">feat</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="n">properties</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">_is_list</span><span class="o">=</span><span class="n">_is_list</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Schema</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">save_protobuf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_path</span><span class="p">):</span>
+        <span class="n">schema_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">schema_path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The path provided is not a valid directory: </span><span class="si">{</span><span class="n">schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># traverse list of column schema</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="n">schema_pb2</span><span class="o">.</span><span class="n">Schema</span><span class="p">()</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">col_name</span><span class="p">,</span> <span class="n">col_schema</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">create_protobuf_feature</span><span class="p">(</span><span class="n">col_schema</span><span class="p">))</span>
+        <span class="n">schema</span><span class="o">.</span><span class="n">feature</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">schema_path</span> <span class="o">/</span> <span class="s2">&quot;schema.pbtxt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text_format</span><span class="o">.</span><span class="n">MessageToString</span><span class="p">(</span><span class="n">schema</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">([</span><span class="n">col_schema</span><span class="o">.</span><span class="vm">__dict__</span> <span class="k">for</span> <span class="n">col_schema</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Schema</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">column_schemas</span>
+
+    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Schema</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported operand type(s) for +: &#39;Schema&#39; and </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Schema</span><span class="p">({</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">,</span> <span class="o">**</span><span class="n">other</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">})</span>
+
+    <span class="k">def</span> <span class="fm">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__add__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Schema</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported operand type(s) for -: &#39;Schema&#39; and </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">({</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">})</span>
+
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<span class="k">def</span> <span class="nf">_normalize_tags</span><span class="p">(</span><span class="n">tags</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="p">[</span><span class="n">tag</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span> <span class="k">if</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">Tags</span><span class="o">.</span><span class="n">_value2member_map_</span> <span class="k">else</span> <span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.7.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
+      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
+      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
+      <dd><a href="schema.html">v0.7.0</a></dd>
+      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

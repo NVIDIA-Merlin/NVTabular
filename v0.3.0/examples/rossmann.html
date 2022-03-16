@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NVTabular demo on Rossmann data &mdash; NVTabular 2020 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Multi-GPU Scaling in NVTabular with Dask" href="multigpu.html" />
+    <link rel="prev" title="Criteo Example" href="criteo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../HowItWorks.html">How it Works</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="criteo.html">Criteo Example</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Rossmann Example</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#Overview">Overview</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Learning-objectives">Learning objectives</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Preparing-our-dataset">Preparing our dataset</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Workflows-and-Preprocessing">Workflows and Preprocessing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Ops">Ops</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Datasets">Datasets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Finalize-columns">Finalize columns</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Training-a-Network">Training a Network</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Choose-a-Framework">Choose a Framework</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#TensorFlow">TensorFlow</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#TensorFlow:-Preparing-Datasets">TensorFlow: Preparing Datasets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#TensorFlow:-Defining-a-Model">TensorFlow: Defining a Model</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#TensorFlow:-Training">TensorFlow: Training</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#PyTorch">PyTorch</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#PyTorch:-Preparing-Datasets">PyTorch: Preparing Datasets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#PyTorch:-Defining-a-Model">PyTorch: Defining a Model</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#PyTorch:-Training">PyTorch: Training</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#fast.ai">fast.ai</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#fast.ai:-Preparing-Datasets">fast.ai: Preparing Datasets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fast.ai:-Defining-a-Model">fast.ai: Defining a Model</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fast.ai:-Training">fast.ai: Training</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="multigpu.html">Multi-GPU Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hugectr.html">HugeCTR Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outbrain.html">Outbrain Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="recsys2020.html">RecSys2020 Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Examples</a> &raquo;</li>
+      <li>NVTabular demo on Rossmann data</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt .copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2020 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+<p><img alt="74830c3f30fc49d18a990f56c1de60b5" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<div class="section" id="NVTabular-demo-on-Rossmann-data">
+<h1>NVTabular demo on Rossmann data<a class="headerlink" href="#NVTabular-demo-on-Rossmann-data" title="Permalink to this headline"></a></h1>
+<div class="section" id="Overview">
+<h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
+<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.</p>
+<div class="section" id="Learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
+<p>This notebook demonstrates the steps for carrying out data preprocessing, transformation and loading with NVTabular on the Kaggle Rossmann <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales/overview">dataset</a>. Rossmann operates over 3,000 drug stores in 7 European countries. Historical sales data for 1,115 Rossmann stores are provided. The task is to forecast the “Sales” column for the test set.</p>
+<p>The following example will illustrate how to use NVTabular to preprocess and load tabular data for training neural networks in both PyTorch and TensorFlow. We’ll use a <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/lesson6-rossmann.ipynb">dataset built by FastAI</a> for solving the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Kaggle Rossmann Store Sales competition</a>. Some cuDF preprocessing is required to build the appropriate feature set, so make sure to run
+<a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/rossmann-store-sales-preproc.ipynb">rossmann-store-sales-preproc.ipynb</a> first before going through this notebook.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Preparing-our-dataset">
+<h2>Preparing our dataset<a class="headerlink" href="#Preparing-our-dataset" title="Permalink to this headline"></a></h2>
+<p>Let’s start by defining some of the a priori information about our data, including its schema (what columns to use and what sorts of variables they represent), as well as the location of the files corresponding to some particular sampling from this schema. Note that throughout, I’ll use UPPERCASE variables to represent this sort of a priori information that you might usually encode using commandline arguments or config files.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./data&quot;</span><span class="p">)</span>
+
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;Store&#39;</span><span class="p">,</span> <span class="s1">&#39;DayOfWeek&#39;</span><span class="p">,</span> <span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="s1">&#39;Month&#39;</span><span class="p">,</span> <span class="s1">&#39;Day&#39;</span><span class="p">,</span> <span class="s1">&#39;StateHoliday&#39;</span><span class="p">,</span> <span class="s1">&#39;CompetitionMonthsOpen&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Promo2Weeks&#39;</span><span class="p">,</span> <span class="s1">&#39;StoreType&#39;</span><span class="p">,</span> <span class="s1">&#39;Assortment&#39;</span><span class="p">,</span> <span class="s1">&#39;PromoInterval&#39;</span><span class="p">,</span> <span class="s1">&#39;CompetitionOpenSinceYear&#39;</span><span class="p">,</span> <span class="s1">&#39;Promo2SinceYear&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;State&#39;</span><span class="p">,</span> <span class="s1">&#39;Week&#39;</span><span class="p">,</span> <span class="s1">&#39;Events&#39;</span><span class="p">,</span> <span class="s1">&#39;Promo_fw&#39;</span><span class="p">,</span> <span class="s1">&#39;Promo_bw&#39;</span><span class="p">,</span> <span class="s1">&#39;StateHoliday_fw&#39;</span><span class="p">,</span> <span class="s1">&#39;StateHoliday_bw&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SchoolHoliday_fw&#39;</span><span class="p">,</span> <span class="s1">&#39;SchoolHoliday_bw&#39;</span>
+<span class="p">]</span>
+
+<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;CompetitionDistance&#39;</span><span class="p">,</span> <span class="s1">&#39;Max_TemperatureC&#39;</span><span class="p">,</span> <span class="s1">&#39;Mean_TemperatureC&#39;</span><span class="p">,</span> <span class="s1">&#39;Min_TemperatureC&#39;</span><span class="p">,</span>
+   <span class="s1">&#39;Max_Humidity&#39;</span><span class="p">,</span> <span class="s1">&#39;Mean_Humidity&#39;</span><span class="p">,</span> <span class="s1">&#39;Min_Humidity&#39;</span><span class="p">,</span> <span class="s1">&#39;Max_Wind_SpeedKm_h&#39;</span><span class="p">,</span>
+   <span class="s1">&#39;Mean_Wind_SpeedKm_h&#39;</span><span class="p">,</span> <span class="s1">&#39;CloudCover&#39;</span><span class="p">,</span> <span class="s1">&#39;trend&#39;</span><span class="p">,</span> <span class="s1">&#39;trend_DE&#39;</span><span class="p">,</span>
+   <span class="s1">&#39;AfterStateHoliday&#39;</span><span class="p">,</span> <span class="s1">&#39;BeforeStateHoliday&#39;</span><span class="p">,</span> <span class="s1">&#39;Promo&#39;</span><span class="p">,</span> <span class="s1">&#39;SchoolHoliday&#39;</span>
+<span class="p">]</span>
+<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Sales&#39;</span><span class="p">]</span>
+
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+</pre></div>
+</div>
+</div>
+<p>What files are available to train on in our data directory?</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span> ls <span class="nv">$DATA_DIR</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+ross_pre  test.csv  train.csv  valid.csv
+</pre></div></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">train.csv</span></code> and <code class="docutils literal notranslate"><span class="pre">valid.csv</span></code> seem like good candidates, let’s use those.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s1">&#39;train.csv&#39;</span><span class="p">)</span>
+<span class="n">VALID_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s1">&#39;valid.csv&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Workflows-and-Preprocessing">
+<h3>Workflows and Preprocessing<a class="headerlink" href="#Workflows-and-Preprocessing" title="Permalink to this headline"></a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> is used to represent the chains of feature engineering and preprocessing operations performed on a dataset, and is instantiated with a description of the dataset’s schema so that it can keep track of how columns transform with each operation.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># note that here, we want to perform a normalization transformation on the label</span>
+<span class="c1"># column. Since NVT doesn&#39;t support transforming label columns right now, we&#39;ll</span>
+<span class="c1"># pretend it&#39;s a regular continuous column during our feature engineering phase</span>
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
+    <span class="n">label_name</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Ops">
+<h3>Ops<a class="headerlink" href="#Ops" title="Permalink to this headline"></a></h3>
+<p>We add operations to a <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> by leveraging the <code class="docutils literal notranslate"><span class="pre">add_(cat|cont)_feature</span></code> and <code class="docutils literal notranslate"><span class="pre">add_(cat|cont)_preprocess</span></code> methods for categorical and continuous variables, respectively. When we’re done adding ops, we call the <code class="docutils literal notranslate"><span class="pre">finalize</span></code> method to let the <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> build a representation of its outputs.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">add_cont_feature</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">())</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">add_cont_preprocess</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">LogOp</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">))</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">add_cont_preprocess</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">())</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">add_cat_preprocess</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">())</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Datasets">
+<h3>Datasets<a class="headerlink" href="#Datasets" title="Permalink to this headline"></a></h3>
+<p>In general, the <code class="docutils literal notranslate"><span class="pre">Op</span></code>s in our <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> will require measurements of statistical properties of our data in order to be leveraged. For example, the <code class="docutils literal notranslate"><span class="pre">Normalize</span></code> op requires measurements of the dataset mean and standard deviation, and the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op requires an accounting of all the categories a particular feature can manifest. However, we frequently need to measure these properties across datasets which are too large to fit into GPU memory (or CPU memory for that matter) at once.</p>
+<p>NVTabular solves this by providing the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> class, which breaks a set of parquet or csv files into into a collection of <code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code> chunks that can fit in device memory. Under the hood, the data decomposition corresponds to the construction of a <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">dask_cudf.DataFrame</a> object. By representing our dataset as a lazily-evaluated <a class="reference external" href="https://dask.org/">Dask</a> collection, we can handle the calculation of complex global statistics
+(and later, can also iterate over the partitions while feeding data into a neural network).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATH</span><span class="p">)</span>
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">VALID_PATH</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Now that we have our datasets, we’ll apply our <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> to them and save the results out to parquet files for fast reading at train time. We’ll also measure and record statistics on our training set using the <code class="docutils literal notranslate"><span class="pre">record_stats=True</span></code> kwarg so that our <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> can use them at apply time.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s1">&#39;ross_pre&#39;</span><span class="p">)</span>
+<span class="n">PREPROCESS_DIR_TRAIN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s1">&#39;train&#39;</span><span class="p">)</span>
+<span class="n">PREPROCESS_DIR_VALID</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s1">&#39;valid&#39;</span><span class="p">)</span>
+
+<span class="o">!</span> rm -rf <span class="nv">$PREPROCESS_DIR</span> # remove previous trials
+<span class="o">!</span> mkdir -p <span class="nv">$PREPROCESS_DIR_TRAIN</span>
+<span class="o">!</span> mkdir -p <span class="nv">$PREPROCESS_DIR_VALID</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">record_stats</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">,</span> <span class="n">out_files_per_proc</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">,</span> <span class="n">record_stats</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Finalize-columns">
+<h3>Finalize columns<a class="headerlink" href="#Finalize-columns" title="Permalink to this headline"></a></h3>
+<p>The FastAI workflow will use <code class="docutils literal notranslate"><span class="pre">nvtabular.loader.torch.TorchAsyncItr</span></code>, which will map a dataset to its corresponding PyTorch tensors. In order to make sure it runs correctly, we’ll call the <code class="docutils literal notranslate"><span class="pre">create_final_cols</span></code> method to let the <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> know to build the output dataset schema, and then we’ll be sure to remove instances of the label column that got added to that schema when we performed processing on it.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">create_final_cols</span><span class="p">()</span>
+<span class="c1"># using log op and normalize on sales column causes it to get added to</span>
+<span class="c1"># continuous columns_ctx, so we&#39;ll remove it here</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">proc</span><span class="o">.</span><span class="n">columns_ctx</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">][</span><span class="s1">&#39;cols&#39;</span><span class="p">][</span><span class="s1">&#39;continuous&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">LABEL_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">break</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Training-a-Network">
+<h2>Training a Network<a class="headerlink" href="#Training-a-Network" title="Permalink to this headline"></a></h2>
+<p>Now that our data is preprocessed and saved out, we can leverage <code class="docutils literal notranslate"><span class="pre">dataset</span></code>s to read through the preprocessed parquet files in an online fashion to train neural networks.</p>
+<p>We’ll start by setting some universal hyperparameters for our model and optimizer. These settings will be shared across all of the frameworks that we explore below.</p>
+<p>If you’re interested in contributing to NVTabular, feel free to take this challenge on and submit a pull request if successful. 12% RMSPE is achievable using the Novograd optimizer, but we know of no Novograd implementation for TensorFlow that supports sparse gradients, and so we are not including that solution below.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_DROPOUT_RATE</span> <span class="o">=</span> <span class="mf">0.04</span>
+<span class="n">DROPOUT_RATES</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">]</span>
+<span class="n">HIDDEN_DIMS</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">500</span><span class="p">]</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">65536</span>
+<span class="n">LEARNING_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">EPOCHS</span> <span class="o">=</span> <span class="mi">25</span>
+
+<span class="c1"># TODO: Calculate on the fly rather than recalling from previous analysis.</span>
+<span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">=</span> <span class="mf">38722.0</span>
+<span class="n">MAX_LOG_SALES_PREDICTION</span> <span class="o">=</span> <span class="mf">1.2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+
+<span class="c1"># It&#39;s possible to use defaults defined within NVTabular.</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">column</span><span class="p">:</span> <span class="n">shape</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">shape</span> <span class="ow">in</span>
+        <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="c1"># Here, however, we will use fast.ai&#39;s rule for embedding sizes.</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">:</span>
+    <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="nb">min</span><span class="p">(</span><span class="mi">600</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="mf">1.6</span> <span class="o">*</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mf">0.56</span><span class="p">)))</span>
+
+<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="s1">&#39;*.parquet&#39;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="s1">&#39;*.parquet&#39;</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<p>The following shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form <code class="docutils literal notranslate"><span class="pre">(cardinality,</span> <span class="pre">embedding_size)</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{&#39;Assortment&#39;: (4, 3),
+ &#39;CompetitionMonthsOpen&#39;: (26, 10),
+ &#39;CompetitionOpenSinceYear&#39;: (24, 9),
+ &#39;Day&#39;: (32, 11),
+ &#39;DayOfWeek&#39;: (8, 5),
+ &#39;Events&#39;: (22, 9),
+ &#39;Month&#39;: (13, 7),
+ &#39;Promo2SinceYear&#39;: (9, 5),
+ &#39;Promo2Weeks&#39;: (27, 10),
+ &#39;PromoInterval&#39;: (4, 3),
+ &#39;Promo_bw&#39;: (7, 5),
+ &#39;Promo_fw&#39;: (7, 5),
+ &#39;SchoolHoliday_bw&#39;: (9, 5),
+ &#39;SchoolHoliday_fw&#39;: (9, 5),
+ &#39;State&#39;: (13, 7),
+ &#39;StateHoliday&#39;: (3, 3),
+ &#39;StateHoliday_bw&#39;: (4, 3),
+ &#39;StateHoliday_fw&#39;: (4, 3),
+ &#39;Store&#39;: (1116, 81),
+ &#39;StoreType&#39;: (5, 4),
+ &#39;Week&#39;: (53, 15),
+ &#39;Year&#39;: (4, 3)}
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Choose-a-Framework">
+<h2>Choose a Framework<a class="headerlink" href="#Choose-a-Framework" title="Permalink to this headline"></a></h2>
+<p>We’re now ready to move on to framework-specific code.</p>
+<p><strong>The code for each framework can be run independently of the others, so feel free to skip to your framework of choice.</strong></p>
+<ul class="simple">
+<li><p><a class="reference external" href="#TensorFlow">TensorFlow</a></p></li>
+<li><p><a class="reference external" href="#PyTorch">PyTorch</a></p></li>
+<li><p><a class="reference external" href="#fast.ai">fast.ai</a></p></li>
+</ul>
+</div>
+<div class="section" id="TensorFlow">
+<h2>TensorFlow<a class="headerlink" href="#TensorFlow" title="Permalink to this headline"></a></h2>
+<div class="section" id="TensorFlow:-Preparing-Datasets">
+<h3>TensorFlow: Preparing Datasets<a class="headerlink" href="#TensorFlow:-Preparing-Datasets" title="Permalink to this headline"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code> wraps a lightweight iterator around a <code class="docutils literal notranslate"><span class="pre">dataset</span></code> object to handle chunking, shuffling, and application of any workflows (which can be applied online as a preprocessing step). For column names, can use either a list of string names or a list of TensorFlow <code class="docutils literal notranslate"><span class="pre">feature_columns</span></code> that will be used to feed the network</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
+<span class="c1"># IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise</span>
+<span class="c1"># it&#39;s too late and TF will have claimed all free GPU memory</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;TF_MEMORY_ALLOCATION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;8192&quot;</span> <span class="c1"># explicit MB</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;TF_MEMORY_ALLOCATION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.5&quot;</span> <span class="c1"># fraction of free memory</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span><span class="p">,</span> <span class="n">KerasSequenceValidater</span>
+
+<span class="c1"># cheap wrapper to keep things some semblance of neat</span>
+<span class="k">def</span> <span class="nf">make_categorical_embedding_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dictionary_size</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dictionary_size</span><span class="p">),</span>
+        <span class="n">embedding_dim</span>
+    <span class="p">)</span>
+
+<span class="c1"># instantiate our columns</span>
+<span class="n">categorical_columns</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">make_categorical_embedding_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">name</span><span class="p">])</span> <span class="k">for</span>
+        <span class="n">name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span>
+<span class="p">]</span>
+<span class="n">continuous_columns</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">CONTINUOUS_COLUMNS</span>
+<span class="p">]</span>
+
+<span class="c1"># feed them to our datasets</span>
+<span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">feature_columns</span><span class="o">=</span><span class="n">categorical_columns</span><span class="o">+</span><span class="n">continuous_columns</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span> <span class="c1"># amount of data, as a fraction of GPU memory, to load at once</span>
+<span class="p">)</span>
+
+<span class="n">valid_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">VALID_PATHS</span><span class="p">,</span> <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">feature_columns</span><span class="o">=</span><span class="n">categorical_columns</span><span class="o">+</span><span class="n">continuous_columns</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="o">*</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span> <span class="c1"># amount of data, as a fraction of GPU memory, to load at once</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="TensorFlow:-Defining-a-Model">
+<h3>TensorFlow: Defining a Model<a class="headerlink" href="#TensorFlow:-Defining-a-Model" title="Permalink to this headline"></a></h3>
+<p>Using Keras, we can define the layers of our model and their parameters explicitly. Here, for the sake of consistency, we’ll mimic fast.ai’s <a class="reference external" href="https://docs.fast.ai/tabular.learner.html">TabularModel</a>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># DenseFeatures layer needs a dictionary of {feature_name: input}</span>
+<span class="n">categorical_inputs</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
+    <span class="n">categorical_inputs</span><span class="p">[</span><span class="n">column_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="n">categorical_embedding_layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">DenseFeatures</span><span class="p">(</span><span class="n">categorical_columns</span><span class="p">)</span>
+<span class="n">categorical_x</span> <span class="o">=</span> <span class="n">categorical_embedding_layer</span><span class="p">(</span><span class="n">categorical_inputs</span><span class="p">)</span>
+<span class="n">categorical_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">EMBEDDING_DROPOUT_RATE</span><span class="p">)(</span><span class="n">categorical_x</span><span class="p">)</span>
+
+<span class="c1"># Just concatenating continuous, so can use a list</span>
+<span class="n">continuous_inputs</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CONTINUOUS_COLUMNS</span><span class="p">:</span>
+    <span class="n">continuous_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+<span class="n">continuous_embedding_layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Concatenate</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">continuous_x</span> <span class="o">=</span> <span class="n">continuous_embedding_layer</span><span class="p">(</span><span class="n">continuous_inputs</span><span class="p">)</span>
+<span class="n">continuous_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)(</span><span class="n">continuous_x</span><span class="p">)</span>
+
+<span class="c1"># concatenate and build MLP</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Concatenate</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)([</span><span class="n">categorical_x</span><span class="p">,</span> <span class="n">continuous_x</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">dim</span><span class="p">,</span> <span class="n">dropout_rate</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">HIDDEN_DIMS</span><span class="p">,</span> <span class="n">DROPOUT_RATES</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">dropout_rate</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># TODO: Initialize model weights to fix saturation issues.</span>
+<span class="c1"># For now, we&#39;ll just scale the output of our model directly before</span>
+<span class="c1"># hitting the sigmoid.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">x</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">MAX_LOG_SALES_PREDICTION</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">activations</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># combine all our inputs into a single list</span>
+<span class="c1"># (note that you can still use .fit, .predict, etc. on a dict</span>
+<span class="c1"># that maps input tensor names to input values)</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">categorical_inputs</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="n">continuous_inputs</span>
+<span class="n">tf_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="TensorFlow:-Training">
+<h3>TensorFlow: Training<a class="headerlink" href="#TensorFlow:-Training" title="Permalink to this headline"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rmspe_tf</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+    <span class="c1"># map back into &quot;true&quot; space by undoing transform</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="n">percent_error</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_true</span> <span class="o">-</span> <span class="n">y_pred</span><span class="p">)</span> <span class="o">/</span> <span class="n">y_true</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">percent_error</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">LEARNING_RATE</span><span class="p">)</span>
+<span class="n">tf_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="s1">&#39;mse&#39;</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">rmspe_tf</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">LEARNING_RATE</span><span class="p">)</span>
+<span class="n">tf_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="s1">&#39;mse&#39;</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">rmspe_tf</span><span class="p">])</span>
+
+<span class="n">validation_callback</span> <span class="o">=</span> <span class="n">KerasSequenceValidater</span><span class="p">(</span><span class="n">valid_dataset_tf</span><span class="p">)</span>
+<span class="n">history</span> <span class="o">=</span> <span class="n">tf_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">train_dataset_tf</span><span class="p">,</span>
+    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">validation_callback</span><span class="p">],</span>
+    <span class="n">epochs</span><span class="o">=</span><span class="n">EPOCHS</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Epoch 1/25
+13/13 [==============================] - 3s 196ms/step - loss: 5.9396 - rmspe_tf: 0.8938 - val_loss: 6.6637 - val_rmspe_tf: 0.8936
+Epoch 2/25
+13/13 [==============================] - 2s 183ms/step - loss: 5.2245 - rmspe_tf: 0.8907 - val_loss: 6.1371 - val_rmspe_tf: 0.8905
+Epoch 3/25
+13/13 [==============================] - 2s 183ms/step - loss: 4.5340 - rmspe_tf: 0.8758 - val_loss: 5.6532 - val_rmspe_tf: 0.8746
+Epoch 4/25
+13/13 [==============================] - 2s 182ms/step - loss: 3.6554 - rmspe_tf: 0.8463 - val_loss: 5.0402 - val_rmspe_tf: 0.8446
+Epoch 5/25
+13/13 [==============================] - 2s 179ms/step - loss: 2.6135 - rmspe_tf: 0.7926 - val_loss: 4.3402 - val_rmspe_tf: 0.7893
+Epoch 6/25
+13/13 [==============================] - 2s 178ms/step - loss: 1.5798 - rmspe_tf: 0.7018 - val_loss: 3.6970 - val_rmspe_tf: 0.6926
+Epoch 7/25
+13/13 [==============================] - 2s 177ms/step - loss: 0.7687 - rmspe_tf: 0.5661 - val_loss: 3.1945 - val_rmspe_tf: 0.5554
+Epoch 8/25
+13/13 [==============================] - 2s 179ms/step - loss: 0.2935 - rmspe_tf: 0.3976 - val_loss: 2.8964 - val_rmspe_tf: 0.3929
+Epoch 9/25
+13/13 [==============================] - 2s 175ms/step - loss: 0.0953 - rmspe_tf: 0.2716 - val_loss: 2.7912 - val_rmspe_tf: 0.2707
+Epoch 10/25
+13/13 [==============================] - 2s 183ms/step - loss: 0.0439 - rmspe_tf: 0.2224 - val_loss: 2.7896 - val_rmspe_tf: 0.2217
+Epoch 11/25
+13/13 [==============================] - 2s 185ms/step - loss: 0.0352 - rmspe_tf: 0.2313 - val_loss: 2.8199 - val_rmspe_tf: 0.2347
+Epoch 12/25
+13/13 [==============================] - 2s 185ms/step - loss: 0.0329 - rmspe_tf: 0.2238 - val_loss: 2.7948 - val_rmspe_tf: 0.2231
+Epoch 13/25
+13/13 [==============================] - 2s 180ms/step - loss: 0.0314 - rmspe_tf: 0.2107 - val_loss: 2.7997 - val_rmspe_tf: 0.2112
+Epoch 14/25
+13/13 [==============================] - 2s 186ms/step - loss: 0.0297 - rmspe_tf: 0.2126 - val_loss: 2.8045 - val_rmspe_tf: 0.2136
+Epoch 15/25
+13/13 [==============================] - 2s 179ms/step - loss: 0.0288 - rmspe_tf: 0.2044 - val_loss: 2.7987 - val_rmspe_tf: 0.2053
+Epoch 16/25
+13/13 [==============================] - 2s 182ms/step - loss: 0.0280 - rmspe_tf: 0.1959 - val_loss: 2.7946 - val_rmspe_tf: 0.1969
+Epoch 17/25
+13/13 [==============================] - 2s 179ms/step - loss: 0.0269 - rmspe_tf: 0.1930 - val_loss: 2.7928 - val_rmspe_tf: 0.1934
+Epoch 18/25
+13/13 [==============================] - 2s 181ms/step - loss: 0.0260 - rmspe_tf: 0.1917 - val_loss: 2.7913 - val_rmspe_tf: 0.1922
+Epoch 19/25
+13/13 [==============================] - 2s 179ms/step - loss: 0.0255 - rmspe_tf: 0.1897 - val_loss: 2.7991 - val_rmspe_tf: 0.1913
+Epoch 20/25
+13/13 [==============================] - 2s 178ms/step - loss: 0.0247 - rmspe_tf: 0.1864 - val_loss: 2.7876 - val_rmspe_tf: 0.1869
+Epoch 21/25
+13/13 [==============================] - 2s 180ms/step - loss: 0.0245 - rmspe_tf: 0.1873 - val_loss: 2.7923 - val_rmspe_tf: 0.1880
+Epoch 22/25
+13/13 [==============================] - 2s 183ms/step - loss: 0.0243 - rmspe_tf: 0.1863 - val_loss: 2.7913 - val_rmspe_tf: 0.1870
+Epoch 23/25
+13/13 [==============================] - 2s 182ms/step - loss: 0.0248 - rmspe_tf: 0.1868 - val_loss: 2.8033 - val_rmspe_tf: 0.1892
+Epoch 24/25
+13/13 [==============================] - 2s 185ms/step - loss: 0.0235 - rmspe_tf: 0.1778 - val_loss: 2.7982 - val_rmspe_tf: 0.1799
+Epoch 25/25
+13/13 [==============================] - 2s 177ms/step - loss: 0.0233 - rmspe_tf: 0.1763 - val_loss: 2.7765 - val_rmspe_tf: 0.1773
+CPU times: user 2min 3s, sys: 29.3 s, total: 2min 33s
+Wall time: 1min 9s
+</pre></div></div>
+</div>
+</div>
+</div>
+<div class="section" id="PyTorch">
+<h2>PyTorch<a class="headerlink" href="#PyTorch" title="Permalink to this headline"></a></h2>
+<div class="section" id="PyTorch:-Preparing-Datasets">
+<h3>PyTorch: Preparing Datasets<a class="headerlink" href="#PyTorch:-Preparing-Datasets" title="Permalink to this headline"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">TorchAsyncItr</span><span class="p">,</span> <span class="n">DLDataLoader</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.models</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.utils</span> <span class="kn">import</span> <span class="n">process_epoch</span>
+
+<span class="c1"># TensorItrDataset returns a single batch of x_cat, x_cont, y.</span>
+<span class="n">collate_fn</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
+
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span> <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span>
+<span class="n">train_loader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">VALID_PATHS</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span> <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span>
+<span class="n">valid_loader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="PyTorch:-Defining-a-Model">
+<h3>PyTorch: Defining a Model<a class="headerlink" href="#PyTorch:-Defining-a-Model" title="Permalink to this headline"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span>
+    <span class="n">embedding_table_shapes</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">,</span>
+    <span class="n">num_continuous</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">),</span>
+    <span class="n">emb_dropout</span><span class="o">=</span><span class="n">EMBEDDING_DROPOUT_RATE</span><span class="p">,</span>
+    <span class="n">layer_hidden_dims</span><span class="o">=</span><span class="n">HIDDEN_DIMS</span><span class="p">,</span>
+    <span class="n">layer_dropout_rates</span><span class="o">=</span><span class="n">DROPOUT_RATES</span><span class="p">,</span>
+    <span class="n">max_output</span><span class="o">=</span><span class="n">MAX_LOG_SALES_PREDICTION</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="PyTorch:-Training">
+<h3>PyTorch: Training<a class="headerlink" href="#PyTorch:-Training" title="Permalink to this headline"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">LEARNING_RATE</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rmspe_func</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="s2">&quot;Return y_pred and y to non-log space and compute RMSPE&quot;</span>
+    <span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">pct_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_pred</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span> <span class="o">/</span> <span class="n">y</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">pct_var</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">EPOCHS</span><span class="p">):</span>
+    <span class="n">train_loss</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">process_epoch</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">)</span>
+    <span class="n">train_rmspe</span> <span class="o">=</span> <span class="n">rmspe_func</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">valid_loss</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">process_epoch</span><span class="p">(</span><span class="n">valid_loader</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">valid_rmspe</span> <span class="o">=</span> <span class="n">rmspe_func</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">:</span><span class="s1">02d</span><span class="si">}</span><span class="s1">. Train loss: </span><span class="si">{</span><span class="n">train_loss</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">. Train RMSPE: </span><span class="si">{</span><span class="n">train_rmspe</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">. Valid loss: </span><span class="si">{</span><span class="n">valid_loss</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">. Valid RMSPE: </span><span class="si">{</span><span class="n">valid_rmspe</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">.&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="fast.ai">
+<h2>fast.ai<a class="headerlink" href="#fast.ai" title="Permalink to this headline"></a></h2>
+<div class="section" id="fast.ai:-Preparing-Datasets">
+<h3>fast.ai: Preparing Datasets<a class="headerlink" href="#fast.ai:-Preparing-Datasets" title="Permalink to this headline"></a></h3>
+<p>AsyncTensorBatchDatasetItr maps a symbolic dataset object to <code class="docutils literal notranslate"><span class="pre">cat_features</span></code>, <code class="docutils literal notranslate"><span class="pre">cont_features</span></code>, <code class="docutils literal notranslate"><span class="pre">labels</span></code> PyTorch tenosrs by iterating through the dataset and concatenating the results.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">fastai</span>
+
+<span class="n">fastai</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">TorchAsyncItr</span><span class="p">,</span> <span class="n">DLDataLoader</span>
+<span class="kn">from</span> <span class="nn">fastai.tabular.data</span> <span class="kn">import</span> <span class="n">TabularDataLoaders</span>
+<span class="kn">from</span> <span class="nn">fastai.tabular.model</span> <span class="kn">import</span> <span class="n">TabularModel</span>
+<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">Learner</span>
+<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">MSELossFlat</span>
+<span class="kn">from</span> <span class="nn">fastai.callback.progress</span> <span class="kn">import</span> <span class="n">ProgressCallback</span>
+
+<span class="k">def</span> <span class="nf">make_batched_dataloader</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+    <span class="n">ds_batch_sets</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span>
+                                  <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+                                  <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+                                  <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
+                                  <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">DLDataLoader</span><span class="p">(</span>
+        <span class="n">ds_batch_sets</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">)</span>
+
+<span class="n">train_dataset_pt</span> <span class="o">=</span> <span class="n">make_batched_dataloader</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="n">BATCH_SIZE</span><span class="p">)</span>
+<span class="n">valid_dataset_pt</span> <span class="o">=</span> <span class="n">make_batched_dataloader</span><span class="p">(</span><span class="n">VALID_PATHS</span><span class="p">,</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="n">BATCH_SIZE</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">databunch</span> <span class="o">=</span> <span class="n">TabularDataLoaders</span><span class="p">(</span><span class="n">train_dataset_pt</span><span class="p">,</span> <span class="n">valid_dataset_pt</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="fast.ai:-Defining-a-Model">
+<h3>fast.ai: Defining a Model<a class="headerlink" href="#fast.ai:-Defining-a-Model" title="Permalink to this headline"></a></h3>
+<p>Next we’ll need to define the inputs that will feed our model and build an architecture on top of them. For now, we’ll just stick to a simple MLP model.</p>
+<p>Using FastAI’s <code class="docutils literal notranslate"><span class="pre">TabularModel</span></code>, we can build an MLP under the hood by defining its high-level characteristics.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pt_model</span> <span class="o">=</span> <span class="n">TabularModel</span><span class="p">(</span>
+    <span class="n">emb_szs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+    <span class="n">n_cont</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">),</span>
+    <span class="n">out_sz</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">layers</span><span class="o">=</span><span class="n">HIDDEN_DIMS</span><span class="p">,</span>
+    <span class="n">ps</span><span class="o">=</span><span class="n">DROPOUT_RATES</span><span class="p">,</span>
+    <span class="n">use_bn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">embed_p</span><span class="o">=</span><span class="n">EMBEDDING_DROPOUT_RATE</span><span class="p">,</span>
+    <span class="n">y_range</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">MAX_LOG_SALES_PREDICTION</span><span class="p">]),</span>
+<span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="fast.ai:-Training">
+<h3>fast.ai: Training<a class="headerlink" href="#fast.ai:-Training" title="Permalink to this headline"></a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.torch_core</span> <span class="kn">import</span> <span class="n">flatten_check</span>
+
+<span class="k">def</span> <span class="nf">exp_rmspe</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">targ</span><span class="p">):</span>
+    <span class="s2">&quot;Exp RMSE between `pred` and `targ`.&quot;</span>
+    <span class="n">pred</span><span class="p">,</span><span class="n">targ</span> <span class="o">=</span> <span class="n">flatten_check</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span><span class="n">targ</span><span class="p">)</span>
+    <span class="n">pred</span><span class="p">,</span> <span class="n">targ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">targ</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+    <span class="n">pct_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">targ</span> <span class="o">-</span> <span class="n">pred</span><span class="p">)</span><span class="o">/</span><span class="n">targ</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pct_var</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+
+<span class="n">loss_func</span> <span class="o">=</span> <span class="n">MSELossFlat</span><span class="p">()</span>
+<span class="n">learner</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">databunch</span><span class="p">,</span> <span class="n">pt_model</span><span class="p">,</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">loss_func</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">exp_rmspe</span><span class="p">],</span> <span class="n">cbs</span><span class="o">=</span><span class="n">ProgressCallback</span><span class="p">())</span>
+<span class="n">learner</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">EPOCHS</span><span class="p">,</span> <span class="n">LEARNING_RATE</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="criteo.html" class="btn btn-neutral float-left" title="Criteo Example" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="multigpu.html" class="btn btn-neutral float-right" title="Multi-GPU Scaling in NVTabular with Dask" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.3.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../v0.2.0/index.html">v0.2.0</a></dd>
+      <dd><a href="rossmann.html">v0.3.0</a></dd>
+      <dd><a href="../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="../../v0.6.1/index.html">v0.6.1</a></dd>
+      <dd><a href="../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

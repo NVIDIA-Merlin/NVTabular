@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-GPU Criteo/DLRM Benchmark Overview &mdash; NVTabular 2020 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../HowItWorks.html">How it Works</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Multi-GPU Criteo/DLRM Benchmark Overview</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="multi-gpu-criteo-dlrm-benchmark-overview">
+<h1>Multi-GPU Criteo/DLRM Benchmark Overview<a class="headerlink" href="#multi-gpu-criteo-dlrm-benchmark-overview" title="Permalink to this headline"></a></h1>
+<p>The benchmark script described in this document is located at <code class="docutils literal notranslate"><span class="pre">NVTabular/examples/dask-nvtabular-criteo-benchmark.py</span></code>.</p>
+<p>The <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py">multi-GPU Criteo/DLRM benchmark</a> is designed to measure the time required to preprocess the <a class="reference external" href="https://www.kaggle.com/c/criteo-display-ad-challenge/data">Criteo (1TB) dataset</a> for Facebook’s <a class="reference external" href="https://github.com/facebookresearch/dlrm">DLRM model</a>.  The user must specify the path of the raw dataset (using the <code class="docutils literal notranslate"><span class="pre">--data-path</span></code> flag), as well as the output directory for all temporary/final data (using the <code class="docutils literal notranslate"><span class="pre">--out-path</span></code> flag).</p>
+<div class="section" id="example-usage">
+<h2>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this headline"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>python dask-nvtabular-criteo-benchmark.py --data-path /path/to/criteo_parquet --out-path /out/dir/`
+</pre></div>
+</div>
+</div>
+<div class="section" id="dataset-requirements-parquet">
+<h2>Dataset Requirements (Parquet)<a class="headerlink" href="#dataset-requirements-parquet" title="Permalink to this headline"></a></h2>
+<p>The script is designed with a parquet-formatted dataset in mind. Although csv files can also be handled by NVTabular, converting to parquet yields significantly better performance.  To convert your dataset, try using the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb">conversion notebook</a> (located at <code class="docutils literal notranslate"><span class="pre">NVTabular/examples/optimize_criteo.ipynb</span></code>).</p>
+</div>
+<div class="section" id="general-notes-on-parameter-tuning">
+<h2>General Notes on Parameter Tuning<a class="headerlink" href="#general-notes-on-parameter-tuning" title="Permalink to this headline"></a></h2>
+<p>The script was originally developed and tested on an NVIDIA DGX-1 machine (8x 32GB V100s, 1TB RAM).  Users with limited device and/or host memory may experience memory errors with the default options. Depending on the system, these users may need to modify one or more of the “Algorithm Options” described below. For example, it may be necessary to expand the list of “high-cardinality” columns, increase the tree-width and/or use “disk” for the cat-cache options.</p>
+<p>In addition to adjusting the algorithm details, users with limited device memory may also find it useful to adjust the <code class="docutils literal notranslate"><span class="pre">--device-pool-frac</span></code> and/or <code class="docutils literal notranslate"><span class="pre">--device-limit-frac</span></code> options (reduce both fractions).</p>
+<p>For all users, the most important benchmark options include the following.</p>
+<ul class="simple">
+<li><p><strong>Device list</strong>: <code class="docutils literal notranslate"><span class="pre">-d</span></code> (easiest way to set the number of workers)</p></li>
+<li><p><strong>Partition size</strong>: <code class="docutils literal notranslate"><span class="pre">—part-mem-frac</span></code> (bigger partitions = better device efficiency)</p></li>
+<li><p><strong>Intermediate-category storage</strong>: <code class="docutils literal notranslate"><span class="pre">—cats-on-device</span></code> (always use this option when total device memory is sufficiently large)</p></li>
+<li><p><strong>Communication protocol</strong>: <code class="docutils literal notranslate"><span class="pre">-p</span></code> (use ucx whenever possible)</p></li>
+<li><p><strong>Output-file count</strong>: <code class="docutils literal notranslate"><span class="pre">—out-files-per-proc</span></code> (fewer output files is faster)</p></li>
+</ul>
+<p>See option descriptions below for more information.</p>
+</div>
+<div class="section" id="parameter-overview">
+<h2>Parameter Overview<a class="headerlink" href="#parameter-overview" title="Permalink to this headline"></a></h2>
+<div class="section" id="system-options">
+<h3>System Options<a class="headerlink" href="#system-options" title="Permalink to this headline"></a></h3>
+<div class="section" id="visible-devices">
+<h4>Visible Devices<a class="headerlink" href="#visible-devices" title="Permalink to this headline"></a></h4>
+<p>By default, the script will deploy a cluster with a single Dask-CUDA worker on  every GPU specified by the <code class="docutils literal notranslate"><span class="pre">CUDA_VISIBLE_DEVICES</span></code> environment variable. The user may also specify distinct list of devices using the <code class="docutils literal notranslate"><span class="pre">-d</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">1,2,3</span></code></p>
+</div>
+<div class="section" id="communication-protocol">
+<h4>Communication Protocol<a class="headerlink" href="#communication-protocol" title="Permalink to this headline"></a></h4>
+<p>By default, the Dask-CUDA cluster will use a “tcp” protocol for inter-process communication.  Users may also elect to use “ucx” to take advantage of NVLink and/or Infiniband technologies.  The “ucx” option is highly recommended, but requires ucx-py to be installed.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">ucx</span></code></p>
+</div>
+<div class="section" id="memory-management">
+<h4>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this headline"></a></h4>
+<p>By default, the Dask-CUDA workers will use an RMM memory pool to avoid memory-allocation bottlenecks, and will spill data from device to host memory when Dask-aware usage exceeds a specific threshold.  The size of the RMM memory pool On each worker defaults to 90% of the total capacity, but the user can specify a different fraction using the <code class="docutils literal notranslate"><span class="pre">--device-pool-frac</span></code> flag.  If <code class="docutils literal notranslate"><span class="pre">0</span></code> is specified, no memory pool will be used.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">--device-pool-frac</span> <span class="pre">0.5</span></code></p>
+<p>By default, the Dask-CUDA workers will begin spilling data from device memory to host memory when the input/output data of in-memory tasks exceeds 80% of the total capacity.  For systems with limited device memory, temporary allocation made during task execution may still lead to out-of-memory (OOM) errors.  To modify the threshold, the user can specify a different fraction Using the <code class="docutils literal notranslate"><span class="pre">--device-limit-frac</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">--device-limit-frac</span> <span class="pre">0.66</span></code></p>
+</div>
+<div class="section" id="io-threads-writing">
+<h4>IO Threads (Writing)<a class="headerlink" href="#io-threads-writing" title="Permalink to this headline"></a></h4>
+<p>By default, multi-threading will not be used to write output data. Some systems may see better performance when 2+ threads are used to overlap sequencial writes by the same worker. The user can specify a specific number of threads using the <code class="docutils literal notranslate"><span class="pre">--num-io-threads</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">--num-io-threads</span> <span class="pre">2</span></code></p>
+<p>Note that multi-threading may reduce the optimal partition size (see the <code class="docutils literal notranslate"><span class="pre">--part-mem-frac</span></code> flag below).</p>
+</div>
+</div>
+<div class="section" id="data-decomposition-options">
+<h3>Data-Decomposition Options<a class="headerlink" href="#data-decomposition-options" title="Permalink to this headline"></a></h3>
+<div class="section" id="partition-sizes-dataset-chunking">
+<h4>Partition Sizes (dataset chunking)<a class="headerlink" href="#partition-sizes-dataset-chunking" title="Permalink to this headline"></a></h4>
+<p>To process out-of-core data, NVTabular uses Dask-CuDF to partition the data into a lazily-evaluated collection of CuDF DataFrame objects.  By default the maximum size of these so-called partitions will be approximately 12.5% of a single-GPUs memory capacity.  The user can modify the desired size of partitions by passing a fractional value with the <code class="docutils literal notranslate"><span class="pre">--part-mem-frac</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">--part-mem-frac</span> <span class="pre">0.16</span></code></p>
+</div>
+<div class="section" id="output-file-count">
+<h4>Output-File Count<a class="headerlink" href="#output-file-count" title="Permalink to this headline"></a></h4>
+<p>NVTabular uses the file structure of the output dataset to shuffle data as it is written to disk.  That is, after a Dask-CUDA worker transforms a dataset partition, it will append (random) splits of that partition to some number of output files.  Each worker will manage its own set of output files.  The <code class="docutils literal notranslate"><span class="pre">--out-files-per-proc</span></code> can be used to modify the number of output files managed by each worker (defaults to 8).  Since output files are uniquely mapped to processes, the total number of output files is multiplied by the number of workers.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">--out-files-per-proc</span> <span class="pre">24</span></code></p>
+<p>Note that a large number of output files may be required to perform the “PER_WORKER” shuffle option (see description of the <code class="docutils literal notranslate"><span class="pre">—shuffle</span></code> flag below).  This is because each file will be fully shuffled in device memory.</p>
+</div>
+<div class="section" id="shuffling">
+<h4>Shuffling<a class="headerlink" href="#shuffling" title="Permalink to this headline"></a></h4>
+<p>NVTabular currently offers two options for shuffling output data to disk. The <code class="docutils literal notranslate"><span class="pre">“PER_PARTITION”</span></code> option means that each partition will be independently shuffled after transformation, and then appended to some number of distinct output files.  The number of output files is specified by the <code class="docutils literal notranslate"><span class="pre">--out-files-per-proc</span></code> flag (described above), and the files  are uniquely mapped to each worker.  The <code class="docutils literal notranslate"><span class="pre">“PER_WORKER”</span></code> option follows the same process, but the “files” are initially written to in-host-memory, and then reshuffled and persisted to disk after the full dataset is processed.  The user can specify the specific shuffling algorithm to use with the <code class="docutils literal notranslate"><span class="pre">—shuffle</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—shuffle</span> <span class="pre">PER_WORKER</span></code></p>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">“PER_WORKER”</span></code> option may require a larger-than default output-file count (See description of the <code class="docutils literal notranslate"><span class="pre">--out-files-per-proc</span></code> flag above).</p>
+</div>
+</div>
+<div class="section" id="preprocessing-options">
+<h3>Preprocessing Options<a class="headerlink" href="#preprocessing-options" title="Permalink to this headline"></a></h3>
+<div class="section" id="column-names">
+<h4>Column Names<a class="headerlink" href="#column-names" title="Permalink to this headline"></a></h4>
+<p>By default this script will assume the following categorical and continuous column names.</p>
+<ul class="simple">
+<li><p>Categorical: “C1”, ”C2”, … , ”C26”</p></li>
+<li><p>Continuous: “I1”, ”I2”, … , ”I13”</p></li>
+</ul>
+<p>The user may specify different column names, or a subset of these names, by passing a column-separated list to  the <code class="docutils literal notranslate"><span class="pre">--cat-names</span></code> and/or <code class="docutils literal notranslate"><span class="pre">—cont_names</span></code> flags.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—cat-names</span> <span class="pre">C01,C02</span>&#160; <span class="pre">--cont_names</span> <span class="pre">I01,I02</span> <span class="pre">—high_cards</span> <span class="pre">C01</span></code></p>
+<p>Note that, if your dataset includes non-default column names, you should also use the <code class="docutils literal notranslate"><span class="pre">—high-cards</span></code> flag (described below), to specify the names of high-cardinality columns.</p>
+</div>
+<div class="section" id="categorical-encoding">
+<h4>Categorical Encoding<a class="headerlink" href="#categorical-encoding" title="Permalink to this headline"></a></h4>
+<p>By default, all categorical-column groups will be used for the final encoding transformation.  The user can also specify a frequency threshold for groups to be included in the encoding with the <code class="docutils literal notranslate"><span class="pre">—freq-limit</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) flag.</p>
+<p>e.g <code class="docutils literal notranslate"><span class="pre">-f</span> <span class="pre">15</span></code> (groups with fewer than 15 instances in the dataset will not be used for encoding)</p>
+</div>
+</div>
+<div class="section" id="algorithm-options">
+<h3>Algorithm Options<a class="headerlink" href="#algorithm-options" title="Permalink to this headline"></a></h3>
+<div class="section" id="high-cardinality-columns">
+<h4>High-Cardinality Columns<a class="headerlink" href="#high-cardinality-columns" title="Permalink to this headline"></a></h4>
+<p>As described below, the specific algorithm used for categorical encoding can be column dependent.  In this script, we use special options for a subset of “high-cardinality” columns.  By default, these columns are “C20,C1,C22,C10”.  However, the user can specify different column names with the <code class="docutils literal notranslate"><span class="pre">--high-cards</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—high_cards</span> <span class="pre">C01,C10</span></code></p>
+<p>Note that only the columns specified with this flag (or the default columns) will be targetedby the <code class="docutils literal notranslate"><span class="pre">--tree-width</span></code> and/or <code class="docutils literal notranslate"><span class="pre">--cat-cache-high</span></code> flags (described below).</p>
+</div>
+<div class="section" id="global-categories-calculation-groupbystatistics">
+<h4>Global-Categories Calculation (GroupbyStatistics)<a class="headerlink" href="#global-categories-calculation-groupbystatistics" title="Permalink to this headline"></a></h4>
+<p>In order encode categorical columns, NVTabular needs to calculate a global list of unique categories for each categorical column. This is accomplished with a global groupby-aggregation-based tree reduction on each column. In order to avoid memory pressure on the device, intermediate groupby data is moved to host memory between tasks in the global-aggregation tree.  For users with a sufficient amount of total GPU memory, this device-to-host transfer can be avoided with the by adding the <code class="docutils literal notranslate"><span class="pre">—cats-on-device</span></code> flag to the execution command.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—cats-on-device</span></code></p>
+<p>In addition to controlling device-to-host data movement, the user can also use the <code class="docutils literal notranslate"><span class="pre">--tree-width</span></code> flag to specify the width of the groupby-aggregation tree for high-cardinality columns.  Although NVTabular allows the user to specify the tree-width for each column independently, this option will target all columns  specified with <code class="docutils literal notranslate"><span class="pre">—high-cards</span></code>.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—tree_width</span> <span class="pre">4</span></code></p>
+</div>
+<div class="section" id="categorical-encoding-categorify">
+<h4>Categorical Encoding (Categorify)<a class="headerlink" href="#categorical-encoding-categorify" title="Permalink to this headline"></a></h4>
+<p>During the categorical-encoding transformation stage, the column-specific unique values must be read into GPU memory for the operation.  Since each NVTabular process will only operate on a single partition at a time, the same unique-value statistics need to be re-read (for every categorical column) for each partition that is transformed.  Unsurprisingly, the performance of categorical encoding can be dramatically improved by caching the unique values on each worker between transformation operations.</p>
+<p>The user can specify caching location for low- and high-cardinality columns separately. Recall that high-cardinality columns can be specified with <code class="docutils literal notranslate"><span class="pre">—high_cards</span></code> (and all remaining categorical columns will be treated as low-cardinality”).  The user can specify the caching location of low-cardinality columns with the <code class="docutils literal notranslate"><span class="pre">--cat-cache-low</span></code> flag, and high-cardinality columns with the <code class="docutils literal notranslate"><span class="pre">--cat-cache-low</span></code> flag.  For both cases, the options are “device”, “host”, or “disk”.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">--cat-cache-low</span> <span class="pre">device</span>&#160; <span class="pre">--cat-cache-high</span> <span class="pre">host</span></code></p>
+</div>
+</div>
+<div class="section" id="diagnostics-options">
+<h3>Diagnostics Options<a class="headerlink" href="#diagnostics-options" title="Permalink to this headline"></a></h3>
+<div class="section" id="dashboard">
+<h4>Dashboard<a class="headerlink" href="#dashboard" title="Permalink to this headline"></a></h4>
+<p>A wonderful advantage of the Dask-Distributed ecosystem is the convenient set of diagnostics utilities.  By default (if Bokeh is installed on your system), the distributed scheduler will host a diagnostics dashboard at  <code class="docutils literal notranslate"><span class="pre">http://localhost:8787/status</span></code> (where localhost may need to be changed to the the IP address where the scheduler is running).  If port 8787 is already in use, a different (random) port will be used.  However, the user can specify a specific port using the <code class="docutils literal notranslate"><span class="pre">—dashboard-port</span></code> flag.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—dashboard-port</span> <span class="pre">3787</span></code></p>
+</div>
+<div class="section" id="profile">
+<h4>Profile<a class="headerlink" href="#profile" title="Permalink to this headline"></a></h4>
+<p>In addition to hosting a diagnostics dashboard, the distributed cluster can also collect and export profiling data on all scheduler and worker processes.  To export an interactive profile report, the user can specify a file path with the <code class="docutils literal notranslate"><span class="pre">—profile</span></code> flag.  If this flag is not used, no profile will be collected/exported.</p>
+<p>e.g. <code class="docutils literal notranslate"><span class="pre">—profile</span> <span class="pre">my-profile.html</span></code></p>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="multigpu_bench.html">v0.2.0</a></dd>
+      <dd><a href="../../v0.3.0/examples/multigpu_bench.html">v0.3.0</a></dd>
+      <dd><a href="../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="../../v0.6.1/index.html">v0.6.1</a></dd>
+      <dd><a href="../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

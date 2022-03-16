@@ -1,0 +1,508 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "# Getting Started Outbrain: ETL with NVTabular"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "## Overview"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "In this notebook we will do preprocessing and feature engineering using [Kaggle Outbrain dataset](https://www.kaggle.com/c/outbrain-click-prediction).\n",
+    "\n",
+    "**Learning objectives**\n",
+    "\n",
+    "In this notebook, we learn how to \n",
+    "\n",
+    "- Use LambdaOp for custom row-wise dataframe manipulations with NVTabular\n",
+    "- Preprocess single-hot categorical input features with NVTabular\n",
+    "- Apply TargetEncoding to categorical features\n",
+    "- Create a custom operator to create time features\n",
+    "- Apply ColumnSimilarity to calculate the similarity between two columns using tf-idf metric"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "source": [
+    "import os\n",
+    "import glob\n",
+    "\n",
+    "import cupy\n",
+    "\n",
+    "# Get dataframe library - cudf or pandas\n",
+    "from nvtabular.dispatch import get_lib\n",
+    "df_lib = get_lib()\n",
+    "\n",
+    "import nvtabular as nvt\n",
+    "from nvtabular.io import Shuffle\n",
+    "from nvtabular.ops import (\n",
+    "    FillMedian,\n",
+    "    Categorify,\n",
+    "    LogOp,\n",
+    "    TargetEncoding,\n",
+    "    Rename,\n",
+    ")\n",
+    "from nvtabular.ops.column_similarity import ColumnSimilarity\n",
+    "\n",
+    "from nvtabular import ColumnGroup"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "First, we set where the dataset should be saved once processed (OUTPUT_BUCKET_FOLDER), as well as where the dataset originally resides (DATA_BUCKET_FOLDER)."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "source": [
+    "DATA_BUCKET_FOLDER = os.environ.get(\"INPUT_DATA_DIR\", \"~/nvt-examples/outbrain/data\")\n",
+    "OUTPUT_BUCKET_FOLDER = os.environ.get(\"OUTPUT_DATA_DIR\", \"./outbrain-preprocessed/\")"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Let's read our saved train and valid datasets."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "source": [
+    "train_filename = os.path.join(OUTPUT_BUCKET_FOLDER, \"train_gdf.parquet\")\n",
+    "valid_filename = os.path.join(OUTPUT_BUCKET_FOLDER, \"valid_gdf.parquet\")"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "## Preparing documents metadata"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Let's create the output directories to store the preprocessed parquet files."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "source": [
+    "output_train_dir = os.path.join(OUTPUT_BUCKET_FOLDER, \"train/\")\n",
+    "output_valid_dir = os.path.join(OUTPUT_BUCKET_FOLDER, \"valid/\")\n",
+    "! mkdir -p $output_train_dir\n",
+    "! mkdir -p $output_valid_dir"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "We read in three more cudf data frames, <i>documents categories</i>, <i>topics</i>, and <i>entities</i>, and use them to create sparse matrices in cupy. We will use these later to calculate cosine similarity between event document (landing page context) and ad document profile vectors (TF-IDF), i.e., how close in profile an ad is to the page that it is being displayed."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "source": [
+    "# Alias for read_csv\n",
+    "read_csv = df_lib.read_csv\n",
+    "\n",
+    "documents_categories_cudf = read_csv(DATA_BUCKET_FOLDER + \"documents_categories.csv\")\n",
+    "documents_topics_cudf = read_csv(DATA_BUCKET_FOLDER + \"documents_topics.csv\")\n",
+    "documents_entities_cudf = read_csv(DATA_BUCKET_FOLDER + \"documents_entities.csv\")\n",
+    "\n",
+    "\n",
+    "# read in document categories/topics/entities as cupy sparse matrices\n",
+    "def df_to_coo(df, row=\"document_id\", col=None, data=\"confidence_level\"):\n",
+    "    return cupy.sparse.coo_matrix((df[data].values, (df[row].values, df[col].values)))\n",
+    "\n",
+    "\n",
+    "categories = df_to_coo(documents_categories_cudf, col=\"category_id\")\n",
+    "topics = df_to_coo(documents_topics_cudf, col=\"topic_id\")\n",
+    "documents_entities_cudf[\"entity_id\"] = (\n",
+    "    documents_entities_cudf[\"entity_id\"].astype(\"category\").cat.codes\n",
+    ")\n",
+    "entities = df_to_coo(documents_entities_cudf, col=\"entity_id\")\n",
+    "\n",
+    "documents_categories_cudf = documents_topics_cudf = documents_entities_cudf = None"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "## Initiate NVTabular Workflow"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Now that our datasets, sparse matrices and udf are created, we can begin laying the groundwork for NVTabular. NVTabular requires input features to be defined as groups of columns , so we define our ColumnGroup features at this step. Note that feature engineering and preprocessing often happens to sets of columns, so we adopt that method and require the user to specify continuous and categoricals along with the target as lists within ColumnGroup."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "At this point, our data still isn’t in a form that’s ideal for consumption by our W&D model that we will train in the next notebook. There are missing values, and our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices for embedding lookups. The distributions of our continuous variables are uncentered. We also would like to create new features that will help to increase the model accuracy."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Let's begin to create and process features using NVTabular ops:\n",
+    " * <i>geo_location_state</i> and <i>geo_location_country</i> are created by stripping geo_location using the `LambdaOp`\n",
+    " * <i>publish_time_days_since_published</i> and <i>publish_time_promo_days_since_published</i> features are created using the `calculate_delta` function in a `LambdaOp`\n",
+    " * Missing values are filled using median value depending on the feature using `FillMedian()`op\n",
+    " * Continuous features are log transformed with the `LogOp()`.\n",
+    " \n",
+    "`Categorify` op is used for categorification, i.e. encoding of categorical features. Categorify op takes a param called `freq_threshold` which is used for frequency capping. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency to the _same_ index, keeping the model from overfitting to sparse signals. We don't apply  frequency thresholds in this example, but one can easily create a frequency threshold dictionary, assign a custom threshold value for each categorical feature, and feed that dictionary into the `Categorify` op as `freq_threshold` param."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "One of the important part of building recommender systems is to do feature engineering. As a very promising feature engineering technique, `Target Encoding` processes the categorical features and makes them easier accessible to the model during training and validation. *Target Encoding (TE)* has emerged as being both effective and efficient in many data science projects. For example, it is the major component of Nvidia Kaggle Grandmasters team’s [winning solution](https://medium.com/rapids-ai/winning-solution-of-recsys2020-challenge-gpu-accelerated-feature-engineering-and-training-for-cd67c5a87b1f) of [Recsys Challenge 2020](http://www.recsyschallenge.com/2020/). TE calculates the statistics from a target variable grouped by the unique values of one or more categorical features. For example in a binary classification problem, it calculates the probability that the target is true for each category value - a simple mean. In other words, for each distinct element in feature <b>$x$</b> we are going to compute the average of the corresponding values in target <i>y</i>. Then we are going to replace each $x_{i}$ with the corresponding mean value. For more details on TargetEncoding please visit [here](https://medium.com/rapids-ai/target-encoding-with-rapids-cuml-do-more-with-your-categorical-data-8c762c79e784) and [here](https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_3_TargetEncoding.ipynb).\n",
+    "\n",
+    "Here, we apply Target Encoding to certain categorical features with *kfold* of 5 and *smoothing* of 20 to avoid overfitting using [TargetEncoding op](https://github.com/NVIDIA/NVTabular/blob/a0141d0a710698470160bc2cbc42b18ce2d49133/nvtabular/ops/target_encoding.py)."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "## Feature Engineering"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Below, we create a custom operator that calculates the time difference between a specified time column (either publish_time or publish_time_promo) and timestamp. This is used to calculate <i>time elapsed since publication</i> between the landing page and the ad."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "source": [
+    "# To save disk space, the timestamps in the entire dataset are relative to the first time in the dataset.\n",
+    "# To recover the actual epoch time of the visit, we add 1465876799998 to the timestamp.\n",
+    "TIMESTAMP_DELTA = 1465876799998\n",
+    "\n",
+    "from nvtabular.ops import Operator\n",
+    "\n",
+    "\n",
+    "class DaysSincePublished(Operator):\n",
+    "    def transform(self, columns, gdf):\n",
+    "        for column in columns.names:\n",
+    "            col = gdf[column]\n",
+    "            col.loc[col == \"\"] = None\n",
+    "            col = col.astype(\"datetime64[ns]\")\n",
+    "            timestamp = (gdf[\"timestamp\"] + TIMESTAMP_DELTA).astype(\"datetime64[ms]\")\n",
+    "            delta = (timestamp - col).dt.days\n",
+    "            gdf[column + \"_since_published\"] = delta * (delta >= 0) * (delta <= 10 * 365)\n",
+    "        return gdf\n",
+    "\n",
+    "    def output_column_names(self, columns):\n",
+    "        return nvt.ColumnSelector([column + \"_since_published\" for column in columns.names])\n",
+    "\n",
+    "    def dependencies(self):\n",
+    "        return [\"timestamp\"]"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "source": [
+    "# geo processing: apply two different lambda operators to the ‘geo_location’ column, and\n",
+    "# extract the country/state from the geo_location value. The geo_location column\n",
+    "# looks something like \"US>CA>12345\", so we're using string slicing to pull out the country\n",
+    "# and the country+state then\n",
+    "geo_location = ColumnGroup([\"geo_location\"])\n",
+    "country = geo_location >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix=\"_country\")\n",
+    "state = geo_location >> (lambda col: col.str.slice(0, 5)) >> Rename(postfix=\"_state\")\n",
+    "geo_features = geo_location + country + state\n",
+    "\n",
+    "# categoricals processing: categorify certain input columns as well as the geo features\n",
+    "cats = ColumnGroup(\n",
+    "    [\n",
+    "        \"ad_id\",\n",
+    "        \"document_id\",\n",
+    "        \"platform\",\n",
+    "        \"document_id_promo\",\n",
+    "        \"campaign_id\",\n",
+    "        \"advertiser_id\",\n",
+    "        \"source_id\",\n",
+    "        \"publisher_id\",\n",
+    "        \"source_id_promo\",\n",
+    "        \"publisher_id_promo\",\n",
+    "    ]\n",
+    ")\n",
+    "cat_features = geo_features + cats >> Categorify()\n",
+    "\n",
+    "# Apply TargetEncoding to certain categoricals with kfold of 5 and smoothing of 20\n",
+    "te_features = cats >> TargetEncoding(\"clicked\", kfold=5, p_smooth=20)\n",
+    "\n",
+    "# process dates using the ‘DaysSincePublished’ custom operator\n",
+    "dates = [\"publish_time\", \"publish_time_promo\"]\n",
+    "date_features = dates >> DaysSincePublished() >> FillMedian() >> LogOp()"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Let's visualize our calculation graph with the column groups we used and created so far."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "source": [
+    "features = date_features + cat_features + te_features + \"clicked\"\n",
+    "features.graph"
+   ],
+   "outputs": [
+    {
+     "output_type": "execute_result",
+     "data": {
+      "image/svg+xml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n<!-- Generated by graphviz version 2.43.0 (0)\n -->\n<!-- Title: %3 Pages: 1 -->\n<svg width=\"2923pt\" height=\"476pt\"\n viewBox=\"0.00 0.00 2923.11 476.00\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n<g id=\"graph0\" class=\"graph\" transform=\"scale(1 1) rotate(0) translate(4 472)\">\n<title>%3</title>\n<polygon fill=\"white\" stroke=\"transparent\" points=\"-4,4 -4,-472 2919.11,-472 2919.11,4 -4,4\"/>\n<!-- 0 -->\n<g id=\"node1\" class=\"node\">\n<title>0</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"2764.98\" cy=\"-306\" rx=\"48.19\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"2764.98\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n</g>\n<!-- 5 -->\n<g id=\"node11\" class=\"node\">\n<title>5</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1905.98\" cy=\"-234\" rx=\"27\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1905.98\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">+</text>\n</g>\n<!-- 0&#45;&gt;5 -->\n<g id=\"edge9\" class=\"edge\">\n<title>0&#45;&gt;5</title>\n<path fill=\"none\" stroke=\"black\" d=\"M2730.61,-293.4C2723.22,-291.29 2715.4,-289.33 2707.98,-288 2416.98,-235.67 2058.28,-233.66 1943.29,-234.52\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1943.22,-231.02 1933.25,-234.6 1943.28,-238.02 1943.22,-231.02\"/>\n</g>\n<!-- 10 -->\n<g id=\"node2\" class=\"node\">\n<title>10</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"2764.98\" cy=\"-378\" rx=\"150.27\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"2764.98\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">(lambda col: col.str.slice(0, 2))</text>\n</g>\n<!-- 10&#45;&gt;0 -->\n<g id=\"edge1\" class=\"edge\">\n<title>10&#45;&gt;0</title>\n<path fill=\"none\" stroke=\"black\" d=\"M2764.98,-359.7C2764.98,-351.98 2764.98,-342.71 2764.98,-334.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"2768.48,-334.1 2764.98,-324.1 2761.48,-334.1 2768.48,-334.1\"/>\n</g>\n<!-- 1 -->\n<g id=\"node3\" class=\"node\">\n<title>1</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"246.98\" cy=\"-234\" rx=\"60.39\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"246.98\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">FillMedian</text>\n</g>\n<!-- 2 -->\n<g id=\"node5\" class=\"node\">\n<title>2</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"598.98\" cy=\"-162\" rx=\"40.89\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"598.98\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">LogOp</text>\n</g>\n<!-- 1&#45;&gt;2 -->\n<g id=\"edge3\" class=\"edge\">\n<title>1&#45;&gt;2</title>\n<path fill=\"none\" stroke=\"black\" d=\"M291.43,-221.66C299.58,-219.69 308.02,-217.72 315.98,-216 398.3,-198.17 494.87,-180.85 551.26,-171.09\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"552.04,-174.51 561.3,-169.36 550.86,-167.61 552.04,-174.51\"/>\n</g>\n<!-- 7 -->\n<g id=\"node4\" class=\"node\">\n<title>7</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"246.98\" cy=\"-306\" rx=\"104.78\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"246.98\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">DaysSincePublished</text>\n</g>\n<!-- 7&#45;&gt;1 -->\n<g id=\"edge2\" class=\"edge\">\n<title>7&#45;&gt;1</title>\n<path fill=\"none\" stroke=\"black\" d=\"M246.98,-287.7C246.98,-279.98 246.98,-270.71 246.98,-262.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"250.48,-262.1 246.98,-252.1 243.48,-262.1 250.48,-262.1\"/>\n</g>\n<!-- 3 -->\n<g id=\"node6\" class=\"node\">\n<title>3</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1170.98\" cy=\"-90\" rx=\"27\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1170.98\" y=\"-86.3\" font-family=\"Times,serif\" font-size=\"14.00\">+</text>\n</g>\n<!-- 2&#45;&gt;3 -->\n<g id=\"edge4\" class=\"edge\">\n<title>2&#45;&gt;3</title>\n<path fill=\"none\" stroke=\"black\" d=\"M637.84,-156.24C743,-143.37 1032.06,-108 1134.44,-95.47\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1135.09,-98.92 1144.59,-94.23 1134.24,-91.97 1135.09,-98.92\"/>\n</g>\n<!-- 11 -->\n<g id=\"node18\" class=\"node\">\n<title>11</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1170.98\" cy=\"-18\" rx=\"62.29\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1170.98\" y=\"-14.3\" font-family=\"Times,serif\" font-size=\"14.00\">output cols</text>\n</g>\n<!-- 3&#45;&gt;11 -->\n<g id=\"edge17\" class=\"edge\">\n<title>3&#45;&gt;11</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1170.98,-71.7C1170.98,-63.98 1170.98,-54.71 1170.98,-46.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1174.48,-46.1 1170.98,-36.1 1167.48,-46.1 1174.48,-46.1\"/>\n</g>\n<!-- 9 -->\n<g id=\"node7\" class=\"node\">\n<title>9</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1643.98\" cy=\"-162\" rx=\"59.59\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1643.98\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">Categorify</text>\n</g>\n<!-- 9&#45;&gt;3 -->\n<g id=\"edge5\" class=\"edge\">\n<title>9&#45;&gt;3</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1591.55,-153.24C1494.67,-138.9 1289.95,-108.61 1207.01,-96.33\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1207.46,-92.86 1197.05,-94.86 1206.43,-99.78 1207.46,-92.86\"/>\n</g>\n<!-- 4 -->\n<g id=\"node8\" class=\"node\">\n<title>4</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1092.98\" cy=\"-162\" rx=\"84.49\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1092.98\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">TargetEncoding</text>\n</g>\n<!-- 4&#45;&gt;3 -->\n<g id=\"edge6\" class=\"edge\">\n<title>4&#45;&gt;3</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1111.46,-144.41C1122.37,-134.62 1136.27,-122.15 1147.9,-111.72\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1150.41,-114.16 1155.51,-104.88 1145.73,-108.95 1150.41,-114.16\"/>\n</g>\n<!-- 3_selector -->\n<g id=\"node9\" class=\"node\">\n<title>3_selector</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1249.98\" cy=\"-162\" rx=\"54.69\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1249.98\" y=\"-158.3\" font-family=\"Times,serif\" font-size=\"14.00\">[&#39;clicked&#39;]</text>\n</g>\n<!-- 3_selector&#45;&gt;3 -->\n<g id=\"edge7\" class=\"edge\">\n<title>3_selector&#45;&gt;3</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1231.66,-144.76C1220.54,-134.92 1206.26,-122.26 1194.34,-111.7\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1196.34,-108.8 1186.54,-104.79 1191.7,-114.04 1196.34,-108.8\"/>\n</g>\n<!-- 4_selector -->\n<g id=\"node10\" class=\"node\">\n<title>4_selector</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1092.98\" cy=\"-234\" rx=\"767.66\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1092.98\" y=\"-230.3\" font-family=\"Times,serif\" font-size=\"14.00\">[&#39;ad_id&#39;, &#39;document_id&#39;, &#39;platform&#39;, &#39;document_id_promo&#39;, &#39;campaign_id&#39;, &#39;advertiser_id&#39;, &#39;source_id&#39;, &#39;publisher_id&#39;, &#39;source_id_promo&#39;, &#39;publisher_id_promo&#39;, &#39;clicked&#39;]</text>\n</g>\n<!-- 4_selector&#45;&gt;4 -->\n<g id=\"edge8\" class=\"edge\">\n<title>4_selector&#45;&gt;4</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1092.98,-215.7C1092.98,-207.98 1092.98,-198.71 1092.98,-190.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1096.48,-190.1 1092.98,-180.1 1089.48,-190.1 1096.48,-190.1\"/>\n</g>\n<!-- 5&#45;&gt;9 -->\n<g id=\"edge15\" class=\"edge\">\n<title>5&#45;&gt;9</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1885.35,-222.35C1880.4,-220.05 1875.07,-217.78 1869.98,-216 1815.21,-196.89 1750.58,-182.51 1704.5,-173.59\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1705.14,-170.15 1694.66,-171.71 1703.83,-177.02 1705.14,-170.15\"/>\n</g>\n<!-- 8 -->\n<g id=\"node12\" class=\"node\">\n<title>8</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1046.98\" cy=\"-306\" rx=\"48.19\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1046.98\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">Rename</text>\n</g>\n<!-- 8&#45;&gt;5 -->\n<g id=\"edge10\" class=\"edge\">\n<title>8&#45;&gt;5</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1081.32,-293.3C1088.72,-291.19 1096.55,-289.26 1103.98,-288 1439.98,-230.88 1539.26,-334.36 1869.98,-252 1872.16,-251.46 1874.36,-250.78 1876.56,-250.01\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1878.01,-253.19 1885.94,-246.16 1875.36,-246.72 1878.01,-253.19\"/>\n</g>\n<!-- 5_selector -->\n<g id=\"node13\" class=\"node\">\n<title>5_selector</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1905.98\" cy=\"-306\" rx=\"792.86\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1905.98\" y=\"-302.3\" font-family=\"Times,serif\" font-size=\"14.00\">[&#39;geo_location&#39;, &#39;ad_id&#39;, &#39;document_id&#39;, &#39;platform&#39;, &#39;document_id_promo&#39;, &#39;campaign_id&#39;, &#39;advertiser_id&#39;, &#39;source_id&#39;, &#39;publisher_id&#39;, &#39;source_id_promo&#39;, &#39;publisher_id_promo&#39;]</text>\n</g>\n<!-- 5_selector&#45;&gt;5 -->\n<g id=\"edge11\" class=\"edge\">\n<title>5_selector&#45;&gt;5</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1905.98,-287.7C1905.98,-279.98 1905.98,-270.71 1905.98,-262.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1909.48,-262.1 1905.98,-252.1 1902.48,-262.1 1909.48,-262.1\"/>\n</g>\n<!-- 6 -->\n<g id=\"node14\" class=\"node\">\n<title>6</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1046.98\" cy=\"-378\" rx=\"150.27\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1046.98\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">(lambda col: col.str.slice(0, 5))</text>\n</g>\n<!-- 6&#45;&gt;8 -->\n<g id=\"edge14\" class=\"edge\">\n<title>6&#45;&gt;8</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1046.98,-359.7C1046.98,-351.98 1046.98,-342.71 1046.98,-334.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1050.48,-334.1 1046.98,-324.1 1043.48,-334.1 1050.48,-334.1\"/>\n</g>\n<!-- 6_selector -->\n<g id=\"node15\" class=\"node\">\n<title>6_selector</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"1046.98\" cy=\"-450\" rx=\"79.89\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"1046.98\" y=\"-446.3\" font-family=\"Times,serif\" font-size=\"14.00\">[&#39;geo_location&#39;]</text>\n</g>\n<!-- 6_selector&#45;&gt;6 -->\n<g id=\"edge12\" class=\"edge\">\n<title>6_selector&#45;&gt;6</title>\n<path fill=\"none\" stroke=\"black\" d=\"M1046.98,-431.7C1046.98,-423.98 1046.98,-414.71 1046.98,-406.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"1050.48,-406.1 1046.98,-396.1 1043.48,-406.1 1050.48,-406.1\"/>\n</g>\n<!-- 7_selector -->\n<g id=\"node16\" class=\"node\">\n<title>7_selector</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"246.98\" cy=\"-378\" rx=\"246.96\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"246.98\" y=\"-374.3\" font-family=\"Times,serif\" font-size=\"14.00\">[&#39;publish_time&#39;, &#39;publish_time_promo&#39;, &#39;timestamp&#39;]</text>\n</g>\n<!-- 7_selector&#45;&gt;7 -->\n<g id=\"edge13\" class=\"edge\">\n<title>7_selector&#45;&gt;7</title>\n<path fill=\"none\" stroke=\"black\" d=\"M246.98,-359.7C246.98,-351.98 246.98,-342.71 246.98,-334.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"250.48,-334.1 246.98,-324.1 243.48,-334.1 250.48,-334.1\"/>\n</g>\n<!-- 10_selector -->\n<g id=\"node17\" class=\"node\">\n<title>10_selector</title>\n<ellipse fill=\"none\" stroke=\"black\" cx=\"2764.98\" cy=\"-450\" rx=\"79.89\" ry=\"18\"/>\n<text text-anchor=\"middle\" x=\"2764.98\" y=\"-446.3\" font-family=\"Times,serif\" font-size=\"14.00\">[&#39;geo_location&#39;]</text>\n</g>\n<!-- 10_selector&#45;&gt;10 -->\n<g id=\"edge16\" class=\"edge\">\n<title>10_selector&#45;&gt;10</title>\n<path fill=\"none\" stroke=\"black\" d=\"M2764.98,-431.7C2764.98,-423.98 2764.98,-414.71 2764.98,-406.11\"/>\n<polygon fill=\"black\" stroke=\"black\" points=\"2768.48,-406.1 2764.98,-396.1 2761.48,-406.1 2768.48,-406.1\"/>\n</g>\n</g>\n</svg>\n",
+      "text/plain": [
+       "<graphviz.dot.Digraph at 0x7fdb6c416ee0>"
+      ]
+     },
+     "metadata": {},
+     "execution_count": 9
+    }
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "A user might sometimes be interested to continue reading about the same topics of the current page. Computing the similarity between the textual content of the current page and the pages linked to the displayed ads, can be a relevant feature for a model that predicts which ad the user would click next. A simple, yet effective way to compute the similarity between documents is generating the TF-IDF vectors for each of them, which captures their most relevant terms, and then computing the cosine similarity between those vectors.\n",
+    " \n",
+    "Below, we calculate <i>doc_event_doc_ad_sim_categories</i>, <i>topics</i>, and <i>entities</i> using the `ColumnSimilarity` op, which utilizes the sparse categories, topics, and entities matrices that were created above to calculate landing page similarity for categories, topics, and entities. We calculate Cosine similarity between event doc (landing page) and ad doc aspects vectors (TF-IDF). Creating these extra features help to improve model accuracy and predictability. "
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "Note that we rename the column names to avoid duplicated column names."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "source": [
+    "sim_features_categ = (\n",
+    "    [[\"document_id\", \"document_id_promo\"]]\n",
+    "    >> ColumnSimilarity(categories, metric=\"tfidf\", on_device=False)\n",
+    "    >> Rename(postfix=\"_categories\")\n",
+    ")\n",
+    "sim_features_topics = (\n",
+    "    [[\"document_id\", \"document_id_promo\"]]\n",
+    "    >> ColumnSimilarity(topics, metric=\"tfidf\", on_device=False)\n",
+    "    >> Rename(postfix=\"_topics\")\n",
+    ")\n",
+    "sim_features_entities = (\n",
+    "    [[\"document_id\", \"document_id_promo\"]]\n",
+    "    >> ColumnSimilarity(entities, metric=\"tfidf\", on_device=False)\n",
+    "    >> Rename(postfix=\"_entities\")\n",
+    ")\n",
+    "sim_features = sim_features_categ + sim_features_topics + sim_features_entities"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "source": [
+    "# The workflow is created with the output node of the graph\n",
+    "workflow = nvt.Workflow(features + sim_features)"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "We then create an NVTabular Dataset object both for train and validation sets. We calculate statistics for this workflow on the input dataset, i.e. on our training set, using the `workflow.fit()` method so that our <i>Workflow</i> can use these stats to transform any given input. When our <i>Workflow</i> transforms our datasets and, we also save the results out to parquet files for fast reading at train time."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "source": [
+    "train_dataset = nvt.Dataset(train_filename)\n",
+    "valid_dataset = nvt.Dataset(valid_filename)\n",
+    "\n",
+    "# Calculate statistics on the training set\n",
+    "workflow.fit(train_dataset)"
+   ],
+   "outputs": [
+    {
+     "output_type": "stream",
+     "name": "stderr",
+     "text": [
+      "/usr/local/lib/python3.8/dist-packages/numba/cuda/compiler.py:865: NumbaPerformanceWarning: Grid size (1) < 2 * SM count (112) will likely result in GPU under utilization due to low occupancy.\n",
+      "  warn(NumbaPerformanceWarning(msg))\n",
+      "/usr/local/lib/python3.8/dist-packages/numba/cuda/compiler.py:865: NumbaPerformanceWarning: Grid size (1) < 2 * SM count (112) will likely result in GPU under utilization due to low occupancy.\n",
+      "  warn(NumbaPerformanceWarning(msg))\n"
+     ]
+    }
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "source": [
+    "# use the calculated statistics to transform the train/valid datasets\n",
+    "# and write out each as parquet\n",
+    "workflow.transform(train_dataset).to_parquet(\n",
+    "    output_path=output_train_dir, shuffle=Shuffle.PER_PARTITION, out_files_per_proc=5\n",
+    ")\n",
+    "workflow.transform(valid_dataset).to_parquet(output_path=output_valid_dir)"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "We can save the stats from the workflow and load it anytime, so we can run training without doing preprocessing."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "In the next notebooks, we will train a deep learning model. Our training pipeline requires information about the data schema to define the neural network architecture. We will save the NVTabular workflow to disk so that we can restore it in the next notebooks."
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "source": [
+    "workflow.save(os.path.join(OUTPUT_BUCKET_FOLDER, \"workflow\"))"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "markdown",
+   "source": [
+    "## Reviewing processed data"
+   ],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "source": [
+    "TRAIN_PATHS = sorted(glob.glob(os.path.join(OUTPUT_BUCKET_FOLDER, \"train/*.parquet\")))\n",
+    "VALID_PATHS = sorted(glob.glob(os.path.join(OUTPUT_BUCKET_FOLDER, \"valid/*.parquet\")))\n",
+    "TRAIN_PATHS, VALID_PATHS"
+   ],
+   "outputs": [],
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "source": [
+    "df = df_lib.read_parquet(TRAIN_PATHS[0])\n",
+    "df.head()"
+   ],
+   "outputs": [],
+   "metadata": {}
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "name": "python3",
+   "display_name": "Python 3.8.10 64-bit"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.10"
+  },
+  "interpreter": {
+   "hash": "e7370f93d1d0cde622a1f8e1c04877d8463912d04d973331ad4851f04de6915a"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

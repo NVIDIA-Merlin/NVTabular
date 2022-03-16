@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NVTabular &mdash; NVTabular 2020 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="How it Works" href="HowItWorks.html" />
+    <link rel="prev" title="Welcome to NVTabular’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#conda">Conda</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#examples-and-tutorials">Examples and Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contributing">Contributing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#learn-more">Learn More</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HowItWorks.html">How it Works</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>NVTabular</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="nvtabular">
+<h1>NVTabular<a class="headerlink" href="#nvtabular" title="Permalink to this headline"></a></h1>
+<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the <a class="reference external" href="https://github.com/rapidsai/cudf">RAPIDS cuDF</a> library.</p>
+<p>Recommender systems require massive datasets to train, particularly for deep learning based solutions. The transformation of these datasets after ETL in order to prepare them for model training is particularly challenging. Often the time taken to do steps such as feature engineering, categorical encoding and normalization of continuous variables exceeds the time it takes to train a model.</p>
+<p>NVTabular is designed to support Data Scientists and ML Engineers trying to train (deep learning) recommender systems or other tabular data problems by allowing them to:</p>
+<ul class="simple">
+<li><p>Prepare datasets quickly and easily in order to experiment more and train more models.</p></li>
+<li><p>Work with datasets that exceed GPU and CPU memory without having to worry about scale.</p></li>
+<li><p>Focus on what to do with the data, and not how to do it, using our abstraction at the operation level.</p></li>
+</ul>
+<p>It is also meant to help ML/Ops Engineers deploying models into production by providing:</p>
+<ul class="simple">
+<li><p>Faster dataset transformation, allowing for production models to be trained more frequently and kept up to date helping improve responsiveness and model performance.</p></li>
+<li><p>Integration with model serving frameworks like NVIDIA’s Triton Inference Server to make model deployment easy.</p></li>
+<li><p>Statistical monitoring of the dataset for distributional shift and outlier detection during production training or inference.</p></li>
+</ul>
+<p>The library is designed to be interoperable with both PyTorch and Tensorflow using batch data-loaders that we have developed as extensions of native framework code. NVTabular provides the option to shuffle data during preprocessing, allowing the data-loader to load large contiguous chunks from files rather than individual elements. This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset. We have benchmarked our data-loader at 100x the baseline item by item PyTorch dataloader and 3x the Tensorflow batch data-loader, with several optimizations yet to come in that stack.</p>
+<p>Extending beyond model training, we plan to provide integration with model serving frameworks like <a class="reference external" href="https://github.com/NVIDIA/tensorrt-inference-server">NVIDIA’s Triton Inference Server</a>, creating a clear path to production inference for these models and allowing the feature engineering and preprocessing steps performed on the data during training to be easily and automatically applied to incoming data during inference.</p>
+<p>Our goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness.</p>
+<div class="section" id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline"></a></h2>
+<p>NVTabular is available in the NVIDIA container repository at the following location, http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.</p>
+<p>Currently we have the alpha release (0.1) container, you can pull the container using the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">runtime</span><span class="o">=</span><span class="n">nvidia</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8888</span><span class="p">:</span><span class="mi">8888</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8797</span><span class="p">:</span><span class="mi">8787</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8796</span><span class="p">:</span><span class="mi">8786</span> <span class="o">--</span><span class="n">ipc</span><span class="o">=</span><span class="n">host</span> <span class="o">--</span><span class="n">cap</span><span class="o">-</span><span class="n">add</span> <span class="n">SYS_PTRACE</span> <span class="n">nvcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">nvidia</span><span class="o">/</span><span class="n">nvtabular</span><span class="p">:</span><span class="mf">0.1</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+</pre></div>
+</div>
+<p>If you are running on a docker version 19+ please change <code class="docutils literal notranslate"><span class="pre">--runtime=nvidia</span></code> to <code class="docutils literal notranslate"><span class="pre">--gpus</span> <span class="pre">all</span></code>.</p>
+<p>The container will open a shell when the run command completes execution, you will be responsible for starting the jupyter lab on the docker container.
+Should look similar to below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">@</span><span class="mi">2</span><span class="n">efa5b50b909</span><span class="p">:</span> 
+</pre></div>
+</div>
+<p>First, activate the <code class="docutils literal notranslate"><span class="pre">rapids</span></code> conda environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">@</span><span class="mi">2</span><span class="n">efa5b50b909</span><span class="p">:</span> <span class="n">source</span> <span class="n">activate</span> <span class="n">rapids</span>
+</pre></div>
+</div>
+<p>Then you should see the following prompt (The environment has been activated):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">rapids</span><span class="p">)</span><span class="n">root</span><span class="o">@</span><span class="mi">2</span><span class="n">efa5b50b909</span><span class="p">:</span> 
+</pre></div>
+</div>
+<p>Finally start the jupyter-lab server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jupyter</span><span class="o">-</span><span class="n">lab</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">root</span> <span class="o">--</span><span class="n">ip</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span> <span class="o">--</span><span class="n">NotebookApp</span><span class="o">.</span><span class="n">token</span><span class="o">=</span><span class="s1">&#39;&lt;password&gt;&#39;</span>
+</pre></div>
+</div>
+<p>Now you can use any browser to access the jupyter-lab server, via <MachineIP>:8888</p>
+<p>Once in the server, navigate to the <code class="docutils literal notranslate"><span class="pre">/nvtabular/</span></code> directory and explore the code base or try out some of the examples.</p>
+<p>Within the container is the codebase, along with all of our dependencies, particularly <a class="reference external" href="https://github.com/rapidsai/cudf">RAPIDS cuDF</a>, and a range of <a class="reference external" href="./examples">examples</a>. The easiest way to get started is to simply launch the container above and explore the examples within.</p>
+<p>The code base with examples, can be found at the following directory location within the container:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">nvtabular</span><span class="o">/</span>
+</pre></div>
+</div>
+<div class="section" id="conda">
+<h3>Conda<a class="headerlink" href="#conda" title="Permalink to this headline"></a></h3>
+<p>NVTabular can be installed with Anaconda from the <code class="docutils literal notranslate"><span class="pre">nvidia</span></code> channel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">nvidia</span> <span class="o">-</span><span class="n">c</span> <span class="n">rapidsai</span> <span class="o">-</span><span class="n">c</span> <span class="n">numba</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">nvtabular</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.6</span> <span class="n">cudatoolkit</span><span class="o">=</span><span class="mf">10.2</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="examples-and-tutorials">
+<h2>Examples and Tutorials<a class="headerlink" href="#examples-and-tutorials" title="Permalink to this headline"></a></h2>
+<p>An example demonstrating how to use NVTabular to preprocess the <a class="reference external" href="http://labs.criteo.com/2013/12/download-terabyte-click-logs/">Criteo 1TB dataset</a> can be found in the <a class="reference external" href="examples/criteo-example.ipynb">criteo example notebook</a>. This example also shows how to use NVTabular’s data-loaders on the preprocessed data to train Facebook’s <a class="reference external" href="https://github.com/facebookresearch/dlrm/">Deep Learning Recommender Model (DLRM)</a>.</p>
+<p>Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NVTabular library. The original ETL script provided in Numpy took over five days to complete. Combined with CPU training the total iteration time is over one week. By optimizing the ETL code in spark and running on a DGX-1 equivalent cluster we were able to bring that time down to three hours for ETL and one hour for training.</p>
+<p>With NVTabular on a single V100 32GB GPU we are able to complete ETL in 15 minutes, and using a DGX-1 cluster of eight V100 GPUs we can accelerate ETL to 3 minutes. Combined with <a class="reference external" href="http://www.github.com/NVIDIA/HugeCTR/">HugeCTR</a> we can process the dataset and train the full model in only 18 minutes. This fast iteration is the goal of NVTabular and the <a class="reference external" href="https://developer.nvidia.com/nvidia-merlin">Merlin application framework</a>.</p>
+<p align="center"><img src="_images/nvt_performance.png" width="50%"></p><p>When examining the relative time spent in ETL vs Training we see that with NVTabular data scientists and ML engineers no longer need to spend 75% of their time on ETL.</p>
+<p align="center"><img src="_images/nvt_relativetime.png" width="50%"></p><p>We also have a <a class="reference external" href="examples/rossmann-store-sales-example.ipynb">simple tutorial</a> that demonstrates similar functionality on a much smaller dataset, providing a pipeline for the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Rossman store sales dataset</a> fed into a <a class="reference external" href="https://docs.fast.ai/tabular.html">fast.ai tabular data model</a>.</p>
+</div>
+<div class="section" id="contributing">
+<h2>Contributing<a class="headerlink" href="#contributing" title="Permalink to this headline"></a></h2>
+<p>If you wish to contribute to the library directly please see <a class="reference external" href="./CONTRIBUTING">Contributing.md</a>. We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.</p>
+<p>To be clear, this is an early alpha release, and we have a long way to go. We have a working framework, but our <a class="reference external" href="./Operators">operator set</a> is limited for the initial launch and every day we are developing new optimizations that will help improve the performance of the library. If you are interested in working with us to help develop this library we are looking for early collaborators and contributors. In the coming months we will be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems. Please reach out by submitting an issue or see our guide on contributions. We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.</p>
+</div>
+<div class="section" id="learn-more">
+<h2>Learn More<a class="headerlink" href="#learn-more" title="Permalink to this headline"></a></h2>
+<p>If you are interested in learning more about how NVTabular works under the hood we have provided this <a class="reference internal" href="/NVTabular/v0.1.1/HowItWorks.html"><span class="doc">more detailed description of the core functionality</span></a>.</p>
+<p>We also have <a class="reference external" href="https://nvidia.github.io/NVTabular">API documentation</a> that outlines in detail the specifics of the calls available within the library.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to NVTabular’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="HowItWorks.html" class="btn btn-neutral float-right" title="How it Works" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.1.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v0.1.0/Introduction.html">v0.1.0</a></dd>
+      <dd><a href="Introduction.html">v0.1.1</a></dd>
+      <dd><a href="../v0.10.0/Introduction.html">v0.10.0</a></dd>
+      <dd><a href="../v0.11.0/Introduction.html">v0.11.0</a></dd>
+      <dd><a href="../v0.2.0/Introduction.html">v0.2.0</a></dd>
+      <dd><a href="../v0.3.0/Introduction.html">v0.3.0</a></dd>
+      <dd><a href="../v0.4.0/Introduction.html">v0.4.0</a></dd>
+      <dd><a href="../v0.5.0/Introduction.html">v0.5.0</a></dd>
+      <dd><a href="../v0.5.1/Introduction.html">v0.5.1</a></dd>
+      <dd><a href="../v0.5.2/Introduction.html">v0.5.2</a></dd>
+      <dd><a href="../v0.5.3/Introduction.html">v0.5.3</a></dd>
+      <dd><a href="../v0.6.0/Introduction.html">v0.6.0</a></dd>
+      <dd><a href="../v0.6.1/Introduction.html">v0.6.1</a></dd>
+      <dd><a href="../v0.7.0/Introduction.html">v0.7.0</a></dd>
+      <dd><a href="../v0.7.1/Introduction.html">v0.7.1</a></dd>
+      <dd><a href="../v0.8.0/Introduction.html">v0.8.0</a></dd>
+      <dd><a href="../v0.9.0/Introduction.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../main/Introduction.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

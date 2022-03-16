@@ -1,0 +1,303 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# Scaling Criteo: Download and Convert\n",
+    "\n",
+    "## Criteo 1TB Click Logs dataset\n",
+    "\n",
+    "The [Criteo 1TB Click Logs dataset](https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/) is the largest public available dataset for recommender system. It contains ~1.3 TB of uncompressed click logs containing over four billion samples spanning 24 days. Each record contains 40 features: one label indicating a click or no click, 13 numerical figures, and 26 categorical features. The dataset is provided by CriteoLabs. A subset of 7 days was used in this [Kaggle Competition](https://www.kaggle.com/c/criteo-display-ad-challenge/overview). We will use the dataset as an example how to scale ETL, Training and Inference."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Getting Started"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we will download the data and extract it. We define the base directory for the dataset and the numbers of day. Criteo provides 24 days. We will use the last day as validation dataset and the remaining days as training. \n",
+    "\n",
+    "**Each day has a size of ~15GB compressed `.gz` and uncompressed ~XXXGB. You can define a smaller subset of days, if you like. Each day takes ~20-30min to download and extract it.**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "\n",
+    "from nvtabular.utils import download_file\n",
+    "\n",
+    "download_criteo = True\n",
+    "BASE_DIR = os.environ.get('BASE_DIR', '/raid/data/criteo')\n",
+    "input_path = os.path.join(BASE_DIR, \"crit_orig\")\n",
+    "NUMBER_DAYS = os.environ.get('NUMBER_DAYS', 2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We create the folder structure and download and extract the files. If the file already exist, it will be skipped."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.jupyter.widget-view+json": {
+       "model_id": "933e7da7339647308a9b3cd0ca4a6b3a",
+       "version_major": 2,
+       "version_minor": 0
+      },
+      "text/plain": [
+       "downloading day_1.gz: 0.00B [00:00, ?B/s]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "if download_criteo:\n",
+    "\n",
+    "    # Test if NUMBER_DAYS in valid range\n",
+    "    if NUMBER_DAYS<2 or NUMBER_DAYS>23:\n",
+    "        raise ValueError(str(NUMBER_DAYS) + ' is not supported. A minimum of 2 days are ' + \\\n",
+    "              'required and a maximum of 24 (0-23 days) are available')\n",
+    "\n",
+    "    # Create BASE_DIR if not exists\n",
+    "    if not os.path.exists(BASE_DIR):\n",
+    "        os.makedirs(BASE_DIR)\n",
+    "\n",
+    "    # Create input dir if not exists\n",
+    "    if not os.path.exists(input_path):\n",
+    "        os.makedirs(input_path)\n",
+    "\n",
+    "    # Iterate over days\n",
+    "    for i in range(0, NUMBER_DAYS):\n",
+    "        file = os.path.join(input_path, \"day_\" + str(i) + \".gz\")\n",
+    "        # Download file, if there is no .gz, .csv or .parquet file\n",
+    "        if not(\n",
+    "            os.path.exists(file) or \n",
+    "            os.path.exists(file.replace(\".gz\", \".parquet\").replace(\"crit_orig\", \"converted/criteo/\")) or\n",
+    "            os.path.exists(file.replace(\".gz\", \"\"))\n",
+    "        ):\n",
+    "            download_file(\"http://azuremlsampleexperiments.blob.core.windows.net/criteo/day_\" + str(i) + \".gz\", file)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The original dataset is in text format. We will convert the dataset into `.parquet` format. Parquet is a compressed, column-oriented file structure and requires less disk space."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Conversion Script for Criteo Dataset (CSV-to-Parquet) \n",
+    "\n",
+    "__Step 1__: Import libraries"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import glob\n",
+    "\n",
+    "import numpy as np\n",
+    "from dask.distributed import Client\n",
+    "from dask_cuda import LocalCUDACluster\n",
+    "\n",
+    "import nvtabular as nvt\n",
+    "from nvtabular.utils import device_mem_size, get_rmm_size"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "__Step 2__: Specify options\n",
+    "\n",
+    "Specify the input and output paths, unless the `INPUT_DATA_DIR` and `OUTPUT_DATA_DIR` environment variables are already set. For multi-GPU systems, check that the `CUDA_VISIBLE_DEVICES` environment variable includes all desired device IDs."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "INPUT_PATH = os.environ.get('INPUT_DATA_DIR', input_path)\n",
+    "OUTPUT_PATH = os.environ.get('OUTPUT_DATA_DIR', os.path.join(BASE_DIR, \"converted\")) \n",
+    "CUDA_VISIBLE_DEVICES = os.environ.get(\"CUDA_VISIBLE_DEVICES\", \"0\")\n",
+    "frac_size = 0.10"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "__Step 3__: (Optionally) Start a Dask cluster"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cluster = None  # Connect to existing cluster if desired\n",
+    "if cluster == None:\n",
+    "    cluster = LocalCUDACluster(\n",
+    "        CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,\n",
+    "        rmm_pool_size=get_rmm_size(0.8 * device_mem_size()),\n",
+    "        local_directory=os.path.join(OUTPUT_PATH, \"dask-space\"),\n",
+    "    )\n",
+    "client = Client(cluster)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "__Step 5__: Convert original data to an NVTabular Dataset"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Specify column names\n",
+    "cont_names = [\"I\" + str(x) for x in range(1, 14)]\n",
+    "cat_names = [\"C\" + str(x) for x in range(1, 27)]\n",
+    "cols = [\"label\"] + cont_names + cat_names\n",
+    "\n",
+    "# Specify column dtypes. Note that \"hex\" means that\n",
+    "# the values will be hexadecimal strings that should\n",
+    "# be converted to int32\n",
+    "dtypes = {}\n",
+    "dtypes[\"label\"] = np.int32\n",
+    "for x in cont_names:\n",
+    "    dtypes[x] = np.int32\n",
+    "for x in cat_names:\n",
+    "    dtypes[x] = \"hex\"\n",
+    "\n",
+    "# Create an NVTabular Dataset from a CSV-file glob\n",
+    "file_list = glob.glob(os.path.join(INPUT_PATH, \"day_*\"))\n",
+    "dataset = nvt.Dataset(\n",
+    "    file_list,\n",
+    "    engine=\"csv\",\n",
+    "    names=cols,\n",
+    "    part_mem_fraction=frac_size,\n",
+    "    sep='\\t',\n",
+    "    dtypes=dtypes,\n",
+    "    client=client,\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**__Step 6__**: Write Dataset to Parquet"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 8.59 s, sys: 2.83 s, total: 11.4 s\n",
+      "Wall time: 5min 55s\n"
+     ]
+    }
+   ],
+   "source": [
+    "#%%time \n",
+    "\n",
+    "dataset.to_parquet(\n",
+    "   os.path.join(OUTPUT_PATH, \"criteo\"),\n",
+    "   preserve_files=True,\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "You can delete the original criteo files as they require a lot of disk space."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

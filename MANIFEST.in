@@ -1,4 +1,0 @@
-include versioneer.py
-recursive-include nvtabular *.py *.proto
-recursive-include cpp *.cc *.h *.cu *.cuh 
-include requirements.txt

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JoinExternal &mdash; NVTabular 2020 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="JoinGroupby" href="groupby.html" />
+    <link rel="prev" title="HashedCross" href="hashedcross.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HowItWorks.html">How it Works</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../workflow.html">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dataset.html">Dataset</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Operators</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="categorify.html">Categorify</a></li>
+<li class="toctree-l3"><a class="reference internal" href="clip.html">Clip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="columnsimilarity.html">ColumnSimilarity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dropna.html">Dropna</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fillmissing.html">FillMissing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fillmedian.html">FillMedian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filter.html">Filter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hashbucket.html">HashBucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hashedcross.html">HashedCross</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">JoinExternal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="groupby.html">JoinGroupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="lambdaop.html">LambdaOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="log.html">LogOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="moments.html">Moments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="median.html">Median</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minmax.html">MinMax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="normalize.html">Normalize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="normalizeminmax.html">NormalizeMinMax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="targetencoding.html">TargetEncoding</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html">Torch Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html#torch-layers">Torch Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html">TensorFlow Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html#tensorflow-layers">TensorFlow Layers</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">API Documentation</a> &raquo;</li>
+          <li><a href="index.html">Operators</a> &raquo;</li>
+      <li>JoinExternal</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="joinexternal">
+<h1>JoinExternal<a class="headerlink" href="#joinexternal" title="Permalink to this headline"></a></h1>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hashedcross.html" class="btn btn-neutral float-left" title="HashedCross" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="groupby.html" class="btn btn-neutral float-right" title="JoinGroupby" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.3.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../../v0.10.0/api/ops/joinexternal.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/api/ops/joinexternal.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.2.0/api/ops/joinexternal.html">v0.2.0</a></dd>
+      <dd><a href="joinexternal.html">v0.3.0</a></dd>
+      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../../v0.5.3/api/ops/joinexternal.html">v0.5.3</a></dd>
+      <dd><a href="../../../v0.6.0/api/ops/joinexternal.html">v0.6.0</a></dd>
+      <dd><a href="../../../v0.6.1/api/ops/joinexternal.html">v0.6.1</a></dd>
+      <dd><a href="../../../v0.7.0/api/ops/joinexternal.html">v0.7.0</a></dd>
+      <dd><a href="../../../v0.7.1/api/ops/joinexternal.html">v0.7.1</a></dd>
+      <dd><a href="../../../v0.8.0/api/ops/joinexternal.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/api/ops/joinexternal.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/api/ops/joinexternal.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

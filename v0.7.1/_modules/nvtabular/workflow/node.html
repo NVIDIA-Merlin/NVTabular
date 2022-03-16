@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.workflow.node &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>nvtabular.workflow.node</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nvtabular.workflow.node</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">collections.abc</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular.columns</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Schema</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">LambdaOp</span><span class="p">,</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">internal</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops.internal</span> <span class="kn">import</span> <span class="n">ConcatColumns</span><span class="p">,</span> <span class="n">SelectionOp</span><span class="p">,</span> <span class="n">SubsetColumns</span><span class="p">,</span> <span class="n">SubtractionOp</span>
+
+
+<div class="viewcode-block" id="WorkflowNode"><a class="viewcode-back" href="../../../api/workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode">[docs]</a><span class="k">class</span> <span class="nc">WorkflowNode</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A WorkflowNode is a group of columns that you want to apply the same transformations to.</span>
+<span class="sd">    WorkflowNode&#39;s can be transformed by shifting operators on to them, which returns a new</span>
+<span class="sd">    WorkflowNode with the transformations applied. This lets you define a graph of operations</span>
+<span class="sd">    that makes up your workflow</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    selector: ColumnSelector</span>
+<span class="sd">        Defines which columns to select from the input Dataset using column names and tags.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selector</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_schema</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">selector</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;The selector argument must be a list or a ColumnSelector&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">selector</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">SelectionOp</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_selector</span> <span class="o">=</span> <span class="n">selector</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">selector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_selector</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">_selector</span> <span class="k">for</span> <span class="n">parent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">_combine_selectors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_selector</span>
+
+    <span class="nd">@selector</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">selector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sel</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">sel</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">sel</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_selector</span> <span class="o">=</span> <span class="n">sel</span>
+
+    <span class="c1"># These methods must maintain grouping</span>
+    <span class="k">def</span> <span class="nf">add_dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dep</span><span class="p">):</span>
+        <span class="n">dep_nodes</span> <span class="o">=</span> <span class="n">_nodify</span><span class="p">(</span><span class="n">dep</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dep_nodes</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">):</span>
+        <span class="n">child_nodes</span> <span class="o">=</span> <span class="n">_nodify</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child_nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">child_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">child_nodes</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">child_node</span> <span class="ow">in</span> <span class="n">child_nodes</span><span class="p">:</span>
+            <span class="n">child_node</span><span class="o">.</span><span class="n">parents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">child_nodes</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="n">parent_nodes</span> <span class="o">=</span> <span class="n">_nodify</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parent_nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">parent_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">parent_nodes</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">parent_node</span> <span class="ow">in</span> <span class="n">parent_nodes</span><span class="p">:</span>
+            <span class="n">parent_node</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">parent_nodes</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compute_schemas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root_schema</span><span class="p">):</span>
+        <span class="c1"># If parent is an addition node, we may need to propagate grouping</span>
+        <span class="c1"># unless we&#39;re a node that already has a selector</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+                <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">internal</span><span class="o">.</span><span class="n">ConcatColumns</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">selector</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">selector</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">ConcatColumns</span><span class="p">):</span>  <span class="c1"># +</span>
+            <span class="c1"># For addition nodes, some of the operands are parents and</span>
+            <span class="c1"># others are dependencies so grab schemas from both</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">_combine_selectors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grouped_parents_with_dependencies</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents_with_dependencies</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">SubtractionOp</span><span class="p">):</span>  <span class="c1"># -</span>
+            <span class="n">left_operand</span> <span class="o">=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">:</span>
+                <span class="n">right_operand</span> <span class="o">=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="n">left_operand</span> <span class="o">-</span> <span class="n">right_operand</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="n">left_operand</span><span class="o">.</span><span class="n">apply_inverse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">SubsetColumns</span><span class="p">):</span>  <span class="c1"># []</span>
+            <span class="n">left_operand</span> <span class="o">=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span>
+            <span class="n">right_operand</span> <span class="o">=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="n">left_operand</span> <span class="o">-</span> <span class="n">right_operand</span>
+
+        <span class="c1"># If we have a selector, apply it to upstream schemas from nodes/dataset</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">SelectionOp</span><span class="p">):</span>  <span class="c1"># ^</span>
+            <span class="n">upstream_schema</span> <span class="o">=</span> <span class="n">root_schema</span> <span class="o">+</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents_with_dependencies</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="n">upstream_schema</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span>
+
+        <span class="c1"># If none of the above apply, then we don&#39;t have a selector</span>
+        <span class="c1"># and we&#39;re not an add or sub node, so our input is just the</span>
+        <span class="c1"># parents output</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="o">=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">)</span>
+
+        <span class="c1"># Then we delegate to the op (if there is one) to compute this node&#39;s</span>
+        <span class="c1"># output schema. If there&#39;s no op, then outputs are just the inputs</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">compute_output_schema</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span>
+
+<div class="viewcode-block" id="WorkflowNode.__rshift__"><a class="viewcode-back" href="../../../api/workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode.__rshift__">[docs]</a>    <span class="k">def</span> <span class="fm">__rshift__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operator</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Transforms this WorkflowNode by applying an Operator</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        operators: Operator or callable</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        WorkflowNode</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">Operator</span><span class="p">):</span>
+            <span class="c1"># handle case where an operator class is passed</span>
+            <span class="n">operator</span> <span class="o">=</span> <span class="n">operator</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">operator</span><span class="p">):</span>
+            <span class="c1"># implicit lambdaop conversion.</span>
+            <span class="n">operator</span> <span class="o">=</span> <span class="n">LambdaOp</span><span class="p">(</span><span class="n">operator</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">Operator</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected operator or callable, got </span><span class="si">{</span><span class="n">operator</span><span class="o">.</span><span class="vm">__class__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">child</span> <span class="o">=</span> <span class="n">WorkflowNode</span><span class="p">()</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">operator</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">add_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="n">dependencies</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">dependencies</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">dependencies</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dependencies</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Sequence</span><span class="p">):</span>
+                <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">dependencies</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">dependency</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">:</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">dependency</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">child</span></div>
+
+<div class="viewcode-block" id="WorkflowNode.__add__"><a class="viewcode-back" href="../../../api/workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode.__add__">[docs]</a>    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Adds columns from this WorkflowNode with another to return a new WorkflowNode</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        other: WorkflowNode or str or list of str</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        WorkflowNode</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">internal</span><span class="o">.</span><span class="n">ConcatColumns</span><span class="p">):</span>
+            <span class="n">child</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Create a child node</span>
+            <span class="n">child</span> <span class="o">=</span> <span class="n">WorkflowNode</span><span class="p">()</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">internal</span><span class="o">.</span><span class="n">ConcatColumns</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">add_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># The right operand becomes a dependency</span>
+        <span class="n">other_nodes</span> <span class="o">=</span> <span class="n">_nodify</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="n">other_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">other_nodes</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">other_node</span> <span class="ow">in</span> <span class="n">other_nodes</span><span class="p">:</span>
+            <span class="c1"># If the other node is a `+` node, we want to collapse it into this `+` node to</span>
+            <span class="c1"># avoid creating a cascade of repeated `+`s that we&#39;d need to optimize out by</span>
+            <span class="c1"># re-combining them later in order to clean up the graph</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other_node</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">other_node</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">internal</span><span class="o">.</span><span class="n">ConcatColumns</span>
+            <span class="p">):</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">dependencies</span> <span class="o">+=</span> <span class="n">other_node</span><span class="o">.</span><span class="n">grouped_parents_with_dependencies</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">other_node</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">child</span></div>
+
+    <span class="c1"># handle the &quot;column_name&quot; + WorkflowNode case</span>
+    <span class="fm">__radd__</span> <span class="o">=</span> <span class="fm">__add__</span>
+
+<div class="viewcode-block" id="WorkflowNode.__sub__"><a class="viewcode-back" href="../../../api/workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode.__sub__">[docs]</a>    <span class="k">def</span> <span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Removes columns from this WorkflowNode with another to return a new WorkflowNode</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        other: WorkflowNode or str or list of str</span>
+<span class="sd">            Columns to remove</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        WorkflowNode</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">other_nodes</span> <span class="o">=</span> <span class="n">_nodify</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other_nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">other_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">other_nodes</span><span class="p">]</span>
+
+        <span class="n">child</span> <span class="o">=</span> <span class="n">WorkflowNode</span><span class="p">()</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">add_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">internal</span><span class="o">.</span><span class="n">SubtractionOp</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">other_node</span> <span class="ow">in</span> <span class="n">other_nodes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other_node</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">SelectionOp</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">other_node</span><span class="o">.</span><span class="n">parents_with_dependencies</span><span class="p">:</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">selector</span> <span class="o">+=</span> <span class="n">other_node</span><span class="o">.</span><span class="n">selector</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">selector</span> <span class="o">+=</span> <span class="n">child</span><span class="o">.</span><span class="n">selector</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">other_node</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">child</span></div>
+
+    <span class="k">def</span> <span class="fm">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">left_operand</span> <span class="o">=</span> <span class="n">_nodify</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="n">right_operand</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">left_operand</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">left_operand</span> <span class="o">=</span> <span class="p">[</span><span class="n">left_operand</span><span class="p">]</span>
+
+        <span class="n">child</span> <span class="o">=</span> <span class="n">WorkflowNode</span><span class="p">()</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">add_parent</span><span class="p">(</span><span class="n">left_operand</span><span class="p">)</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">internal</span><span class="o">.</span><span class="n">SubtractionOp</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">right_operand</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="n">SelectionOp</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="n">right_operand</span><span class="o">.</span><span class="n">parents_with_dependencies</span>
+        <span class="p">):</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">selector</span> <span class="o">+=</span> <span class="n">right_operand</span><span class="o">.</span><span class="n">selector</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">selector</span> <span class="o">+=</span> <span class="n">child</span><span class="o">.</span><span class="n">selector</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">right_operand</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">child</span>
+
+<div class="viewcode-block" id="WorkflowNode.__getitem__"><a class="viewcode-back" href="../../../api/workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Selects certain columns from this WorkflowNode, and returns a new Columngroup with only</span>
+<span class="sd">        those columns</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        columns: str or list of str</span>
+<span class="sd">            Columns to select</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        WorkflowNode</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+        <span class="n">child</span> <span class="o">=</span> <span class="n">WorkflowNode</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">internal</span><span class="o">.</span><span class="n">SubsetColumns</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">columns</span><span class="p">)))</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">add_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">child</span></div>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot; output&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;WorkflowNode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="si">}{</span><span class="n">output</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">parents_with_dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parents</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">nodes</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">nodes</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">grouped_parents_with_dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parents</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">input_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;The input columns aren&#39;t computed until the workflow &quot;</span>
+                <span class="s2">&quot;is fit to a dataset or input schema.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">:</span>
+            <span class="c1"># To maintain column groupings</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;The output columns aren&#39;t computed until the workflow &quot;</span>
+                <span class="s2">&quot;is fit to a dataset or input schema.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependency_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependency_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_combine_selectors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">label</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parents</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;input cols=[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cols_repr</span><span class="si">}</span><span class="s2">]&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;??&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_cols_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span><span class="p">:</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">:</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">cols_repr</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">columns</span><span class="p">[:</span><span class="mi">3</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">cols_repr</span> <span class="o">+=</span> <span class="s2">&quot;...&quot;</span>
+
+        <span class="k">return</span> <span class="n">cols_repr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_to_graphviz</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">iter_nodes</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[:]</span>
+    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">queue</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">current</span>
+            <span class="c1"># TODO: deduplicate nodes?</span>
+            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">current</span><span class="o">.</span><span class="n">parents_with_dependencies</span><span class="p">:</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_filter_by_type</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">type_</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">type_</span><span class="p">):</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">elem</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">results</span> <span class="o">+=</span> <span class="n">_filter_by_type</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">type_</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results</span>
+
+
+<span class="k">def</span> <span class="nf">_combine_schemas</span><span class="p">(</span><span class="n">elements</span><span class="p">):</span>
+    <span class="n">combined</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">WorkflowNode</span><span class="p">):</span>
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">elem</span><span class="o">.</span><span class="n">output_schema</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">):</span>
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">_combine_schemas</span><span class="p">(</span><span class="n">elem</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">combined</span>
+
+
+<span class="k">def</span> <span class="nf">_combine_selectors</span><span class="p">(</span><span class="n">elements</span><span class="p">):</span>
+    <span class="n">combined</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">WorkflowNode</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">elem</span><span class="o">.</span><span class="n">selector</span><span class="p">:</span>
+                <span class="n">selector</span> <span class="o">=</span> <span class="n">elem</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">output_column_names</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">elem</span><span class="o">.</span><span class="n">output_schema</span><span class="p">:</span>
+                <span class="n">selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">output_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">elem</span><span class="o">.</span><span class="n">input_schema</span><span class="p">:</span>
+                <span class="n">selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+                <span class="n">selector</span> <span class="o">=</span> <span class="n">elem</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">output_column_names</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">()</span>
+
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">selector</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">):</span>
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">elem</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">elem</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">combined</span> <span class="o">+=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">subgroups</span><span class="o">=</span><span class="n">_combine_selectors</span><span class="p">(</span><span class="n">elem</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">combined</span>
+
+
+<span class="k">def</span> <span class="nf">_to_selector</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">WorkflowNode</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_strs_to_selectors</span><span class="p">(</span><span class="n">elements</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">_to_selector</span><span class="p">(</span><span class="n">elem</span><span class="p">)</span> <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="_to_graphviz"><a class="viewcode-back" href="../../../api/workflow/workflow_node.html#nvtabular.workflow.node._to_graphviz">[docs]</a><span class="k">def</span> <span class="nf">_to_graphviz</span><span class="p">(</span><span class="n">workflow_node</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a WorkflowNode to a GraphViz DiGraph object useful for display in notebooks&quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">graphviz</span> <span class="kn">import</span> <span class="n">Digraph</span>
+
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">Digraph</span><span class="p">()</span>
+
+    <span class="c1"># get all the nodes from parents of this columngroup</span>
+    <span class="c1"># and add edges between each of them</span>
+    <span class="n">allnodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">iter_nodes</span><span class="p">([</span><span class="n">workflow_node</span><span class="p">])))</span>
+    <span class="n">node_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">allnodes</span><span class="p">)}</span>
+    <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">nodeid</span> <span class="ow">in</span> <span class="n">node_ids</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">label</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">parent</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">parents_with_dependencies</span><span class="p">:</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">edge</span><span class="p">(</span><span class="n">node_ids</span><span class="p">[</span><span class="n">parent</span><span class="p">],</span> <span class="n">nodeid</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">selector</span> <span class="ow">and</span> <span class="n">node</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="n">selector_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">nodeid</span><span class="si">}</span><span class="s2">_selector&quot;</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">selector_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">))</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">edge</span><span class="p">(</span><span class="n">selector_id</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">)</span>
+
+    <span class="c1"># add a single &#39;output&#39; node representing the final state</span>
+    <span class="n">output_node_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">allnodes</span><span class="p">))</span>
+    <span class="n">output_string</span> <span class="o">=</span> <span class="s2">&quot;output cols&quot;</span>
+    <span class="k">if</span> <span class="n">workflow_node</span><span class="o">.</span><span class="n">_cols_repr</span><span class="p">:</span>
+        <span class="n">output_string</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;=[</span><span class="si">{</span><span class="n">workflow_node</span><span class="o">.</span><span class="n">_cols_repr</span><span class="si">}</span><span class="s2">]&quot;</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">output_node_id</span><span class="p">,</span> <span class="n">output_string</span><span class="p">)</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">edge</span><span class="p">(</span><span class="n">node_ids</span><span class="p">[</span><span class="n">workflow_node</span><span class="p">],</span> <span class="n">output_node_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">graph</span></div>
+
+
+<span class="k">def</span> <span class="nf">_convert_col</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">col</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid column value for WorkflowNode: </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_nodify</span><span class="p">(</span><span class="n">nodable</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodable</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">WorkflowNode</span><span class="p">(</span><span class="n">ColumnSelector</span><span class="p">([</span><span class="n">nodable</span><span class="p">]))</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodable</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">WorkflowNode</span><span class="p">(</span><span class="n">nodable</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodable</span><span class="p">,</span> <span class="n">WorkflowNode</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">nodable</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodable</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">_nodify</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodable</span><span class="p">]</span>
+        <span class="n">non_selection_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">node</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">node</span><span class="o">.</span><span class="n">selector</span><span class="p">]</span>
+        <span class="n">selection_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">selector</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span> <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">selector</span><span class="p">]</span>
+        <span class="n">selection_nodes</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">[</span><span class="n">WorkflowNode</span><span class="p">(</span><span class="n">_combine_selectors</span><span class="p">(</span><span class="n">selection_nodes</span><span class="p">))]</span> <span class="k">if</span> <span class="n">selection_nodes</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">non_selection_nodes</span> <span class="o">+</span> <span class="n">selection_nodes</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s2">&quot;Unsupported type: Cannot convert object &quot;</span> <span class="sa">f</span><span class="s2">&quot;of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">nodable</span><span class="p">)</span><span class="si">}</span><span class="s2"> to WorkflowNode.&quot;</span>
+        <span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.7.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
+      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
+      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
+      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
+      <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="node.html">v0.7.1</a></dd>
+      <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How it Works &mdash; NVTabular 2020 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="examples/index.html" />
+    <link rel="prev" title="NVTabular | API documentation" href="Introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">How it Works</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#operations">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-higher-level-of-abstraction">A higher level of abstraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#framework-interoperability">Framework Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-gpu-support">Multi-GPU Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cpu-support">CPU Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>How it Works</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="how-it-works">
+<h1>How it Works<a class="headerlink" href="#how-it-works" title="Permalink to this headline"></a></h1>
+<p><img alt="NVTabular Workflow" src="_images/nvt_workflow.png" /></p>
+<p>With the transition to v0.2 the NVTabular engine uses the <a class="reference external" href="http://www.rapids.ai">RAPIDS</a> <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-cuDF library</a> which provides the bulk of the functionality, accelerating dataframe operations on the GPU, and scaling across multiple GPUs.  NVTabular provides functionality commonly found in deep learning recommendation workflows, allowing you to focus on what you want to do with your data, not how you need to do it.  We also provide a template for our core compute mechanism, Operations, or ‘ops’ allowing you to build your own custom ops from cuDF and other libraries.</p>
+<p>Follow our <a class="reference external" href="https://nvidia.github.io/NVTabular/main/Introduction.html#getting-started">getting started guide</a> to get NVTabular installed on your container or system.  Once installed you can setup a workflow in the following way:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;city&quot;</span><span class="p">],</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;time_of_day&quot;</span><span class="p">,</span> <span class="s2">&quot;item_num_views&quot;</span><span class="p">],</span>
+    <span class="n">label_name</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>With the workflow in place we can now explore the library in detail.</p>
+<div class="section" id="operations">
+<h2>Operations<a class="headerlink" href="#operations" title="Permalink to this headline"></a></h2>
+<p>Operations are a reflection of the way in which compute happens on the GPU across large datasets.  At a high level we’re concerned with two types of compute: the type that touches the entire dataset (or some large chunk of it) and the type that operates on a single row.  Operations split the compute such that the first phase, which we call statistics gathering, is the only place where operations that cross the row boundary can take place.  An example of this would be in the Normalize op which relies on two statistics, the mean and standard deviation.  In order to normalize a row, we must first have calculated these two values, and we use a Dask-cudf graph to compute this part of the op.</p>
+<p>The second phase of operations is the apply phase, which uses the statistics created earlier to modify the dataset, transforming the data.  Notably we allow for the application of transforms not only during the modification of the dataset, but also during dataloading, with plans to support the same transforms during inference.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># by default, the op will be applied to _all_</span>
+<span class="c1"># columns of the associated variable type</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">add_cont_preprocess</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">())</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;/path/to/data.parquet&quot;</span><span class="p">)</span>
+
+<span class="c1"># record stats, transform the dataset, and export</span>
+<span class="c1"># the transformed data to a parquet file</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/path/to/export/dir&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Dask-cuDF does the scheduling to help optimize the task graph providing an optimal solution to whatever configuration of GPUs you have, from a single GPU to a cluster of many.</p>
+</div>
+<div class="section" id="a-higher-level-of-abstraction">
+<h2>A higher level of abstraction<a class="headerlink" href="#a-higher-level-of-abstraction" title="Permalink to this headline"></a></h2>
+<p>NVTabular code is targeted at the operator level, not the dataframe level, providing a method for specifying the operation you want to perform, and the columns or type of data that you want to perform it on.</p>
+<p>We make an explicit distinction between feature engineering ops, which create new variables, and preprocessing ops which transform data more directly to make it ready for the model to which it’s feeding.  While the type of computation involved in these two stages is often similar, we want to allow for the creation of new features that will then be preprocessed in the same way as other input variables.</p>
+<p>Two main data types are currently supported: categorical variables and continuous variables.  Feature engineering operators explicitly take as input one or more continuous or categorical columns and produce one or more columns of a specific type.  By default the input columns used to create the new feature are also included in the output, however this can be overridden with the [replace] keyword in the operator.  We hope to extend this to multi-hot categoricals in the future in addition to providing specific functionality for high cardinality categoricals which must be treated differently due to memory constraints.</p>
+<p>Preprocessing operators take in a set of columns of the same type and perform the operation across each column, transforming the output during the final operation into a long tensor in the case of categorical variables or a float tensor in the case of continuous variables.  Preprocessing operations replace the column values with their new representation by default, but again we allow the user to override this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># same example as before, but now only apply normalization</span>
+<span class="c1"># to `age` and `item_num_views` columns, which will create</span>
+<span class="c1"># new columns `age_normalize` and `item_num_views_normalize`</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">add_cont_preprocess</span><span class="p">(</span><span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;item_num_views&quot;</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;/path/to/data.parquet&quot;</span><span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/path/to/export/dir&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Replace negative and missing values with 0 and then take log(1+x)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">add_cont_feature</span><span class="p">([</span><span class="n">FillMissing</span><span class="p">(),</span> <span class="n">Clip</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">LogOp</span><span class="p">()])</span>
+
+<span class="c1"># then normalize</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">add_cont_preprocess</span><span class="p">(</span><span class="n">Normalize</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="framework-interoperability">
+<h2>Framework Interoperability<a class="headerlink" href="#framework-interoperability" title="Permalink to this headline"></a></h2>
+<p>In addition to providing mechanisms for transforming the data to prepare it for deep learning models we also provide framework-specific dataloaders to help optimize getting that data to the GPU.  Under a traditional dataloading scheme, data is read in item by item and collated into a batch.  PyTorch allows for multiple processes to create many batches at the same time, however this still leads to many individual rows of tabular data accessed independently which impacts I/O, especially when this data is on the disk and not in CPU memory.  TensorFlow loads and shuffles TFRecords by adopting a windowed buffering scheme that loads data sequentially to a buffer, from which it randomly samples batches and replenishes with the next sequential elements from disk. Larger buffer sizes ensure more randomness, but can quickly bottleneck performance as TensorFlow tries to keep the buffer saturated. Smaller buffer sizes mean that datasets which aren’t uniformly distributed on disk lead to biased sampling and potentially degraded convergence.</p>
+<p>In NVTabular we provide an option to shuffle during dataset creation, creating a uniformly shuffled dataset allowing the dataloader to read in contiguous chunks of data that are already randomized across the entire dataset.  NVTabular provides the option to control the number of chunks that are combined into a batch, allowing the end user flexibility when trading off between performance and true randomization.  This mechanism is critical when dealing with datasets that exceed CPU memory and per epoch shuffling is desired during training.  Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.</p>
+<p>Stay tuned for benchmarks on our dataloader performance as compared to those native to the frameworks.</p>
+</div>
+<div class="section" id="multi-gpu-support">
+<h2>Multi-GPU Support<a class="headerlink" href="#multi-gpu-support" title="Permalink to this headline"></a></h2>
+<p>NVTabular supports multi-GPU scaling with <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-CUDA</a> and <a class="reference external" href="https://distributed.dask.org/en/latest/">dask.distributed</a>.  To enable distributed parallelism, the NVTabular <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> must be initialized with a <code class="docutils literal notranslate"><span class="pre">dask.distributed.Client</span></code> object:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+
+<span class="c1"># Deploy a new cluster</span>
+<span class="c1"># (or specify the port of an existing scheduler)</span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="s2">&quot;tcp://MachineA:8786&quot;</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>There are currenly many ways to deploy a “cluster” for Dask.  <a class="reference external" href="https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters">This article</a> gives a nice summary of all practical options.  For a single machine with multiple GPUs, the <code class="docutils literal notranslate"><span class="pre">dask_cuda.LocalCUDACluster</span></code> API is typically the most convenient option.</p>
+<p>Since NVTabular already uses <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">Dask-CuDF</a> for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. See the <a class="reference internal" href="examples/multigpu.html"><span class="doc">Multi-GPU</span></a> section of this documentation for a simple step-by-step example.</p>
+<p>Users are also encouraged to experiment with the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py">multi-GPU Criteo/DLRM benchmark example</a>. For detailed notes on the parameter space for the benchmark, see the <a class="reference internal" href="examples/multigpu_bench.html"><span class="doc">Multi-GPU Criteo Benchmark</span></a> section of this documentation.</p>
+</div>
+<div class="section" id="cpu-support">
+<h2>CPU Support<a class="headerlink" href="#cpu-support" title="Permalink to this headline"></a></h2>
+<p>Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that NVTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Introduction.html" class="btn btn-neutral float-left" title="NVTabular | API documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="examples/index.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v0.1.0/HowItWorks.html">v0.1.0</a></dd>
+      <dd><a href="../v0.1.1/HowItWorks.html">v0.1.1</a></dd>
+      <dd><a href="../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="HowItWorks.html">v0.2.0</a></dd>
+      <dd><a href="../v0.3.0/HowItWorks.html">v0.3.0</a></dd>
+      <dd><a href="../v0.4.0/index.html">v0.4.0</a></dd>
+      <dd><a href="../v0.5.0/index.html">v0.5.0</a></dd>
+      <dd><a href="../v0.5.1/index.html">v0.5.1</a></dd>
+      <dd><a href="../v0.5.2/index.html">v0.5.2</a></dd>
+      <dd><a href="../v0.5.3/index.html">v0.5.3</a></dd>
+      <dd><a href="../v0.6.0/index.html">v0.6.0</a></dd>
+      <dd><a href="../v0.6.1/index.html">v0.6.1</a></dd>
+      <dd><a href="../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
