@@ -17,7 +17,6 @@ import re
 
 from tests.integration.common.parsers.benchmark_parsers import (
     BenchFastAI,
-    Benchmark,
     StandardBenchmark,
     create_bench_result,
 )
@@ -64,7 +63,7 @@ class CriteoBenchFastAI(BenchFastAI):
         return [t_loss, v_loss]
 
 
-class CriteoBenchHugeCTR(Benchmark):
+class CriteoBenchHugeCTR(StandardBenchmark):
     def get_epochs(self, output):
         epochs = []
         for line in output:
