@@ -18,7 +18,7 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from nvtabular.dispatch import DataFrameType, is_list_dtype, pull_apart_list
+from merlin.core.dispatch import DataFrameType, is_list_dtype, pull_apart_list
 
 from .operator import ColumnSelector
 from .stat_operator import StatOperator

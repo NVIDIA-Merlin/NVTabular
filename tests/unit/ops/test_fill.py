@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-from nvtabular.dispatch import HAS_GPU
+from merlin.core.dispatch import HAS_GPU
 
 if HAS_GPU:
     _CPU = [True, False]

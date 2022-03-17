@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from merlin.core.dispatch import DataFrameType
 from merlin.schema.tags import Tags
-from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnSelector, Operator
 

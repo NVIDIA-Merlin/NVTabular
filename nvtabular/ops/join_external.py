@@ -23,8 +23,7 @@ except ImportError:
 import dask.dataframe as dd
 import pandas as pd
 
-from merlin.schema import Schema
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
     ExtData,
     arange,
@@ -33,6 +32,7 @@ from nvtabular.dispatch import (
     detect_format,
     to_host,
 )
+from merlin.schema import Schema
 
 from .operator import ColumnSelector, Operator
 

@@ -34,8 +34,7 @@ except ImportError:
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
-from merlin.io import Dataset
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     HAS_GPU,
     concat,
     create_multihot_col,
@@ -44,6 +43,7 @@ from nvtabular.dispatch import (
     make_series,
     pull_apart_list,
 )
+from merlin.io import Dataset
 
 from ..utils import device_mem_size
 
