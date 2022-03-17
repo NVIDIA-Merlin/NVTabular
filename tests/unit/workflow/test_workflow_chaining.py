@@ -18,9 +18,8 @@
 import numpy as np
 
 import nvtabular as nvt
-from merlin.core.dispatch import make_df
+from merlin.core.dispatch import HAS_GPU, make_df
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.dispatch import HAS_GPU
 
 
 def test_chaining_1():

@@ -20,8 +20,8 @@ import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
+from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
 from merlin.schema import Schema
-from nvtabular.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator

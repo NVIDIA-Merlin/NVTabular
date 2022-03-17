@@ -19,9 +19,9 @@ import json
 import fsspec
 import numpy as np
 
+from merlin.core.utils import set_client_deprecated
 from merlin.dag import ColumnSelector
 from nvtabular.ops import DataStats
-from nvtabular.utils import set_client_deprecated
 from nvtabular.workflow import Workflow
 
 
