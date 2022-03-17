@@ -381,7 +381,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="a6af81e1baea4e3381b16cd594072ec3" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="76dd184f8d674cd7aeb29b84b74002e2" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Getting-Started-MovieLens:-Download-and-Convert">
 <h1>Getting Started MovieLens: Download and Convert<a class="headerlink" href="#Getting-Started-MovieLens:-Download-and-Convert" title="Permalink to this headline"></a></h1>
 <div class="section" id="MovieLens25M">
@@ -398,10 +398,10 @@ in this example, we will use the metadata to show how to multi-hot encode the ca
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
 <span class="kn">import</span> <span class="nn">os</span>
 
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
 
 <span class="c1"># Get dataframe library - cudf or pandas</span>
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
 <span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 </pre></div>
 </div>
