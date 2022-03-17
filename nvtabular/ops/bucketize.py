@@ -16,8 +16,8 @@
 import numpy as np
 from packaging.version import Version
 
+from merlin.core.dispatch import DataFrameType, annotate, array
 from merlin.schema import Tags
-from nvtabular.dispatch import DataFrameType, annotate, array
 
 from .operator import ColumnSelector, Operator
 

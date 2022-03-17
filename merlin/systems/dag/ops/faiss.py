@@ -15,6 +15,8 @@
 #
 
 import json
+import os
+from shutil import copy2
 
 import faiss
 import numpy as np
@@ -53,6 +55,14 @@ class QueryFaiss(PipelineableInferenceOperator):
             "topk": self.topk,
         }
         self_params.update(params)
+        index_filename = os.path.basename(os.path.realpath(self.index_path))
+
+        # set index path to new path after export
+        new_index_path = os.path.join(
+            path, f"{node_id}_{QueryFaiss.__name__.lower()}", str(version), index_filename
+        )
+        copy2(self.index_path, new_index_path)
+        self.index_path = new_index_path
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
     def transform(self, df: InferenceDataFrame):
