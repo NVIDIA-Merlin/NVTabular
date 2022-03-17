@@ -19,8 +19,9 @@ import json
 import fsspec
 import numpy as np
 
-from nvtabular.columns import ColumnSelector
+from merlin.dag import ColumnSelector
 from nvtabular.ops import DataStats
+from nvtabular.utils import set_client_deprecated
 from nvtabular.workflow import Workflow
 
 
@@ -45,7 +46,9 @@ class DatasetInspector:
     """
 
     def __init__(self, client=None):
-        self.client = client
+        # Deprecate `client`
+        if client:
+            set_client_deprecated(client, "DatasetInspector")
 
     def inspect(self, dataset, columns_dict, output_file):
         """
@@ -72,7 +75,7 @@ class DatasetInspector:
         # Create Dataset, Workflow, and get Stats
         stats = DataStats()
         features = ColumnSelector(cats + conts + labels) >> stats
-        workflow = Workflow(features, client=self.client)
+        workflow = Workflow(features)
         workflow.fit(dataset)
 
         # get statistics from the datastats op

@@ -1,9 +1,18 @@
 import numpy as np
 import pytest
 
+from merlin.dag import ColumnSelector
+from merlin.schema import Schema
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
-from nvtabular.columns import ColumnSelector, Schema
-from nvtabular.ops import Categorify, DifferenceLag, FillMissing, Operator, Rename, TargetEncoding
+from nvtabular.ops import (
+    Categorify,
+    DifferenceLag,
+    FillMissing,
+    LambdaOp,
+    Operator,
+    Rename,
+    TargetEncoding,
+)
 from tests.conftest import assert_eq
 
 
@@ -59,7 +68,10 @@ def test_input_output_column_names():
 
 
 def test_dependency_column_names():
+    schema = Schema(["a", "b", "c", "d"])
+
     dependency_node = ["a", "b", "c"] >> TargetEncoding("d")
+    Workflow(dependency_node).fit_schema(schema)
     assert dependency_node.dependency_columns.names == ["d"]
 
 
@@ -107,9 +119,10 @@ def test_workflow_node_addition():
 def test_workflow_node_subtraction():
     schema = Schema(["a", "b", "c", "d", "e", "f"])
 
-    node1 = ["a", "b", "c", "d"] >> Operator()
-    node2 = ["c", "d"] >> Operator()
-    node3 = ["b"] >> Operator()
+    def build_nodes():
+        return (["a", "b", "c", "d"] >> Operator(), ["c", "d"] >> Operator(), ["b"] >> Operator())
+
+    node1, node2, node3 = build_nodes()
 
     output_node = node1 - ["c", "d"]
     workflow = Workflow(output_node).fit_schema(schema)
@@ -117,17 +130,23 @@ def test_workflow_node_subtraction():
     assert len(output_node.dependencies) == 0
     assert workflow.output_node.output_columns.names == ["a", "b"]
 
+    node1, node2, node3 = build_nodes()
+
     output_node = node1 - node2
     workflow = Workflow(output_node).fit_schema(schema)
     assert len(output_node.parents) == 1
     assert len(output_node.dependencies) == 1
     assert workflow.output_node.output_columns.names == ["a", "b"]
 
+    node1, node2, node3 = build_nodes()
+
     output_node = ["a", "b", "c", "d"] - node2
     workflow = Workflow(output_node).fit_schema(schema)
     assert len(output_node.parents) == 1
     assert len(output_node.dependencies) == 1
     assert workflow.output_node.output_columns.names == ["a", "b"]
+
+    node1, node2, node3 = build_nodes()
 
     output_node = node1 - ["c", "d"] - node3
     workflow = Workflow(output_node).fit_schema(schema)
@@ -222,13 +241,13 @@ def test_compute_schemas():
 
 
 def test_workflow_node_select():
-    df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
+    df = dispatch.make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
     dataset = Dataset(df)
 
     input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
-    sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
-    plus_one_features = input_features["b"] >> (lambda col: col + 1)
+    sqrt_features = input_features[["a", "c"]] >> LambdaOp(lambda col: np.sqrt(col))
+    plus_one_features = input_features["b"] >> LambdaOp(lambda col: col + 1)
     features = sqrt_features + plus_one_features
 
     workflow = Workflow(features)
@@ -236,7 +255,7 @@ def test_workflow_node_select():
 
     df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
-    expected = dispatch._make_df()
+    expected = dispatch.make_df()
     expected["a"] = np.sqrt(df["a"])
     expected["c"] = np.sqrt(df["c"])
     expected["b"] = df["b"] + 1
@@ -245,7 +264,7 @@ def test_workflow_node_select():
 
 
 def test_nested_workflow_node():
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
             "user": ["User_A", "User_A", "User_A", "User_B"],
@@ -254,11 +273,12 @@ def test_nested_workflow_node():
     dataset = Dataset(df)
 
     geo_selector = ColumnSelector(["geo"])
-    country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
+    country = (
+        geo_selector >> LambdaOp(lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
+    )
     # country1 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country1")
     # country2 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country2")
     user = "user"
-    # user2 = "user2"
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
@@ -271,7 +291,6 @@ def test_nested_workflow_node():
 
     geo_country = df_out["geo_country"]
     assert geo_country[0] == geo_country[1]  # rows 0,1 are both 'US'
-    assert geo_country[2] == geo_country[3]  # rows 2,3 are both 'CA'
 
     user = df_out["user"]
     assert user[0] == user[1] == user[2]

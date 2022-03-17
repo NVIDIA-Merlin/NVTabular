@@ -27,6 +27,12 @@ from nvtabular.dispatch import HAS_GPU
         ops.Normalize(),
         ops.TargetEncoding(["1"]),
         ops.AddMetadata(tags=["excellent"], properties={"domain": {"min": 0, "max": 20}}),
+        ops.AddTags(tags=["excellent"]),
+        ops.AddProperties(properties={"domain": {"min": 0, "max": 20}}),
+        ops.TagAsUserID(),
+        ops.TagAsItemID(),
+        ops.TagAsUserFeatures(),
+        ops.TagAsItemFeatures(),
         ops.ValueCount(),
     ],
 )
@@ -37,37 +43,47 @@ def test_schema_out(tags, properties, selection, op):
     all_cols = []
     for x in range(5):
         all_cols.append(str(x))
-        column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
+        column_schemas.append(
+            ColumnSchema(str(x), dtype=np.int32, tags=tags, properties=properties)
+        )
 
     # Turn to Schema
-    schema = Schema(column_schemas)
+    input_schema = Schema(column_schemas)
 
     # run schema through op
     selector = ColumnSelector(selection)
-    new_schema = op.compute_output_schema(schema, selector)
+    output_schema = op.compute_output_schema(input_schema, selector)
 
     # should have dtype float
     for col_name in selector.names:
-        names_group = [name for name in new_schema.column_schemas if col_name in name]
+        names_group = [name for name in output_schema.column_schemas if col_name in name]
         if names_group:
             for name in names_group:
-                schema1 = new_schema.column_schemas[name]
+                result_schema = output_schema.column_schemas[name]
 
-                # should not be exactly the same name, having gone through operator
-                assert schema1.dtype == op.output_dtype()
+                expected_dtype = op._compute_dtype(
+                    ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                ).dtype
+
+                expected_tags = op._compute_tags(
+                    ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                ).tags
+
+                expected_properties = op._compute_properties(
+                    ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                ).properties
+
+                assert result_schema.dtype == expected_dtype
                 if name in selector.names:
-                    assert (
-                        schema1.properties
-                        == op._add_properties(schema.column_schemas[schema1.name]).properties
-                    )
-                    all_tags = op.output_tags() + tags
-                    assert len(schema1.tags) == len(all_tags)
+                    assert result_schema.properties == expected_properties
+
+                    assert len(result_schema.tags) == len(expected_tags)
                 else:
-                    assert set(op.output_tags()).issubset(schema1.tags)
+                    assert set(expected_tags).issubset(result_schema.tags)
 
     not_used = [col for col in all_cols if col not in selector.names]
     for col_name in not_used:
-        assert col_name not in new_schema.column_schemas
+        assert col_name not in output_schema.column_schemas
 
 
 @pytest.mark.parametrize("properties", [{"p1": "1"}])
@@ -144,7 +160,7 @@ def run_op_full(properties, tags, op_routine):
     for column_name in schema.column_names:
         df_dict[column_name] = np.random.randint(1, 1000, num_rows)
 
-    df = dispatch._make_df(df_dict)
+    df = dispatch.make_df(df_dict)
     dataset = nvt.Dataset(df)
     test_node = ColumnSelector(schema.column_names) >> op_routine[0]
     for op in op_routine[1:]:
@@ -185,7 +201,7 @@ def test_ops_list_vc(properties, tags, op_routine):
         df_dict[column_name] = np.random.randint(1, 1000, num_rows)
         df_dict[column_name] = [[x] * np.random.randint(1, 10) for x in df_dict[column_name]]
 
-    df = dispatch._make_df(df_dict)
+    df = dispatch.make_df(df_dict)
     dataset = nvt.Dataset(df)
     test_node = ColumnSelector(schema.column_names) >> op_routine[0]
     for op in op_routine[1:]:
@@ -203,7 +219,7 @@ def test_ops_list_vc(properties, tags, op_routine):
         if HAS_GPU:
             assert embeddings_info["max"] == new_gdf[column_name]._column.elements.max() + 1
         else:
-            list_vals = nvt.dispatch._pull_apart_list(new_gdf[column_name])[0]
+            list_vals = nvt.dispatch.pull_apart_list(new_gdf[column_name])[0]
             assert embeddings_info["max"] == list_vals.max() + 1
         assert "value_count" in schema1.properties
         val_c = schema1.properties["value_count"]

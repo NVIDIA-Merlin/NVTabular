@@ -40,7 +40,7 @@ except ImportError:
 @pytest.mark.parametrize("fold_seed", [None, 42])
 @pytest.mark.parametrize("cpu", _CPU)
 def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Author": list(string.ascii_uppercase),
             "Engaging-User": list(string.ascii_lowercase),
@@ -85,7 +85,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
 
 
 def test_target_encode_group():
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Cost": range(15),
             "Post": [1, 2, 3, 4, 5] * 3,
@@ -95,7 +95,7 @@ def test_target_encode_group():
     )
 
     cat_groups = ["Author", "Engaging_User"]
-    labels = ColumnSelector(["Post"]) >> (lambda col: (col > 3).astype("int8"))
+    labels = ColumnSelector(["Post"]) >> ops.LambdaOp(lambda col: (col > 3).astype("int8"))
     te_features = cat_groups >> ops.TargetEncoding(
         labels,
         out_path="./",
@@ -115,7 +115,7 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
-    df = dispatch._make_df({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
+    df = dispatch.make_df({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     if cpu:
         df = dd.from_pandas(
             df if isinstance(df, pd.DataFrame) else df.to_pandas(), npartitions=npartitions
