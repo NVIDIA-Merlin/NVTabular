@@ -376,7 +376,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="5ba058c086dc4c12a2e235a28caa6595" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="79b9c1f0f88741e58e7a6ca11c1ca0e5" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Preprocessing-the-Rossmann-Store-Sales-Dataset">
 <h1>Preprocessing the Rossmann Store Sales Dataset<a class="headerlink" href="#Preprocessing-the-Rossmann-Store-Sales-Dataset" title="Permalink to this headline"></a></h1>
 <p>Here we implement some feature engineering outlined by FastAI in <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/lesson6-rossmann.ipynb">their example solution</a> to the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Kaggle Rossmann Store Sales competition</a> using Rapids cuDF library (GPU DataFrame library). We’ve simplified some sections and left out some of the documentation to keep things neat, so feel free to consult the original preprocessing
@@ -389,10 +389,10 @@ div.rendered_html tbody tr:hover {
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 
 <span class="c1"># Get dataframe library - cudf or pandas</span>
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
 <span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
 </pre></div>
 </div>
 </div>

@@ -381,7 +381,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="5863d2ce016840a19b258fd1b296e9d6" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="7f4bd656bd1a45cd91f21014b102b87c" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Scaling-Criteo:-Download-and-Convert">
 <h1>Scaling Criteo: Download and Convert<a class="headerlink" href="#Scaling-Criteo:-Download-and-Convert" title="Permalink to this headline"></a></h1>
 <div class="section" id="Criteo-1TB-Click-Logs-dataset">
@@ -396,7 +396,7 @@ Competition</a>. We will use the dataset as an example how to scale ETL, Trainin
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
 
 <span class="n">download_criteo</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
@@ -471,7 +471,7 @@ Competition</a>. We will use the dataset as an example how to scale ETL, Trainin
 <span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
 
 <span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span><span class="p">,</span> <span class="n">get_rmm_size</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span><span class="p">,</span> <span class="n">get_rmm_size</span>
 </pre></div>
 </div>
 </div>
