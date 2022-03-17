@@ -619,9 +619,12 @@ train  valid  workflow
         <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
     <span class="p">)</span>
 <span class="p">)</span>
+
+<span class="n">MAX_ITER</span> <span class="o">=</span> <span class="mi">10000</span>
+<span class="n">EVAL_INTERVAL</span> <span class="o">=</span> <span class="mi">3200</span>
 <span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
 <span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
-<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">eval_interval</span><span class="o">=</span><span class="mi">3200</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">snapshot</span><span class="o">=</span><span class="mi">3200</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="n">MAX_ITER</span><span class="p">,</span> <span class="n">eval_interval</span><span class="o">=</span><span class="n">EVAL_INTERVAL</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">snapshot</span><span class="o">=</span><span class="mi">3200</span><span class="p">)</span>
 <span class="n">model</span><span class="o">.</span><span class="n">graph_to_json</span><span class="p">(</span><span class="n">graph_config_file</span><span class="o">=</span><span class="s2">&quot;./criteo_hugectr/1/criteo.json&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -638,7 +641,12 @@ Overwriting ./model.py
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>python model.py
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="o">!</span>python model.py
+<span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;run_time: </span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
