@@ -52,8 +52,8 @@ elif [ "$container" == "merlin-tensorflow-inference" ]; then
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
 elif [ "$container" == "merlin-inference" ]; then
-  pytest $config tests/integration/test_notebooks.py
-  #pytest $config tests/integration/test_nvt_hugectr.py::test_inference
+  pytest $config tests/integration/test_notebooks.py::test_criteo
+  pytest $config tests/integration/test_nvt_hugectr.py::test_inference
 else
   echo "No tests to run for this container"
 fi
