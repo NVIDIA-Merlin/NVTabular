@@ -102,7 +102,7 @@ def test_criteo(asv_db, bench_info, tmpdir, report):
         out = _run_notebook(tmpdir, notebook, output_path, output_path, gpu_id="0", clean_up=False)
         if report:
             bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
-            # send_results(asv_db, bench_info, bench_results)
+            send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("HugeCTR not installed, skipping " + notebook)
 
