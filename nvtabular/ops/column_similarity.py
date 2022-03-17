@@ -29,8 +29,8 @@ try:
 except ImportError:
     from scipy.sparse import coo_matrix
 
+from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema, Tags
-from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
 

@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from nvtabular.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
 
