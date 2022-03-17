@@ -379,7 +379,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="48aa9c33ca644589b731f3b82e8c351c" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="7932b8d06fd64c37bed47c2c5e649dc7" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Getting-Started-MovieLens:-ETL-with-NVTabular">
 <h1>Getting Started MovieLens: ETL with NVTabular<a class="headerlink" href="#Getting-Started-MovieLens:-ETL-with-NVTabular" title="Permalink to this headline"></a></h1>
 <div class="section" id="Overview">
@@ -416,7 +416,7 @@ div.rendered_html tbody tr:hover {
 <li><p><strong>Extensive repeated experimentation:</strong> The whole data engineering, training, and evaluation process is generally repeated many times, requiring significant time and computational resources.</p></li>
 </ul>
 <p><strong>NVTabular</strong> is a library for fast tabular data transformation and loading, manipulating terabyte-scale datasets quickly. It provides best practices for feature engineering and preprocessing and a high-level abstraction to simplify code accelerating computation on the GPU using the RAPIDS cuDF library.</p>
-<p><img alt="a4a0af84d93c4475bbb9c4acc8220a9a" src="https://developer.nvidia.com/blog/wp-content/uploads/2020/07/recommender-system-training-pipeline-1.png" /></p>
+<p><img alt="8903e475a0464941b788ee5da8322d0b" src="https://developer.nvidia.com/blog/wp-content/uploads/2020/07/recommender-system-training-pipeline-1.png" /></p>
 </div>
 <div class="section" id="Why-use-NVTabular?">
 <h3>Why use NVTabular?<a class="headerlink" href="#Why-use-NVTabular?" title="Permalink to this headline"></a></h3>
@@ -444,7 +444,7 @@ div.rendered_html tbody tr:hover {
 <span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">path</span>
 
 <span class="c1"># Get dataframe library - cudf or pandas</span>
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
 <span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 </pre></div>
 </div>
