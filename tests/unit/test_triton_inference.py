@@ -11,9 +11,9 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from merlin.core.dispatch import HAS_GPU, hash_series, make_df
 from merlin.dag import Supports
 from nvtabular import ColumnSelector
-from nvtabular.dispatch import HAS_GPU, hash_series, make_df
 from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")

@@ -22,7 +22,7 @@ from dask.dataframe.core import _concat
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 
-from nvtabular.dispatch import flatten_list_column_values, is_list_dtype
+from merlin.core.dispatch import flatten_list_column_values, is_list_dtype
 
 
 def _custom_moments(ddf, split_every=32):

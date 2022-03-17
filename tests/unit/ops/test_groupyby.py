@@ -19,7 +19,6 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
 from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, Schema, Workflow, ops
 
@@ -64,7 +63,7 @@ def test_groupby_op(keys, cpu):
         },
         name_sep="-",
     )
-    processor = nvtabular.Workflow(groupby_features)
+    processor = nvt.Workflow(groupby_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -115,7 +114,7 @@ def test_groupby_string_agg(cpu):
         groupby_cols=["day"], aggs="count"
     )
 
-    processor = nvtabular.Workflow(groupby_features)
+    processor = nvt.Workflow(groupby_features)
     processor.fit(dataset)
     processor.transform(dataset).to_ddf().compute()
 

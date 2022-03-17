@@ -16,6 +16,7 @@
 import pytest
 
 import nvtabular
+from merlin.core.dispatch import make_df
 from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema, Tags
 from nvtabular import Workflow, ops
@@ -208,7 +209,7 @@ def test_workflow_select_by_tags(op):
 
 
 def test_collision_tags_workflow():
-    df = nvtabular.dispatch.make_df(
+    df = make_df(
         {
             "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
             "rating": [1.5, 2.5, 3.0, 4.0, 5.0, 2.0, 3.0, 1.0] * 10,

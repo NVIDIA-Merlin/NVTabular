@@ -16,7 +16,7 @@
 import dask.dataframe as dd
 import numpy as np
 
-from nvtabular.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
