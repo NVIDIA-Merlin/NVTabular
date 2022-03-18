@@ -53,25 +53,21 @@ class AddProperties(AddMetadata):
 
 
 # Wrappers for common features
-class TagAsUserID(Operator):
-    @property
-    def output_tags(self):
-        return [Tags.USER_ID]
+class TagAsUserID(AddTags):
+    def __init__(self, tags=None):
+        super().__init__(tags=[Tags.USER_ID, Tags.USER])
 
 
-class TagAsItemID(Operator):
-    @property
-    def output_tags(self):
-        return [Tags.ITEM_ID]
+class TagAsItemID(AddTags):
+    def __init__(self, tags=None):
+        super().__init__(tags=[Tags.ITEM_ID, Tags.ITEM])
 
 
-class TagAsUserFeatures(Operator):
-    @property
-    def output_tags(self):
-        return [Tags.USER]
+class TagAsUserFeatures(AddTags):
+    def __init__(self, tags=None):
+        super().__init__(tags=[Tags.USER])
 
 
-class TagAsItemFeatures(Operator):
-    @property
-    def output_tags(self):
-        return [Tags.ITEM]
+class TagAsItemFeatures(AddTags):
+    def __init__(self, tags=None):
+        super().__init__(tags=[Tags.ITEM])
