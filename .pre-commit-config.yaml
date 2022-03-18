@@ -21,7 +21,8 @@ repos:
         rev: 1.5.0
         hooks:
         - id: interrogate
-          args: [-viImMpPsSCn, -f, "25.0", nvtabular]
+          exclude: ^(docs|examples|tests|setup.py|versioneer.py)
+          args: [--config=pyproject.toml]
       - repo: https://github.com/codespell-project/codespell
         rev: v2.1.0
         hooks:

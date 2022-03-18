@@ -47,7 +47,7 @@ jobs:
         isort -c .
     - name: Lint with interrogate
       run: |
-        interrogate -viImMpPsSCn -f 25.0 nvtabular
+        interrogate --config=pyproject.toml
     - name: Lint with codespell
       run: |
         codespell
