@@ -20,7 +20,6 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
 from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, dispatch, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
@@ -122,7 +121,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     cont_names = ["x", "y"]
     filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
     filter_df = df[df["y"] > 0.5].reset_index()
@@ -135,14 +134,14 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         df[col].iloc[idx] = None
 
     filtered = cont_names >> ops.Filter(f=lambda df: df[df.x.isnull()])
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
 
     # again testing filtering by returning a series rather than a df
     filtered = cont_names >> ops.Filter(f=lambda df: df.x.isnull())
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
@@ -150,7 +149,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # if the filter returns an invalid type we should get an exception immediately
     # (rather than causing problems downstream in the workflow)
     filtered = cont_names >> ops.Filter(f=lambda df: "some invalid value")
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     with pytest.raises(ValueError):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -164,7 +163,7 @@ def test_difference_lag(cpu):
 
     diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(diff_features)
+    processor = nvt.Workflow(diff_features)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
@@ -198,7 +197,7 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(hashed_cross)
+    processor = nvt.Workflow(hashed_cross)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
@@ -221,7 +220,7 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     bucketize_op = ops.Bucketize(dict(zip(cont_names, boundaries)))
 
     bucket_features = cont_names >> bucketize_op
-    processor = nvtabular.Workflow(bucket_features)
+    processor = nvt.Workflow(bucket_features)
 
     ds = copy.copy(dataset)
     if cpu:
@@ -248,12 +247,12 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
     label_name = ["label"]
     all_cols = cat_names + cont_names + label_name
 
-    dataset = nvtabular.Dataset(df, engine=engine, cpu=cpu)
+    dataset = nvt.Dataset(df, engine=engine, cpu=cpu)
 
     data_stats = ops.DataStats()
 
     features = all_cols >> data_stats
-    workflow = nvtabular.Workflow(features)
+    workflow = nvt.Workflow(features)
     workflow.fit(dataset)
 
     # get the output from the data_stats op

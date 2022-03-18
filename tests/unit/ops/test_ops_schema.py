@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 import nvtabular as nvt
+from merlin.core.dispatch import HAS_GPU
 from nvtabular import ColumnSchema, ColumnSelector, Schema, dispatch, ops
-from nvtabular.dispatch import HAS_GPU
 
 
 @pytest.mark.parametrize("properties", [{}, {"p1": "1"}])

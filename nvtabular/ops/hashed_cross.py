@@ -17,7 +17,7 @@ from typing import Dict, Union
 
 import numpy
 
-from nvtabular.dispatch import DataFrameType, annotate, hash_series
+from merlin.core.dispatch import DataFrameType, annotate, hash_series
 
 from .operator import ColumnSelector, Operator
 

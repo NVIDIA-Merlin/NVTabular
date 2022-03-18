@@ -7,7 +7,7 @@ import tempfile
 import pandas as pd
 
 import nvtabular as nvt
-from nvtabular.dispatch import is_string_dtype
+from merlin.core.dispatch import is_string_dtype
 
 
 def run_perf_analyzer(model_path, input_data_path, num_rows=10, model_version=1):

@@ -32,16 +32,16 @@ import pandas as pd
 from dask.core import flatten
 
 import nvtabular
-from merlin.dag import Graph
-from merlin.io import Dataset
-from nvtabular.dispatch import concat_columns, is_list_dtype, list_val_dtype
-from nvtabular.ops import StatOperator
-from nvtabular.utils import (
+from merlin.core.dispatch import concat_columns, is_list_dtype, list_val_dtype
+from merlin.core.utils import (
     ensure_optimize_dataframe_graph,
     global_dask_client,
     set_client_deprecated,
 )
-from nvtabular.worker import clean_worker_cache
+from merlin.core.worker import clean_worker_cache
+from merlin.dag import Graph
+from merlin.io import Dataset
+from nvtabular.ops import StatOperator
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
@@ -66,11 +66,11 @@ class Workflow:
         workflow = nvtabular.Workflow(cat_features + cont_features + "label")
 
         # calculate statistics on the training dataset
-        workflow.fit(nvtabular.io.Dataset(TRAIN_PATH))
+        workflow.fit(merlin.io.Dataset(TRAIN_PATH))
 
         # transform the training and validation datasets and write out as parquet
-        workflow.transform(nvtabular.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
-        workflow.transform(nvtabular.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
+        workflow.transform(merlin.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
+        workflow.transform(merlin.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
 
     Parameters
     ----------
