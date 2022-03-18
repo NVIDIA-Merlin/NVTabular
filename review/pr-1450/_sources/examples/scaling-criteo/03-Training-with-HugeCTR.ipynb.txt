@@ -311,9 +311,12 @@
     "        top_names=[\"loss\"],\n",
     "    )\n",
     ")\n",
+    "\n",
+    "MAX_ITER = 10000\n",
+    "EVAL_INTERVAL = 3200\n",
     "model.compile()\n",
     "model.summary()\n",
-    "model.fit(max_iter=10000, eval_interval=3200, display=1000, snapshot=3200)\n",
+    "model.fit(max_iter=MAX_ITER, eval_interval=EVAL_INTERVAL, display=1000, snapshot=3200)\n",
     "model.graph_to_json(graph_config_file=\"./criteo_hugectr/1/criteo.json\")"
    ]
   },
@@ -416,7 +419,12 @@
     }
    ],
    "source": [
-    "!python model.py"
+    "import time\n",
+    "\n",
+    "start = time.time()\n",
+    "!python model.py\n",
+    "end = time.time() - start\n",
+    "print(f\"run_time: {end}\")"
    ]
   },
   {
