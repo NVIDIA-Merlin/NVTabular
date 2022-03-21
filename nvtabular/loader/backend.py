@@ -27,9 +27,7 @@ try:
 except ImportError:
     cp = np
 
-from merlin.io import DataFrameIter, shuffle_df
-from merlin.schema import Tags
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     HAS_GPU,
     annotate,
     concat,
@@ -38,6 +36,8 @@ from nvtabular.dispatch import (
     make_df,
     pull_apart_list,
 )
+from merlin.io import DataFrameIter, shuffle_df
+from merlin.schema import Tags
 
 
 def _num_steps(num_samples, step_size):

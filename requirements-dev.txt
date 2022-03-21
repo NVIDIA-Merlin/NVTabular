@@ -23,6 +23,7 @@ git+https://github.com/rapidsai/asvdb.git
 graphviz>=0.16
 cpplint>=1.5
 codespell
+interrogate==1.5.0
 
 # needed to make test_s3 work
 pytest-xdist

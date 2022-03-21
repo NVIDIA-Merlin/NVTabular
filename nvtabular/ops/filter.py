@@ -15,7 +15,7 @@
 #
 from typing import Callable, Union
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
     SeriesType,
     annotate,
