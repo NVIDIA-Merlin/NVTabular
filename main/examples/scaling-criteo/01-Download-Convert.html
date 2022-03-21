@@ -381,7 +381,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="6f8291e740c1447d93e25f5251e254ed" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="6c4dd0371e194d839ff610ea3a23b8a9" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Scaling-Criteo:-Download-and-Convert">
 <h1>Scaling Criteo: Download and Convert<a class="headerlink" href="#Scaling-Criteo:-Download-and-Convert" title="Permalink to this headline"></a></h1>
 <div class="section" id="Criteo-1TB-Click-Logs-dataset">
@@ -525,7 +525,7 @@ Competition</a>. We will use the dataset as an example how to scale ETL, Trainin
     <span class="n">dtypes</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hex&quot;</span>
 
 <span class="c1"># Create an NVTabular Dataset from a CSV-file glob</span>
-<span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_PATH</span><span class="p">,</span> <span class="s2">&quot;day_*&quot;</span><span class="p">))</span>
+<span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_PATH</span><span class="p">,</span> <span class="s2">&quot;day_*[!.gz]&quot;</span><span class="p">))</span>
 <span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
     <span class="n">file_list</span><span class="p">,</span>
     <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span>
@@ -533,6 +533,7 @@ Competition</a>. We will use the dataset as an example how to scale ETL, Trainin
     <span class="n">part_mem_fraction</span><span class="o">=</span><span class="n">frac_size</span><span class="p">,</span>
     <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span>
     <span class="n">dtypes</span><span class="o">=</span><span class="n">dtypes</span><span class="p">,</span>
+    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
