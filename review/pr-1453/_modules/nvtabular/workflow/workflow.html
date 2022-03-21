@@ -101,16 +101,16 @@
 <span class="kn">from</span> <span class="nn">dask.core</span> <span class="kn">import</span> <span class="n">flatten</span>
 
 <span class="kn">import</span> <span class="nn">nvtabular</span>
-<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Graph</span>
-<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">concat_columns</span><span class="p">,</span> <span class="n">is_list_dtype</span><span class="p">,</span> <span class="n">list_val_dtype</span>
-<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">StatOperator</span>
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">concat_columns</span><span class="p">,</span> <span class="n">is_list_dtype</span><span class="p">,</span> <span class="n">list_val_dtype</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">ensure_optimize_dataframe_graph</span><span class="p">,</span>
     <span class="n">global_dask_client</span><span class="p">,</span>
     <span class="n">set_client_deprecated</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">nvtabular.worker</span> <span class="kn">import</span> <span class="n">clean_worker_cache</span>
+<span class="kn">from</span> <span class="nn">merlin.core.worker</span> <span class="kn">import</span> <span class="n">clean_worker_cache</span>
+<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Graph</span>
+<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 <span class="kn">from</span> <span class="nn">nvtabular.workflow.node</span> <span class="kn">import</span> <span class="n">WorkflowNode</span>
 
 <span class="n">LOG</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;nvtabular&quot;</span><span class="p">)</span>
@@ -135,11 +135,11 @@
 <span class="sd">        workflow = nvtabular.Workflow(cat_features + cont_features + &quot;label&quot;)</span>
 
 <span class="sd">        # calculate statistics on the training dataset</span>
-<span class="sd">        workflow.fit(nvtabular.io.Dataset(TRAIN_PATH))</span>
+<span class="sd">        workflow.fit(merlin.io.Dataset(TRAIN_PATH))</span>
 
 <span class="sd">        # transform the training and validation datasets and write out as parquet</span>
-<span class="sd">        workflow.transform(nvtabular.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)</span>
-<span class="sd">        workflow.transform(nvtabular.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)</span>
+<span class="sd">        workflow.transform(merlin.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)</span>
+<span class="sd">        workflow.transform(merlin.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>

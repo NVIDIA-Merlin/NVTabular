@@ -114,22 +114,22 @@
 <p id="table-1"><span class="raw-html"><p align="center"><b>Table 1: Support matrix for the Merlin Inference (merlin-inference) container</b></p></span></p>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 18%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
+<col style="width: 19%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 8%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td></td>
-<td><p><strong>Version 0.6</strong></p></td>
 <td><p><strong>Version 21.09</strong></p></td>
 <td><p><strong>Version 21.11</strong></p></td>
 <td><p><strong>Version 21.12</strong></p></td>
 <td><p><strong>Version 22.01</strong></p></td>
 <td><p><strong>Version 22.02</strong></p></td>
+<td><p><strong>Version 22.03</strong></p></td>
 </tr>
 <tr class="row-even"><td colspan="7"><p><strong>DGX</strong></p></td>
 </tr>
@@ -176,44 +176,47 @@ drivers.</p>
 <td colspan="6"><p>Ubuntu version 20.04</p></td>
 </tr>
 <tr class="row-even"><td><p>Base Container</p></td>
-<td colspan="2"><p>Triton version 21.07</p></td>
+<td><p>Triton version 21.07</p></td>
 <td><p>Triton version 21.10</p></td>
 <td><p>Triton version 21.11</p></td>
 <td colspan="2"><p>Triton version 21.12</p></td>
+<td><p>Triton version 22.02</p></td>
 </tr>
 <tr class="row-odd"><td><p>CUDA</p></td>
-<td colspan="6"><p>11.6</p></td>
+<td colspan="5"><p>11.6</p></td>
+<td><p>11.6.55</p></td>
 </tr>
 <tr class="row-even"><td><p>RMM</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
+<td><p>21.12</p></td>
 <td><p>21.12</p></td>
 </tr>
 <tr class="row-odd"><td><p>cuDF</p></td>
 <td><p>21.06</p></td>
-<td colspan="3"><p>21.08</p></td>
+<td colspan="2"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.02</p></td>
 </tr>
 <tr class="row-even"><td><p>cuDNN</p></td>
 <td colspan="6"><p>N/A</p></td>
 </tr>
 <tr class="row-odd"><td><p>HugeCTR</p></td>
-<td><p>3.1</p></td>
 <td><p>3.2</p></td>
 <td><p>3.2.1</p></td>
 <td><p>3.3</p></td>
 <td><p>3.3.1</p></td>
 <td><p>3.4</p></td>
+<td><p>3.4.1</p></td>
 </tr>
 <tr class="row-even"><td><p>NVTabular</p></td>
-<td><p>0.6</p></td>
 <td><p>0.7</p></td>
 <td><p>0.7.1</p></td>
 <td><p>0.8</p></td>
 <td><p>0.9</p></td>
 <td><p>0.10</p></td>
+<td><p>0.11.0</p></td>
 </tr>
 <tr class="row-odd"><td><p>SM</p></td>
 <td colspan="6"><p>60; 61; 70; 75; 80</p></td>
@@ -224,22 +227,22 @@ drivers.</p>
 <p id="table-2"><span class="raw-html"><p align="center"><b>Table 2: Support matrix for the Merlin Training (merlin-training) container</b></p></span></p>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 18%" />
+<col style="width: 19%" />
 <col style="width: 14%" />
 <col style="width: 14%" />
 <col style="width: 14%" />
 <col style="width: 14%" />
 <col style="width: 14%" />
-<col style="width: 14%" />
+<col style="width: 9%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td></td>
-<td><p><strong>Version 0.6</strong></p></td>
 <td><p><strong>Version 21.09</strong></p></td>
 <td><p><strong>Version 21.11</strong></p></td>
 <td><p><strong>Version 21.12</strong></p></td>
 <td><p><strong>Version 22.01</strong></p></td>
 <td><p><strong>Version 22.02</strong></p></td>
+<td><p><strong>Version 22.03</strong></p></td>
 </tr>
 <tr class="row-even"><td colspan="7"><p><strong>DGX</strong></p></td>
 </tr>
@@ -289,39 +292,40 @@ drivers.</p>
 <td colspan="6"><p>N/A</p></td>
 </tr>
 <tr class="row-odd"><td><p>CUDA</p></td>
-<td colspan="6"><p>11.6</p></td>
+<td colspan="5"><p>11.6</p></td>
+<td><p>11.6.55</p></td>
 </tr>
 <tr class="row-even"><td><p>RMM</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.0a0+31.g0acbd51</p></td>
 </tr>
 <tr class="row-odd"><td><p>cuDF</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.00a+293.g0930f712e6</p></td>
 </tr>
 <tr class="row-even"><td><p>cuDNN</p></td>
-<td><p>8.2.2</p></td>
 <td colspan="5"><p>8.3.0</p></td>
+<td><p>8.3.2</p></td>
 </tr>
 <tr class="row-odd"><td><p>HugeCTR</p></td>
-<td><p>3.1</p></td>
 <td><p>3.2</p></td>
 <td><p>3.2.1</p></td>
 <td><p>3.3</p></td>
 <td><p>3.3.1</p></td>
 <td><p>3.4</p></td>
+<td><p>3.4.1</p></td>
 </tr>
 <tr class="row-even"><td><p>NVTabular</p></td>
-<td><p>0.6</p></td>
 <td><p>0.7</p></td>
 <td><p>0.7.1</p></td>
 <td><p>0.8</p></td>
 <td><p>0.9</p></td>
 <td><p>0.10</p></td>
+<td><p>0.11.0</p></td>
 </tr>
 <tr class="row-odd"><td><p>SM</p></td>
 <td colspan="6"><p>60; 61; 70; 75; 80</p></td>
@@ -332,24 +336,25 @@ drivers.</p>
 <p id="table-3"><span class="raw-html"><p align="center"><b>Table 3: Support matrix for the Merlin TensorFlow Training (merlin-tensorflow-training) container</b></p></span></p>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 13%" />
 <col style="width: 15%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 6%" />
+<col style="width: 12%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td></td>
-<td><p><strong>Version 0.6</strong></p></td>
 <td><p><strong>Version 21.09</strong></p></td>
 <td><p><strong>Version 21.11</strong></p></td>
 <td><p><strong>Version 21.12</strong></p></td>
 <td><p><strong>Version 22.01</strong></p></td>
 <td><p><strong>Version 22.02</strong></p></td>
+<td><p><strong>Version 22.03</strong></p></td>
 </tr>
-<tr class="row-even"><td colspan="7"><p><strong>DGX</strong></p></td>
+<tr class="row-even"><td colspan="6"><p><strong>DGX</strong></p></td>
+<td></td>
 </tr>
 <tr class="row-odd"><td><p>DGX System</p></td>
 <td colspan="6"><ul class="simple">
@@ -397,44 +402,45 @@ drivers.</p>
 <td><p>nvcr.io/nvidia/tensorflow:21.07-tf2-py3</p>
 <p>*Customized with TensorFlow version 2.4.2</p>
 </td>
-<td><p>nvcr.io/nvidia/tensorflow:21.07-tf2-py3</p></td>
 <td><p>nvcr.io/nvidia/tensorflow:21.10-tf2-py3</p></td>
 <td><p>nvcr.io/nvidia/tensorflow:21.11-tf2-py3</p></td>
 <td colspan="2"><p>nvcr.io/nvidia/tensorflow:12.12-tf2-py3</p></td>
+<td><p>nvcr.io/nvidia/tensorflow:22.02-tf2-py3</p></td>
 </tr>
 <tr class="row-odd"><td><p>CUDA</p></td>
-<td colspan="6"><p>11.6</p></td>
+<td colspan="5"><p>11.6</p></td>
+<td><p>11.6.55</p></td>
 </tr>
 <tr class="row-even"><td><p>RMM</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.0a0+31.g0acbd51</p></td>
 </tr>
 <tr class="row-odd"><td><p>cuDF</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.0a0+293.g0930f712e6</p></td>
 </tr>
 <tr class="row-even"><td><p>cuDNN</p></td>
 <td colspan="6"><p>N/A</p></td>
 </tr>
 <tr class="row-odd"><td><p>HugeCTR</p></td>
-<td><p>3.1</p></td>
 <td><p>3.2</p></td>
 <td><p>3.2.1</p></td>
 <td><p>3.3</p></td>
 <td><p>3.3.1</p></td>
 <td><p>3.4</p></td>
+<td><p>3.4.1</p></td>
 </tr>
 <tr class="row-even"><td><p>NVTabular</p></td>
-<td><p>0.6</p></td>
 <td><p>0.7</p></td>
 <td><p>0.7.1</p></td>
 <td><p>0.8</p></td>
 <td><p>0.9</p></td>
 <td><p>0.10</p></td>
+<td><p>0.11.0</p></td>
 </tr>
 <tr class="row-odd"><td><p>SM</p></td>
 <td colspan="6"><p>60; 61; 70; 75; 80</p></td>
@@ -445,22 +451,22 @@ drivers.</p>
 <p id="table-4"><span class="raw-html"><p align="center"><b>Table 4: Support matrix for the Merlin PyTorch Training (merlin-pytorch-training) container</b></p></span></p>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 13%" />
 <col style="width: 15%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 6%" />
+<col style="width: 11%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td></td>
-<td><p><strong>Version 0.6</strong></p></td>
 <td><p><strong>Version 21.09</strong></p></td>
 <td><p><strong>Version 21.11</strong></p></td>
 <td><p><strong>Version 21.12</strong></p></td>
 <td><p><strong>Version 22.01</strong></p></td>
 <td><p><strong>Version 22.02</strong></p></td>
+<td><p><strong>Version 22.03</strong></p></td>
 </tr>
 <tr class="row-even"><td colspan="7"><p><strong>DGX</strong></p></td>
 </tr>
@@ -507,25 +513,26 @@ drivers.</p>
 <td colspan="6"><p>Ubuntu version 20.04</p></td>
 </tr>
 <tr class="row-even"><td><p>Base Container</p></td>
-<td colspan="2"><p>nvcr.io/nvidia/pytorch:21.07-py3</p></td>
+<td><p>nvcr.io/nvidia/pytorch:21.07-py3</p></td>
 <td><p>nvcr.io/nvidia/pytorch:21.10-py3</p></td>
 <td><p>nvcr.io/nvidia/pytorch:21.11-py3</p></td>
-<td colspan="2"><p>nvcr.io/nvidia/pytorch:21.12-py3</p></td>
+<td colspan="3"><p>nvcr.io/nvidia/pytorch:21.12-py3</p></td>
 </tr>
 <tr class="row-odd"><td><p>CUDA</p></td>
-<td colspan="6"><p>11.6</p></td>
+<td colspan="5"><p>11.6</p></td>
+<td><p>11.6.55</p></td>
 </tr>
 <tr class="row-even"><td><p>RMM</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.0a0+31.g0acbd51</p></td>
 </tr>
 <tr class="row-odd"><td><p>cuDF</p></td>
-<td><p>21.06</p></td>
 <td colspan="3"><p>21.08</p></td>
 <td><p>21.10</p></td>
 <td><p>21.12</p></td>
+<td><p>21.12.0a0+293.g0930f712e6</p></td>
 </tr>
 <tr class="row-even"><td><p>cuDNN</p></td>
 <td colspan="6"><p>N/A</p></td>
@@ -534,12 +541,12 @@ drivers.</p>
 <td colspan="6"><p>N/A</p></td>
 </tr>
 <tr class="row-even"><td><p>NVTabular</p></td>
-<td><p>0.6</p></td>
 <td><p>0.7</p></td>
 <td><p>0.7.1</p></td>
 <td><p>0.8</p></td>
 <td><p>0.9</p></td>
 <td><p>0.10</p></td>
+<td><p>0.11.0</p></td>
 </tr>
 <tr class="row-odd"><td><p>SM</p></td>
 <td colspan="6"><p>60; 61; 70; 75; 80</p></td>

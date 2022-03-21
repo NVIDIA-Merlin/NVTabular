@@ -107,7 +107,7 @@
     "from os import path\n",
     "\n",
     "# Get dataframe library - cudf or pandas\n",
-    "from nvtabular.dispatch import get_lib\n",
+    "from merlin.core.dispatch import get_lib\n",
     "df_lib = get_lib()"
    ]
   },
