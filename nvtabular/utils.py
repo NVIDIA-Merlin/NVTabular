@@ -25,5 +25,5 @@ warnings.warn(
     "Support for importing from `nvtabular.utils` is deprecated, "
     "and will be removed in a future version. Please update "
     "your imports to import from `merlin.core.utils`.",
-    DeprecationWarning,
+    FutureWarning,
 )

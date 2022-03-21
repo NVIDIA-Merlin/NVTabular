@@ -25,5 +25,5 @@ warnings.warn(
     "Support for importing from `nvtabular.io` is deprecated, "
     "and will be removed in a future version. Please update "
     "your imports to import from `merlin.io`.",
-    DeprecationWarning,
+    FutureWarning,
 )
