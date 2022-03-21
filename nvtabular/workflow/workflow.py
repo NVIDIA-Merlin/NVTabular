@@ -483,8 +483,10 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
                     elif len(output_df):
                         if output_col_schema.dtype != output_df_schema.dtype:
                             raise TypeError(
-                                f"Improperly matched output dtypes detected in {col_name},"
-                                f" {output_col_schema.dtype} and {output_df_schema.dtype}"
+                                f"Dtype discrepancy detected for column {col_name}: "
+                                f"operator {node.op.label} reported dtype "
+                                f"`{output_col_schema.dtype}` but returned dtype "
+                                f"`{output_df_schema.dtype}`."
                             )
             except Exception:
                 LOG.exception("Failed to transform operator %s", node.op)
