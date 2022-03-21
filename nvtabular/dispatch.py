@@ -15,6 +15,15 @@
 #
 
 # pylint: disable=wildcard-import,unused-import,unused-wildcard-import
+import warnings
 
 # Re-export classes/modules from the core library for backwards compatibility
 from merlin.core.dispatch import *  # noqa
+
+warnings.warn(
+    "The `nvtabular.dispatch` module has moved to `merlin.core.dispatch`. "
+    "Support for importing from `nvtabular.dispatch` is deprecated, "
+    "and will be removed in a future version. Please update "
+    "your imports to import from `merlin.core.dispatch`.",
+    DeprecationWarning,
+)

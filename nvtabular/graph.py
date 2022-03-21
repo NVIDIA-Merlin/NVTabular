@@ -15,6 +15,15 @@
 #
 
 # pylint: disable=wildcard-import,unused-import,unused-wildcard-import
+import warnings
 
 # Re-export classes/modules from the core library for backwards compatibility
 from merlin.dag import *  # noqa
+
+warnings.warn(
+    "The `nvtabular.graph` module has moved to `merlin.dag`. "
+    "Support for importing from `nvtabular.graph` is deprecated, "
+    "and will be removed in a future version. Please update "
+    "your imports to import from `merlin.dag`.",
+    DeprecationWarning,
+)
