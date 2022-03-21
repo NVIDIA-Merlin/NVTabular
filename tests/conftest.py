@@ -56,6 +56,7 @@ from dask.distributed import Client, LocalCluster
 from numba import cuda
 
 import nvtabular
+from merlin.dag.node import iter_nodes
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -262,7 +263,7 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
     # figure out the categorify node from the workflow graph
     cats = [
         cg.op
-        for cg in nvtabular.graph.node.iter_nodes([workflow.output_node])
+        for cg in iter_nodes([workflow.output_node])
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:
@@ -343,8 +344,14 @@ def run_in_context(func, *args, context=None, **kwargs):
 # Allow to pass devices as parameters
 def pytest_addoption(parser):
     parser.addoption("--devices", action="store", default="0", help="0,1,..,n-1")
+    parser.addoption("--report", action="store", default="0", help="0 | 1")
 
 
 @pytest.fixture
 def devices(request):
     return request.config.getoption("--devices")
+
+
+@pytest.fixture
+def report(request):
+    return request.config.getoption("--report")

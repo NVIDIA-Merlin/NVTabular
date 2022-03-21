@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, NVIDIA CORPORATION.
+# Copyright (c) 2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,13 @@
 # limitations under the License.
 #
 
-from . import dataframe_iter, dataset, shuffle
+#!/bin/bash
+set -e
 
-Dataset = dataset.Dataset
-Shuffle = shuffle.Shuffle
-_shuffle_df = shuffle._shuffle_df
-DataFrameIter = dataframe_iter.DataFrameIter
+# Get latest NVTabular version
+cd /nvtabular/
+git pull origin main
+
+# Run tests
+pytest /nvtabular/tests/unit
+

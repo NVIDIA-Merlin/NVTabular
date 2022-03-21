@@ -23,16 +23,16 @@ except ImportError:
 import dask.dataframe as dd
 import pandas as pd
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
     ExtData,
-    _arange,
-    _convert_data,
-    _create_nvt_dataset,
-    _detect_format,
-    _to_host,
+    arange,
+    convert_data,
+    create_merlin_dataset,
+    detect_format,
+    to_host,
 )
-from nvtabular.graph.schema import Schema
+from merlin.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -100,10 +100,10 @@ class JoinExternal(Operator):
     ):
         super(JoinExternal).__init__()
         self.on = on
-        self.df_ext = _create_nvt_dataset(df_ext)
+        self.df_ext = create_merlin_dataset(df_ext)
         self.on_ext = on_ext or self.on
         self.how = how
-        self.kind_ext = kind_ext or _detect_format(self.df_ext)
+        self.kind_ext = kind_ext or detect_format(self.df_ext)
         self.columns_ext = columns_ext
         self.drop_duplicates_ext = drop_duplicates_ext
         self.cache = cache
@@ -123,7 +123,7 @@ class JoinExternal(Operator):
 
         if self._ext_cache is not None:
             # Return cached result if present
-            return _convert_data(self._ext_cache, cpu=self.cpu)
+            return convert_data(self._ext_cache, cpu=self.cpu)
 
         # Use Dataset.to_ddf
         _dataset = self.df_ext
@@ -146,7 +146,7 @@ class JoinExternal(Operator):
 
         # Cache and return
         if self.cache == "host":
-            self._ext_cache = _to_host(_ext)
+            self._ext_cache = to_host(_ext)
         elif self.cache == "device" or self.kind_ext not in (ExtData.PARQUET, ExtData.CSV):
             self._ext_cache = _ext
         return _ext
@@ -161,7 +161,7 @@ class JoinExternal(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
-        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        df[tmp] = arange(len(df), like_df=df, dtype="int32")
         new_df = self._merge(df, self._ext)
         new_df = new_df.sort_values(tmp)
         new_df.drop(columns=[tmp], inplace=True)

@@ -22,7 +22,7 @@ from dask.dataframe.core import _concat
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 
-from nvtabular.dispatch import _flatten_list_column_values, _is_list_dtype
+from merlin.core.dispatch import flatten_list_column_values, is_list_dtype
 
 
 def _custom_moments(ddf, split_every=32):
@@ -67,8 +67,8 @@ def _chunkwise_moments(df):
     vals = {name: type(df)() for name in ["count", "sum", "squaredsum"]}
     for name in df.columns:
         column = df[name]
-        if _is_list_dtype(column):
-            column = _flatten_list_column_values(column)
+        if is_list_dtype(column):
+            column = flatten_list_column_values(column)
 
         vals["count"][name] = [column.count()]
         vals["sum"][name] = [column.sum().astype("float64")]

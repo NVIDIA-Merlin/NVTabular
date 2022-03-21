@@ -13,3 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+# pylint: disable=wildcard-import,unused-import,unused-wildcard-import
+
+# Re-export classes/modules from the core library for backwards compatibility
+from merlin.io import *  # noqa

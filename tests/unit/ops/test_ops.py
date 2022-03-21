@@ -20,9 +20,8 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
+from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, dispatch, ops
-from nvtabular.graph.tags import TagSet
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -46,28 +45,28 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
     for col in op_columns:
-        values = dispatch._array(new_df[col])
-        original = dispatch._array(df[col])
+        values = dispatch.array(new_df[col])
+        original = dispatch.array(df[col])
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_logop_lists(tmpdir, cpu):
-    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df = dispatch.make_df(device="cpu" if cpu else "gpu")
     df["vals"] = [[np.exp(0) - 1, np.exp(1) - 1], [np.exp(2) - 1], []]
 
     features = ["vals"] >> nvt.ops.LogOp()
     workflow = nvt.Workflow(features)
     new_df = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
-    expected = dispatch._make_df(device="cpu" if cpu else "gpu")
+    expected = dispatch.make_df(device="cpu" if cpu else "gpu")
     expected["vals"] = [[0.0, 1.0], [2.0], []]
 
     assert_eq(expected, new_df)
 
 
 def test_valuecount(tmpdir):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "list1": [[1, 2, 3, 4], [3, 2, 1], [1, 4], [0]],
             "list2": [[1, 4], [3, 2, 1], [0, 4], [1, 4, 5]],
@@ -93,8 +92,8 @@ def test_valuecount(tmpdir):
     assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
     assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
 
-    assert new_df.schema.column_schemas["list1"].tags == TagSet([nvt.graph.tags.Tags.CATEGORICAL])
-    assert new_df.schema.column_schemas["list2"].tags == TagSet([nvt.graph.tags.Tags.CONTINUOUS])
+    assert new_df.schema.column_schemas["list1"].tags == TagSet([Tags.CATEGORICAL])
+    assert new_df.schema.column_schemas["list2"].tags == TagSet([Tags.CONTINUOUS])
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -109,7 +108,7 @@ def test_dropna(tmpdir, df, dataset, engine, cpu):
     processor.fit(dataset)
 
     new_df = processor.transform(dataset).to_ddf().compute()
-    assert new_df.columns.all() == df.columns.all()
+    assert set(new_df.columns) == set(df.columns)
     assert new_df.isnull().all().sum() < 1, "null values exist"
 
 
@@ -122,7 +121,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     cont_names = ["x", "y"]
     filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
     filter_df = df[df["y"] > 0.5].reset_index()
@@ -135,14 +134,14 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         df[col].iloc[idx] = None
 
     filtered = cont_names >> ops.Filter(f=lambda df: df[df.x.isnull()])
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
 
     # again testing filtering by returning a series rather than a df
     filtered = cont_names >> ops.Filter(f=lambda df: df.x.isnull())
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
@@ -150,7 +149,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # if the filter returns an invalid type we should get an exception immediately
     # (rather than causing problems downstream in the workflow)
     filtered = cont_names >> ops.Filter(f=lambda df: "some invalid value")
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     with pytest.raises(ValueError):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -164,7 +163,7 @@ def test_difference_lag(cpu):
 
     diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(diff_features)
+    processor = nvt.Workflow(diff_features)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
@@ -198,7 +197,7 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(hashed_cross)
+    processor = nvt.Workflow(hashed_cross)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
@@ -221,7 +220,7 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     bucketize_op = ops.Bucketize(dict(zip(cont_names, boundaries)))
 
     bucket_features = cont_names >> bucketize_op
-    processor = nvtabular.Workflow(bucket_features)
+    processor = nvt.Workflow(bucket_features)
 
     ds = copy.copy(dataset)
     if cpu:
@@ -248,12 +247,12 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
     label_name = ["label"]
     all_cols = cat_names + cont_names + label_name
 
-    dataset = nvtabular.Dataset(df, engine=engine, cpu=cpu)
+    dataset = nvt.Dataset(df, engine=engine, cpu=cpu)
 
     data_stats = ops.DataStats()
 
     features = all_cols >> data_stats
-    workflow = nvtabular.Workflow(features)
+    workflow = nvt.Workflow(features)
     workflow.fit(dataset)
 
     # get the output from the data_stats op

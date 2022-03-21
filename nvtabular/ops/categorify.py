@@ -35,12 +35,11 @@ from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
+from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
+from merlin.core.utils import device_mem_size, run_on_worker
+from merlin.core.worker import fetch_table_data, get_worker_cache
+from merlin.schema import Schema, Tags
 from nvtabular import dispatch
-from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.tags import Tags
-from nvtabular.utils import device_mem_size, run_on_worker
-from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
@@ -294,7 +293,7 @@ class Categorify(StatOperator):
             raise ValueError("cannot use freq_threshold param together with max_size param")
 
         if self.num_buckets is not None:
-            # See: nvtabular.dispatch._hash_series
+            # See: merlin.core.dispatch.hash_series
             warnings.warn(
                 "Performing a hash-based transformation. Do not "
                 "expect Categorify to be consistent on GPU and CPU "
@@ -381,18 +380,18 @@ class Categorify(StatOperator):
     def process_vocabs(self, vocabs):
         categories = {}
 
-        if isinstance(vocabs, dict) and all(dispatch._is_series_object(v) for v in vocabs.values()):
+        if isinstance(vocabs, dict) and all(dispatch.is_series_object(v) for v in vocabs.values()):
             fit_options = self._create_fit_options_from_columns(list(vocabs.keys()))
             base_path = os.path.join(self.out_path, fit_options.stat_name)
             os.makedirs(base_path, exist_ok=True)
             for col, vocab in vocabs.items():
                 vals = {col: vocab}
                 if vocab.iloc[0] is not None:
-                    with_empty = dispatch._add_to_series(vocab, [None]).reset_index()[0]
+                    with_empty = dispatch.add_to_series(vocab, [None]).reset_index()[0]
                     vals = {col: with_empty}
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")
-                col_df = dispatch._make_df(vals)
+                col_df = dispatch.make_df(vals)
                 col_df.to_parquet(save_path)
                 categories[col] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
@@ -600,7 +599,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     multihot_columns = set()
     cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
     for col_name, col_schema in cats_schema.column_schemas.items():
-        if col_schema.dtype and col_schema._is_list and col_schema._is_ragged:
+        if col_schema.dtype and col_schema.is_list and col_schema.is_ragged:
             # multi hot so remove from output and add to multihot
             multihot_columns.add(col_name)
 
@@ -795,9 +794,9 @@ def _top_level_groupby(df, options: FitOptions):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf/pd support)
-        if _is_list_col(cat_col_selector, df_gb):
+        if is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
-            df_gb = dispatch._flatten_list_column(df_gb[cat_col_selector.names[0]])
+            df_gb = dispatch.flatten_list_column(df_gb[cat_col_selector.names[0]])
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
@@ -813,7 +812,7 @@ def _top_level_groupby(df, options: FitOptions):
         for j, split in shuffle_group(
             gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
         ).items():
-            if options.on_host and not _is_cpu_object(split):
+            if options.on_host and not is_cpu_object(split):
                 output[k] = split.to_arrow(preserve_index=False)
             else:
                 output[k] = split
@@ -827,11 +826,11 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    if options.on_host and not _is_cpu_object(dfs[0]):
+    if options.on_host and not is_cpu_object(dfs[0]):
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
-        df = dispatch._from_host(df)
+        df = dispatch.from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
 
@@ -897,7 +896,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
-    if options.on_host and not _is_cpu_object(gb[required]):
+    if options.on_host and not is_cpu_object(gb[required]):
         gb_pd = gb[required].to_arrow(preserve_index=False)
         del gb
         return gb_pd
@@ -921,10 +920,10 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
-    if (not options.on_host or _is_cpu_object(dfs[0])) and len(dfs):
+    if (not options.on_host or is_cpu_object(dfs[0])) and len(dfs):
         # Want first non-empty df for schema (if there are any)
         _d = next((df for df in dfs if len(df)), dfs[0])
-        pwriter = dispatch._parquet_writer_dispatch(_d, path=path, compression=None)
+        pwriter = dispatch.parquet_writer_dispatch(_d, path=path, compression=None)
 
     # Loop over dfs and append to file
     # TODO: For high-cardinality columns, should support
@@ -934,7 +933,7 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
     for df in dfs:
         if len(df):
 
-            if options.on_host and not _is_cpu_object(df):
+            if options.on_host and not is_cpu_object(df):
                 # Use pyarrow - df is already a pyarrow table
                 if pwriter is None:
                     pwriter = pq.ParquetWriter(path, df.schema, compression=None)
@@ -1008,7 +1007,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     # we are only converting this column to
                     # cudf to take advantage of fast `max`
                     # performance.
-                    size_columns.append(dispatch._from_host(df.select([name])))
+                    size_columns.append(dispatch.from_host(df.select([name])))
                     df = df.drop([name])
                     # Use numpy to calculate the "minimum"
                     # dtype needed to capture the "size" column,
@@ -1017,10 +1016,10 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     size_columns[-1][name] = size_columns[-1][name].astype(typ)
             # Convert the remaining columns in df to cudf,
             # and append the type-casted "size" columns
-            df = dispatch._concat_columns([dispatch._from_host(df)] + size_columns)
+            df = dispatch.concat_columns([dispatch.from_host(df)] + size_columns)
         else:
             # Empty DataFrame - No need for type-casting
-            df = dispatch._from_host(df)
+            df = dispatch.from_host(df)
     else:
         # For now, if we are not concatenating in host memory,
         # we will assume that reducing the memory footprint of
@@ -1052,7 +1051,9 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         for col in col_selector.names:
             name_size = col + "_size"
             null_size = 0
-            if name_size in df:
+            # Set null size if first element in `col` is
+            # null, and the `size` aggregation is known
+            if name_size in df and df[col].iloc[:1].isnull().any():
                 null_size = df[name_size].iloc[0]
             if options.max_size:
                 max_emb_size = options.max_size
@@ -1071,18 +1072,18 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
                 if nlargest < len(df):
                     df = df.nlargest(n=nlargest, columns=name_size)
-            if not dispatch._series_has_nulls(df[col]):
+            if not dispatch.series_has_nulls(df[col]):
                 if name_size in df:
                     df = df.sort_values(name_size, ascending=False, ignore_index=True)
 
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [_nullable_series([None], df, df[col].dtype), df[col]],
+                    [nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
                 if name_size in df:
                     new_cols[name_size] = _concat(
-                        [_nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
+                        [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
                         ignore_index=True,
                     )
 
@@ -1287,9 +1288,9 @@ def _encode(
     value = None
     selection_l = ColumnSelector(name if isinstance(name, list) else [name])
     selection_r = ColumnSelector(name if isinstance(name, list) else [storage_name])
-    list_col = _is_list_col(selection_l, df)
+    list_col = is_list_col(selection_l, df)
     if path:
-        read_pq_func = dispatch._read_parquet_dispatch(df)
+        read_pq_func = dispatch.read_parquet_dispatch(df)
         if cat_cache is not None:
             cat_cache = (
                 cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
@@ -1315,22 +1316,22 @@ def _encode(
         value = type(df)()
         for c in selection_r.names:
             typ = df[selection_l.names[0]].dtype if len(selection_l.names) == 1 else df[c].dtype
-            value[c] = _nullable_series([None], df, typ)
+            value[c] = nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
     if not search_sorted:
         if list_col:
-            codes = dispatch._flatten_list_column(df[selection_l.names[0]])
-            codes["order"] = dispatch._arange(len(codes), like_df=df)
+            codes = dispatch.flatten_list_column(df[selection_l.names[0]])
+            codes["order"] = dispatch.arange(len(codes), like_df=df)
         else:
             # We go into this case
-            codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
+            codes = type(df)({"order": dispatch.arange(len(df), like_df=df)}, index=df.index)
 
         for cl, cr in zip(selection_l.names, selection_r.names):
-            if isinstance(df[cl].iloc[0], (np.ndarray, list)):
+            if isinstance(df[cl].dropna().iloc[0], (np.ndarray, list)):
                 ser = df[cl].copy()
-                codes[cl] = dispatch._flatten_list_column_values(ser).astype(value[cr].dtype)
+                codes[cl] = dispatch.flatten_list_column_values(ser).astype(value[cr].dtype)
             else:
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
 
@@ -1374,7 +1375,7 @@ def _encode(
     labels = labels + start_index
 
     if list_col:
-        labels = dispatch._encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
+        labels = dispatch.encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
@@ -1390,10 +1391,10 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
     return read_pq_func(path)
 
 
-def _is_list_col(col_selector, df):
+def is_list_col(col_selector, df):
     if isinstance(col_selector, list):
         col_selector = ColumnSelector(col_selector)
-    has_lists = any(dispatch._is_list_dtype(df[col]) for col in col_selector.names)
+    has_lists = any(dispatch.is_list_dtype(df[col]) for col in col_selector.names)
     if has_lists and len(col_selector.names) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
@@ -1402,7 +1403,7 @@ def _is_list_col(col_selector, df):
 def _hash_bucket(df, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
         nb = num_buckets[col[0]]
-        encoded = dispatch._hash_series(df[col[0]]) % nb
+        encoded = dispatch.hash_series(df[col[0]]) % nb
     elif encode_type == "combo":
         if len(col) > 1:
             name = _make_name(*tuple(col), sep="_")
@@ -1411,7 +1412,7 @@ def _hash_bucket(df, num_buckets, col, encode_type="joint"):
         nb = num_buckets[name]
         val = 0
         for column in col:
-            val ^= dispatch._hash_series(df[column])  # or however we want to do this aggregation
+            val ^= dispatch.hash_series(df[column])  # or however we want to do this aggregation
         val = val % nb
         encoded = val
     return encoded
@@ -1435,7 +1436,7 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
 
 
 def _reset_df_index(col_name, cat_file_path, idx_count):
-    cat_df = dispatch._read_parquet_dispatch(None)(cat_file_path)
+    cat_df = dispatch.read_parquet_dispatch(None)(cat_file_path)
     # change indexes for category
     cat_df.index += idx_count
     # update count

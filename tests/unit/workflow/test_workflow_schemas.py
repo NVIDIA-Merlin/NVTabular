@@ -13,16 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import glob
-from pathlib import Path
-
 import pytest
 
 import nvtabular
-from nvtabular import Dataset, Workflow, ops
-from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
-from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.graph.tags import Tags
+from merlin.core.dispatch import make_df
+from merlin.dag import ColumnSelector
+from merlin.schema import ColumnSchema, Schema, Tags
+from nvtabular import Workflow, ops
 
 
 def test_fit_schema():
@@ -211,47 +208,8 @@ def test_workflow_select_by_tags(op):
     assert len(workflow.output_schema.column_names) == len(output_cols.names)
 
 
-@pytest.mark.parametrize("engine", ["parquet"])
-def test_schema_write_read_dataset(tmpdir, dataset, engine):
-    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
-
-    norms = ops.Normalize()
-    cat_features = cat_names >> ops.Categorify(cat_cache="host")
-    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
-
-    workflow = Workflow(cat_features + cont_features + label_name)
-
-    workflow.fit(dataset)
-    workflow.transform(dataset).to_parquet(
-        tmpdir,
-        out_files_per_proc=10,
-    )
-
-    schema_path = Path(tmpdir)
-    proto_schema = PbTxt_SchemaWriter._read(schema_path / "schema.pbtxt")
-    new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
-    assert """name: "name-cat"\n    min: 0\n    max: 27\n""" in str(proto_schema)
-
-    for col_name, col_schema in new_dataset.schema.column_schemas.items():
-        wf_col_schema = workflow.output_schema[col_name]
-
-        # The dtypes don't directly match here because there's not yet a way to store
-        # the precision in the schema (as of 2022.01, using tensorflow-metadata)
-        if hasattr(wf_col_schema.dtype, "type"):
-            original_dtype = type(wf_col_schema.dtype.type(0).item())
-        else:
-            original_dtype = type(wf_col_schema.dtype(0).item())
-
-        assert col_schema.dtype == original_dtype
-        assert col_schema._is_list == wf_col_schema._is_list
-        assert col_schema.tags == wf_col_schema.tags
-        assert col_schema.properties == wf_col_schema.properties
-
-
 def test_collision_tags_workflow():
-    df = nvtabular.dispatch._make_df(
+    df = make_df(
         {
             "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
             "rating": [1.5, 2.5, 3.0, 4.0, 5.0, 2.0, 3.0, 1.0] * 10,
@@ -269,3 +227,82 @@ def test_collision_tags_workflow():
     for col_schema in workflow.output_schema.column_schemas.values():
         assert Tags.CONTINUOUS in col_schema.tags
         assert Tags.CATEGORICAL not in col_schema.tags
+
+
+def test_graph_column_mapping():
+    input_columns = ["a", "b"]
+    input_schema = Schema(input_columns)
+
+    rename_op_1 = input_columns >> ops.Rename(postfix="_renamed")
+    rename_op_2 = rename_op_1 >> ops.Rename(postfix="_again")
+    workflow = Workflow(rename_op_2)
+    workflow.fit_schema(input_schema)
+
+    assert workflow.graph.column_mapping == {"a_renamed_again": ["a"], "b_renamed_again": ["b"]}
+
+
+def test_graph_column_mapping_expansion():
+    input_columns = ["a", "b"]
+    input_schema = Schema(input_columns)
+
+    col_sim_op = [input_columns] >> ops.ColumnSimilarity(["a"], ["b"])
+    rename_op = col_sim_op >> ops.Rename(postfix="_renamed")
+    workflow = Workflow(col_sim_op + rename_op)
+    workflow.fit_schema(input_schema)
+
+    assert workflow.graph.column_mapping == {"a_b_sim": ["a", "b"], "a_b_sim_renamed": ["a", "b"]}
+
+
+def test_remove_columns_single_op():
+    input_columns = ["a", "b", "c", "label"]
+    input_schema = Schema(input_columns)
+
+    workflow_ops = input_columns >> ops.Rename(postfix="_nvt")
+    workflow = Workflow(workflow_ops)
+    workflow.fit_schema(input_schema)
+
+    workflow1 = workflow.remove_inputs(["label"])
+
+    expected_schema_in = Schema(["a", "b", "c"])
+    expected_schema_out = Schema(["a_nvt", "b_nvt", "c_nvt"])
+
+    assert workflow1.graph.input_schema == expected_schema_in
+    assert workflow1.graph.output_schema == expected_schema_out
+
+
+def test_remove_columns():
+    input_columns = ["a", "b", "c", "label"]
+    input_schema = Schema(input_columns)
+
+    workflow_ops = input_columns >> ops.Rename(postfix="_nvt") >> ops.Rename(postfix="_onemore")
+    rename_ops = workflow_ops >> ops.Rename(postfix="_another")
+    workflow = Workflow(rename_ops)
+    workflow.fit_schema(input_schema)
+
+    workflow1 = workflow.remove_inputs(["label"])
+
+    expected_schema_out = Schema(
+        ["a_nvt_onemore_another", "b_nvt_onemore_another", "c_nvt_onemore_another"]
+    )
+
+    assert workflow1.graph.input_schema == Schema(["a", "b", "c"])
+    assert workflow1.graph.output_schema == expected_schema_out
+
+
+def test_remove_columns_combine():
+    input_columns = ["a", "b", "c", "d"]
+    input_schema = Schema(input_columns)
+
+    workflow_ops = (
+        [["a", "b"], ["c", "d"]] >> ops.ColumnSimilarity(None) >> ops.Rename(postfix="_renamed")
+    )
+    workflow = Workflow(workflow_ops)
+    workflow.fit_schema(input_schema)
+
+    workflow1 = workflow.remove_inputs(["c", "d"])
+
+    expected_schema_in = Schema(["a", "b"])
+    expected_schema_out = Schema(["a_b_sim_renamed"])
+
+    assert workflow1.graph.input_schema == expected_schema_in
+    assert workflow1.graph.output_schema.column_names == expected_schema_out.column_names

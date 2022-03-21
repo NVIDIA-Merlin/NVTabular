@@ -17,16 +17,15 @@ import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
-    _arange,
-    _concat_columns,
-    _random_state,
-    _read_parquet_dispatch,
+    arange,
+    concat_columns,
+    random_state,
+    read_parquet_dispatch,
 )
-from nvtabular.graph import Schema
-from nvtabular.graph.node import _nodify
-from nvtabular.graph.tags import Tags
+from merlin.dag import Node
+from merlin.schema import Schema, Tags
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
@@ -143,7 +142,7 @@ class TargetEncoding(StatOperator):
     ):
         super().__init__()
 
-        target = _nodify(target)
+        target = Node.construct_from(target)
         self.dependency = target
         self.target = target
 
@@ -213,6 +212,7 @@ class TargetEncoding(StatOperator):
         for col in dask_stats[1].index:
             self.means[col] = float(dask_stats[1]["mean"].loc[col])
 
+    @property
     def dependencies(self):
         return self.dependency
 
@@ -258,7 +258,7 @@ class TargetEncoding(StatOperator):
 
     @property
     def output_dtype(self):
-        return np.float32
+        return self.out_dtype or np.float32
 
     @property
     def output_tags(self):
@@ -305,7 +305,7 @@ class TargetEncoding(StatOperator):
             out_col = self._make_te_name(cat_group, self.target_columns, self.name_sep)
 
         # Initialize new data
-        _read_pq_func = _read_parquet_dispatch(df)
+        _read_pq_func = read_parquet_dispatch(df)
         tmp = "__tmp__"
 
         if fit_folds:
@@ -379,7 +379,7 @@ class TargetEncoding(StatOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
-        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        df[tmp] = arange(len(df), like_df=df, dtype="int32")
 
         fit_folds = self.kfold > 1
         if fit_folds:
@@ -404,7 +404,7 @@ class TargetEncoding(StatOperator):
                 _df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind).astype(
                     self.output_dtype
                 )
-                new_df = _concat_columns([new_df, _df])
+                new_df = concat_columns([new_df, _df])
 
         # Drop temporary columns
         df.drop(columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True)
@@ -424,9 +424,9 @@ def _add_fold(s, kfold, fold_seed=None):
     if fold_seed is None:
         # If we don't have a specific seed,
         # just use a simple modulo-based mapping
-        fold = _arange(len(s), like_df=s, dtype=typ)
+        fold = arange(len(s), like_df=s, dtype=typ)
         np.mod(fold, kfold, out=fold)
         return fold
     else:
-        state = _random_state(fold_seed, like_df=s)
-        return state.choice(_arange(kfold, like_df=s, dtype=typ), len(s))
+        state = random_state(fold_seed, like_df=s)
+        return state.choice(arange(kfold, like_df=s, dtype=typ), len(s))

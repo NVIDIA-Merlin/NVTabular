@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 
-import copy
 import json
 import os
 import warnings
@@ -29,10 +28,8 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.dispatch import _is_string_dtype  # noqa
-from nvtabular.graph.node import iter_nodes  # noqa
-from nvtabular.graph.schema import Schema  # noqa
-from nvtabular.graph.tags import Tags  # noqa
+from merlin.core.dispatch import is_string_dtype  # noqa
+from merlin.schema import Tags  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -73,8 +70,11 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
-    workflow = _remove_columns(workflow, labels)
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
+    workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
@@ -154,8 +154,11 @@ def export_pytorch_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
-    workflow = _remove_columns(workflow, labels)
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
+    workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
     pt_path = os.path.join(model_path, name + "_pt")
@@ -241,7 +244,7 @@ def export_hugectr_ensemble(
     if not cats and not conts:
         raise ValueError("Either cats or conts has to have a value.")
 
-    workflow = _remove_columns(workflow, labels)
+    workflow = workflow.remove_inputs(labels)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(output_path, name + "_nvt")
@@ -492,6 +495,9 @@ def export_tensorflow_model(model, name, output_path, version=1):
         inputs = list(default_signature.structured_input_signature[1].values())
         outputs = list(default_signature.structured_outputs.values())
 
+    config.parameters["TF_GRAPH_TAG"].string_value = "serve"
+    config.parameters["TF_SIGNATURE_DEF"].string_value = "serving_default"
+
     for col in inputs:
         config.input.append(
             model_config.ModelInput(
@@ -558,7 +564,7 @@ def export_pytorch_model(
 
     config = model_config.ModelConfig(name=name, backend=backend)
 
-    for col_name, col_schema in workflow.output_schema.items():
+    for col_name, col_schema in workflow.output_schema.column_schemas.items():
         _add_model_param(col_schema, model_config.ModelInput, config.input)
 
     *_, last_layer = model.parameters()
@@ -675,38 +681,9 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     return config
 
 
-def _remove_columns(workflow, to_remove):
-    workflow = copy.deepcopy(workflow)
-
-    # Work backwards to form an input schema from redacted columns
-    new_schema = Schema(
-        [
-            col_schema
-            for col_schema in workflow.graph.input_schema
-            if col_schema.name not in to_remove
-        ]
-    )
-
-    # Re-fit the workflow to altered input schema
-    for node in iter_nodes([workflow.output_node]):
-        node.input_schema = None
-        node.output_schema = None
-
-        if node.selector:
-            for column in to_remove:
-                if column in node.selector._names:
-                    node.selector._names.remove(column)
-
-                for subgroup in node.selector.subgroups:
-                    if column in subgroup._names:
-                        subgroup._names.remove(column)
-
-    return workflow.fit_schema(new_schema)
-
-
 def _add_model_param(col_schema, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if col_schema._is_list and col_schema._is_ragged:
+    if col_schema.is_list and col_schema.is_ragged:
         params.append(
             paramclass(
                 name=col_schema.name + "__values",
@@ -748,7 +725,7 @@ def _convert_dtype(dtype):
         "bool": model_config.TYPE_BOOL,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype_name in dtypes:
         return dtypes[dtype_name]
@@ -773,7 +750,7 @@ def _convert_pytorch_dtype(dtype):
         torch.bool: model_config.TYPE_BOOL,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype in dtypes:
         return dtypes[dtype]
@@ -803,7 +780,7 @@ def _convert_string2pytorch_dtype(dtype):
         "TYPE_BOOL": torch.bool,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype_name in dtypes:
         return dtypes[dtype_name]

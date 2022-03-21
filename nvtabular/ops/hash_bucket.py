@@ -17,9 +17,9 @@ from typing import Dict, Union
 
 import numpy
 
-from nvtabular.graph.tags import Tags
+from merlin.schema import Tags
 
-from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
+from ..dispatch import DataFrameType, annotate, encode_list_column, hash_series, is_list_dtype
 from .categorify import _emb_sz_rule
 from .operator import ColumnSelector, Operator
 
@@ -85,12 +85,12 @@ class HashBucket(Operator):
             num_buckets = self.num_buckets
 
         for col, nb in num_buckets.items():
-            if _is_list_dtype(df[col].dtype):
-                df[col] = _encode_list_column(
-                    df[col], _hash_series(df[col]) % nb, dtype=self.output_dtype
+            if is_list_dtype(df[col].dtype):
+                df[col] = encode_list_column(
+                    df[col], hash_series(df[col]) % nb, dtype=self.output_dtype
                 )
             else:
-                df[col] = (_hash_series(df[col]) % nb).astype(self.output_dtype)
+                df[col] = (hash_series(df[col]) % nb).astype(self.output_dtype)
 
         return df
 

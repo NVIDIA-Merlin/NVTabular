@@ -3,6 +3,7 @@
 
 black==21.7b0
 flake8==3.9.2
+ipython_genutils
 isort==5.9.3
 nbsphinx>=0.6
 pylint==2.7.4
@@ -10,7 +11,7 @@ bandit==1.7.0
 flake8-nb==0.3.0
 pytest>=5
 pytest-cov>=2
-Sphinx>=3
+Sphinx==3.5.4
 sphinx_markdown_tables
 sphinx-multiversion
 sphinx_rtd_theme
@@ -22,6 +23,7 @@ git+https://github.com/rapidsai/asvdb.git
 graphviz>=0.16
 cpplint>=1.5
 codespell
+interrogate==1.5.0
 
 # needed to make test_s3 work
 pytest-xdist

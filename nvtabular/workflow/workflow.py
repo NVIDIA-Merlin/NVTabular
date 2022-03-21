@@ -32,16 +32,16 @@ import pandas as pd
 from dask.core import flatten
 
 import nvtabular
-from nvtabular.dispatch import _concat_columns, _is_list_dtype, _list_val_dtype
-from nvtabular.graph.graph import Graph, _get_ops_by_type
-from nvtabular.io.dataset import Dataset
-from nvtabular.ops import StatOperator
-from nvtabular.utils import (
-    _ensure_optimize_dataframe_graph,
-    _set_client_deprecated,
+from merlin.core.dispatch import concat_columns, is_list_dtype, list_val_dtype
+from merlin.core.utils import (
+    ensure_optimize_dataframe_graph,
     global_dask_client,
+    set_client_deprecated,
 )
-from nvtabular.worker import clean_worker_cache
+from merlin.core.worker import clean_worker_cache
+from merlin.dag import Graph
+from merlin.io import Dataset
+from nvtabular.ops import StatOperator
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
@@ -66,11 +66,11 @@ class Workflow:
         workflow = nvtabular.Workflow(cat_features + cont_features + "label")
 
         # calculate statistics on the training dataset
-        workflow.fit(nvtabular.io.Dataset(TRAIN_PATH))
+        workflow.fit(merlin.io.Dataset(TRAIN_PATH))
 
         # transform the training and validation datasets and write out as parquet
-        workflow.transform(nvtabular.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
-        workflow.transform(nvtabular.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
+        workflow.transform(merlin.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
+        workflow.transform(merlin.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ class Workflow:
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
         # Deprecate `client`
         if client is not None:
-            _set_client_deprecated(client, "Workflow")
+            set_client_deprecated(client, "Workflow")
         self.graph = Graph(output_node)
 
     def transform(self, dataset: Dataset) -> Dataset:
@@ -103,7 +103,7 @@ class Workflow:
         return self._transform_impl(dataset)
 
     def fit_schema(self, input_schema):
-        self.graph.fit_schema(input_schema)
+        self.graph.construct_schema(input_schema)
         return self
 
     @property
@@ -129,6 +129,10 @@ class Workflow:
     def _input_columns(self):
         return self.graph._input_columns()
 
+    def remove_inputs(self, input_cols):
+        self.graph.remove_inputs(input_cols)
+        return self
+
     def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
 
@@ -142,7 +146,7 @@ class Workflow:
         self.clear_stats()
 
         if not self.graph.output_schema:
-            self.graph.fit_schema(dataset.schema)
+            self.graph.construct_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
@@ -180,7 +184,7 @@ class Workflow:
 
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = _ensure_optimize_dataframe_graph(
+                transformed_ddf = ensure_optimize_dataframe_graph(
                     ddf=_transform_ddf(
                         ddf,
                         workflow_node.parents_with_dependencies,
@@ -216,7 +220,7 @@ class Workflow:
         # This captures the output dtypes of operators like LambdaOp where
         # the dtype can't be determined without running the transform
         self._transform_impl(dataset, capture_dtypes=True).sample_dtypes()
-        self.graph.fit_schema(dataset.schema, preserve_dtypes=True)
+        self.graph.construct_schema(dataset.schema, preserve_dtypes=True)
 
         return self
 
@@ -240,7 +244,7 @@ class Workflow:
         self._clear_worker_cache()
 
         if not self.graph.output_schema:
-            self.graph.fit_schema(dataset.schema)
+            self.graph.construct_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
@@ -404,7 +408,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, capt
 
 
 def _get_stat_ops(nodes):
-    return _get_ops_by_type(nodes, StatOperator)
+    return Graph.get_nodes_by_op_type(nodes, StatOperator)
 
 
 def _get_unique(cols):
@@ -436,7 +440,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
                     seen_columns = set(parent_output_cols)
                 else:
                     new_columns = set(parent_output_cols) - seen_columns
-                    input_df = _concat_columns([input_df, parent_df[list(new_columns)]])
+                    input_df = concat_columns([input_df, parent_df[list(new_columns)]])
                     seen_columns.update(new_columns)
 
             # Check for additional input columns that aren't generated by parents
@@ -448,7 +452,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
             addl_input_cols = addl_input_cols - set(input_df.columns)
 
             if addl_input_cols:
-                input_df = _concat_columns([input_df, root_df[list(addl_input_cols)]])
+                input_df = concat_columns([input_df, root_df[list(addl_input_cols)]])
         else:
             # If there are no parents, this is an input node,
             # so pull columns directly from root df
@@ -465,10 +469,10 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
                 for col_name, output_col_schema in node.output_schema.column_schemas.items():
                     col_series = output_df[col_name]
                     col_dtype = col_series.dtype
-                    is_list = _is_list_dtype(col_series)
+                    is_list = is_list_dtype(col_series)
 
                     if is_list:
-                        col_dtype = _list_val_dtype(col_series)
+                        col_dtype = list_val_dtype(col_series)
 
                     output_df_schema = output_col_schema.with_dtype(
                         col_dtype, is_list=is_list, is_ragged=is_list
@@ -498,9 +502,9 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
         if output is None:
             output = output_df[node_output_cols]
         else:
-            output = _concat_columns([output, output_df[node_output_cols]])
+            output = concat_columns([output, output_df[node_output_cols]])
 
     if additional_columns:
-        output = _concat_columns([output, root_df[_get_unique(additional_columns)]])
+        output = concat_columns([output, root_df[_get_unique(additional_columns)]])
 
     return output

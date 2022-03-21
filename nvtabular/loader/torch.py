@@ -18,7 +18,7 @@ import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.dispatch import HAS_GPU
+from merlin.core.dispatch import HAS_GPU
 
 from .backend import DataLoader
 

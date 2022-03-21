@@ -21,7 +21,7 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from nvtabular.dispatch import HAS_GPU
+from merlin.core.dispatch import HAS_GPU
 
 from ..utils import device_mem_size
 
