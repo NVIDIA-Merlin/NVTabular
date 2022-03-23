@@ -29,6 +29,7 @@ import logging
 import os
 from typing import List
 
+import numpy as np
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
@@ -68,12 +69,15 @@ class TritonPythonModel:
         self.input_dtypes, self.input_multihots = _parse_input_dtypes(input_dtypes)
 
         self.output_dtypes = dict()
-        for col_name, col_schema in self.workflow.output_schema.column_schemas.items():
-            if col_schema.is_list and col_schema.is_ragged:
-                self._set_output_dtype(col_name + "__nnzs")
-                self._set_output_dtype(col_name + "__values")
-            else:
-                self._set_output_dtype(col_name)
+        if model_framework == "hugectr":
+            self.output_dtypes = {"DES": np.float32, "CATCOLUMN": np.int64, "ROWINDEX": np.int32}
+        else:
+            for col_name, col_schema in self.workflow.output_schema.column_schemas.items():
+                if col_schema.is_list and col_schema.is_ragged:
+                    self._set_output_dtype(col_name + "__nnzs")
+                    self._set_output_dtype(col_name + "__values")
+                else:
+                    self._set_output_dtype(col_name)
 
         if model_framework == "hugectr":
             runner_class = HugeCTRWorkflowRunner
