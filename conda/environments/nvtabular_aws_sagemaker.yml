@@ -1,0 +1,22 @@
+# Based on https://github.com/NVIDIA-Merlin/NVTabular/blob/main/conda/environments/nvtabular_dev_cuda11.0.yml
+name: nvtabular
+channels:
+  - rapidsai
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - nvtabular
+  - python>=3.7
+  - cudatoolkit=11.0
+  - cudf>=21.08.*
+  - dask-cuda>=21.08.*
+  - dask-cudf>=21.08.*
+  - rmm>=21.08.*
+  - dask==2021.7.1
+  - distributed>=2021.7.1
+  - nvtx>=0.2.1
+  - numba>=0.53.0
+  - dlpack
+  - scikit-learn
+  - asvdb
