@@ -24,7 +24,7 @@ from .stat_operator import StatOperator
 
 
 class DataStats(StatOperator):
-    """Datasets calculates statistics for each colum in a Dataset
+    """Datasets calculates statistics for each column in a Dataset
 
     Calculates statistics for each column, including things like:
      * the min and max value
