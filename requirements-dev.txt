@@ -11,11 +11,6 @@ bandit==1.7.0
 flake8-nb==0.3.0
 pytest>=5
 pytest-cov>=2
-Sphinx==3.5.4
-sphinx_markdown_tables
-sphinx-multiversion
-sphinx_rtd_theme
-recommonmark>=0.6
 scikit-learn>=0.20
 moto>=2
 boto3==1.17
@@ -24,6 +19,15 @@ graphviz>=0.16
 cpplint>=1.5
 codespell
 interrogate==1.5.0
+
+# docs
+Sphinx==3.5.4
+sphinx_rtd_theme==1.0.0
+sphinx_markdown_tables==0.0.15
+sphinx-multiversion==0.2.4
+recommonmark==0.7.1
+jinja2<3.0
+markupsafe==2.0.1
 
 # needed to make test_s3 work
 pytest-xdist
