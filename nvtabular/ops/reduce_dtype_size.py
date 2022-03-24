@@ -19,7 +19,7 @@ import numpy as np
 from merlin.schema import Schema
 
 from ..dispatch import DataFrameType, annotate
-from .operator import ColumnSelector
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 _INT_DTYPES = [np.int8, np.int16, np.int32, np.int64]
@@ -78,3 +78,9 @@ class ReduceDtypeSize(StatOperator):
 
         self.dtypes = {column.name: column.dtype for column in output_columns}
         return Schema(output_columns)
+
+    transform.__doc__ = Operator.transform.__doc__
+    compute_output_schema.__doc__ = Operator.compute_output_schema.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+    clear.__doc__ = StatOperator.clear.__doc__

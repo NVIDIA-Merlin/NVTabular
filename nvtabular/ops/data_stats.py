@@ -24,6 +24,22 @@ from .stat_operator import StatOperator
 
 
 class DataStats(StatOperator):
+    """Datasets calculates statistics for each colum in a Dataset
+
+    Calculates statistics for each column, including things like:
+     * the min and max value
+     * the standard deviation and the mean
+     * The cardinality for categorical columns
+     * The percentage of columns with missing values
+
+    These statistics can be used to create synthetic datasets with the same properties
+    as a real dataset.
+
+    See Also
+    --------
+    nvtabular.tools.data_gen.DatasetGen
+    """
+
     def __init__(self):
         super().__init__()
         self.col_names = []

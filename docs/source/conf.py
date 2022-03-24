@@ -235,3 +235,8 @@ intersphinx_mapping = {
 }
 
 autodoc_inherit_docstrings = False
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "member-order": "bysource",
+}

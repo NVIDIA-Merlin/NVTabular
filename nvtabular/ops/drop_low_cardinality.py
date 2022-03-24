@@ -45,3 +45,6 @@ class DropLowCardinality(Operator):
                     continue
             output_columns.append(col)
         return Schema(output_columns)
+
+    transform.__doc__ = Operator.transform.__doc__
+    compute_output_schema.__doc__ = Operator.compute_output_schema.__doc__
