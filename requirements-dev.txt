@@ -12,10 +12,13 @@ flake8-nb==0.3.0
 pytest>=5
 pytest-cov>=2
 Sphinx==3.5.4
+jinja2<3.1
+markupsafe==2.0.1
 sphinx_markdown_tables
 sphinx-multiversion
 sphinx_rtd_theme
 recommonmark>=0.6
+natsort==8.1.0
 scikit-learn>=0.20
 moto>=2
 boto3==1.17
