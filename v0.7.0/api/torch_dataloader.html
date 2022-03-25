@@ -104,50 +104,8 @@
     text-align: unset;
 }
 </style>
-<div class="section" id="module-nvtabular.loader.torch">
-<span id="torch-dataloader"></span><h1>Torch Dataloader<a class="headerlink" href="#module-nvtabular.loader.torch" title="Permalink to this headline"></a></h1>
-<dl class="py class">
-<dt id="nvtabular.loader.torch.DLDataLoader">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.loader.torch.</span></code><code class="sig-name descname"><span class="pre">DLDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.utils.data.dataset.Dataset</span><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampler</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.utils.data.sampler.Sampler</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_sampler</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.utils.data.sampler.Sampler</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collate_fn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin_memory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_last</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">worker_init_fn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">multiprocessing_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefetch_factor</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">persistent_workers</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/loader/torch.html#DLDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.loader.torch.DLDataLoader" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.utils.data.dataloader.T_co</span></code>]</p>
-<p>This class is an extension of the torch dataloader.
-It is required to support the FastAI framework.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt id="nvtabular.loader.torch.TorchAsyncItr">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.loader.torch.</span></code><code class="sig-name descname"><span class="pre">TorchAsyncItr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parts_per_chunk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_rank</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_last</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse_as_dense</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/loader/torch.html#TorchAsyncItr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.loader.torch.TorchAsyncItr" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.dataset.Dataset</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.utils.data.dataset.T_co</span></code>]</p>
-<p>This class creates batches of tensor. Each batch size is specified by the user.
-The data input requires an NVTabular dataset. Handles spillover to ensure all
-batches are the specified size until the final batch.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> (<em>NVTabular dataset</em>) – </p></li>
-<li><p><strong>cats</strong> (<em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em>) – the list of categorical columns in the dataset</p></li>
-<li><p><strong>conts</strong> (<em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em>) – the list of continuous columns in the dataset</p></li>
-<li><p><strong>labels</strong> (<em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em>) – the list of label columns in the dataset</p></li>
-<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – the size of each batch to supply to the model</p></li>
-<li><p><strong>shuffle</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – enable/disable shuffling of dataset</p></li>
-<li><p><strong>parts_per_chunk</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – number of partitions from the iterator, an NVTabular Dataset, to concatenate into a “chunk”</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – device id of selected GPU</p></li>
-<li><p><strong>sparse_list</strong> (<em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em>) – list with column names of columns that should be represented as sparse tensors</p></li>
-<li><p><strong>sparse_max</strong> (<em>{str: int}</em>) – dictionary of key: column_name + value: integer representing max sequence length for column</p></li>
-<li><p><strong>sparse_dense</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – bool value to activate transforming sparse tensors to dense</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py method">
-<dt id="nvtabular.loader.torch.TorchAsyncItr.reinforce_type">
-<code class="sig-name descname"><span class="pre">reinforce_type</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expected_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.loader.torch.TorchAsyncItr.reinforce_type" title="Permalink to this definition"></a></dt>
-<dd><p>Reinforce the type for DataPipe instance. And the ‘expected_type’ is required
-to be a subtype of the original type hint to restrict the type requirement
-of DataPipe instance.</p>
-</dd></dl>
-
-</dd></dl>
-
+<div class="section" id="torch-dataloader">
+<h1>Torch Dataloader<a class="headerlink" href="#torch-dataloader" title="Permalink to this headline"></a></h1>
 </div>
 <div class="section" id="module-nvtabular.framework_utils.torch.layers.embeddings">
 <span id="torch-layers"></span><h1>Torch Layers<a class="headerlink" href="#module-nvtabular.framework_utils.torch.layers.embeddings" title="Permalink to this headline"></a></h1>
@@ -172,6 +130,16 @@ of DataPipe instance.</p>
 <dt>Outputs:</dt><dd><p>A Float Tensor with shape [batch_size, embedding_size_after_concat].</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt id="nvtabular.framework_utils.torch.layers.embeddings.ConcatenatedEmbeddings.forward">
+<code class="sig-name descname"><span class="pre">forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/torch/layers/embeddings.html#ConcatenatedEmbeddings.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.torch.layers.embeddings.ConcatenatedEmbeddings.forward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="nvtabular.framework_utils.torch.layers.embeddings.ConcatenatedEmbeddings.training">
+<code class="sig-name descname"><span class="pre">training</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></em><a class="headerlink" href="#nvtabular.framework_utils.torch.layers.embeddings.ConcatenatedEmbeddings.training" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -197,6 +165,16 @@ of DataPipe instance.</p>
 <dt>Outputs:</dt><dd><p>A Float Tensor with shape [batch_size, embedding_size_after_concat].</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt id="nvtabular.framework_utils.torch.layers.embeddings.MultiHotEmbeddings.forward">
+<code class="sig-name descname"><span class="pre">forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/torch/layers/embeddings.html#MultiHotEmbeddings.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.torch.layers.embeddings.MultiHotEmbeddings.forward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="nvtabular.framework_utils.torch.layers.embeddings.MultiHotEmbeddings.training">
+<code class="sig-name descname"><span class="pre">training</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></em><a class="headerlink" href="#nvtabular.framework_utils.torch.layers.embeddings.MultiHotEmbeddings.training" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <span class="target" id="module-nvtabular.framework_utils.torch.models"></span><dl class="py class">
@@ -217,6 +195,16 @@ categorical columns.</p></li>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt id="nvtabular.framework_utils.torch.models.Model.forward">
+<code class="sig-name descname"><span class="pre">forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_cont</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/torch/models.html#Model.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.torch.models.Model.forward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="nvtabular.framework_utils.torch.models.Model.training">
+<code class="sig-name descname"><span class="pre">training</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></em><a class="headerlink" href="#nvtabular.framework_utils.torch.models.Model.training" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </div>
@@ -255,19 +243,8 @@ categorical columns.</p></li>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v0.1.0/api/torch_dataloader.html">v0.1.0</a></dd>
-      <dd><a href="../../v0.1.1/api/torch_dataloader.html">v0.1.1</a></dd>
       <dd><a href="../../v0.10.0/api/torch_dataloader.html">v0.10.0</a></dd>
       <dd><a href="../../v0.11.0/api/torch_dataloader.html">v0.11.0</a></dd>
-      <dd><a href="../../v0.2.0/api/torch_dataloader.html">v0.2.0</a></dd>
-      <dd><a href="../../v0.3.0/api/torch_dataloader.html">v0.3.0</a></dd>
-      <dd><a href="../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../v0.5.3/api/torch_dataloader.html">v0.5.3</a></dd>
-      <dd><a href="../../v0.6.0/api/torch_dataloader.html">v0.6.0</a></dd>
-      <dd><a href="../../v0.6.1/api/torch_dataloader.html">v0.6.1</a></dd>
       <dd><a href="torch_dataloader.html">v0.7.0</a></dd>
       <dd><a href="../../v0.7.1/api/torch_dataloader.html">v0.7.1</a></dd>
       <dd><a href="../../v0.8.0/api/torch_dataloader.html">v0.8.0</a></dd>

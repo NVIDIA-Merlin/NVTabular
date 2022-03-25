@@ -155,13 +155,13 @@
     <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition_cols</span>
 
-    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<div class="viewcode-block" id="DifferenceLag.column_mapping"><a class="viewcode-back" href="../../../api/ops/differencelag.html#nvtabular.ops.DifferenceLag.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">shift</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">shifts</span><span class="p">:</span>
                 <span class="n">output_col_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_column_name</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span>
                 <span class="n">column_mapping</span><span class="p">[</span><span class="n">output_col_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">column_mapping</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -195,7 +195,29 @@
       </div>
     </section>
   </div>
-  <script>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="difference_lag.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });

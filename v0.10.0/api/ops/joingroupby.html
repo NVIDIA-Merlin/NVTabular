@@ -178,6 +178,11 @@ for multi-column groups.</p></li>
 </dd>
 </dl>
 <dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.cont_names">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">cont_names</span></code><a class="headerlink" href="#nvtabular.ops.JoinGroupby.cont_names" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt id="nvtabular.ops.JoinGroupby.fit">
 <code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dask.dataframe.core.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.fit" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate statistics for this operator, and return a dask future
@@ -193,7 +198,7 @@ the computed statistics from the ‘fit’ object’</p>
 
 <dl class="py method">
 <dt id="nvtabular.ops.JoinGroupby.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/api_docs/api/cudf.DataFrame.html#cudf.DataFrame" title="(in cudf v22.02)"><span class="pre">cudf.core.dataframe.DataFrame</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/api_docs/api/cudf.DataFrame.html#cudf.DataFrame" title="(in cudf v22.02)"><span class="pre">cudf.core.dataframe.DataFrame</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.transform" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.transform" title="Permalink to this definition"></a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -210,6 +215,31 @@ the computed statistics from the ‘fit’ object’</p>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.dependencies">
+<code class="sig-name descname"><span class="pre">dependencies</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.dependencies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.dependencies" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.compute_selector">
+<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/schema.html#nvtabular.graph.schema.Schema" title="nvtabular.graph.schema.Schema"><span class="pre">nvtabular.graph.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.compute_selector" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.set_storage_path">
+<code class="sig-name descname"><span class="pre">set_storage_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.set_storage_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.set_storage_path" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.clear" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -249,19 +279,8 @@ the computed statistics from the ‘fit’ object’</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="joingroupby.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/ops/joingroupby.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/api/ops/joingroupby.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/api/ops/joingroupby.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/api/ops/joingroupby.html">v0.6.1</a></dd>
       <dd><a href="../../../v0.7.0/api/ops/joingroupby.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/api/ops/joingroupby.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/ops/joingroupby.html">v0.8.0</a></dd>

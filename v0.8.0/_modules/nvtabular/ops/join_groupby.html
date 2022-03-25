@@ -261,10 +261,10 @@
         <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">tmp</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">new_df</span></div>
 
-    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span>
+<div class="viewcode-block" id="JoinGroupby.dependencies"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.dependencies">[docs]</a>    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span></div>
 
-    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinGroupby.output_column_names"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
         <span class="c1"># TODO: the names here are defined in categorify/mid_level_groupby</span>
         <span class="c1"># refactor to have a common implementation</span>
         <span class="n">output</span> <span class="o">=</span> <span class="p">[]</span>
@@ -278,21 +278,21 @@
                         <span class="n">output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">stat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cont</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">stat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">output</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinGroupby.set_storage_path"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_copy_storage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">new_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">new_path</span></div>
 
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinGroupby.clear"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span></div>
 
-    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">]</span>
+<div class="viewcode-block" id="JoinGroupby.output_tags"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.output_tags">[docs]</a>    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">]</span></div>
 
-    <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float</span>
+<div class="viewcode-block" id="JoinGroupby.output_dtype"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.output_dtype">[docs]</a>    <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float</span></div>
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
     <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
@@ -329,19 +329,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="join_groupby.html">v0.8.0</a></dd>

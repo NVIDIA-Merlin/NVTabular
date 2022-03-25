@@ -153,14 +153,8 @@
 </dd>
 </dl>
 <dl class="py method">
-<dt id="nvtabular.ops.FillMissing.inference_initialize">
-<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inference_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.inference_initialize" title="Permalink to this definition"></a></dt>
-<dd><p>load up extra configuration about this op.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt id="nvtabular.ops.FillMissing.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/api_docs/api/cudf.DataFrame.html#cudf.DataFrame" title="(in cudf v22.02)"><span class="pre">cudf.core.dataframe.DataFrame</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/api_docs/api/cudf.DataFrame.html#cudf.DataFrame" title="(in cudf v22.02)"><span class="pre">cudf.core.dataframe.DataFrame</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.transform" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../graph/selector.html#nvtabular.graph.selector.ColumnSelector" title="nvtabular.graph.selector.ColumnSelector"><span class="pre">nvtabular.graph.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.transform" title="Permalink to this definition"></a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -177,6 +171,17 @@
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.FillMissing.inference_initialize">
+<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inference_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.inference_initialize" title="Permalink to this definition"></a></dt>
+<dd><p>load up extra configuration about this op.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.FillMissing.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -216,19 +221,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/api/ops/fillmissing.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/api/ops/fillmissing.html">v0.1.1</a></dd>
       <dd><a href="../../../v0.10.0/api/ops/fillmissing.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/ops/fillmissing.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/api/ops/fillmissing.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/api/ops/fillmissing.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/api/ops/fillmissing.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/api/ops/fillmissing.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/api/ops/fillmissing.html">v0.6.1</a></dd>
       <dd><a href="../../../v0.7.0/api/ops/fillmissing.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/api/ops/fillmissing.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/ops/fillmissing.html">v0.8.0</a></dd>

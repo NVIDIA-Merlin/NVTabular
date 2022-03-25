@@ -193,19 +193,19 @@
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
 
-    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+<div class="viewcode-block" id="Groupby.output_column_names"><a class="viewcode-back" href="../../../api/ops/groupby.html#nvtabular.ops.Groupby.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
         <span class="c1"># Get the expected column names after transformation</span>
         <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span> <span class="o">=</span> <span class="n">_get_agg_dicts</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_aggs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_aggs</span><span class="p">,</span> <span class="n">columns</span>
         <span class="p">)</span>
         <span class="n">_list_aggs</span> <span class="o">=</span> <span class="n">_columns_out_from_aggs</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
         <span class="n">_conv_aggs</span> <span class="o">=</span> <span class="n">_columns_out_from_aggs</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">)))</span></div>
 
     <span class="k">def</span> <span class="nf">_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int64</span>
 
-    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
+<div class="viewcode-block" id="Groupby.compute_output_schema"><a class="viewcode-back" href="../../../api/ops/groupby.html#nvtabular.ops.Groupby.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">col_selector</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;target&quot;</span><span class="p">):</span>
                 <span class="n">col_selector</span> <span class="o">=</span> <span class="p">(</span>
@@ -245,7 +245,7 @@
         <span class="n">output_schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">column_schema</span> <span class="ow">in</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">col_selector</span><span class="p">):</span>
             <span class="n">output_schema</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">transformed_schema</span><span class="p">(</span><span class="n">column_schema</span><span class="p">)])</span>
-        <span class="k">return</span> <span class="n">output_schema</span></div>
+        <span class="k">return</span> <span class="n">output_schema</span></div></div>
 
 
 <span class="k">def</span> <span class="nf">_columns_out_from_aggs</span><span class="p">(</span><span class="n">aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
@@ -365,19 +365,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="groupby.html">v0.8.0</a></dd>

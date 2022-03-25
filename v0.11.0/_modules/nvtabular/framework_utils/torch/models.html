@@ -150,7 +150,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">layer_output_sizes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_cat</span><span class="p">,</span> <span class="n">x_cont</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.forward"><a class="viewcode-back" href="../../../../api/torch_dataloader.html#nvtabular.framework_utils.torch.models.Model.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_cat</span><span class="p">,</span> <span class="n">x_cont</span><span class="p">):</span>
         <span class="n">mh_cat</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">concat_list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x_cat</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
@@ -176,7 +176,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_output</span><span class="p">:</span>
             <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_output</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x</span></div>
+        <span class="k">return</span> <span class="n">x</span></div></div>
 </pre></div>
 
            </div>
@@ -209,19 +209,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="models.html">v0.11.0</a></dd>
-      <dd><a href="../../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../../v0.8.0/index.html">v0.8.0</a></dd>

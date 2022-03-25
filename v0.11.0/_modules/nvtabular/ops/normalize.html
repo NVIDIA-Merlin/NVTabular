@@ -161,9 +161,9 @@
             <span class="o">|</span> <span class="n">Supports</span><span class="o">.</span><span class="n">GPU_DATAFRAME</span>
         <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Normalize.clear"><a class="viewcode-back" href="../../../api/ops/normalize.html#nvtabular.ops.Normalize.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -226,9 +226,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">mins</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;mins&quot;</span><span class="p">][</span><span class="n">col</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;maxs&quot;</span><span class="p">][</span><span class="n">col</span><span class="p">]</span></div>
 
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="NormalizeMinMax.clear"><a class="viewcode-back" href="../../../api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mins</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">supports</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -282,19 +282,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="normalize.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>

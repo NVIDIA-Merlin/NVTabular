@@ -140,11 +140,11 @@
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
 
-    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="s2">&quot;_X_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cross</span><span class="p">)</span> <span class="k">for</span> <span class="n">cross</span> <span class="ow">in</span> <span class="n">_nest_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">)])</span>
+<div class="viewcode-block" id="HashedCross.output_column_names"><a class="viewcode-back" href="../../../api/ops/hashedcross.html#nvtabular.ops.HashedCross.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="s2">&quot;_X_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cross</span><span class="p">)</span> <span class="k">for</span> <span class="n">cross</span> <span class="ow">in</span> <span class="n">_nest_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">)])</span></div>
 
-    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">]</span>
+<div class="viewcode-block" id="HashedCross.output_tags"><a class="viewcode-back" href="../../../api/ops/hashedcross.html#nvtabular.ops.HashedCross.output_tags">[docs]</a>    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">]</span></div>
 
     <span class="k">def</span> <span class="nf">_get_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int64</span></div>
@@ -190,19 +190,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="hashed_cross.html">v0.8.0</a></dd>

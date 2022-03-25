@@ -253,7 +253,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">aggregation</span> <span class="o">=</span> <span class="n">aggregation</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">DenseFeatures</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
+<div class="viewcode-block" id="DenseFeatures.build"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.build">[docs]</a>    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
         <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">input_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
         <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">input_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">embedding_tables</span> <span class="o">=</span> <span class="p">{}</span>
@@ -277,9 +277,9 @@
                     <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant_initializer</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">num_buckets</span><span class="p">)),</span>
                     <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">num_buckets</span><span class="p">,</span> <span class="n">num_buckets</span><span class="p">),</span>
                 <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">built</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">built</span> <span class="o">=</span> <span class="kc">True</span></div>
 
-    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+<div class="viewcode-block" id="DenseFeatures.call"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.call">[docs]</a>    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
         <span class="n">features</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">feature_column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_columns</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">feature_column</span><span class="p">,</span> <span class="n">fc</span><span class="o">.</span><span class="n">NumericColumn</span><span class="p">):</span>
@@ -294,9 +294,9 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregation</span> <span class="o">==</span> <span class="s2">&quot;stack&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">compute_output_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
+<div class="viewcode-block" id="DenseFeatures.compute_output_shape"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.compute_output_shape">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
         <span class="n">input_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">input_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregation</span> <span class="o">==</span> <span class="s2">&quot;concat&quot;</span><span class="p">:</span>
             <span class="n">output_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">numeric_features</span><span class="p">)</span> <span class="o">+</span> <span class="nb">sum</span><span class="p">(</span>
@@ -305,13 +305,13 @@
             <span class="k">return</span> <span class="p">(</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">output_dim</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">embedding_dim</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">return</span> <span class="p">(</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_shapes</span><span class="p">),</span> <span class="n">embedding_dim</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embedding_shapes</span><span class="p">),</span> <span class="n">embedding_dim</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DenseFeatures.get_config"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.get_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;feature_columns&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_columns</span><span class="p">,</span>
             <span class="s2">&quot;aggregation&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregation</span><span class="p">,</span>
-        <span class="p">}</span></div>
+        <span class="p">}</span></div></div>
 
 
 <span class="k">def</span> <span class="nf">_validate_linear_feature_columns</span><span class="p">(</span><span class="n">feature_columns</span><span class="p">):</span>
@@ -379,7 +379,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">feature_columns</span> <span class="o">=</span> <span class="n">feature_columns</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">LinearFeatures</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
+<div class="viewcode-block" id="LinearFeatures.build"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.build">[docs]</a>    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
         <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">input_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
         <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">input_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
         <span class="c1"># TODO: I&#39;ve tried combining all the categorical tables</span>
@@ -410,9 +410,9 @@
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;bias&quot;</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="s2">&quot;zeros&quot;</span><span class="p">,</span> <span class="n">trainable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">built</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">built</span> <span class="o">=</span> <span class="kc">True</span></div>
 
-    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+<div class="viewcode-block" id="LinearFeatures.call"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.call">[docs]</a>    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span>
         <span class="n">numeric_inputs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">feature_column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_columns</span><span class="p">:</span>
@@ -426,16 +426,16 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">numeric_inputs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">numerics</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">numeric_inputs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">numerics</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding_tables</span><span class="p">[</span><span class="s2">&quot;numeric&quot;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">x</span></div>
 
-    <span class="k">def</span> <span class="nf">compute_output_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
+<div class="viewcode-block" id="LinearFeatures.compute_output_shape"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.compute_output_shape">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shapes</span><span class="p">):</span>
         <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">input_shapes</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="LinearFeatures.get_config"><a class="viewcode-back" href="../../../../../api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.get_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;feature_columns&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_columns</span><span class="p">,</span>
-        <span class="p">}</span></div>
+        <span class="p">}</span></div></div>
 </pre></div>
 
            </div>
@@ -468,19 +468,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../../../v0.8.0/index.html">v0.8.0</a></dd>

@@ -49,6 +49,7 @@
 <li class="toctree-l3"><a class="reference internal" href="clip.html">Clip</a></li>
 <li class="toctree-l3"><a class="reference internal" href="columnsimilarity.html">ColumnSimilarity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="drop_low_cardinality.html">DropLowCardinality</a></li>
 <li class="toctree-l3"><a class="reference internal" href="dropna.html">Dropna</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">FillMissing</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmedian.html">FillMedian</a></li>
@@ -64,6 +65,7 @@
 <li class="toctree-l3"><a class="reference internal" href="normalize.html">Normalize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="normalizeminmax.html">NormalizeMinMax</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rename.html">Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reduce_dtype_size.html">ReduceDtypeSize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="targetencoding.html">TargetEncoding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="operator.html">Operator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="stat_operator.html">StatOperator</a></li>
@@ -150,12 +152,6 @@
 </dd>
 </dl>
 <dl class="py method">
-<dt id="nvtabular.ops.FillMissing.inference_initialize">
-<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inference_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.inference_initialize" title="Permalink to this definition"></a></dt>
-<dd><p>load up extra configuration about this op.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt id="nvtabular.ops.FillMissing.transform">
 <code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.transform" title="Permalink to this definition"></a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
@@ -174,6 +170,17 @@
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.FillMissing.inference_initialize">
+<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inference_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.inference_initialize" title="Permalink to this definition"></a></dt>
+<dd><p>load up extra configuration about this op.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.FillMissing.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/fill.html#FillMissing.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.FillMissing.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -203,7 +210,29 @@
       </div>
     </section>
   </div>
-  <script>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/api/ops/fillmissing.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/api/ops/fillmissing.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.7.0/api/ops/fillmissing.html">v0.7.0</a></dd>
+      <dd><a href="../../../v0.7.1/api/ops/fillmissing.html">v0.7.1</a></dd>
+      <dd><a href="../../../v0.8.0/api/ops/fillmissing.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/api/ops/fillmissing.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="fillmissing.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });

@@ -119,12 +119,12 @@ that makes up your workflow</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="nvtabular.workflow.node.WorkflowNode.__add__">
-<code class="sig-name descname"><span class="pre">__add__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__add__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__add__" title="Permalink to this definition"></a></dt>
-<dd><p>Adds columns from this WorkflowNode with another to return a new WorkflowNode</p>
+<dt id="nvtabular.workflow.node.WorkflowNode.__rshift__">
+<code class="sig-name descname"><span class="pre">__rshift__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__rshift__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__rshift__" title="Permalink to this definition"></a></dt>
+<dd><p>Transforms this WorkflowNode by applying an Operator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><em>WorkflowNode</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – </p>
+<dd class="field-odd"><p><strong>operators</strong> (<a class="reference internal" href="../ops/operator.html#nvtabular.ops.operator.Operator" title="nvtabular.ops.operator.Operator"><em>Operator</em></a><em> or </em><em>callable</em>) – </p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p></p>
@@ -136,13 +136,12 @@ that makes up your workflow</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.workflow.node.WorkflowNode.__getitem__">
-<code class="sig-name descname"><span class="pre">__getitem__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__getitem__" title="Permalink to this definition"></a></dt>
-<dd><p>Selects certain columns from this WorkflowNode, and returns a new Columngroup with only
-those columns</p>
+<dt id="nvtabular.workflow.node.WorkflowNode.__add__">
+<code class="sig-name descname"><span class="pre">__add__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__add__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__add__" title="Permalink to this definition"></a></dt>
+<dd><p>Adds columns from this WorkflowNode with another to return a new WorkflowNode</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to select</p>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><em>WorkflowNode</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – </p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p></p>
@@ -171,12 +170,12 @@ those columns</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.workflow.node.WorkflowNode.__rshift__">
-<code class="sig-name descname"><span class="pre">__rshift__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__rshift__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__rshift__" title="Permalink to this definition"></a></dt>
-<dd><p>Transforms this WorkflowNode by applying an Operator</p>
+<dt id="nvtabular.workflow.node.WorkflowNode.__sub__">
+<code class="sig-name descname"><span class="pre">__sub__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__sub__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__sub__" title="Permalink to this definition"></a></dt>
+<dd><p>Removes columns from this WorkflowNode with another to return a new WorkflowNode</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>operators</strong> (<a class="reference internal" href="../ops/operator.html#nvtabular.ops.operator.Operator" title="nvtabular.ops.operator.Operator"><em>Operator</em></a><em> or </em><em>callable</em>) – </p>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><em>WorkflowNode</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to remove</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p></p>
@@ -188,12 +187,13 @@ those columns</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.workflow.node.WorkflowNode.__sub__">
-<code class="sig-name descname"><span class="pre">__sub__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__sub__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__sub__" title="Permalink to this definition"></a></dt>
-<dd><p>Removes columns from this WorkflowNode with another to return a new WorkflowNode</p>
+<dt id="nvtabular.workflow.node.WorkflowNode.__getitem__">
+<code class="sig-name descname"><span class="pre">__getitem__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/node.html#WorkflowNode.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.node.WorkflowNode.__getitem__" title="Permalink to this definition"></a></dt>
+<dd><p>Selects certain columns from this WorkflowNode, and returns a new Columngroup with only
+those columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><em>WorkflowNode</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to remove</p>
+<dd class="field-odd"><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to select</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p></p>
@@ -254,19 +254,8 @@ those columns</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../v0.10.0/api/workflow/workflow_node.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/workflow/workflow_node.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../v0.7.0/api/workflow/workflow_node.html">v0.7.0</a></dd>
       <dd><a href="workflow_node.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/workflow/workflow_node.html">v0.8.0</a></dd>

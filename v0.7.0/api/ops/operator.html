@@ -138,6 +138,26 @@
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Base class for all operator classes.</p>
 <dl class="py method">
+<dt id="nvtabular.ops.operator.Operator.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector"><span class="pre">nvtabular.columns.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt id="nvtabular.ops.operator.Operator.compute_output_schema">
 <code class="sig-name descname"><span class="pre">compute_output_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/schema.html#nvtabular.columns.schema.Schema" title="nvtabular.columns.schema.Schema"><span class="pre">nvtabular.columns.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector"><span class="pre">nvtabular.columns.selector.ColumnSelector</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../columns/schema.html#nvtabular.columns.schema.Schema" title="nvtabular.columns.schema.Schema"><span class="pre">nvtabular.columns.schema.Schema</span></a><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.compute_output_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.compute_output_schema" title="Permalink to this definition"></a></dt>
 <dd><p>Given a set of schemas and a column selector for the input columns,
@@ -157,26 +177,27 @@ returns a set of schemas for the transformed columns this operator will produce
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.operator.Operator.dependencies">
-<code class="sig-name descname"><span class="pre">dependencies</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.dependencies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.dependencies" title="Permalink to this definition"></a></dt>
-<dd><p>Defines an optional list of column dependencies for this operator. This lets you consume columns
-that aren’t part of the main transformation workflow.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>Extra dependencies of this operator. Defaults to None</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)">str</a>, list of str or <a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector">ColumnSelector</a>, optional</p>
-</dd>
-</dl>
+<dt id="nvtabular.ops.operator.Operator.transformed_schema">
+<code class="sig-name descname"><span class="pre">transformed_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.transformed_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.transformed_schema" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.operator.Operator.output_dtype">
+<code class="sig-name descname"><span class="pre">output_dtype</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.output_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.output_dtype" title="Permalink to this definition"></a></dt>
+<dd><p>Retrieves a dictionary of format; column_name: column_dtype. For all
+input(with output_names) and created columns</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.operator.Operator.inference_initialize">
-<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector"><span class="pre">nvtabular.columns.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#nvtabular.ops.operator.Operator" title="nvtabular.ops.operator.Operator"><span class="pre">nvtabular.ops.operator.Operator</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.inference_initialize" title="Permalink to this definition"></a></dt>
-<dd><p>Configures this operator for use in inference. May return a different operator to use
-instead of the one configured for use during training</p>
+<dt id="nvtabular.ops.operator.Operator.output_tags">
+<code class="sig-name descname"><span class="pre">output_tags</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.output_tags"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.output_tags" title="Permalink to this definition"></a></dt>
+<dd><p>Retrieves</p>
 </dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.operator.Operator.output_properties">
+<code class="sig-name descname"><span class="pre">output_properties</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.output_properties"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.output_properties" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="nvtabular.ops.operator.Operator.output_column_names">
@@ -197,17 +218,24 @@ operator will produce</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.operator.Operator.output_dtype">
-<code class="sig-name descname"><span class="pre">output_dtype</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.output_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.output_dtype" title="Permalink to this definition"></a></dt>
-<dd><p>Retrieves a dictionary of format; column_name: column_dtype. For all
-input(with output_names) and created columns</p>
+<dt id="nvtabular.ops.operator.Operator.dependencies">
+<code class="sig-name descname"><span class="pre">dependencies</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.dependencies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.dependencies" title="Permalink to this definition"></a></dt>
+<dd><p>Defines an optional list of column dependencies for this operator. This lets you consume columns
+that aren’t part of the main transformation workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Extra dependencies of this operator. Defaults to None</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)">str</a>, list of str or <a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector">ColumnSelector</a>, optional</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.operator.Operator.output_tags">
-<code class="sig-name descname"><span class="pre">output_tags</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.output_tags"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.output_tags" title="Permalink to this definition"></a></dt>
-<dd><p>Retrieves</p>
-</dd></dl>
+<dt id="nvtabular.ops.operator.Operator.label">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">label</span></code><a class="headerlink" href="#nvtabular.ops.operator.Operator.label" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="nvtabular.ops.operator.Operator.supports">
@@ -216,23 +244,10 @@ input(with output_names) and created columns</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.operator.Operator.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector"><span class="pre">nvtabular.columns.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.transform" title="Permalink to this definition"></a></dt>
-<dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
-<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>DataFrame</p>
-</dd>
-</dl>
+<dt id="nvtabular.ops.operator.Operator.inference_initialize">
+<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector"><span class="pre">nvtabular.columns.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#nvtabular.ops.operator.Operator" title="nvtabular.ops.operator.Operator"><span class="pre">nvtabular.ops.operator.Operator</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/operator.html#Operator.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.operator.Operator.inference_initialize" title="Permalink to this definition"></a></dt>
+<dd><p>Configures this operator for use in inference. May return a different operator to use
+instead of the one configured for use during training</p>
 </dd></dl>
 
 </dd></dl>
@@ -273,19 +288,8 @@ input(with output_names) and created columns</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../v0.10.0/api/ops/operator.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/ops/operator.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/api/ops/operator.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/api/ops/operator.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/api/ops/operator.html">v0.6.1</a></dd>
       <dd><a href="operator.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/api/ops/operator.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/ops/operator.html">v0.8.0</a></dd>

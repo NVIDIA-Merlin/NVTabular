@@ -152,8 +152,8 @@
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
 
-    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span>
+<div class="viewcode-block" id="LambdaOp.dependencies"><a class="viewcode-back" href="../../../api/ops/lambdaop.html#nvtabular.ops.LambdaOp.dependencies">[docs]</a>    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -175,9 +175,9 @@
         <span class="c1"># Failed to figure out the source</span>
         <span class="k">return</span> <span class="s2">&quot;LambdaOp&quot;</span>
 
-    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<div class="viewcode-block" id="LambdaOp.column_mapping"><a class="viewcode-back" href="../../../api/ops/lambdaop.html#nvtabular.ops.LambdaOp.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">filtered_selector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_deps</span><span class="p">(</span><span class="n">col_selector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">())</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">filtered_selector</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">filtered_selector</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_remove_deps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">dependencies</span><span class="p">):</span>
         <span class="n">dependencies</span> <span class="o">=</span> <span class="n">dependencies</span> <span class="ow">or</span> <span class="p">[]</span>
@@ -236,19 +236,8 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="lambdaop.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>

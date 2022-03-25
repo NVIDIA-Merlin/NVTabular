@@ -49,6 +49,7 @@
 <li class="toctree-l3"><a class="reference internal" href="clip.html">Clip</a></li>
 <li class="toctree-l3"><a class="reference internal" href="columnsimilarity.html">ColumnSimilarity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="drop_low_cardinality.html">DropLowCardinality</a></li>
 <li class="toctree-l3"><a class="reference internal" href="dropna.html">Dropna</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmissing.html">FillMissing</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmedian.html">FillMedian</a></li>
@@ -64,6 +65,7 @@
 <li class="toctree-l3"><a class="reference internal" href="normalize.html">Normalize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="normalizeminmax.html">NormalizeMinMax</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rename.html">Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reduce_dtype_size.html">ReduceDtypeSize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="targetencoding.html">TargetEncoding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="operator.html">Operator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="stat_operator.html">StatOperator</a></li>
@@ -189,6 +191,16 @@ also allowed (e.g. “sum”, “count”, “max”, “mean”, etc.).</p></li
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt id="nvtabular.ops.Groupby.compute_output_schema">
+<code class="sig-name descname"><span class="pre">compute_output_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/api/merlin.schema.html#merlin.schema.Schema" title="(in merlin-core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_output_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/api/merlin.schema.html#merlin.schema.Schema" title="(in merlin-core)"><span class="pre">merlin.schema.schema.Schema</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://nvidia-merlin.github.io/core/api/merlin.schema.html#merlin.schema.Schema" title="(in merlin-core)"><span class="pre">merlin.schema.schema.Schema</span></a><a class="reference internal" href="../../_modules/nvtabular/ops/groupby.html#Groupby.compute_output_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Groupby.compute_output_schema" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Groupby.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/groupby.html#Groupby.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Groupby.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </div>
@@ -217,7 +229,29 @@ also allowed (e.g. “sum”, “count”, “max”, “mean”, etc.).</p></li
       </div>
     </section>
   </div>
-  <script>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/api/ops/groupby.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/api/ops/groupby.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.7.0/api/ops/groupby.html">v0.7.0</a></dd>
+      <dd><a href="../../../v0.7.1/api/ops/groupby.html">v0.7.1</a></dd>
+      <dd><a href="../../../v0.8.0/api/ops/groupby.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/api/ops/groupby.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="groupby.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });

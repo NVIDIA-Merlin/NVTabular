@@ -17,7 +17,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="FillMissing" href="fillmissing.html" />
-    <link rel="prev" title="DifferenceLag" href="differencelag.html" /> 
+    <link rel="prev" title="DropLowCardinality" href="drop_low_cardinality.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -49,6 +49,7 @@
 <li class="toctree-l3"><a class="reference internal" href="clip.html">Clip</a></li>
 <li class="toctree-l3"><a class="reference internal" href="columnsimilarity.html">ColumnSimilarity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="drop_low_cardinality.html">DropLowCardinality</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Dropna</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmissing.html">FillMissing</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmedian.html">FillMedian</a></li>
@@ -64,6 +65,7 @@
 <li class="toctree-l3"><a class="reference internal" href="normalize.html">Normalize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="normalizeminmax.html">NormalizeMinMax</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rename.html">Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reduce_dtype_size.html">ReduceDtypeSize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="targetencoding.html">TargetEncoding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="operator.html">Operator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="stat_operator.html">StatOperator</a></li>
@@ -141,6 +143,26 @@
 <span class="n">processor</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">dropna_features</span><span class="p">)</span>
 </pre></div>
 </div>
+<dl class="py method">
+<dt id="nvtabular.ops.Dropna.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/dropna.html#Dropna.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Dropna.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -149,7 +171,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="differencelag.html" class="btn btn-neutral float-left" title="DifferenceLag" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="drop_low_cardinality.html" class="btn btn-neutral float-left" title="DropLowCardinality" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="fillmissing.html" class="btn btn-neutral float-right" title="FillMissing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
@@ -169,7 +191,29 @@
       </div>
     </section>
   </div>
-  <script>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/api/ops/dropna.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/api/ops/dropna.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.7.0/api/ops/dropna.html">v0.7.0</a></dd>
+      <dd><a href="../../../v0.7.1/api/ops/dropna.html">v0.7.1</a></dd>
+      <dd><a href="../../../v0.8.0/api/ops/dropna.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/api/ops/dropna.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="dropna.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });

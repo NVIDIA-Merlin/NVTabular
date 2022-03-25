@@ -253,103 +253,45 @@ not plan to preserve a file-partition mapping) may wish to use
 </dd>
 </dl>
 <dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.infer_schema">
-<code class="sig-name descname"><span class="pre">infer_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.infer_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.infer_schema" title="Permalink to this definition"></a></dt>
-<dd><p>Create a schema containing the column names and inferred dtypes of the Dataset</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>n</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>optional</em>) – Number of rows to sample to infer the dtypes. Defaults to 1.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.merge">
-<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">merge</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.merge" title="Permalink to this definition"></a></dt>
-<dd><p>Merge two Dataset objects</p>
-<p>Produces a new Dataset object. If the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> Dataset attributes
-do not match, the right side will be modified. See Dask-Dataframe
-<code class="docutils literal notranslate"><span class="pre">merge</span></code> documentation for more information. Example usage:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ds_1</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;file.parquet&quot;</span><span class="p">)</span>
-<span class="n">ds_2</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">cudf</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="o">...</span><span class="p">))</span>
-<span class="n">ds_merged</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">ds_1</span><span class="p">,</span> <span class="n">ds_2</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
+<dt id="nvtabular.io.dataset.Dataset.to_ddf">
+<code class="sig-name descname"><span class="pre">to_ddf</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.to_ddf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.to_ddf" title="Permalink to this definition"></a></dt>
+<dd><p>Convert <cite>Dataset</cite> object to <cite>dask_cudf.DataFrame</cite></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>left</strong> (<a class="reference internal" href="#nvtabular.io.dataset.Dataset" title="nvtabular.io.dataset.Dataset"><em>Dataset</em></a>) – Left-side Dataset object.</p></li>
-<li><p><strong>right</strong> (<a class="reference internal" href="#nvtabular.io.dataset.Dataset" title="nvtabular.io.dataset.Dataset"><em>Dataset</em></a>) – Right-side Dataset object.</p></li>
-<li><p><strong>**kwargs</strong> – Key-word arguments to be passed through to Dask-Dataframe.</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>)</em><em>; default None</em>) – Columns to include in output <cite>DataFrame</cite>. If not specified,
+the output will contain all known columns in the Dataset.</p></li>
+<li><p><strong>shuffle</strong> (<em>bool; default False</em>) – Whether to shuffle the order of partitions in the output
+<cite>dask_cudf.DataFrame</cite>.  Note that this does not shuffle
+the rows within each partition. This is because the data
+is not actually loaded into memory for this operation.</p></li>
+<li><p><strong>seed</strong> (<em>int; Optional</em>) – The random seed to use if <cite>shuffle=True</cite>.  If nothing
+is specified, the current system time will be used by the
+<cite>random</cite> std library.</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.regenerate_dataset">
-<code class="sig-name descname"><span class="pre">regenerate_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'parquet'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.regenerate_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.regenerate_dataset" title="Permalink to this definition"></a></dt>
-<dd><p>EXPERIMENTAL:
-Regenerate an NVTabular Dataset for efficient processing by writing
-out new Parquet files. In contrast to default <code class="docutils literal notranslate"><span class="pre">to_parquet</span></code> behavior,
-this method preserves the original ordering.</p>
-<p>Example Usage:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;/path/to/data_pq&quot;</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">)</span>
-<span class="n">dataset</span><span class="o">.</span><span class="n">regenerate_dataset</span><span class="p">(</span>
-    <span class="n">out_path</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;1MiB&quot;</span><span class="p">,</span> <span class="n">file_size</span><span class="o">=</span><span class="s2">&quot;10MiB&quot;</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>output_path</strong> (<em>string</em>) – Root directory path to use for the new (regenerated) dataset.</p></li>
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><em>string</em><em>)</em><em>, </em><em>optional</em>) – Subset of columns to include in the regenerated dataset.</p></li>
-<li><p><strong>output_format</strong> (<em>string</em><em>, </em><em>optional</em>) – Format to use for regenerated dataset.  Only “parquet” (default)
-is currently supported.</p></li>
-<li><p><strong>compute</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to compute the task graph or to return a Delayed object.
-By default, the graph will be executed.</p></li>
-<li><p><strong>**kwargs</strong> – Key-word arguments to pass down to the engine’s regenerate_dataset
-method. See <cite>ParquetDatasetEngine.regenerate_dataset</cite> for more
-information.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>result</strong> – If <cite>compute=True</cite> (default), the return value will be an integer
-corresponding to the number of generated data files.  If <cite>False</cite>,
-the returned value will be a <cite>Delayed</cite> object.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a> or Delayed</p>
-</dd>
-</dl>
-</dd></dl>
+<dt id="nvtabular.io.dataset.Dataset.file_partition_map">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">file_partition_map</span></code><a class="headerlink" href="#nvtabular.io.dataset.Dataset.file_partition_map" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.repartition">
-<code class="sig-name descname"><span class="pre">repartition</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">npartitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partition_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.repartition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.repartition" title="Permalink to this definition"></a></dt>
-<dd><p>Repartition the underlying ddf, and return a new Dataset</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>npartitions</strong> (<em>int; default None</em>) – Number of partitions in output <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>. Only used if
-<code class="docutils literal notranslate"><span class="pre">partition_size</span></code> isn’t specified.</p></li>
-<li><p><strong>partition_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><em>str; default None</em>) – Max number of bytes of memory for each partition. Use
-numbers or strings like ‘5MB’. If specified, <code class="docutils literal notranslate"><span class="pre">npartitions</span></code>
-will be ignored.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
+<dt id="nvtabular.io.dataset.Dataset.partition_lens">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">partition_lens</span></code><a class="headerlink" href="#nvtabular.io.dataset.Dataset.partition_lens" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.sample_dtypes">
-<code class="sig-name descname"><span class="pre">sample_dtypes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotate_lists</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.sample_dtypes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.sample_dtypes" title="Permalink to this definition"></a></dt>
-<dd><p>Return the real dtypes of the Dataset</p>
-<p>Use cached metadata if this operation was
-already performed. Otherwise, call down to the
-underlying engine for sampling logic.</p>
-</dd></dl>
+<dt id="nvtabular.io.dataset.Dataset.to_cpu">
+<code class="sig-name descname"><span class="pre">to_cpu</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.to_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.to_cpu" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.to_gpu">
+<code class="sig-name descname"><span class="pre">to_gpu</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.to_gpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.to_gpu" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="nvtabular.io.dataset.Dataset.shuffle_by_keys">
@@ -378,62 +320,40 @@ ignored.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.to_ddf">
-<code class="sig-name descname"><span class="pre">to_ddf</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.to_ddf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.to_ddf" title="Permalink to this definition"></a></dt>
-<dd><p>Convert <cite>Dataset</cite> object to <cite>dask_cudf.DataFrame</cite></p>
+<dt id="nvtabular.io.dataset.Dataset.repartition">
+<code class="sig-name descname"><span class="pre">repartition</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">npartitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partition_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.repartition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.repartition" title="Permalink to this definition"></a></dt>
+<dd><p>Repartition the underlying ddf, and return a new Dataset</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>)</em><em>; default None</em>) – Columns to include in output <cite>DataFrame</cite>. If not specified,
-the output will contain all known columns in the Dataset.</p></li>
-<li><p><strong>shuffle</strong> (<em>bool; default False</em>) – Whether to shuffle the order of partitions in the output
-<cite>dask_cudf.DataFrame</cite>.  Note that this does not shuffle
-the rows within each partition. This is because the data
-is not actually loaded into memory for this operation.</p></li>
-<li><p><strong>seed</strong> (<em>int; Optional</em>) – The random seed to use if <cite>shuffle=True</cite>.  If nothing
-is specified, the current system time will be used by the
-<cite>random</cite> std library.</p></li>
+<li><p><strong>npartitions</strong> (<em>int; default None</em>) – Number of partitions in output <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>. Only used if
+<code class="docutils literal notranslate"><span class="pre">partition_size</span></code> isn’t specified.</p></li>
+<li><p><strong>partition_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><em>str; default None</em>) – Max number of bytes of memory for each partition. Use
+numbers or strings like ‘5MB’. If specified, <code class="docutils literal notranslate"><span class="pre">npartitions</span></code>
+will be ignored.</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.io.dataset.Dataset.to_hugectr">
-<code class="sig-name descname"><span class="pre">to_hugectr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_partition_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_files_per_proc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtypes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.to_hugectr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.to_hugectr" title="Permalink to this definition"></a></dt>
-<dd><p>Writes out to a hugectr dataset</p>
+<dt id="nvtabular.io.dataset.Dataset.merge">
+<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">merge</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.merge" title="Permalink to this definition"></a></dt>
+<dd><p>Merge two Dataset objects</p>
+<p>Produces a new Dataset object. If the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> Dataset attributes
+do not match, the right side will be modified. See Dask-Dataframe
+<code class="docutils literal notranslate"><span class="pre">merge</span></code> documentation for more information. Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ds_1</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;file.parquet&quot;</span><span class="p">)</span>
+<span class="n">ds_2</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">cudf</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="o">...</span><span class="p">))</span>
+<span class="n">ds_merged</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">ds_1</span><span class="p">,</span> <span class="n">ds_2</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>output_path</strong> (<em>string</em>) – Path to write processed/shuffled output data</p></li>
-<li><p><strong>cats</strong> (<em>list of str</em>) – List of categorical columns</p></li>
-<li><p><strong>conts</strong> (<em>list of str</em>) – List of continuous columns</p></li>
-<li><p><strong>labels</strong> (<em>list of str</em>) – List of label columns</p></li>
-<li><p><strong>shuffle</strong> (<em>nvt.io.Shuffle</em><em>, </em><em>optional</em>) – How to shuffle the output dataset. Shuffling is only
-performed if the data is written to disk. For all options,
-other than <cite>None</cite> (which means no shuffling), the partitions
-of the underlying dataset/ddf will be randomly ordered. If
-<cite>PER_PARTITION</cite> is specified, each worker/process will also
-shuffle the rows within each partition before splitting and
-appending the data to a number (<cite>out_files_per_proc</cite>) of output
-files. Output files are distinctly mapped to each worker process.
-If <cite>PER_WORKER</cite> is specified, each worker will follow the same
-procedure as <cite>PER_PARTITION</cite>, but will re-shuffle each file after
-all data is persisted.  This results in a full shuffle of the
-data processed by each worker.  To improve performance, this option
-currently uses host-memory <cite>BytesIO</cite> objects for the intermediate
-persist stage. The <cite>FULL</cite> option is not yet implemented.</p></li>
-<li><p><strong>file_partition_map</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – Dictionary mapping of output file names to partition indices
-that should be written to that file name.  If this argument
-is passed, only the partitions included in the dictionary
-will be written to disk, and the <cite>output_files_per_proc</cite> argument
-will be ignored.</p></li>
-<li><p><strong>out_files_per_proc</strong> (<em>integer</em>) – Number of files to create (per process) after
-shuffling the data</p></li>
-<li><p><strong>num_threads</strong> (<em>integer</em>) – Number of IO threads to use for writing the output dataset.
-For <cite>0</cite> (default), no dedicated IO threads will be used.</p></li>
-<li><p><strong>dtypes</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – Dictionary containing desired datatypes for output columns.
-Keys are column names, values are datatypes.</p></li>
+<li><p><strong>left</strong> (<a class="reference internal" href="#nvtabular.io.dataset.Dataset" title="nvtabular.io.dataset.Dataset"><em>Dataset</em></a>) – Left-side Dataset object.</p></li>
+<li><p><strong>right</strong> (<a class="reference internal" href="#nvtabular.io.dataset.Dataset" title="nvtabular.io.dataset.Dataset"><em>Dataset</em></a>) – Right-side Dataset object.</p></li>
+<li><p><strong>**kwargs</strong> – Key-word arguments to be passed through to Dask-Dataframe.</p></li>
 </ul>
 </dd>
 </dl>
@@ -546,6 +466,77 @@ are planning to ingest the output data with HugeCTR. Default is False.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.to_hugectr">
+<code class="sig-name descname"><span class="pre">to_hugectr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_partition_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_files_per_proc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtypes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.to_hugectr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.to_hugectr" title="Permalink to this definition"></a></dt>
+<dd><p>Writes out to a hugectr dataset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_path</strong> (<em>string</em>) – Path to write processed/shuffled output data</p></li>
+<li><p><strong>cats</strong> (<em>list of str</em>) – List of categorical columns</p></li>
+<li><p><strong>conts</strong> (<em>list of str</em>) – List of continuous columns</p></li>
+<li><p><strong>labels</strong> (<em>list of str</em>) – List of label columns</p></li>
+<li><p><strong>shuffle</strong> (<em>nvt.io.Shuffle</em><em>, </em><em>optional</em>) – How to shuffle the output dataset. Shuffling is only
+performed if the data is written to disk. For all options,
+other than <cite>None</cite> (which means no shuffling), the partitions
+of the underlying dataset/ddf will be randomly ordered. If
+<cite>PER_PARTITION</cite> is specified, each worker/process will also
+shuffle the rows within each partition before splitting and
+appending the data to a number (<cite>out_files_per_proc</cite>) of output
+files. Output files are distinctly mapped to each worker process.
+If <cite>PER_WORKER</cite> is specified, each worker will follow the same
+procedure as <cite>PER_PARTITION</cite>, but will re-shuffle each file after
+all data is persisted.  This results in a full shuffle of the
+data processed by each worker.  To improve performance, this option
+currently uses host-memory <cite>BytesIO</cite> objects for the intermediate
+persist stage. The <cite>FULL</cite> option is not yet implemented.</p></li>
+<li><p><strong>file_partition_map</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – Dictionary mapping of output file names to partition indices
+that should be written to that file name.  If this argument
+is passed, only the partitions included in the dictionary
+will be written to disk, and the <cite>output_files_per_proc</cite> argument
+will be ignored.</p></li>
+<li><p><strong>out_files_per_proc</strong> (<em>integer</em>) – Number of files to create (per process) after
+shuffling the data</p></li>
+<li><p><strong>num_threads</strong> (<em>integer</em>) – Number of IO threads to use for writing the output dataset.
+For <cite>0</cite> (default), no dedicated IO threads will be used.</p></li>
+<li><p><strong>dtypes</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – Dictionary containing desired datatypes for output columns.
+Keys are column names, values are datatypes.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.num_rows">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">num_rows</span></code><a class="headerlink" href="#nvtabular.io.dataset.Dataset.num_rows" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.compute">
+<code class="sig-name descname"><span class="pre">compute</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.io.dataset.Dataset.compute" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.head">
+<code class="sig-name descname"><span class="pre">head</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.io.dataset.Dataset.head" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.npartitions">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">npartitions</span></code><a class="headerlink" href="#nvtabular.io.dataset.Dataset.npartitions" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.persist">
+<code class="sig-name descname"><span class="pre">persist</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.io.dataset.Dataset.persist" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.tail">
+<code class="sig-name descname"><span class="pre">tail</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.io.dataset.Dataset.tail" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt id="nvtabular.io.dataset.Dataset.validate_dataset">
 <code class="sig-name descname"><span class="pre">validate_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.validate_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.validate_dataset" title="Permalink to this definition"></a></dt>
 <dd><p>Validate for efficient processing.</p>
@@ -573,6 +564,65 @@ processing.</p>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)">bool</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.regenerate_dataset">
+<code class="sig-name descname"><span class="pre">regenerate_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'parquet'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.regenerate_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.regenerate_dataset" title="Permalink to this definition"></a></dt>
+<dd><p>EXPERIMENTAL:
+Regenerate an NVTabular Dataset for efficient processing by writing
+out new Parquet files. In contrast to default <code class="docutils literal notranslate"><span class="pre">to_parquet</span></code> behavior,
+this method preserves the original ordering.</p>
+<p>Example Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;/path/to/data_pq&quot;</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">)</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">regenerate_dataset</span><span class="p">(</span>
+    <span class="n">out_path</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;1MiB&quot;</span><span class="p">,</span> <span class="n">file_size</span><span class="o">=</span><span class="s2">&quot;10MiB&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_path</strong> (<em>string</em>) – Root directory path to use for the new (regenerated) dataset.</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><em>string</em><em>)</em><em>, </em><em>optional</em>) – Subset of columns to include in the regenerated dataset.</p></li>
+<li><p><strong>output_format</strong> (<em>string</em><em>, </em><em>optional</em>) – Format to use for regenerated dataset.  Only “parquet” (default)
+is currently supported.</p></li>
+<li><p><strong>compute</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to compute the task graph or to return a Delayed object.
+By default, the graph will be executed.</p></li>
+<li><p><strong>**kwargs</strong> – Key-word arguments to pass down to the engine’s regenerate_dataset
+method. See <cite>ParquetDatasetEngine.regenerate_dataset</cite> for more
+information.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>result</strong> – If <cite>compute=True</cite> (default), the return value will be an integer
+corresponding to the number of generated data files.  If <cite>False</cite>,
+the returned value will be a <cite>Delayed</cite> object.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a> or Delayed</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.infer_schema">
+<code class="sig-name descname"><span class="pre">infer_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.infer_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.infer_schema" title="Permalink to this definition"></a></dt>
+<dd><p>Create a schema containing the column names and inferred dtypes of the Dataset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>n</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>optional</em>) – Number of rows to sample to infer the dtypes. Defaults to 1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.io.dataset.Dataset.sample_dtypes">
+<code class="sig-name descname"><span class="pre">sample_dtypes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotate_lists</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/io/dataset.html#Dataset.sample_dtypes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.io.dataset.Dataset.sample_dtypes" title="Permalink to this definition"></a></dt>
+<dd><p>Return the real dtypes of the Dataset</p>
+<p>Use cached metadata if this operation was
+already performed. Otherwise, call down to the
+underlying engine for sampling logic.</p>
 </dd></dl>
 
 </dd></dl>
@@ -613,19 +663,8 @@ processing.</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../v0.10.0/api/dataset.html">v0.10.0</a></dd>
       <dd><a href="../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../v0.2.0/api/dataset.html">v0.2.0</a></dd>
-      <dd><a href="../../v0.3.0/api/dataset.html">v0.3.0</a></dd>
-      <dd><a href="../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../v0.5.3/api/dataset.html">v0.5.3</a></dd>
-      <dd><a href="../../v0.6.0/api/dataset.html">v0.6.0</a></dd>
-      <dd><a href="../../v0.6.1/api/dataset.html">v0.6.1</a></dd>
       <dd><a href="../../v0.7.0/api/dataset.html">v0.7.0</a></dd>
       <dd><a href="../../v0.7.1/api/dataset.html">v0.7.1</a></dd>
       <dd><a href="../../v0.8.0/api/dataset.html">v0.8.0</a></dd>

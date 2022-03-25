@@ -388,7 +388,7 @@ div.rendered_html tbody tr:hover {
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
 <p>The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as during training (ETL). We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integer before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the TensorFlow model as an ensemble model to Triton Inference. The ensemble model
 garantuees that the same transformation are applied to the raw inputs.</p>
-<p><img alt="5c7a144f0c7b43798ee4462504915dea" class="no-scaled-link" src="../../_images/triton-tf.png" style="width: 25%;" /></p>
+<p><img alt="4d248f791d124442925e930f5b41a999" class="no-scaled-link" src="../../_images/triton-tf.png" style="width: 25%;" /></p>
 <div class="section" id="Learning-objectives">
 <h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
 <p>In this notebook, we learn how to deploy our models to production</p>
@@ -912,19 +912,8 @@ Loaded model &#39;criteo_tf&#39;
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="04-Triton-Inference-with-TF.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/index.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/index.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/index.html">v0.6.1</a></dd>
       <dd><a href="../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>

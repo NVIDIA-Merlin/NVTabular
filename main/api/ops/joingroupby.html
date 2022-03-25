@@ -49,6 +49,7 @@
 <li class="toctree-l3"><a class="reference internal" href="clip.html">Clip</a></li>
 <li class="toctree-l3"><a class="reference internal" href="columnsimilarity.html">ColumnSimilarity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="drop_low_cardinality.html">DropLowCardinality</a></li>
 <li class="toctree-l3"><a class="reference internal" href="dropna.html">Dropna</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmissing.html">FillMissing</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fillmedian.html">FillMedian</a></li>
@@ -64,6 +65,7 @@
 <li class="toctree-l3"><a class="reference internal" href="normalize.html">Normalize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="normalizeminmax.html">NormalizeMinMax</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rename.html">Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reduce_dtype_size.html">ReduceDtypeSize</a></li>
 <li class="toctree-l3"><a class="reference internal" href="targetencoding.html">TargetEncoding</a></li>
 <li class="toctree-l3"><a class="reference internal" href="operator.html">Operator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="stat_operator.html">StatOperator</a></li>
@@ -151,7 +153,7 @@ categorical columns).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cont_cols</strong> (<em>list of str</em><em> or </em><em>WorkflowNode</em>) – The continuous columns to calculate statistics for
+<li><p><strong>cont_cols</strong> (<em>list of str</em><em> or </em><a class="reference internal" href="../workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><em>WorkflowNode</em></a>) – The continuous columns to calculate statistics for
 (for each unique group in each column in <cite>columns</cite>).</p></li>
 <li><p><strong>stats</strong> (<em>list of str</em><em>, </em><em>default</em><em> [</em><em>]</em>) – List of statistics to calculate for each unique group. Note
 that “count” corresponds to the group itself, while all
@@ -174,6 +176,11 @@ for multi-column groups.</p></li>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.cont_names">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">cont_names</span></code><a class="headerlink" href="#nvtabular.ops.JoinGroupby.cont_names" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt id="nvtabular.ops.JoinGroupby.fit">
 <code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dask.dataframe.core.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.fit" title="Permalink to this definition"></a></dt>
@@ -208,6 +215,31 @@ the computed statistics from the ‘fit’ object’</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.dependencies">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dependencies</span></code><a class="headerlink" href="#nvtabular.ops.JoinGroupby.dependencies" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.compute_selector">
+<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/api/merlin.schema.html#merlin.schema.Schema" title="(in merlin-core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.dag.selector.ColumnSelector</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.compute_selector" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.set_storage_path">
+<code class="sig-name descname"><span class="pre">set_storage_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.set_storage_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.set_storage_path" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.clear" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </div>
@@ -236,7 +268,29 @@ the computed statistics from the ‘fit’ object’</p>
       </div>
     </section>
   </div>
-  <script>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/api/ops/joingroupby.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/api/ops/joingroupby.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.7.0/api/ops/joingroupby.html">v0.7.0</a></dd>
+      <dd><a href="../../../v0.7.1/api/ops/joingroupby.html">v0.7.1</a></dd>
+      <dd><a href="../../../v0.8.0/api/ops/joingroupby.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/api/ops/joingroupby.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="joingroupby.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });

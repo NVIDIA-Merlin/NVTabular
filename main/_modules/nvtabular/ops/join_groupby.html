@@ -282,7 +282,7 @@
     <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span>
 
-    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
+<div class="viewcode-block" id="JoinGroupby.compute_selector"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
         <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
@@ -290,9 +290,9 @@
         <span class="n">dependencies_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">parents_selector</span><span class="p">,</span> <span class="s2">&quot;computing input selector&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">parents_selector</span>
+        <span class="k">return</span> <span class="n">parents_selector</span></div>
 
-    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinGroupby.column_mapping"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
@@ -309,7 +309,7 @@
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cont</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">stat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">cont</span><span class="p">,</span> <span class="o">*</span><span class="n">group</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">column_mapping</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
 
     <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="n">new_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
@@ -325,13 +325,13 @@
 
         <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="n">is_list</span><span class="p">,</span> <span class="n">is_ragged</span><span class="o">=</span><span class="n">is_list</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinGroupby.set_storage_path"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_copy_storage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">new_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">new_path</span></div>
 
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinGroupby.clear"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span></div>
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
     <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
@@ -358,7 +358,29 @@
       </div>
     </section>
   </div>
-  <script>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../../v0.7.0/index.html">v0.7.0</a></dd>
+      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
+      <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="join_groupby.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });

@@ -139,12 +139,6 @@
 <p>Base class for statistical operator classes. This adds a ‘fit’ and ‘finalize’ method
 on top of the Operator class.</p>
 <dl class="py method">
-<dt id="nvtabular.ops.stat_operator.StatOperator.clear">
-<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/stat_operator.html#StatOperator.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.stat_operator.StatOperator.clear" title="Permalink to this definition"></a></dt>
-<dd><p>zero and reinitialize all relevant statistical properties</p>
-</dd></dl>
-
-<dl class="py method">
 <dt id="nvtabular.ops.stat_operator.StatOperator.fit">
 <code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../columns/selector.html#nvtabular.columns.selector.ColumnSelector" title="nvtabular.columns.selector.ColumnSelector"><span class="pre">nvtabular.columns.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dask.dataframe.core.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Any</span><a class="reference internal" href="../../_modules/nvtabular/ops/stat_operator.html#StatOperator.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.stat_operator.StatOperator.fit" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate statistics for this operator, and return a dask future
@@ -156,6 +150,12 @@ to these statistics, which will be computed by the workflow.</p>
 <code class="sig-name descname"><span class="pre">fit_finalize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dask_stats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/stat_operator.html#StatOperator.fit_finalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.stat_operator.StatOperator.fit_finalize" title="Permalink to this definition"></a></dt>
 <dd><p>Finalize statistics calculation - the workflow calls this function with
 the computed statistics from the ‘fit’ object’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.stat_operator.StatOperator.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/stat_operator.html#StatOperator.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.stat_operator.StatOperator.clear" title="Permalink to this definition"></a></dt>
+<dd><p>zero and reinitialize all relevant statistical properties</p>
 </dd></dl>
 
 <dl class="py method">
@@ -206,19 +206,8 @@ out (note that this could happen after the operator is created)</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/index.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/index.html">v0.1.1</a></dd>
       <dd><a href="../../../v0.10.0/api/ops/stat_operator.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/ops/stat_operator.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/index.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/index.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/api/ops/stat_operator.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/api/ops/stat_operator.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/api/ops/stat_operator.html">v0.6.1</a></dd>
       <dd><a href="stat_operator.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/api/ops/stat_operator.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/ops/stat_operator.html">v0.8.0</a></dd>

@@ -281,8 +281,23 @@ the computed statistics from the ‘fit’ object’</p>
 </dd></dl>
 
 <dl class="py method">
+<dt id="nvtabular.ops.Categorify.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.clear" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.process_vocabs">
+<code class="sig-name descname"><span class="pre">process_vocabs</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocabs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.process_vocabs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.process_vocabs" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.set_storage_path">
+<code class="sig-name descname"><span class="pre">set_storage_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.set_storage_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.set_storage_path" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt id="nvtabular.ops.Categorify.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/api_docs/api/cudf.DataFrame.html#cudf.DataFrame" title="(in cudf v22.02)"><span class="pre">cudf.core.dataframe.DataFrame</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/api_docs/api/cudf.DataFrame.html#cudf.DataFrame" title="(in cudf v22.02)"><span class="pre">cudf.core.dataframe.DataFrame</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.transform" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.transform" title="Permalink to this definition"></a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -299,6 +314,36 @@ the computed statistics from the ‘fit’ object’</p>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.output_tags">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_tags</span></code><a class="headerlink" href="#nvtabular.ops.Categorify.output_tags" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.output_dtype">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_dtype</span></code><a class="headerlink" href="#nvtabular.ops.Categorify.output_dtype" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.compute_selector">
+<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/api/merlin.schema.html#merlin.schema.Schema" title="(in merlin-core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.dag.selector.ColumnSelector</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.compute_selector" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.get_embedding_sizes">
+<code class="sig-name descname"><span class="pre">get_embedding_sizes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.get_embedding_sizes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.get_embedding_sizes" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.inference_initialize">
+<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inference_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.inference_initialize" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -338,19 +383,8 @@ the computed statistics from the ‘fit’ object’</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.1.0/api/ops/categorify.html">v0.1.0</a></dd>
-      <dd><a href="../../../v0.1.1/api/ops/categorify.html">v0.1.1</a></dd>
       <dd><a href="../../../v0.10.0/api/ops/categorify.html">v0.10.0</a></dd>
       <dd><a href="categorify.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.2.0/api/ops/categorify.html">v0.2.0</a></dd>
-      <dd><a href="../../../v0.3.0/api/ops/categorify.html">v0.3.0</a></dd>
-      <dd><a href="../../../v0.4.0/index.html">v0.4.0</a></dd>
-      <dd><a href="../../../v0.5.0/index.html">v0.5.0</a></dd>
-      <dd><a href="../../../v0.5.1/index.html">v0.5.1</a></dd>
-      <dd><a href="../../../v0.5.2/index.html">v0.5.2</a></dd>
-      <dd><a href="../../../v0.5.3/api/ops/categorify.html">v0.5.3</a></dd>
-      <dd><a href="../../../v0.6.0/api/ops/categorify.html">v0.6.0</a></dd>
-      <dd><a href="../../../v0.6.1/api/ops/categorify.html">v0.6.1</a></dd>
       <dd><a href="../../../v0.7.0/api/ops/categorify.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/api/ops/categorify.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/ops/categorify.html">v0.8.0</a></dd>
