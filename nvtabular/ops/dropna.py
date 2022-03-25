@@ -29,9 +29,6 @@ class Dropna(Operator):
         # Default is None and will check all columns
         dropna_features = ['cat1', 'num1'] >> ops.Dropna() >> ...
         processor = nvtabular.Workflow(dropna_features)
-
-    Parameters
-    ----------
     """
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
@@ -39,3 +36,5 @@ class Dropna(Operator):
         new_df = df.dropna(subset=col_selector.names or None)
         new_df.reset_index(drop=True, inplace=True)
         return new_df
+
+    transform.__doc__ = Operator.transform.__doc__
