@@ -41,6 +41,7 @@ from merlin.core.utils import (
 from merlin.core.worker import clean_worker_cache
 from merlin.dag import Graph
 from merlin.io import Dataset
+from merlin.schema import Schema
 from nvtabular.ops import StatOperator
 from nvtabular.workflow.node import WorkflowNode
 
@@ -95,14 +96,28 @@ class Workflow:
         Parameters
         -----------
         dataset: Dataset
+            Input dataset to transform
 
         Returns
         -------
         Dataset
+            Transformed Dataset with the workflow graph applied to it
         """
         return self._transform_impl(dataset)
 
-    def fit_schema(self, input_schema):
+    def fit_schema(self, input_schema: Schema):
+        """Fits the schema onto the workflow, computing the Schema for each node in the Workflow Graph
+
+        Parameters
+        ----------
+        input_schema : Schema
+            The input schema to use
+
+        Returns
+        -------
+        Workflow
+            This workflow where each node in the graph has a fitted schema
+        """
         self.graph.construct_schema(input_schema)
         return self
 
@@ -129,7 +144,26 @@ class Workflow:
     def _input_columns(self):
         return self.graph._input_columns()
 
-    def remove_inputs(self, input_cols):
+    def remove_inputs(self, input_cols) -> "Workflow":
+        """Removes input columns from the workflow.
+
+        This is useful for the case of inference where you might need to remove label columns
+        from the processed set.
+
+        Parameters
+        ----------
+        input_cols : list of str
+            List of column names to
+
+        Returns
+        -------
+        Workflow
+            This workflow with the input columns removed from it
+
+        See Also
+        --------
+        merlin.dag.Graph.remove_inputs
+        """
         self.graph.remove_inputs(input_cols)
         return self
 
@@ -141,6 +175,11 @@ class Workflow:
         dataset: Dataset
             The input dataset to calculate statistics for. If there is a train/test split this
             data should be the training dataset only.
+
+        Returns
+        -------
+        Workflow
+            This Workflow with statistics calculated on it
         """
         self._clear_worker_cache()
         self.clear_stats()
@@ -232,10 +271,17 @@ class Workflow:
         Parameters
         -----------
         dataset: Dataset
+            Input dataset to calculate statistics on, and transform results
 
         Returns
         -------
         Dataset
+            Transformed Dataset with the workflow graph applied to it
+
+        See Also
+        --------
+        fit
+        transform
         """
         self.fit(dataset)
         return self.transform(dataset)
@@ -296,7 +342,7 @@ class Workflow:
             cloudpickle.dump(self, o)
 
     @classmethod
-    def load(cls, path, client=None):
+    def load(cls, path, client=None) -> "Workflow":
         """Load up a saved workflow object from disk
 
         Parameters
@@ -308,7 +354,8 @@ class Workflow:
 
         Returns
         -------
-            Workflow
+        Workflow
+            The Workflow loaded from disk
         """
         # avoid a circular import getting the version
         from nvtabular import __version__ as nvt_version
@@ -357,6 +404,12 @@ class Workflow:
         return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
+        """Removes calculated statistics from each node in the workflow graph
+
+        See Also
+        --------
+        nvtabular.ops.stat_operator.StatOperator.clear
+        """
         for stat in _get_stat_ops([self.output_node]):
             stat.op.clear()
 
