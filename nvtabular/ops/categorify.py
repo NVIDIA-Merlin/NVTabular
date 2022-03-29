@@ -37,7 +37,7 @@ from pyarrow import parquet as pq
 
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
-from merlin.core.worker import fetch_table_data, get_worker_cache
+from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular import dispatch
 
