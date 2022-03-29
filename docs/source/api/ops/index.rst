@@ -9,6 +9,7 @@ Operators
    Clip <clip>
    ColumnSimilarity <columnsimilarity>
    DifferenceLag <differencelag>
+   drop_low_cardinality
    Dropna <dropna>
    FillMissing <fillmissing>
    FillMedian <fillmedian>
@@ -24,6 +25,7 @@ Operators
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
    Rename <rename>
+   reduce_dtype_size
    TargetEncoding <targetencoding>
 
    Operator <operator>
