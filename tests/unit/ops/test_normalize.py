@@ -20,8 +20,9 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core import dispatch
 from merlin.core.dispatch import HAS_GPU, flatten_list_column, flatten_list_column_values
-from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq
 
 if HAS_GPU:

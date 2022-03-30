@@ -24,6 +24,6 @@ warnings.warn(
     "The `nvtabular.utils` module has moved to `merlin.core.utils`. "
     "Support for importing from `nvtabular.utils` is deprecated, "
     "and will be removed in a future version. Please update "
-    "your imports to import from `merlin.core.utils`.",
-    FutureWarning,
+    "your imports to refer to `merlin.core.utils`.",
+    DeprecationWarning,
 )

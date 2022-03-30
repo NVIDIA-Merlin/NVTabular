@@ -24,6 +24,6 @@ warnings.warn(
     "The `nvtabular.worker` module has moved to `merlin.io.worker`. "
     "Support for importing from `nvtabular.worker` is deprecated, "
     "and will be removed in a future version. Please update "
-    "your imports to import from `merlin.io.worker`.",
-    FutureWarning,
+    "your imports to refer to `merlin.io.worker`.",
+    DeprecationWarning,
 )

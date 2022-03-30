@@ -22,8 +22,7 @@ from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 from merlin.core.dispatch import HAS_GPU
-
-from ..utils import device_mem_size
+from merlin.core.utils import device_mem_size
 
 
 def configure_tensorflow(memory_allocation=None, device=None):

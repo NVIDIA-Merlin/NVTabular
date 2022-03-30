@@ -24,6 +24,6 @@ warnings.warn(
     "The `nvtabular.io` module has moved to `merlin.io`. "
     "Support for importing from `nvtabular.io` is deprecated, "
     "and will be removed in a future version. Please update "
-    "your imports to import from `merlin.io`.",
-    FutureWarning,
+    "your imports to refer to `merlin.io`.",
+    DeprecationWarning,
 )
