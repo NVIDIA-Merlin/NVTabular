@@ -24,6 +24,6 @@ warnings.warn(
     "The `nvtabular.graph` module has moved to `merlin.dag`. "
     "Support for importing from `nvtabular.graph` is deprecated, "
     "and will be removed in a future version. Please update "
-    "your imports to import from `merlin.dag`.",
-    FutureWarning,
+    "your imports to refer to `merlin.dag`.",
+    DeprecationWarning,
 )

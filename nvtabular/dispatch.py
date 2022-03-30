@@ -24,6 +24,6 @@ warnings.warn(
     "The `nvtabular.dispatch` module has moved to `merlin.core.dispatch`. "
     "Support for importing from `nvtabular.dispatch` is deprecated, "
     "and will be removed in a future version. Please update "
-    "your imports to import from `merlin.core.dispatch`.",
-    FutureWarning,
+    "your imports to refer to `merlin.core.dispatch`.",
+    DeprecationWarning,
 )
