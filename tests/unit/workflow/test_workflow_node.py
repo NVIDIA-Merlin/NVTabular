@@ -1,9 +1,10 @@
 import numpy as np
 import pytest
 
+from merlin.core import dispatch
 from merlin.dag import ColumnSelector
 from merlin.schema import Schema
-from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
+from nvtabular import Dataset, Workflow, WorkflowNode
 from nvtabular.ops import (
     Categorify,
     DifferenceLag,

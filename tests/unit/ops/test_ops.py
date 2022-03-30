@@ -20,8 +20,9 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core import dispatch
 from merlin.schema import Tags, TagSet
-from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
