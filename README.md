@@ -26,7 +26,7 @@ NVTabular alleviates these challenges and helps data scientists and ML engineers
 * prepare datasets quickly and easily for experimentation so that more models can be trained.
 * deploy models into production by providing faster dataset transformation
 
-Learn more about NVTabular's [core features here](docs/source/core_features.md).
+Learn more about NVTabular's [core features here](docs/source/core_features.md#core-features).
 
 ### Performance
 
