@@ -43,9 +43,8 @@ from merlin.core.dispatch import (
     make_series,
     pull_apart_list,
 )
+from merlin.core.utils import device_mem_size
 from merlin.io import Dataset
-
-from ..utils import device_mem_size
 
 
 class UniformDistro:

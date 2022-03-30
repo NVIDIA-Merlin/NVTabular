@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..dispatch import DataFrameType
+from merlin.core.dispatch import DataFrameType
+
 from .operator import ColumnSelector, Operator
 
 

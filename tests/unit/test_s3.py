@@ -22,6 +22,7 @@ from dask.dataframe.io.parquet.core import create_metadata_file
 from packaging.version import Version
 
 import nvtabular as nvt
+from merlin.core import dispatch
 from nvtabular import ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
@@ -100,7 +101,7 @@ def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df, patch_aiobotocor
 
         # Check that the iteration API works
         columns = mycols_pq if engine == "parquet" else mycols_csv
-        gdf = nvt.dispatch.concat(list(dataset.to_iter()))[columns]
+        gdf = dispatch.concat(list(dataset.to_iter()))[columns]
         assert_eq(gdf.reset_index(drop=True), df.reset_index(drop=True))
 
         cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]

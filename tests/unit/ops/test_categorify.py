@@ -21,8 +21,9 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core import dispatch
 from merlin.core.dispatch import make_df
-from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular import ColumnSelector, ops
 from nvtabular.ops.categorify import get_embedding_sizes
 
 try:
