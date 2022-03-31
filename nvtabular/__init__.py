@@ -15,10 +15,14 @@
 #
 import warnings
 
+# this is to mimic the previous API, but all of these should probably be removed
+import merlin.dag as graph  # noqa
+from merlin import io
+from merlin.core import dispatch, utils  # noqa
 from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 
-from . import graph, io, utils, workflow  # noqa
+from . import workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
