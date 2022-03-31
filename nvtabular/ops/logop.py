@@ -14,15 +14,15 @@
 # limitations under the License.
 #
 import numpy as np
-from merlin.schema import Tags
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
     annotate,
     encode_list_column,
     flatten_list_column_values,
     is_list_dtype,
 )
+from merlin.schema import Tags
 
 from .operator import ColumnSelector, Operator
 

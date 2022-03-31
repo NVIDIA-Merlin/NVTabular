@@ -16,16 +16,16 @@
 import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
-from merlin.dag import Node
-from merlin.schema import Schema, Tags
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
     arange,
     concat_columns,
     random_state,
     read_parquet_dispatch,
 )
+from merlin.dag import Node
+from merlin.schema import Schema, Tags
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
@@ -212,6 +212,7 @@ class TargetEncoding(StatOperator):
         for col in dask_stats[1].index:
             self.means[col] = float(dask_stats[1]["mean"].loc[col])
 
+    @property
     def dependencies(self):
         return self.dependency
 

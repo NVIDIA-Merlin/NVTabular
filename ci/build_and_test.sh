@@ -7,9 +7,10 @@ nvt_directory="$(dirname -- $ci_directory)"
 cd $nvt_directory
 
 echo "Installing NVTabular"
-python -m pip install --user --upgrade pip setuptools wheel pybind11 numpy==1.20.3 setuptools==59.4.0
-python -m pip uninstall nvtabular -y
-python -m pip install --user --upgrade merlin-core@git+https://github.com/NVIDIA-Merlin/core.git
+python -m pip install --user --upgrade pip setuptools wheel pybind11 numpy==1.20.3
+python -m pip uninstall nvtabular merlin-core -y
+python -m pip install --user --upgrade --no-cache-dir merlin-core@git+https://github.com/NVIDIA-Merlin/core.git
+python -m pip install --user natsort==8.1.0
 python setup.py develop --user --no-deps
 
 # following checks requirement requirements-dev.txt to be installed

@@ -14,9 +14,9 @@
 # limitations under the License.
 #
 import numpy
-from merlin.schema import Tags
 
-from nvtabular.dispatch import DataFrameType, annotate, is_dataframe_object
+from merlin.core.dispatch import DataFrameType, annotate, is_dataframe_object
+from merlin.schema import Tags
 
 from .operator import ColumnSelector, Operator
 
@@ -82,6 +82,7 @@ class DifferenceLag(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
+    @property
     def dependencies(self):
         return self.partition_cols
 

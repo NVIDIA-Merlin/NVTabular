@@ -14,9 +14,9 @@
 # limitations under the License.
 import numpy
 from dask.dataframe.utils import meta_nonempty
-from merlin.schema import Schema
 
-from nvtabular.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import DataFrameType, annotate
+from merlin.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -85,7 +85,7 @@ class Groupby(Operator):
             _aggs = v if isinstance(v, list) else [v]
             _conv_aggs, _list_aggs = set(), set()
             for _agg in _aggs:
-                if _is_list_agg(_agg):
+                if is_list_agg(_agg):
                     _list_aggs.add("list" if _agg == list else _agg)
                     _conv_aggs.add(list)
                 else:
@@ -171,7 +171,8 @@ class Groupby(Operator):
         is_lists = {"list": True}
 
         for col_name in input_schema.column_names:
-            combined_aggs = self.conv_aggs.get(col_name, []) + self.list_aggs.get(col_name, [])
+            combined_aggs = _aggs_for_column(col_name, self.conv_aggs)
+            combined_aggs += _aggs_for_column(col_name, self.list_aggs)
             for agg in combined_aggs:
                 if col_schema.name.endswith(f"{self.name_sep}{agg}"):
                     dtype = dtypes.get(agg, dtype)
@@ -179,6 +180,10 @@ class Groupby(Operator):
                     break
 
         return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
+
+
+def _aggs_for_column(col_name, agg_dict):
+    return agg_dict.get(col_name, []) + agg_dict.get("__all__", [])
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
@@ -204,7 +209,7 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
     # Handle custom aggs (e.g. "first" and "last")
     for col, aggs in _list_aggs.items():
         for _agg in aggs:
-            if _is_list_agg(_agg, custom=True):
+            if is_list_agg(_agg, custom=True):
                 df[f"{col}{name_sep}{_agg}"] = _first_or_last(df[f"{col}{name_sep}list"], _agg)
         if "list" not in aggs:
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
@@ -236,7 +241,7 @@ def _ensure_agg_dict(_aggs, _allowed_cols):
         return {k: v for k, v in _aggs.items() if k in _allowed_cols}
 
 
-def _is_list_agg(agg, custom=False):
+def is_list_agg(agg, custom=False):
     # check if `agg` is a supported list aggregation
     if custom:
         return agg in ("first", "last")

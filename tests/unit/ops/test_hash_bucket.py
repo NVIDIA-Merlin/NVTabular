@@ -17,8 +17,9 @@ import numpy as np
 import pytest
 
 import nvtabular as nvt
-from nvtabular import dispatch, ops
-from nvtabular.dispatch import HAS_GPU
+from merlin.core import dispatch
+from merlin.core.dispatch import HAS_GPU
+from nvtabular import ops
 
 if HAS_GPU:
     _CPU = [True, False]

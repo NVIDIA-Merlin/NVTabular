@@ -31,11 +31,10 @@ try:
 except ImportError:
     cudf = pd
 
-from merlin.io import Dataset
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     HAS_GPU,
     concat,
     create_multihot_col,
@@ -44,8 +43,8 @@ from nvtabular.dispatch import (
     make_series,
     pull_apart_list,
 )
-
-from ..utils import device_mem_size
+from merlin.core.utils import device_mem_size
+from merlin.io import Dataset
 
 
 class UniformDistro:

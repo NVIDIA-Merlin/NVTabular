@@ -18,11 +18,10 @@ import numpy as np
 import pandas as pd
 import pytest
 from dask.dataframe import assert_eq as assert_eq_dd
-from merlin.schema import Tags, TagSet
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-import nvtabular.io
+from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
 
 try:
@@ -48,7 +47,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     substring = ColumnSelector(["name-cat", "name-string"]) >> ops.LambdaOp(
         lambda col: col.str.slice(1, 3)
     )
-    processor = nvtabular.Workflow(substring)
+    processor = nvt.Workflow(substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -61,7 +60,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
         >> ops.LambdaOp(lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(substring + ["name-cat", "name-string"])
+    processor = nvt.Workflow(substring + ["name-cat", "name-string"])
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -85,7 +84,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     oplambda = ColumnSelector(["name-cat", "name-string"]) >> ops.LambdaOp(
         lambda col: col.str.replace("e", "XX")
     )
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -97,7 +96,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # astype
     # Replacement
     oplambda = ColumnSelector(["id"]) >> ops.LambdaOp(lambda col: col.astype(float))
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -110,7 +109,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
         >> ops.LambdaOp(lambda col: col.astype(str).str.slice(0, 1))
         >> ops.Categorify()
     )
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert is_integer_dtype(new_gdf["name-cat"].dtype)
@@ -118,7 +117,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     oplambda = (
         ColumnSelector(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
     )
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 

@@ -15,16 +15,17 @@
 #
 import dask.dataframe as dd
 import numpy
-from merlin.dag import Supports
-from merlin.schema import Tags
 
-from ..dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
     annotate,
     encode_list_column,
     flatten_list_column_values,
     is_list_dtype,
 )
+from merlin.dag import Supports
+from merlin.schema import Tags
+
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator

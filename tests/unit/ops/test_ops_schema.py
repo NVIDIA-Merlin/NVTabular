@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 import nvtabular as nvt
-from nvtabular import ColumnSchema, ColumnSelector, Schema, dispatch, ops
-from nvtabular.dispatch import HAS_GPU
+from merlin.core import dispatch
+from merlin.core.dispatch import HAS_GPU
+from nvtabular import ColumnSchema, ColumnSelector, Schema, ops
 
 
 @pytest.mark.parametrize("properties", [{}, {"p1": "1"}])
@@ -27,6 +28,12 @@ from nvtabular.dispatch import HAS_GPU
         ops.Normalize(),
         ops.TargetEncoding(["1"]),
         ops.AddMetadata(tags=["excellent"], properties={"domain": {"min": 0, "max": 20}}),
+        ops.AddTags(tags=["excellent"]),
+        ops.AddProperties(properties={"domain": {"min": 0, "max": 20}}),
+        ops.TagAsUserID(),
+        ops.TagAsItemID(),
+        ops.TagAsUserFeatures(),
+        ops.TagAsItemFeatures(),
         ops.ValueCount(),
     ],
 )
@@ -213,7 +220,7 @@ def test_ops_list_vc(properties, tags, op_routine):
         if HAS_GPU:
             assert embeddings_info["max"] == new_gdf[column_name]._column.elements.max() + 1
         else:
-            list_vals = nvt.dispatch.pull_apart_list(new_gdf[column_name])[0]
+            list_vals = dispatch.pull_apart_list(new_gdf[column_name])[0]
             assert embeddings_info["max"] == list_vals.max() + 1
         assert "value_count" in schema1.properties
         val_c = schema1.properties["value_count"]

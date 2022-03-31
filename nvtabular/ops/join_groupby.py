@@ -18,10 +18,10 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
-from merlin.schema import Schema
 
 import nvtabular as nvt
-from nvtabular.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
+from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
+from merlin.schema import Schema
 
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
@@ -209,6 +209,7 @@ class JoinGroupby(StatOperator):
         df.drop(columns=[tmp], inplace=True)
         return new_df
 
+    @property
     def dependencies(self):
         return self.cont_cols
 

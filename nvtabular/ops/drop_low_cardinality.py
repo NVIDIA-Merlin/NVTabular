@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema, Tags
 
-from ..dispatch import DataFrameType, annotate
 from .operator import ColumnSelector, Operator
 
 
@@ -45,3 +45,6 @@ class DropLowCardinality(Operator):
                     continue
             output_columns.append(col)
         return Schema(output_columns)
+
+    transform.__doc__ = Operator.transform.__doc__
+    compute_output_schema.__doc__ = Operator.compute_output_schema.__doc__

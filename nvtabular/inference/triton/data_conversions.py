@@ -34,9 +34,9 @@ except ImportError:
 
 import numpy as np
 import pandas as pd
-from merlin.dag import Supports
 
-from nvtabular.dispatch import build_cudf_list_column, is_list_dtype
+from merlin.core.dispatch import build_cudf_list_column, is_list_dtype
+from merlin.dag import Supports
 
 
 def convert_format(tensors, kind, target_kind):

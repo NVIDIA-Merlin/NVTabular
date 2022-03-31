@@ -21,6 +21,7 @@ import subprocess
 import time
 
 import pyarrow as pa
+
 from merlin.core.dispatch import HAS_GPU, make_df
 
 try:
@@ -39,8 +40,9 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
+from merlin.core import dispatch
+from merlin.io import Dataset
 from nvtabular import ColumnSelector, ops
-from nvtabular.io import Dataset
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
@@ -109,7 +111,7 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         if idx < all_len:
             for col in df_cols:
                 if col in chunk[0].keys():
-                    if nvt.dispatch.HAS_GPU:
+                    if dispatch.HAS_GPU:
                         assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
                     else:
                         assert (list(chunk[0][col].cpu().numpy()) == df[col].values).all()
@@ -125,7 +127,7 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     df_itr = make_df({})
     for data_gd in dataset.to_iter(columns=mycols_csv):
-        df_itr = nvt.dispatch.concat([df_itr, data_gd], axis=0) if df_itr is not None else data_gd
+        df_itr = dispatch.concat([df_itr, data_gd], axis=0) if df_itr is not None else data_gd
 
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 

@@ -15,6 +15,15 @@
 #
 
 # pylint: disable=wildcard-import,unused-import,unused-wildcard-import
+import warnings
 
 # Re-export classes/modules from the core library for backwards compatibility
 from merlin.core.utils import *  # noqa
+
+warnings.warn(
+    "The `nvtabular.utils` module has moved to `merlin.core.utils`. "
+    "Support for importing from `nvtabular.utils` is deprecated, "
+    "and will be removed in a future version. Please update "
+    "your imports to refer to `merlin.core.utils`.",
+    DeprecationWarning,
+)

@@ -17,10 +17,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from merlin.dag import BaseOperator, ColumnSelector
-
 import nvtabular as nvt
-from nvtabular.dispatch import DataFrameType
+from merlin.core.dispatch import DataFrameType
+from merlin.dag import BaseOperator, ColumnSelector
 
 
 class Operator(BaseOperator):
