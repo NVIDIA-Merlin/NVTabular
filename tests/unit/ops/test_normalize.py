@@ -100,7 +100,7 @@ def test_normalize_lists(tmpdir, cpu):
     workflow = nvt.Workflow(features)
     transformed = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
-    expected = flatten_list_column_values(df["vals"]).astype("float64")
+    expected = flatten_list_column_values(df["vals"])
     expected = (expected - expected.mean()) / expected.std()
     expected_df = type(transformed)({"vals": expected})
 
