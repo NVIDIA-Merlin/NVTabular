@@ -53,6 +53,11 @@
 <li class="toctree-l4"><a class="reference internal" href="#string-column-error">3. String Column Error</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#reducing-memory-consumption-for-nvtabular-dataloaders">Reducing Memory Consumption for NVTabular Dataloaders</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#row-group-size-for-the-parquet-files">1. Row Group Size for the Parquet Files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#setting-part-size-in-nvt-dataset">2. Setting <code class="docutils literal notranslate"><span class="pre">part_size</span></code> in nvt.Dataset</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="links.html">Presentations and Blog Posts</a></li>
@@ -196,6 +201,38 @@ you set for the NVTabular dataset such as <code class="docutils literal notransl
 </pre></div>
 </div>
 <p>This is usually caused by string columns in parquet files. If you encounter this error, to fix it you need to decrease the size of the partitions of your dataset. If, after decreasing the size of the partitions, you get a warning about picking a partition size smaller than the row group size, you will need to reformat the dataset with a smaller row group size (refer to #1). There is a 2GB max size for concatenated string columns in cudf currently, for details refer to <a class="reference external" href="https://github.com/rapidsai/cudf/issues/3958">this</a>.</p>
+</div>
+</div>
+<div class="section" id="reducing-memory-consumption-for-nvtabular-dataloaders">
+<h2>Reducing Memory Consumption for NVTabular Dataloaders<a class="headerlink" href="#reducing-memory-consumption-for-nvtabular-dataloaders" title="Permalink to this headline"></a></h2>
+<p>NVTabular dataloaders are designed to read data from disk directly into the GPU and prepare the batch. We see this process as really efficient, as the NVTabular dataloaders avoid any CPU-GPU communication and the data will be only processed by the GPU. On the other hand, the dataloader will require GPU memory to hold the data. In some cases, this can cause OOM errors to use NVTabular dataloader on the GPU and train a neural network on the GPU. We can adjust the GPU consumption of the NVTabular dataloader with following configurations.</p>
+<div class="section" id="row-group-size-for-the-parquet-files">
+<h3>1. Row Group Size for the Parquet Files<a class="headerlink" href="#row-group-size-for-the-parquet-files" title="Permalink to this headline"></a></h3>
+<p>It is important that the input parquet files are correctly configured. If you use NVTabular ETL to transform your data, then NVTabular will use the best configuration by default. If you do not use NVTabular ETL, you can take a look on the section above <code class="docutils literal notranslate"><span class="pre">Reducing</span> <span class="pre">Memory</span> <span class="pre">Consumption</span> <span class="pre">for</span> <span class="pre">NVTabular</span> <span class="pre">Workflows</span></code>.</p>
+</div>
+<div class="section" id="setting-part-size-in-nvt-dataset">
+<h3>2. Setting <code class="docutils literal notranslate"><span class="pre">part_size</span></code> in nvt.Dataset<a class="headerlink" href="#setting-part-size-in-nvt-dataset" title="Permalink to this headline"></a></h3>
+<p>The class nvt.Dataset abstracts the dataset to a common object. It will read the data from disk into chunks. The parameter <code class="docutils literal notranslate"><span class="pre">part_size</span></code> defines the desired size of each dask partition. You can reduce the GPU memory consumption of the NVTabular dataloader by changing the parameter. This can effect the speed how fast NVTabular dataloader can read the data, but it should not be significant in comparison to updating the neural network parameters. You can try out different values, such as <code class="docutils literal notranslate"><span class="pre">100MB</span></code>, <code class="docutils literal notranslate"><span class="pre">300MB</span></code> or <code class="docutils literal notranslate"><span class="pre">1000MB</span></code>.</p>
+<p>PyTorch:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">train_loader</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_files</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;300MB&quot;</span><span class="p">),</span> 
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="o">*</span><span class="mi">64</span><span class="p">,</span> 
+    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span> 
+    <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span> 
+    <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>TensorFlow:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">train_loader</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_files</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;300MB&quot;</span><span class="p">),</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>
