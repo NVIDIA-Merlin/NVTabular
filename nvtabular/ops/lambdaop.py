@@ -15,7 +15,8 @@
 #
 from inspect import getsourcelines, signature
 
-from ..dispatch import DataFrameType, annotate
+from merlin.core.dispatch import DataFrameType, annotate
+
 from .operator import ColumnSelector, Operator
 
 

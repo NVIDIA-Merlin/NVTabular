@@ -31,6 +31,7 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
+from merlin.core import dispatch
 from merlin.core.dispatch import HAS_GPU, make_df
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes
@@ -156,21 +157,19 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = nvt.dispatch.concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = dispatch.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = nvt.dispatch.read_parquet_metadata(
-        str(tmpdir) + "/_metadata"
-    )
+    num_rows, num_row_groups, col_names = dispatch.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
 
 
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_dataset_iterator_csv(df, dataset, engine):
-    df_itr = nvt.dispatch.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
+    df_itr = dispatch.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
@@ -248,14 +247,12 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = nvt.dispatch.concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = dispatch.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
-    num_rows, num_row_groups, col_names = nvt.dispatch.read_parquet_metadata(
-        str(tmpdir) + "/_metadata"
-    )
+    num_rows, num_row_groups, col_names = dispatch.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
 
 
@@ -333,15 +330,13 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = nvt.dispatch.concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = dispatch.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = nvt.dispatch.read_parquet_metadata(
-        str(tmpdir) + "/_metadata"
-    )
+    num_rows, num_row_groups, col_names = dispatch.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
 
 
@@ -376,7 +371,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     assert os.path.exists(meta_path)
 
     # Make sure _metadata makes sense
-    _metadata = nvt.dispatch.read_parquet_metadata(meta_path)
+    _metadata = dispatch.read_parquet_metadata(meta_path)
     assert _metadata[0] == size
     assert _metadata[2] == columns
 
@@ -483,7 +478,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
 
     # Check dtypes
     for filename in glob.glob(os.path.join(out_path, "*.parquet")):
-        gdf = nvt.dispatch.read_dispatch(filename)(filename)
+        gdf = dispatch.read_dispatch(filename)(filename)
         assert dict(gdf.dtypes) == dict_dtypes
 
 

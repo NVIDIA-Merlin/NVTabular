@@ -17,9 +17,15 @@ from typing import Dict, Union
 
 import numpy
 
+from merlin.core.dispatch import (
+    DataFrameType,
+    annotate,
+    encode_list_column,
+    hash_series,
+    is_list_dtype,
+)
 from merlin.schema import Tags
 
-from ..dispatch import DataFrameType, annotate, encode_list_column, hash_series, is_list_dtype
 from .categorify import _emb_sz_rule
 from .operator import ColumnSelector, Operator
 
