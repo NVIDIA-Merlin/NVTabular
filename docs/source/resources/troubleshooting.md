@@ -92,4 +92,41 @@ If you run into a problem an error that states the size of your string column is
 ```
 Exception: RuntimeError('cuDF failure at: /opt/conda/envs/rapids/conda-bld/libcudf_1618503955512/work/cpp/src/copying/concatenate.cu:368: Total number of concatenated rows exceeds size_type range')
 ```
-This is usually caused by string columns in parquet files. If you encounter this error, to fix it you need to decrease the size of the partitions of your dataset. If, after decreasing the size of the partitions, you get a warning about picking a partition size smaller than the row group size, you will need to reformat the dataset with a smaller row group size (refer to #1). There is a 2GB max size for concatenated string columns in cudf currently, for details refer to [this](https://github.com/rapidsai/cudf/issues/3958).   
+This is usually caused by string columns in parquet files. If you encounter this error, to fix it you need to decrease the size of the partitions of your dataset. If, after decreasing the size of the partitions, you get a warning about picking a partition size smaller than the row group size, you will need to reformat the dataset with a smaller row group size (refer to #1). There is a 2GB max size for concatenated string columns in cudf currently, for details refer to [this](https://github.com/rapidsai/cudf/issues/3958). 
+
+## Reducing Memory Consumption for NVTabular Dataloaders
+
+NVTabular dataloaders are designed to read data from disk directly into the GPU and prepare the batch. We see this process as really efficient, as the NVTabular dataloaders avoid any CPU-GPU communication and the data will be only processed by the GPU. On the other hand, the dataloader will require GPU memory to hold the data. In some cases, this can cause OOM errors to use NVTabular dataloader on the GPU and train a neural network on the GPU. We can adjust the GPU consumption of the NVTabular dataloader with following configurations.
+
+### 1. Row Group Size for the Parquet Files
+
+It is important that the input parquet files are correctly configured. If you use NVTabular ETL to transform your data, then NVTabular will use the best configuration by default. If you do not use NVTabular ETL, you can take a look on the section above `Reducing Memory Consumption for NVTabular Workflows`.
+
+### 2. Setting `part_size` in nvt.Dataset
+
+The class nvt.Dataset abstracts the dataset to a common object. It will read the data from disk into chunks. The parameter `part_size` defines the desired size of each dask partition. You can reduce the GPU memory consumption of the NVTabular dataloader by changing the parameter. This can effect the speed how fast NVTabular dataloader can read the data, but it should not be significant in comparison to updating the neural network parameters. You can try out different values, such as `100MB`, `300MB` or `1000MB`.
+
+PyTorch:
+
+```python
+train_loader = TorchAsyncItr(
+    nvt.Dataset(train_files, part_size="300MB"), 
+    batch_size=1024*64, 
+    cats=CATEGORICAL_COLUMNS, 
+    conts=CONTINUOUS_COLUMNS, 
+    labels=LABEL_COLUMNS
+)
+```
+
+TensorFlow:
+
+```python
+train_loader = KerasSequenceLoader(
+    nvt.Dataset(train_files, part_size="300MB"),
+    batch_size=BATCH_SIZE,
+    label_names=LABEL_COLUMNS,
+    cat_names=CATEGORICAL_COLUMNS,
+    cont_names=CONTINUOUS_COLUMNS
+)
+```
+

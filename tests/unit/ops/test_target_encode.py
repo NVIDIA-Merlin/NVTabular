@@ -22,7 +22,8 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-from nvtabular import ColumnSelector, dispatch, ops
+from merlin.core import dispatch
+from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq
 
 try:

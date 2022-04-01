@@ -2,6 +2,19 @@
 
 We have created a collection of Jupyter notebooks based on different datasets. These example notebooks demonstrate how to use NVTabular with TensorFlow, PyTorch, and [HugeCTR](https://github.com/NVIDIA/HugeCTR). Each example provides additional information about NVTabular's features.
 
+If you'd like to create a full conda environment to run the example notebooks, do the following:
+
+1. Use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) that have been provided to install the CUDA Toolkit (11.0 or 11.2).
+2. Clone the NVTabular repo and run the following commands from the root directory:
+   ```bash
+   conda env create -f=conda/environments/nvtabular_dev_cuda11.2.yml
+   conda activate nvtabular_dev_11.2
+   python -m ipykernel install --user --name=nvt
+   pip install -e .
+   jupyter notebook
+   ```
+   When opening a notebook, be sure to select `nvt` from the `Kernel->Change Kernel` menu.
+
 ## Structure
 
 The example notebooks are structured as follows and should be reviewed in this order:
