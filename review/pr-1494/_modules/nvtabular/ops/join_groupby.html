@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.ops.join_groupby &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>nvtabular.ops.join_groupby</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nvtabular.ops.join_groupby</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">Delayed</span>
+
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">arange</span><span class="p">,</span> <span class="n">concat_columns</span><span class="p">,</span> <span class="n">read_parquet_dispatch</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">categorify</span> <span class="k">as</span> <span class="n">nvt_cat</span>
+<span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
+<span class="kn">from</span> <span class="nn">.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
+
+<span class="n">AGG_DTYPES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
+    <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="s2">&quot;var&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="JoinGroupby"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby">[docs]</a><span class="k">class</span> <span class="nc">JoinGroupby</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    One of the ways to create new features is to calculate</span>
+<span class="sd">    the basic statistics of the data that is grouped by categorical</span>
+<span class="sd">    features. This operator groups the data by the given categorical</span>
+<span class="sd">    feature(s) and calculates the desired statistics of requested continuous</span>
+<span class="sd">    features (along with the count of rows in each group). The aggregated</span>
+<span class="sd">    statistics are merged with the data (by joining on the desired</span>
+<span class="sd">    categorical columns).</span>
+
+<span class="sd">    Example usage::</span>
+
+<span class="sd">        # Use JoinGroupby to define a NVTabular workflow</span>
+<span class="sd">        groupby_features = [&#39;cat1&#39;, &#39;cat2&#39;, &#39;cat3&#39;] &gt;&gt; ops.JoinGroupby(</span>
+<span class="sd">            out_path=str(tmpdir), stats=[&#39;sum&#39;,&#39;count&#39;], cont_cols=[&#39;num1&#39;]</span>
+<span class="sd">        )</span>
+<span class="sd">        processor = nvtabular.Workflow(groupby_features)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    cont_cols : list of str or WorkflowNode</span>
+<span class="sd">        The continuous columns to calculate statistics for</span>
+<span class="sd">        (for each unique group in each column in `columns`).</span>
+<span class="sd">    stats : list of str, default []</span>
+<span class="sd">        List of statistics to calculate for each unique group. Note</span>
+<span class="sd">        that &quot;count&quot; corresponds to the group itself, while all</span>
+<span class="sd">        other statistics correspond to a specific continuous column.</span>
+<span class="sd">        Supported statistics include [&quot;count&quot;, &quot;sum&quot;, &quot;mean&quot;, &quot;std&quot;, &quot;var&quot;].</span>
+<span class="sd">    tree_width : dict or int, optional</span>
+<span class="sd">        Tree width of the hash-based groupby reduction for each categorical</span>
+<span class="sd">        column. High-cardinality columns may require a large `tree_width`,</span>
+<span class="sd">        while low-cardinality columns can likely use `tree_width=1`.</span>
+<span class="sd">        If passing a dict, each key and value should correspond to the column</span>
+<span class="sd">        name and width, respectively. The default value is 8 for all columns.</span>
+<span class="sd">    cat_cache: ToDo Describe</span>
+<span class="sd">        TEXT</span>
+<span class="sd">    out_path : str, optional</span>
+<span class="sd">        Root directory where groupby statistics will be written out in</span>
+<span class="sd">        parquet format.</span>
+<span class="sd">    on_host : bool, default True</span>
+<span class="sd">        Whether to convert cudf data to pandas between tasks in the hash-based</span>
+<span class="sd">        groupby reduction. The extra host &lt;-&gt; device data movement can reduce</span>
+<span class="sd">        performance.  However, using `on_host=True` typically improves stability</span>
+<span class="sd">        (by avoiding device-level memory pressure).</span>
+<span class="sd">    name_sep : str, default &quot;_&quot;</span>
+<span class="sd">        String separator to use between concatenated column names</span>
+<span class="sd">        for multi-column groups.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cont_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">stats</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;count&quot;</span><span class="p">,),</span>
+        <span class="n">tree_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">cat_cache</span><span class="o">=</span><span class="s2">&quot;host&quot;</span><span class="p">,</span>
+        <span class="n">out_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">on_host</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span> <span class="o">=</span> <span class="n">name_sep</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">stats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tree_width</span> <span class="o">=</span> <span class="n">tree_width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">out_path</span> <span class="ow">or</span> <span class="s2">&quot;./&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span> <span class="o">=</span> <span class="n">on_host</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span> <span class="o">=</span> <span class="n">cat_cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cont_cols</span><span class="p">,</span> <span class="n">nvt</span><span class="o">.</span><span class="n">WorkflowNode</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span> <span class="o">=</span> <span class="n">cont_cols</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cont_cols</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span> <span class="o">=</span> <span class="n">cont_cols</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">cont_cols</span><span class="p">)</span>
+
+        <span class="n">supported_ops</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="s2">&quot;sum&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="s2">&quot;var&quot;</span><span class="p">,</span> <span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">op</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">supported_ops</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">op</span> <span class="o">+</span> <span class="s2">&quot; operation is not supported.&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cont_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span><span class="o">.</span><span class="n">output_schema</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span><span class="o">.</span><span class="n">output_columns</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;Can&#39;t compute continuous columns used by `JoinGroupby` &quot;</span>
+                <span class="s2">&quot;until `Workflow` is fit to dataset or schema.&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="JoinGroupby.fit"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">subgroups</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">group</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="c1"># Check metadata type to reset on_host and cat_cache if the</span>
+        <span class="c1"># underlying ddf is already a pandas-backed collection</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># Cannot use &quot;device&quot; caching if the data is pandas-backed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span> <span class="o">=</span> <span class="s2">&quot;host&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span> <span class="o">==</span> <span class="s2">&quot;device&quot;</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span>
+
+        <span class="n">dsk</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_category_stats</span><span class="p">(</span>
+            <span class="n">ddf</span><span class="p">,</span>
+            <span class="n">nvt_cat</span><span class="o">.</span><span class="n">FitOptions</span><span class="p">(</span>
+                <span class="n">col_selector</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cont_names</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span>
+                <span class="mi">0</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tree_width</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span><span class="p">,</span>
+                <span class="n">concat_groups</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Delayed</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">dsk</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="JoinGroupby.fit_finalize"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">dask_stats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="p">[</span><span class="n">col</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="JoinGroupby.transform"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
+        <span class="n">new_df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="s2">&quot;__tmp__&quot;</span>  <span class="c1"># Temporary column for sorting</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">tmp</span><span class="p">]</span> <span class="o">=</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
+
+        <span class="n">cat_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">multi_col_group</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_name</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cat_names</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_name</span><span class="p">):</span>
+                    <span class="n">cat_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">multi_col_group</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">col_name</span>
+            <span class="k">elif</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">cat_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col_name</span><span class="p">)</span>
+
+        <span class="n">_read_pq_func</span> <span class="o">=</span> <span class="n">read_parquet_dispatch</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">cat_names</span><span class="p">:</span>
+            <span class="n">new_part</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
+            <span class="n">storage_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">multi_col_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">storage_name</span><span class="p">]</span>
+            <span class="n">selection_l</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">selection_r</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">storage_name</span><span class="p">]</span>
+
+            <span class="n">stat_df</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_read_groupby_stat_df</span><span class="p">(</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">storage_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span><span class="p">,</span> <span class="n">_read_pq_func</span>
+            <span class="p">)</span>
+            <span class="n">tran_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">selection_l</span> <span class="o">+</span> <span class="p">[</span><span class="n">tmp</span><span class="p">]]</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="n">stat_df</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="n">selection_l</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="n">selection_r</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+            <span class="p">)</span>
+            <span class="n">tran_df</span> <span class="o">=</span> <span class="n">tran_df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+            <span class="n">tran_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">selection_l</span> <span class="o">+</span> <span class="p">[</span><span class="n">tmp</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">new_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">tran_df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">new_df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+            <span class="n">new_part</span> <span class="o">=</span> <span class="n">tran_df</span><span class="p">[</span><span class="n">new_cols</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">new_part</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">agg</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">AGG_DTYPES</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                        <span class="n">new_dtype</span> <span class="o">=</span> <span class="n">AGG_DTYPES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="n">new_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                        <span class="n">new_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">new_dtype</span><span class="p">)</span>
+            <span class="n">new_df</span> <span class="o">=</span> <span class="n">concat_columns</span><span class="p">([</span><span class="n">new_df</span><span class="p">,</span> <span class="n">new_part</span><span class="p">])</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">tmp</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_df</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span>
+
+<div class="viewcode-block" id="JoinGroupby.compute_selector"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">parents_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">dependencies_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">parents_selector</span><span class="p">,</span> <span class="s2">&quot;computing input selector&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parents_selector</span></div>
+
+<div class="viewcode-block" id="JoinGroupby.column_mapping"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">group</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">group</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">group</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">cont</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cont_names</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">stat</span> <span class="o">==</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span>
+                        <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">stat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">group</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cont</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">stat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">cont</span><span class="p">,</span> <span class="o">*</span><span class="n">group</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">new_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">new_schema</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="n">is_list</span> <span class="o">=</span> <span class="n">new_schema</span><span class="o">.</span><span class="n">is_list</span>
+
+        <span class="k">for</span> <span class="n">agg</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">AGG_DTYPES</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                <span class="n">dtype</span> <span class="o">=</span> <span class="n">AGG_DTYPES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+                <span class="n">is_list</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="n">is_list</span><span class="p">,</span> <span class="n">is_ragged</span><span class="o">=</span><span class="n">is_list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="JoinGroupby.set_storage_path"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_copy_storage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">new_path</span></div>
+
+<div class="viewcode-block" id="JoinGroupby.clear"><a class="viewcode-back" href="../../../api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
+    <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
+    <span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
