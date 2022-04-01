@@ -94,16 +94,19 @@ class Normalize(StatOperator):
         )
 
     def clear(self):
+        """Clear previously recorded stats"""
         self.means = {}
         self.stds = {}
 
     @property
     def output_tags(self):
+        """The output tags for this operator."""
         return [Tags.CONTINUOUS]
 
     @property
     def output_dtype(self):
-        return numpy.float64
+        """The output dtype of the operator."""
+        return numpy.float32
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -159,6 +162,7 @@ class NormalizeMinMax(StatOperator):
             self.maxs[col] = dask_stats["maxs"][col]
 
     def clear(self):
+        """Clear previously recorded stats"""
         self.mins = {}
         self.maxs = {}
 
@@ -173,11 +177,13 @@ class NormalizeMinMax(StatOperator):
 
     @property
     def output_tags(self):
+        """The output tags for this operator."""
         return [Tags.CONTINUOUS]
 
     @property
     def output_dtype(self):
-        return numpy.float64
+        """The output dtype of the operator."""
+        return numpy.float32
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
