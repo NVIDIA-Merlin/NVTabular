@@ -59,7 +59,8 @@ NVTabular can be installed with `pip` by running the following command:
 pip install nvtabular
 ```
 
-Note: Installing NVTabular with Pip will require installing some additional dependencies (like CUDA Toolkit) manually. Prefer either Conda or Docker where possible.
+> Installing NVTabular with Pip causes NVTabular to run on the CPU only and might require installing additional dependencies manually.
+> When you run NVTabular in one of our Docker containers, the dependencies are already installed.
 
 #### Installing NVTabular with Docker
 
