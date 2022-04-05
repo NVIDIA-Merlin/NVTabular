@@ -13,3 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+import warnings
+
+warnings.warn(
+    "The `nvtabular.loader` module has moved to `merlin.models.loader`. "
+    "Support for importing from `nvtabular.loader` is deprecated, "
+    "and will be removed in a future version. Please update "
+    "your imports to refer to `merlin.models.loader`.",
+    DeprecationWarning,
+)

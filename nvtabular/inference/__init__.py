@@ -12,3 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import warnings
+
+warnings.warn(
+    "The `nvtabular.inference` module is being replaced by the Merlin Systems library. "
+    "Support for importing from `nvtabular.inference` is deprecated, "
+    "and will be removed in a future version. Please consider using the "
+    "models and layers from Merlin Systems instead.",
+    DeprecationWarning,
+)
