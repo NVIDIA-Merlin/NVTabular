@@ -1,4 +1,5 @@
-# Copyright (c) 2021, NVIDIA CORPORATION.
+#
+# Copyright (c) 2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import warnings
 
-warnings.warn(
-    "The `nvtabular.inference` module is being replaced by the Merlin Systems library. "
-    "Support for importing from `nvtabular.inference` is deprecated, "
-    "and will be removed in a future version. Please consider using the "
-    "models and layers from Merlin Systems instead.",
-    DeprecationWarning,
-)
+# pylint: disable=wildcard-import
+
+from nvtabular.ops import *  # noqa
