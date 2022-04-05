@@ -13,3 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import warnings
+
+warnings.warn(
+    "The `nvtabular.framework_utils` module is being replaced by the Merlin Models library. "
+    "Support for importing from `nvtabular.framework_utils` is deprecated, "
+    "and will be removed in a future version. Please consider using the "
+    "models and layers from Merlin Models instead.",
+    DeprecationWarning,
+)
