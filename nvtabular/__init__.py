@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, NVIDIA CORPORATION.
+# Copyright (c) 2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,14 @@
 #
 import warnings
 
-from . import columns, io, workflow  # noqa
+# this is to mimic the previous API, but all of these should probably be removed
+import merlin.dag as graph  # noqa
+from merlin import io
+from merlin.core import dispatch, utils  # noqa
+from merlin.dag import ColumnSelector
+from merlin.schema import ColumnSchema, Schema
+
+from . import workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -25,11 +32,10 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 
 
 WorkflowNode = workflow.WorkflowNode
-ColumnSelector = columns.selector.ColumnSelector
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
-ColumnSchema = columns.schema.ColumnSchema
-Schema = columns.schema.Schema
+Distributed = utils.Distributed
+Serial = utils.Serial
 
 
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to
@@ -47,6 +53,8 @@ __all__ = [
     "ColumnSelector",
     "ColumnSchema",
     "Schema",
+    "Distributed",
+    "Serial",
 ]
 
 # cudf warns about column ordering with dlpack methods, ignore it

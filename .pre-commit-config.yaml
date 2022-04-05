@@ -17,6 +17,12 @@ repos:
         rev: pylint-2.7.4
         hooks:
         - id: pylint
+      - repo: https://github.com/econchick/interrogate
+        rev: 1.5.0
+        hooks:
+        - id: interrogate
+          exclude: ^(docs|bench|examples|tests|setup.py|versioneer.py)
+          args: [--config=pyproject.toml]
       - repo: https://github.com/codespell-project/codespell
         rev: v2.1.0
         hooks:

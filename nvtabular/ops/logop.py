@@ -15,15 +15,15 @@
 #
 import numpy as np
 
-from nvtabular.dispatch import (
+from merlin.core.dispatch import (
     DataFrameType,
-    _encode_list_column,
-    _flatten_list_column_values,
-    _is_list_dtype,
     annotate,
+    encode_list_column,
+    flatten_list_column_values,
+    is_list_dtype,
 )
+from merlin.schema import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -44,17 +44,21 @@ class LogOp(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         for name in col_selector.names:
             column = df[name]
-            if _is_list_dtype(column):
-                transformed = np.log(_flatten_list_column_values(column).astype(np.float32) + 1)
-                df[name] = _encode_list_column(column, transformed)
+            if is_list_dtype(column):
+                transformed = np.log(
+                    flatten_list_column_values(column).astype(self.output_dtype) + 1
+                )
+                df[name] = encode_list_column(column, transformed)
             else:
-                df[name] = np.log(column.astype(np.float32) + 1)
+                df[name] = np.log(column.astype(self.output_dtype) + 1)
         return df
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
+    @property
     def output_dtype(self):
-        return np.float
+        return np.float32
 
     transform.__doc__ = Operator.transform.__doc__

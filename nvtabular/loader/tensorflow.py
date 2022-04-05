@@ -14,31 +14,47 @@
 # limitations under the License.
 #
 import contextlib
+import logging
 import os
 
+import dask.dataframe as dd
 import numpy as np
-import tensorflow as tf
 
-from nvtabular.dispatch import HAS_GPU
-from nvtabular.io.dataset import Dataset
+from merlin.core.dispatch import HAS_GPU
+from merlin.schema import Tags
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
-from nvtabular.ops import _get_embedding_order
-from nvtabular.tags import Tags
 
 from_dlpack = configure_tensorflow()
+LOG = logging.getLogger("nvtabular")
+# tf import must happen after config to restrict memory use
+import tensorflow as tf  # noqa
 
+# noqa
+try:
+    from merlin.io import Dataset
+
+    nvt_dataset_class = Dataset
+except ImportError:
+    nvt_dataset_class = None
 # pylint has issues with TF array ops, so disable checks until fixed:
 # https://github.com/PyCQA/pylint/issues/3613
 # pylint: disable=no-value-for-parameter,unexpected-keyword-arg,redundant-keyword-arg
 
 
-def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
+dd_engine = {
+    "parquet": dd.read_parquet,
+    "csv": dd.read_csv,
+    "df": dd.DataFrame,
+}
+
+
+def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, device, reader_kwargs):
     # TODO: put this in parent class and allow
     # torch dataset to leverage as well?
 
     # if a dataset was passed, just return it
-    if isinstance(paths_or_dataset, Dataset):
+    if hasattr(paths_or_dataset, "schema"):
         return paths_or_dataset
 
     # otherwise initialize a dataset
@@ -57,27 +73,28 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
     if len(files) == 0:
         raise ValueError(_is_empty_msg)
 
-    # implement buffer size logic
-    # TODO: IMPORTANT
-    # should we divide everything by 3 to account
-    # for extra copies laying around due to asynchronicity?
-    reader_kwargs = reader_kwargs or {}
-    if buffer_size >= 1:
-        if buffer_size < batch_size:
-            reader_kwargs["batch_size"] = int(batch_size * buffer_size)
-        else:
-            reader_kwargs["batch_size"] = buffer_size
+    if not engine:
+        # default engine is parquet
+        engine = "parquet"
+
+    cpu = device and "cpu" in device
+
+    if nvt_dataset_class:
+        return nvt_dataset_class(files, engine=engine, cpu=cpu)
     else:
-        reader_kwargs["part_mem_fraction"] = buffer_size
-    return Dataset(files, engine=engine, **reader_kwargs)
+        LOG.warning(
+            "NVTabular Dataset class not detected, reverting to Dask Dataframe."
+            "Expect slower iteration speeds."
+        )
+    return dd_engine[engine](files)
 
 
 def _validate_schema(feature_columns, cat_names, cont_names, schema=None):
     _uses_feature_columns = feature_columns is not None
     _uses_explicit_schema = (cat_names is not None) or (cont_names is not None)
 
-    cat_tag_names = schema.select_by_tag([Tags.CATEGORICAL]).column_names
-    cont_tag_names = schema.select_by_tag([Tags.CONTINUOUS]).column_names
+    cat_tag_names = schema.select_by_tag([Tags.CATEGORICAL]).column_names if schema else []
+    cont_tag_names = schema.select_by_tag([Tags.CONTINUOUS]).column_names if schema else []
     _uses_dataset_schema = cat_tag_names or cont_tag_names
 
     if _uses_feature_columns and _uses_explicit_schema:
@@ -99,6 +116,12 @@ def _validate_schema(feature_columns, cat_names, cont_names, schema=None):
             "Must either pass a list of TensorFlow `feature_column`s "
             "or explicit `cat_name` and `cont_name` column name lists."
         )
+
+
+def _get_schema(dataset):
+    if hasattr(dataset, "schema"):
+        return dataset.schema
+    return None
 
 
 class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
@@ -230,21 +253,18 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        schema=None,
     ):
-        dataset = _validate_dataset(
-            paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
-        )
-        cat_names, cont_names = _validate_schema(
-            feature_columns, cat_names, cont_names, schema=dataset.schema
-        )
-
-        # sort the columns to avoid getting incorrect output
-        # (https://github.com/NVIDIA/NVTabular/issues/412)
-        cat_names = _get_embedding_order(cat_names)
-        cont_names = _get_embedding_order(cont_names)
-
         device = device or 0
         device = "cpu" if not HAS_GPU else device
+        dataset = _validate_dataset(
+            paths_or_dataset, batch_size, buffer_size, engine, device, reader_kwargs
+        )
+        schema = _get_schema(dataset) if not schema else schema
+        cat_names, cont_names = _validate_schema(
+            feature_columns, cat_names, cont_names, schema=schema
+        )
+
         DataLoader.__init__(
             self,
             dataset,

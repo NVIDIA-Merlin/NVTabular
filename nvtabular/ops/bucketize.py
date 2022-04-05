@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distutils.version import LooseVersion
-
 import numpy as np
+from packaging.version import Version
 
-from nvtabular.dispatch import DataFrameType, _array, annotate
+from merlin.core.dispatch import DataFrameType, annotate, array
+from merlin.schema import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -49,7 +48,7 @@ class Bucketize(Operator):
         try:
             import cupy
 
-            self.use_digitize = LooseVersion(cupy.__version__) >= "8.0.0"
+            self.use_digitize = Version(cupy.__version__) >= Version("8.0.0")
         except ImportError:
             # Assume cpu-backed data (since cupy is not even installed)
             self.use_digitize = True
@@ -75,7 +74,7 @@ class Bucketize(Operator):
             if self.use_digitize:
                 new_df[col] = np.digitize(
                     df[col].values,
-                    _array(b, like_df=df),
+                    array(b, like_df=df),
                     right=False,
                 )
             else:
@@ -83,14 +82,17 @@ class Bucketize(Operator):
                 # once cupy>=8.0.0 is required.
                 val = 0
                 for boundary in b:
-                    val += (df[col] >= boundary).astype("int")
+                    val += df[col] >= boundary
                 new_df[col] = val
+            new_df[col] = new_df[col].astype(self.output_dtype)
         return new_df
 
+    @property
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return np.int64
+    @property
+    def output_dtype(self):
+        return np.int32
 
     transform.__doc__ = Operator.transform.__doc__

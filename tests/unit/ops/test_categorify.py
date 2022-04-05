@@ -21,7 +21,9 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-from nvtabular import ColumnSelector, dispatch, ops
+from merlin.core import dispatch
+from merlin.core.dispatch import make_df
+from nvtabular import ColumnSelector, ops
 from nvtabular.ops.categorify import get_embedding_sizes
 
 try:
@@ -36,7 +38,8 @@ except ImportError:
 
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("include_nulls", [True, False])
-def test_categorify_size(tmpdir, cpu, include_nulls):
+@pytest.mark.parametrize("cardinality_memory_limit", [None, "24B"])
+def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
     num_rows = 50
     num_distinct = 10
 
@@ -44,17 +47,26 @@ def test_categorify_size(tmpdir, cpu, include_nulls):
     if include_nulls:
         possible_session_ids.append(None)
 
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {"session_id": [random.choice(possible_session_ids) for _ in range(num_rows)]},
         device="cpu" if cpu else None,
     )
 
-    cat_features = ["session_id"] >> nvt.ops.Categorify(out_path=str(tmpdir))
+    cat_features = ["session_id"] >> nvt.ops.Categorify(
+        out_path=str(tmpdir),
+        cardinality_memory_limit=cardinality_memory_limit,
+    )
     workflow = nvt.Workflow(cat_features)
-    workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    if cardinality_memory_limit:
+        # We set an artificially-low `cardinality_memory_limit`
+        # argument to ensure that a UserWarning will be thrown
+        with pytest.warns(UserWarning):
+            workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    else:
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     vals = df["session_id"].value_counts()
-    vocab = dispatch._read_dispatch(cpu=cpu)(
+    vocab = dispatch.read_dispatch(cpu=cpu)(
         os.path.join(tmpdir, "categories", "unique.session_id.parquet")
     )
 
@@ -66,12 +78,17 @@ def test_categorify_size(tmpdir, cpu, include_nulls):
             if size
         }
     else:
+        # Ignore first element if it is NaN
+        if vocab["session_id"].iloc[:1].isna().any():
+            session_id = vocab["session_id"].iloc[1:]
+            session_id_size = vocab["session_id_size"].iloc[1:]
+        else:
+            session_id = vocab["session_id"]
+            session_id_size = vocab["session_id_size"]
         expected = dict(zip(vals.index.values_host, vals.values_host))
         computed = {
             session: size
-            for session, size in zip(
-                vocab["session_id"].values_host, vocab["session_id_size"].values_host
-            )
+            for session, size in zip(session_id.values_host, session_id_size.values_host)
             if size
         }
     first_key = list(computed.keys())[0]
@@ -81,7 +98,7 @@ def test_categorify_size(tmpdir, cpu, include_nulls):
 
 
 def test_na_value_count(tmpdir):
-    gdf = dispatch._make_df(
+    gdf = dispatch.make_df(
         {
             "productID": ["B00406YHLI"] * 5
             + ["B002YXS8E6"] * 5
@@ -97,10 +114,10 @@ def test_na_value_count(tmpdir):
     workflow.fit(train_dataset)
     workflow.transform(train_dataset).to_ddf().compute()
 
-    single_cat = dispatch._read_dispatch("./categories/unique.brand.parquet")(
+    single_cat = dispatch.read_dispatch("./categories/unique.brand.parquet")(
         "./categories/unique.brand.parquet"
     )
-    second_cat = dispatch._read_dispatch("./categories/unique.productID.parquet")(
+    second_cat = dispatch.read_dispatch("./categories/unique.productID.parquet")(
         "./categories/unique.productID.parquet"
     )
     assert single_cat["brand_size"][0] == 5
@@ -112,7 +129,7 @@ def test_na_value_count(tmpdir):
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
 @pytest.mark.parametrize("vocabs", [None, {"Authors": pd.Series([f"User_{x}" for x in "ACBE"])}])
 def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -146,7 +163,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("start_index", [1, 2, 16])
 def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -245,16 +262,78 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
 
 
 @pytest.mark.parametrize("cpu", _CPU)
-def test_categorify_multi_combo(tmpdir, cpu):
-    cat_names = [["Author", "Engaging User"], ["Author"], "Engaging User"]
-    kind = "combo"
-    df = pd.DataFrame(
+@pytest.mark.parametrize(
+    "cat_names",
+    [
+        [["Author", "Engaging User"], ["Author"], ["Engaging User"]],
+        [["Author", "Engaging User"], ["Author"], "Engaging User"],
+        [["Author", "Engaging User"], "Author", ["Engaging User"]],
+        [["Author", "Engaging User"], "Author", "Engaging User"],
+    ],
+)
+@pytest.mark.parametrize(
+    "input_with_output",
+    [
+        # dupes in both Author
         {
-            "Author": ["User_A", "User_E", "User_B", "User_C"],
-            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
-            "Post": [1, 2, 3, 4],
-        }
-    )
+            "df_data": {
+                "Author": ["User_B", "User_E", "User_B", "User_C"],
+                "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [1, 3, 1, 2],
+            "expected_e": [3, 2, 1, 4],
+            "expected_ae": [2, 4, 1, 3],
+        },
+        # dupes in both Engaging user
+        {
+            "df_data": {
+                "Author": ["User_A", "User_E", "User_B", "User_C"],
+                "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [1, 4, 2, 3],
+            "expected_e": [1, 1, 2, 3],
+            "expected_ae": [1, 4, 2, 3],
+        },
+        # dupes in both Author and Engaging User
+        {
+            "df_data": {
+                "Author": ["User_C", "User_E", "User_B", "User_C"],
+                "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [1, 3, 2, 1],
+            "expected_e": [1, 1, 2, 3],
+            "expected_ae": [2, 4, 1, 3],
+        },
+        # dupes in both, lining up
+        {
+            "df_data": {
+                "Author": ["User_A", "User_B", "User_C", "User_C"],
+                "Engaging User": ["User_A", "User_B", "User_C", "User_C"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [2, 3, 1, 1],
+            "expected_e": [2, 3, 1, 1],
+            "expected_ae": [1, 2, 3, 3],
+        },
+        # no dupes
+        {
+            "df_data": {
+                "Author": ["User_C", "User_E", "User_B", "User_A"],
+                "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [3, 4, 2, 1],
+            "expected_e": [3, 2, 1, 4],
+            "expected_ae": [3, 4, 2, 1],
+        },
+    ],
+)
+def test_categorify_multi_combo(tmpdir, input_with_output, cat_names, cpu):
+    kind = "combo"
+    df = pd.DataFrame(input_with_output["df_data"])
 
     label_name = ["Post"]
     cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
@@ -273,10 +352,9 @@ def test_categorify_multi_combo(tmpdir, cpu):
         if cpu
         else df_out["Author_Engaging User"].to_arrow().to_pylist()
     )
-    assert compare_a == [1, 4, 2, 3]
-    # here User B has more frequency so lower encode value
-    assert compare_e == [1, 1, 2, 3]
-    assert compare_ae == [1, 4, 2, 3]
+    assert compare_a == input_with_output["expected_a"]
+    assert compare_e == input_with_output["expected_e"]
+    assert compare_ae == input_with_output["expected_ae"]
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
@@ -288,7 +366,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
         # invalid combination - don't test
         return
 
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Author": [
                 "User_A",
@@ -369,7 +447,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_categorify_hash_bucket(cpu):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
             "Engaging_User": ["User_B", "User_B", "User_A", "User_D", "User_D"],
@@ -394,7 +472,7 @@ def test_categorify_hash_bucket(cpu):
 
 @pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
 def test_categorify_max_size(max_emb_size):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Author": [
                 "User_A",
@@ -452,7 +530,7 @@ def test_categorify_max_size(max_emb_size):
 
 
 def test_categorify_single_table():
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [None, "User_A", "User_A", "User_E", "User_B", "User_C"],
             "Engaging_User": [None, "User_B", "User_B", "User_A", "User_D", "User_D"],
@@ -483,3 +561,19 @@ def test_categorify_embedding_sizes(dataset, engine):
     workflow.fit_transform(dataset)
 
     assert get_embedding_sizes(workflow) == {"name-cat": (27, 16), "name-string_test": (27, 16)}
+
+
+def test_categorify_no_nulls():
+    # See https://github.com/NVIDIA-Merlin/NVTabular/issues/1325
+    df = make_df(
+        {
+            "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
+            "item_id": [2, 4, 4, 7, 5, 2, 5, 2] * 10,
+        },
+    )
+    workflow = nvt.Workflow(["user_id", "item_id"] >> ops.Categorify())
+    workflow.fit(nvt.Dataset(df))
+
+    df = pd.read_parquet("./categories/unique.user_id.parquet")
+    assert df["user_id"].iloc[:1].isnull().any()
+    assert df["user_id_size"][0] == 0

@@ -24,8 +24,6 @@ import sys
 
 import cudf
 import cupy as cp
-import tritonclient.grpc as grpcclient
-from tritonclient.utils import np_to_triton_dtype
 
 import nvtabular as nvt
 
@@ -56,7 +54,7 @@ def _run_notebook(
     os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
     # read in the notebook as JSON, and extract a python script from it
-    notebook = json.load(open(notebook_path))
+    notebook = json.load(open(notebook_path, encoding="utf-8"))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
 
     lines = [
@@ -113,6 +111,9 @@ def _run_query(
     input_cols_name=None,
     backend="tensorflow",
 ):
+
+    import tritonclient.grpc as grpcclient
+    from tritonclient.utils import np_to_triton_dtype
 
     workflow = nvt.Workflow.load(workflow_path)
 

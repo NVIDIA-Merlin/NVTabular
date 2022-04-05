@@ -6,5 +6,3 @@ WorkflowNode
    :private-members:
    :special-members:
    :no-undoc-members:
-
-
