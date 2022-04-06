@@ -22,5 +22,5 @@ cd /nvtabular/
 git pull origin main
 
 # Run tests
-pytest /nvtabular/tests/unit
+pytest -rsx /nvtabular/tests/unit
 

@@ -30,7 +30,7 @@ cd /nvtabular/
 git pull origin main
 
 container=$1
-config="--devices $2"
+config="-rsx --devices $2"
 
 # Run tests for training containers
 regex="merlin(.)*-inference"
