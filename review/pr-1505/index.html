@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to NVTabular’s documentation! &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="NVTabular" href="Introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>Welcome to NVTabular’s documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="welcome-to-nvtabular-s-documentation">
+<h1>Welcome to NVTabular’s documentation!<a class="headerlink" href="#welcome-to-nvtabular-s-documentation" title="Permalink to this headline"></a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#benefits">Benefits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#performance">Performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Introduction.html#installing-nvtabular-using-conda">Installing NVTabular Using Conda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Introduction.html#installing-nvtabular-using-pip">Installing NVTabular Using Pip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Introduction.html#installing-nvtabular-with-docker">Installing NVTabular with Docker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#notebook-examples-and-tutorials">Notebook Examples and Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#feedback-and-support">Feedback and Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core_features.html">Core Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#tensorflow-and-pytorch-interoperability">TensorFlow and PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#hugectr-interoperability">HugeCTR Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#multi-gpu-support">Multi-GPU Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#multi-node-support">Multi-Node Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#multi-hot-encoding-and-pre-existing-embeddings">Multi-Hot Encoding and Pre-Existing Embeddings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#shuffling-datasets">Shuffling Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#cloud-integration">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core_features.html#cpu-support">CPU Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="training/tensorflow.html">TensorFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training/pytorch.html">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training/hugectr.html">HugeCTR</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples/getting-started-movielens/index.html">Getting Started with Movielens</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/getting-started-movielens/01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/getting-started-movielens/02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/getting-started-movielens/03-Training-with-TF.html">Training with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/getting-started-movielens/03-Training-with-PyTorch.html">Training with PyTorch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples/advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/advanced-ops-outbrain/01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/advanced-ops-outbrain/02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/advanced-ops-outbrain/03-Training-with-TF.html">Training with TensorFlow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples/scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/03-Training-with-TF.html">Training with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/03-Training-with-HugeCTR.html">Training with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/03-Training-with-FastAI.html">Training with FastAI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/04-Triton-Inference-with-TF.html">Triton Inference with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/scaling-criteo/04-Triton-Inference-with-HugeCTR.html">Triton Inference with HugeCTR</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html#Overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html#id1">RecSys2020 Challenge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html#Preparing-our-dataset">Preparing our dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html#Splitting-dataset-into-training-and-test">Splitting dataset into training and test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html#Feature-Engineering">Feature Engineering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html#Training-our-model">Training our model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples/tabular-data-rossmann/index.html">Tabular Data with Rossmann</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/tabular-data-rossmann/01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/tabular-data-rossmann/02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/tabular-data-rossmann/03-Training-with-TF.html">Training with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/tabular-data-rossmann/03-Training-with-PyTorch.html">Training with PyTorch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/tabular-data-rossmann/03-Training-with-FastAI.html">Training with FastAI</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/workflow/workflow.html">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/workflow/workflow_node.html">WorkflowNode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ops/index.html">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/bucketize.html">Bucketize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/categorify.html">Categorify</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/clip.html">Clip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/columnsimilarity.html">ColumnSimilarity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/drop_low_cardinality.html">DropLowCardinality</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/dropna.html">Dropna</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/fillmissing.html">FillMissing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/fillmedian.html">FillMedian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/filter.html">Filter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/groupby.html">Groupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/hashbucket.html">HashBucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/hashedcross.html">HashedCross</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/joinexternal.html">JoinExternal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/joingroupby.html">JoinGroupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/lambdaop.html">LambdaOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/listslice.html">ListSlice</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/log.html">LogOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/normalize.html">Normalize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/normalizeminmax.html">NormalizeMinMax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/rename.html">Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/reduce_dtype_size.html">ReduceDtypeSize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/targetencoding.html">TargetEncoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/operator.html">Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/ops/stat_operator.html">StatOperator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/torch_dataloader.html">Torch Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/torch_dataloader.html#module-nvtabular.framework_utils.torch.layers.embeddings">Torch Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tensorflow_dataloader.html">TensorFlow Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tensorflow_dataloader.html#module-nvtabular.framework_utils.tensorflow.layers.embedding">TensorFlow Layers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="resources/support_matrix.html">Support Matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resources/architecture.html">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="resources/architecture.html#operations">Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/architecture.html#a-higher-level-of-abstraction">A Higher Level of Abstraction</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="resources/cloud_integration.html">Cloud Integration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="resources/cloud_integration.html#amazon-web-services">Amazon Web Services</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/cloud_integration.html#google-cloud-platform">Google Cloud Platform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/cloud_integration.html#databricks">Databricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/cloud_integration.html#aws-sagemaker">AWS SageMaker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="resources/troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="resources/troubleshooting.html#checking-the-schema-of-the-parquet-file">Checking the Schema of the Parquet File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/troubleshooting.html#reducing-memory-consumption-for-nvtabular-workflows">Reducing Memory Consumption for NVTabular Workflows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/troubleshooting.html#reducing-memory-consumption-for-nvtabular-dataloaders">Reducing Memory Consumption for NVTabular Dataloaders</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="resources/links.html">Presentations and Blog Posts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="resources/links.html#talks">Talks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resources/links.html#blog-posts">Blog posts</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Introduction.html" class="btn btn-neutral float-right" title="NVTabular" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
