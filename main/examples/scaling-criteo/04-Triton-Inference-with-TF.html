@@ -388,7 +388,7 @@ div.rendered_html tbody tr:hover {
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
 <p>The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as during training (ETL). We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integer before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the TensorFlow model as an ensemble model to Triton Inference. The ensemble model
 garantuees that the same transformation are applied to the raw inputs.</p>
-<p><img alt="1434ad9ad5634255992b372ba1e2b274" class="no-scaled-link" src="../../_images/triton-tf.png" style="width: 25%;" /></p>
+<p><img alt="b30ed0651c2a460aae0c72ec55c937ea" class="no-scaled-link" src="../../_images/triton-tf.png" style="width: 25%;" /></p>
 <div class="section" id="Learning-objectives">
 <h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
 <p>In this notebook, we learn how to deploy our models to production</p>
@@ -701,6 +701,7 @@ Wall time: 56.5 s
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get dataframe library - cudf or pandas</span>
 <span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+
 <span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 
 <span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
@@ -805,7 +806,7 @@ dtype: object
 <span class="n">col_dtypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_names</span><span class="p">)</span>
 
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values_host</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">col_dtypes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values_host</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">col_dtypes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
     <span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">httpclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">(</span><span class="n">col_names</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np_to_triton_dtype</span><span class="p">(</span><span class="n">col_dtypes</span><span class="p">[</span><span class="n">i</span><span class="p">])))</span>
     <span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_data_from_numpy</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
