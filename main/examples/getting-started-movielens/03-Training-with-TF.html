@@ -379,7 +379,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="71db7fc4457f4223b29aac150f84f51c" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="117a9fbe640a4852adae14910c5c3ef1" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Getting-Started-MovieLens:-Training-with-TensorFlow">
 <h1>Getting Started MovieLens: Training with TensorFlow<a class="headerlink" href="#Getting-Started-MovieLens:-Training-with-TensorFlow" title="Permalink to this headline"></a></h1>
 <div class="section" id="Overview">
@@ -664,7 +664,7 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
-    <span class="n">inputs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+    <span class="n">inputs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
 <span class="c1"># Note that we need two input tensors for multi-hot categorical features</span>
 <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">:</span>
     <span class="n">inputs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">__values&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,)),</span>
@@ -851,9 +851,6 @@ INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.saved
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
-
-<span class="n">workflow</span><span class="o">.</span><span class="n">output_dtypes</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;int32&quot;</span>
-<span class="n">workflow</span><span class="o">.</span><span class="n">output_dtypes</span><span class="p">[</span><span class="s2">&quot;movieId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;int32&quot;</span>
 </pre></div>
 </div>
 </div>
@@ -923,10 +920,10 @@ INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.saved
       <dt>Tags</dt>
       <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.7.0/index.html">v0.7.0</a></dd>
       <dd><a href="../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
