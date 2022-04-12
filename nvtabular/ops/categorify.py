@@ -363,23 +363,25 @@ class Categorify(StatOperator):
 
     def fit_finalize(self, categories):
         idx_count = 0
-        for col in categories:
+
+        for cat in categories:
             # this is a path
-            self.categories[col] = categories[col]
+            self.categories[cat] = categories[cat]
             # check the argument
             if self.single_table:
-                cat_file_path = self.categories[col]
+                cat_file_path = self.categories[cat]
                 idx_count, new_cat_file_path = run_on_worker(
-                    _reset_df_index, col, cat_file_path, idx_count
+                    _reset_df_index, cat, cat_file_path, idx_count
                 )
-                self.categories[col] = new_cat_file_path
+                self.categories[cat] = new_cat_file_path
 
     def clear(self):
+        """Clear the internal state of the operator's stats."""
         self.categories = deepcopy(self.vocabs)
 
     def process_vocabs(self, vocabs):
+        """Process vocabs passed in by the user."""
         categories = {}
-
         if isinstance(vocabs, dict) and all(dispatch.is_series_object(v) for v in vocabs.values()):
             fit_options = self._create_fit_options_from_columns(list(vocabs.keys()))
             base_path = os.path.join(self.out_path, fit_options.stat_name)
@@ -503,26 +505,26 @@ class Categorify(StatOperator):
         new_schema = super()._compute_properties(col_schema, input_schema)
         col_name = col_schema.name
 
-        target_column_path = self.categories.get(col_name, None)
+        category_name = self.storage_name.get(col_name, col_name)
+        target_category_path = self.categories.get(category_name, None)
+
         cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
 
-        to_add = {}
-        if target_column_path:
-            to_add = {
-                "num_buckets": self.num_buckets[col_name]
-                if isinstance(self.num_buckets, dict)
-                else self.num_buckets,
-                "freq_threshold": self.freq_threshold[col_name]
-                if isinstance(self.freq_threshold, dict)
-                else self.freq_threshold,
-                "max_size": self.max_size[col_name]
-                if isinstance(self.max_size, dict)
-                else self.max_size,
-                "start_index": self.start_index,
-                "cat_path": target_column_path,
-                "domain": {"min": 0, "max": cardinality},
-                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
-            }
+        to_add = {
+            "num_buckets": self.num_buckets[col_name]
+            if isinstance(self.num_buckets, dict)
+            else self.num_buckets,
+            "freq_threshold": self.freq_threshold[col_name]
+            if isinstance(self.freq_threshold, dict)
+            else self.freq_threshold,
+            "max_size": self.max_size[col_name]
+            if isinstance(self.max_size, dict)
+            else self.max_size,
+            "start_index": self.start_index,
+            "cat_path": target_category_path,
+            "domain": {"min": 0, "max": cardinality, "name": category_name},
+            "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
+        }
 
         return col_schema.with_properties({**new_schema.properties, **to_add})
 

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import DataFrameType
 from merlin.schema import Schema, Tags
 
 from .operator import ColumnSelector, Operator
@@ -29,22 +29,62 @@ class DropLowCardinality(Operator):
     def __init__(self, min_cardinality=2):
         super().__init__()
         self.min_cardinality = min_cardinality
-        self.to_drop = []
 
-    @annotate("drop_low_cardinality", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        return df.drop(self.to_drop, axis=1)
+        """
+        Selects all non-categorical columns and any categorical columns
+        of at least the minimum cardinality from the dataframe.
 
-    def compute_output_schema(self, input_schema, selector, prev_output_schema=None):
-        output_columns = []
+        Parameters
+        ----------
+        col_selector : ColumnSelector
+            The columns to select.
+        df : DataFrameType
+            The dataframe to transform
+
+        Returns
+        -------
+        DataFrameType
+            Dataframe with only the selected columns.
+        """
+        return super()._get_columns(df, col_selector)
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        """
+        Checks the cardinality of the input columns and drops any categorical
+        columns with cardinality less than the specified minimum.
+
+        Parameters
+        ----------
+        input_schema : Schema
+            The current node's input schema
+        selector : ColumnSelector
+            The current node's selector
+        parents_selector : ColumnSelector
+            A selector for the output columns of the current node's parents
+        dependencies_selector : ColumnSelector
+            A selector for the output columns of the current node's dependencies
+
+        Returns
+        -------
+        ColumnSelector
+            Selector that contains all non-categorical columns and any categorical columns
+            of at least the minimum cardinality.
+        """
+        self._validate_matching_cols(input_schema, selector, self.compute_selector.__name__)
+
+        cols_to_keep = [col for col in input_schema if Tags.CATEGORICAL not in col.tags]
+
         for col in input_schema:
             if Tags.CATEGORICAL in col.tags:
                 domain = col.int_domain
-                if domain and domain.max <= self.min_cardinality:
-                    self.to_drop.append(col.name)
-                    continue
-            output_columns.append(col)
-        return Schema(output_columns)
+                if not domain or domain.max > self.min_cardinality:
+                    cols_to_keep.append(col.name)
 
-    transform.__doc__ = Operator.transform.__doc__
-    compute_output_schema.__doc__ = Operator.compute_output_schema.__doc__
+        return ColumnSelector(cols_to_keep)

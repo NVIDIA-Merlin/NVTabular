@@ -577,3 +577,40 @@ def test_categorify_no_nulls():
     df = pd.read_parquet("./categories/unique.user_id.parquet")
     assert df["user_id"].iloc[:1].isnull().any()
     assert df["user_id_size"][0] == 0
+
+
+@pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
+@pytest.mark.parametrize("kind", ["joint", "combo"])
+@pytest.mark.parametrize("cpu", _CPU)
+def test_categorify_domain_name(tmpdir, cat_names, kind, cpu):
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
+
+    workflow = nvt.Workflow(cats)
+    workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+
+    domain_names = []
+    for col_name in workflow.output_schema.column_names:
+        domain_names.append(workflow.output_schema[col_name].properties["domain"]["name"])
+
+        assert workflow.output_schema[col_name].properties != {}
+        assert "domain" in workflow.output_schema[col_name].properties
+        assert "name" in workflow.output_schema[col_name].properties["domain"]
+
+    if len(cat_names) == 1 and kind == "combo":
+        # Columns are encoded in combination, so there's only one domain name
+        assert len(domain_names) == 1
+        assert domain_names[0] == "Author_Engaging User"
+    else:
+        if len(cat_names) == 1 and kind == "joint":
+            # Columns are encoded jointly, so the domain names are the same
+            assert len(set(domain_names)) == 1
+        else:
+            # Columns are encoded independently, so the domain names are different
+            assert len(set(domain_names)) > 1
