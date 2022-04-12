@@ -376,7 +376,7 @@ class Categorify(StatOperator):
                 self.categories[cat] = new_cat_file_path
 
     def clear(self):
-        """Clear the internal state of the operator's statis."""
+        """Clear the internal state of the operator's stats."""
         self.categories = deepcopy(self.vocabs)
 
     def process_vocabs(self, vocabs):
