@@ -508,7 +508,7 @@ class Categorify(StatOperator):
         category_name = self.storage_name.get(col_name, col_name)
         target_category_path = self.categories.get(category_name, None)
 
-        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
+        cardinality, dimensions = self.get_embedding_sizes([category_name])[category_name]
 
         to_add = {
             "num_buckets": self.num_buckets[col_name]
