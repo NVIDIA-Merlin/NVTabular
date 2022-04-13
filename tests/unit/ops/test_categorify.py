@@ -614,3 +614,22 @@ def test_categorify_domain_name(tmpdir, cat_names, kind, cpu):
         else:
             # Columns are encoded independently, so the domain names are different
             assert len(set(domain_names)) > 1
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_categorify_domain_max(cpu):
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Post", ["Author", "Engaging User"]]
+    cats = cat_names >> nvt.ops.Categorify(encode_type="joint")
+    workflow = nvt.Workflow(cats)
+    df_transform = workflow.fit_transform(nvt.Dataset(df, cpu=cpu))
+
+    assert df_transform.schema["Post"].properties["domain"]["max"] > 0
+    assert df_transform.schema["Author"].properties["domain"]["max"] > 0
+    assert df_transform.schema["Engaging User"].properties["domain"]["max"] > 0
