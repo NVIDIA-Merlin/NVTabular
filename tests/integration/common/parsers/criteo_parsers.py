@@ -70,7 +70,7 @@ class CriteoBenchHugeCTR(StandardBenchmark):
     def get_epochs(self, output):
         aucs = []
         for line in output:
-            if "AUC" in line:
+            if "AUC:" in line:
                 auc_num = float(line.split("AUC:")[-1])
                 aucs.append(auc_num)
             if "run_time:" in line:
@@ -83,9 +83,7 @@ class CriteoBenchHugeCTR(StandardBenchmark):
         split_line = line.split(":")
         return float(split_line[1])
 
-    def get_epoch(self, line, runtime):
-        split_line = line.split("AUC:")
-        auc = float(split_line[-1])
+    def get_epoch(self, auc, runtime):
         bres_auc = create_bench_result(f"{self.name}_auc", [("time", runtime)], auc, "percent")
         return [bres_auc]
 
