@@ -68,14 +68,15 @@ class CriteoBenchHugeCTR(StandardBenchmark):
         self.name = name
 
     def get_epochs(self, output):
-        epochs = []
+        aucs = []
         for line in output:
             if "AUC" in line:
-                epochs.append(line)
+                auc_num = float(line.split("AUC:")[-1])
+                aucs.append(auc_num)
             if "run_time:" in line:
                 run_time = self.get_runtime(line)
-        if run_time and epochs:
-            return self.get_epoch(epochs[-1], run_time)
+        if run_time and aucs:
+            return self.get_epoch(max(aucs), run_time)
         return []
 
     def get_runtime(self, line):
