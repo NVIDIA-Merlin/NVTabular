@@ -66,12 +66,11 @@ To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
    ```
-   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
+   docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
    **NOTES**: 
    
-   - If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
    - If you are running `Getting Started with MovieLens` , `Advanced Ops with Outbrain` or `Tabular Problems with Rossmann` example notebooks you need to add ` -v ${PWD}:/root/ ` to the docker script above. Here `PWD` is a local directory in your system, and this very same directory should also be mounted to the `merlin-inference`container if you would like to run the inference example. Please follow the `start and launch triton server` instructions given in the inference notebooks. 
    - If you are running `Training-with-HugeCTR` notebooks, please add `--cap-add SYS_NICE` to `docker run` command to suppress the `set_mempolicy: Operation not permitted` warnings.
   
@@ -80,7 +79,7 @@ To run the example notebooks using Docker containers, do the following:
    root@2efa5b50b909:
    ```
 
-2. Install jupyter-lab with `pip` by running the following command:
+2. If jupyter-lab is not installe, install jupyter-lab with `pip` by running the following command:
    ```
    pip install jupyterlab
    ```
