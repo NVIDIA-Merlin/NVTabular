@@ -60,7 +60,7 @@ You can run the example notebooks by [installing NVTabular](https://github.com/N
 - Merlin-Tensorflow-Training (contains NVTabular with TensorFlow)
 - Merlin-Pytorch-Training (contains NVTabular with PyTorch)
 - Merlin-Training (contains NVTabular with HugeCTR)
-- Merlin-Inference (contains NVTabular with TensorFlow and Triton Inference support)
+- Merlin-Tensorflow-Inference (contains NVTabular with TensorFlow and Triton Inference support)
 
 To run the example notebooks using Docker containers, do the following:
 
@@ -79,7 +79,7 @@ To run the example notebooks using Docker containers, do the following:
    root@2efa5b50b909:
    ```
 
-2. If jupyter-lab is not installe, install jupyter-lab with `pip` by running the following command:
+2. If jupyter-lab is not installed, install jupyter-lab with `pip` by running the following command:
    ```
    pip install jupyterlab
    ```
