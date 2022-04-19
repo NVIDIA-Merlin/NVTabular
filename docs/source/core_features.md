@@ -1,5 +1,4 @@
-Core Features
-=============
+# Core Features
 
 NVTabular supports the following core features:
 * [TensorFlow and PyTorch Interoperability](#tensorflow-and-pytorch-interoperability)
