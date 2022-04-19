@@ -1,6 +1,8 @@
 # NVTabular Example Notebooks
 
-We have created a collection of Jupyter notebooks based on different datasets. These example notebooks demonstrate how to use NVTabular with TensorFlow, PyTorch, and [HugeCTR](https://github.com/NVIDIA/HugeCTR). Each example provides additional information about NVTabular's features.
+We have a collection of Jupyter notebooks that are based on different datasets.
+These example notebooks demonstrate how to use NVTabular with TensorFlow, PyTorch, and [HugeCTR](https://github.com/NVIDIA/HugeCTR).
+Each example provides additional information about NVTabular's features.
 
 If you'd like to create a full conda environment to run the example notebooks, do the following:
 
@@ -18,7 +20,8 @@ If you'd like to create a full conda environment to run the example notebooks, d
 ## Structure
 
 The example notebooks are structured as follows and should be reviewed in this order:
-- 01-Download-Convert.ipynb: Demonstrates how to download the dataset and convert it into the correct format so that it can be consumed. 
+
+- 01-Download-Convert.ipynb: Demonstrates how to download the dataset and convert it into the correct format so that it can be consumed.
 - 02-ETL-with-NVTabular.ipynb: Demonstrates how to execute the preprocessing and feature engineering pipeline (ETL) with NVTabular on the GPU.
 - 03-Training-with-TF.ipynb: Demonstrates how to train a model with TensorFlow based on the ETL output.
 - 03-Training-with-PyTorch.ipynb: Demonstrates how to train a model with PyTorch based on the ETL output.
@@ -29,6 +32,7 @@ The example notebooks are structured as follows and should be reviewed in this o
 ### 1. [Getting Started with MovieLens](https://github.com/NVIDIA/NVTabular/tree/main/examples/getting-started-movielens)
 
 The MovieLens25M is a popular dataset for recommender systems and is used in academic publications. Most users are familiar with this dataset, so this example notebook is focusing primarily on the basic concepts of NVTabular, which includes:
+
 - Learning NVTabular with NVTabular's high-level API
 - Using single-hot/multi-hot categorical input features with NVTabular
 - Using the NVTabular dataloader with the TensorFlow Keras model
@@ -50,13 +54,14 @@ In the Getting Started with MovieLens example, we explain the fundamentals of NV
 
 Twitter provided a dataset for the [RecSys2020 challenge](http://www.recsyschallenge.com/2020/). The goal was to predict user engagement based on 200M user-tweet pairs. This example notebook demonstrates how to use NVTabular's available operators for feature engineering and train a XGBoost model on the GPU with dask.
 
-### 6. [Applying the Techniques to other Tabular Problems with Rossmann](https://github.com/NVIDIA/NVTabular/tree/main/examples/tabular-data-rossmann) 
+### 6. [Applying the Techniques to other Tabular Problems with Rossmann](https://github.com/NVIDIA/NVTabular/tree/main/examples/tabular-data-rossmann)
 
 Rossmann operates over 3,000 drug stores across seven European countries. Historical sales data for 1,115 Rossmann stores are provided. The goal is to forecast the **Sales** column for the test set. Kaggle hosted it as a [competition](https://www.kaggle.com/c/rossmann-store-sales/overview).
 
 ## Running the Example Notebooks
 
 You can run the example notebooks by [installing NVTabular](https://github.com/NVIDIA/NVTabular#installation) and other required libraries. Alternatively, Docker containers are available on http://ngc.nvidia.com/catalog/containers/ with pre-installed versions. Depending on which example you want to run, you should use any one of these Docker containers:
+
 - Merlin-Tensorflow-Training (contains NVTabular with TensorFlow)
 - Merlin-Pytorch-Training (contains NVTabular with PyTorch)
 - Merlin-Training (contains NVTabular with HugeCTR)
@@ -65,32 +70,36 @@ You can run the example notebooks by [installing NVTabular](https://github.com/N
 To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
+
    ```
    docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
-   **NOTES**: 
-   
-   - If you are running `Getting Started with MovieLens` , `Advanced Ops with Outbrain` or `Tabular Problems with Rossmann` example notebooks you need to add ` -v ${PWD}:/root/ ` to the docker script above. Here `PWD` is a local directory in your system, and this very same directory should also be mounted to the `merlin-inference`container if you would like to run the inference example. Please follow the `start and launch triton server` instructions given in the inference notebooks. 
+   **NOTES**:
+
+   - If you are running `Getting Started with MovieLens` , `Advanced Ops with Outbrain` or `Tabular Problems with Rossmann` example notebooks you need to add `-v ${PWD}:/root/` to the docker script above. Here `PWD` is a local directory in your system, and this very same directory should also be mounted to the `merlin-inference`container if you would like to run the inference example. Please follow the `start and launch triton server` instructions given in the inference notebooks.
    - If you are running `Training-with-HugeCTR` notebooks, please add `--cap-add SYS_NICE` to `docker run` command to suppress the `set_mempolicy: Operation not permitted` warnings.
-  
-  The container will open a shell when the run command execution is completed. You will have to start JupyterLab on the Docker container. It should look similar to this:
-   ```
-   root@2efa5b50b909:
-   ```
+
+The container will open a shell when the run command execution is completed. You will have to start JupyterLab on the Docker container. It should look similar to this:
+
+```
+root@2efa5b50b909:
+```
 
 2. If jupyter-lab is not installed, install jupyter-lab with `pip` by running the following command:
+
    ```
    pip install jupyterlab
    ```
-   
-   For more information, see [Installation Guide](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html). 
-   
+
+   For more information, see [Installation Guide](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html).
+
 3. Start the jupyter-lab server by running the following command:
+
    ```
    jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
    ```
 
 4. Open any browser to access the jupyter-lab server using <MachineIP>:8888.
 
-5. Once in the server, navigate to the ```/nvtabular/``` directory and try out the examples.
+5. Once in the server, navigate to the `/nvtabular/` directory and try out the examples.
