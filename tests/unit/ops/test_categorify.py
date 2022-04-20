@@ -633,3 +633,24 @@ def test_categorify_domain_max(cpu):
     assert df_transform.schema["Post"].properties["domain"]["max"] > 0
     assert df_transform.schema["Author"].properties["domain"]["max"] > 0
     assert df_transform.schema["Engaging User"].properties["domain"]["max"] > 0
+
+
+def test_categorify_max_size_null_iloc_check():
+    gdf = make_df({"C1": [1, np.nan, 3, 4, 3] * 5, "C2": [1, 1, 2, 3, 6] * 5})
+
+    cat_features = ["C1", "C2"] >> nvt.ops.Categorify(max_size=4)
+
+    train_dataset = nvt.Dataset(gdf)
+
+    workflow = nvt.Workflow(cat_features)
+    workflow.fit(train_dataset)
+    workflow.transform(train_dataset)
+    # read back the unique categories
+    unique_C1 = pd.read_parquet("./categories/unique.C1.parquet")
+    assert str(unique_C1["C1"].iloc[0]) in ["<NA>", "nan"]
+    assert unique_C1["C1_size"].iloc[0] == 5
+
+    # read back the unique categories
+    unique_C2 = pd.read_parquet("./categories/unique.C2.parquet")
+    assert str(unique_C2["C2"].iloc[0]) in ["<NA>", "nan"]
+    assert unique_C2["C2_size"].iloc[0] == 0
