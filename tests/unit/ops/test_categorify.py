@@ -647,10 +647,10 @@ def test_categorify_max_size_null_iloc_check():
     workflow.transform(train_dataset)
     # read back the unique categories
     unique_C1 = pd.read_parquet("./categories/unique.C1.parquet")
-    assert str(unique_C1["C1"].iloc[0]) == "<NA>"
+    assert str(unique_C1["C1"].iloc[0]) == ("<NA>" or "nan")
     assert unique_C1["C1_size"].iloc[0] == 5
 
     # read back the unique categories
     unique_C2 = pd.read_parquet("./categories/unique.C2.parquet")
-    assert str(unique_C2["C2"].iloc[0]) == "<NA>"
+    assert str(unique_C2["C2"].iloc[0]) == ("<NA>" or "nan")
     assert unique_C2["C2_size"].iloc[0] == 0
