@@ -1072,7 +1072,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                 if nlargest <= 0:
                     raise ValueError("`nlargest` cannot be 0 or negative")
 
-                if nlargest < len(df):
+                if nlargest < len(df) and name_size in df:
                     # remove NAs from column, we have na count from above.
                     df = df.dropna()
                     # sort based on count (name_size column)
