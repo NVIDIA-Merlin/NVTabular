@@ -20,9 +20,9 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
-from nvtabular import ColumnSelector, dispatch, ops
-from nvtabular.dispatch import HAS_GPU, _flatten_list_column, _flatten_list_column_values
+from merlin.core import dispatch
+from merlin.core.dispatch import HAS_GPU, flatten_list_column, flatten_list_column_values
+from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq
 
 if HAS_GPU:
@@ -42,7 +42,7 @@ else:
 def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, cpu):
     df = dataset.to_ddf().compute()
     cont_features = op_columns >> ops.NormalizeMinMax()
-    processor = nvtabular.Workflow(cont_features)
+    processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     new_gdf.index = df.index  # Make sure index is aligned for checks
@@ -62,7 +62,7 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_features = op_columns >> ops.Normalize()
-    processor = nvtabular.Workflow(cont_features)
+    processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
 
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -86,7 +86,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_normalize_lists(tmpdir, cpu):
-    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df = dispatch.make_df(device="cpu" if cpu else "gpu")
     df["vals"] = [
         [0.0, 1.0, 2.0],
         [
@@ -100,18 +100,18 @@ def test_normalize_lists(tmpdir, cpu):
     workflow = nvt.Workflow(features)
     transformed = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
-    expected = _flatten_list_column_values(df["vals"]).astype("float32")
+    expected = flatten_list_column_values(df["vals"]).astype("float64")
     expected = (expected - expected.mean()) / expected.std()
     expected_df = type(transformed)({"vals": expected})
 
-    assert_eq(expected_df, _flatten_list_column(transformed["vals"]))
+    assert_eq(expected_df, flatten_list_column(transformed["vals"]))
 
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_normalize_std_zero(cpu):
     df = pd.DataFrame({"a": 7 * [10]})
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(["a"] >> ops.Normalize())
+    processor = nvt.Workflow(["a"] >> ops.Normalize())
     processor.fit(dataset)
     result = processor.transform(dataset).compute()["a"]
     assert (result == 0).all()
@@ -121,10 +121,10 @@ def test_normalize_std_zero(cpu):
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("op_columns", [["x"]])
 def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_columns):
-    df = dispatch._make_df({"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1.0, 0.0, 1.0, 0.0]})
+    df = dispatch.make_df({"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1.0, 0.0, 1.0, 0.0]})
 
     cont_features = op_columns >> ops.Normalize()
-    processor = nvtabular.Workflow(cont_features)
+    processor = nvt.Workflow(cont_features)
     dataset = nvt.Dataset(df)
     processor.fit(dataset)
 

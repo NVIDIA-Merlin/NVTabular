@@ -12,17 +12,21 @@
 #
 import os
 import re
+import subprocess
 import sys
 import warnings
 
 from docutils import nodes
+from natsort import natsorted
 from recommonmark.parser import CommonMarkParser
 from sphinx.errors import SphinxError
 
 rootdir = os.path.join(os.getenv("SPHINX_MULTIVERSION_SOURCEDIR", default="."), "..")
 sys.path.insert(0, rootdir)
-docs_dir = os.path.dirname(__file__)
 
+docs_dir = os.path.dirname(__file__)
+repodir = os.path.abspath(os.path.join(__file__, r"../../.."))
+gitdir = os.path.join(repodir, r".git")
 
 # -- Project information -----------------------------------------------------
 
@@ -60,7 +64,6 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -80,7 +83,17 @@ nbsphinx_allow_errors = True
 html_show_sourcelink = False
 
 # Whitelist pattern for tags (set to None to ignore all tags)
-smv_tag_whitelist = r"^v.*$"
+# Determine if Sphinx is reading conf.py from the checked out
+# repo (a Git repo) vs SMV reading conf.py from an archive of the repo
+# at a commit (not a Git repo).
+if os.path.exists(gitdir):
+    tag_refs = subprocess.check_output(["git", "tag", "-l", "v*"]).decode("utf-8").split()
+    tag_refs = natsorted(tag_refs)[-6:]
+    smv_tag_whitelist = r"^(" + r"|".join(tag_refs) + r")$"
+else:
+    # SMV is reading conf.py from a Git archive of the repo at a specific commit.
+    smv_tag_whitelist = r"^v.*$"
+
 # Only include main branch for now
 smv_branch_whitelist = "^main$"
 
@@ -231,6 +244,12 @@ intersphinx_mapping = {
     "cudf": ("https://docs.rapids.ai/api/cudf/stable/", None),
     "distributed": ("https://distributed.dask.org/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
+    "merlin-core": ("https://nvidia-merlin.github.io/core/main", None),
 }
 
 autodoc_inherit_docstrings = False
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "member-order": "bysource",
+}

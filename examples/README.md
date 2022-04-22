@@ -2,6 +2,19 @@
 
 We have created a collection of Jupyter notebooks based on different datasets. These example notebooks demonstrate how to use NVTabular with TensorFlow, PyTorch, and [HugeCTR](https://github.com/NVIDIA/HugeCTR). Each example provides additional information about NVTabular's features.
 
+If you'd like to create a full conda environment to run the example notebooks, do the following:
+
+1. Use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) that have been provided to install the CUDA Toolkit (11.0 or 11.2).
+2. Clone the NVTabular repo and run the following commands from the root directory:
+   ```bash
+   conda env create -f=conda/environments/nvtabular_dev_cuda11.2.yml
+   conda activate nvtabular_dev_11.2
+   python -m ipykernel install --user --name=nvt
+   pip install -e .
+   jupyter notebook
+   ```
+   When opening a notebook, be sure to select `nvt` from the `Kernel->Change Kernel` menu.
+
 ## Structure
 
 The example notebooks are structured as follows and should be reviewed in this order:
@@ -47,18 +60,17 @@ You can run the example notebooks by [installing NVTabular](https://github.com/N
 - Merlin-Tensorflow-Training (contains NVTabular with TensorFlow)
 - Merlin-Pytorch-Training (contains NVTabular with PyTorch)
 - Merlin-Training (contains NVTabular with HugeCTR)
-- Merlin-Inference (contains NVTabular with TensorFlow and Triton Inference support)
+- Merlin-Tensorflow-Inference (contains NVTabular with TensorFlow and Triton Inference support)
 
 To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
    ```
-   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
+   docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
    **NOTES**: 
    
-   - If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
    - If you are running `Getting Started with MovieLens` , `Advanced Ops with Outbrain` or `Tabular Problems with Rossmann` example notebooks you need to add ` -v ${PWD}:/root/ ` to the docker script above. Here `PWD` is a local directory in your system, and this very same directory should also be mounted to the `merlin-inference`container if you would like to run the inference example. Please follow the `start and launch triton server` instructions given in the inference notebooks. 
    - If you are running `Training-with-HugeCTR` notebooks, please add `--cap-add SYS_NICE` to `docker run` command to suppress the `set_mempolicy: Operation not permitted` warnings.
   
@@ -67,7 +79,7 @@ To run the example notebooks using Docker containers, do the following:
    root@2efa5b50b909:
    ```
 
-2. Install jupyter-lab with `pip` by running the following command:
+2. If jupyter-lab is not installed, install jupyter-lab with `pip` by running the following command:
    ```
    pip install jupyterlab
    ```

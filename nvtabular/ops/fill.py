@@ -14,9 +14,9 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
+import numpy as np
 
-from nvtabular.columns import Schema
-from nvtabular.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
@@ -66,32 +66,20 @@ class FillMissing(Operator):
 
         return nvtabular_cpp.inference.FillTransform(self)
 
-    transform.__doc__ = Operator.transform.__doc__
-
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        if col_selector.tags:
-            tags_col_selector = ColumnSelector(tags=col_selector.tags)
-            filtered_schema = input_schema.apply(tags_col_selector)
-            col_selector += ColumnSelector(filtered_schema.column_names)
-
-            # zero tags because already filtered
-            col_selector._tags = []
-        output_schema = Schema()
-        for column_name in col_selector.names:
-            column_schema = input_schema.column_schemas[column_name]
-            output_schema += Schema([self.transformed_schema(column_schema)])
+    def column_mapping(self, col_selector):
+        column_mapping = super().column_mapping(col_selector)
+        for col_name in col_selector.names:
             if self.add_binary_cols:
-                column_schema = column_schema.with_name(f"{column_name}_filled")
-                output_schema += Schema([column_schema])
-        return output_schema
+                column_mapping[f"{col_name}_filled"] = [col_name]
+        return column_mapping
 
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        output_cols = col_selector.names[:]
-        if self.add_binary_cols:
-            output_cols.extend([f"{col}_filled" for col in col_selector.names])
-        return ColumnSelector(output_cols)
+    def _compute_dtype(self, col_schema, input_schema):
+        col_schema = super()._compute_dtype(col_schema, input_schema)
+        if col_schema.name.endswith("_filled"):
+            col_schema = col_schema.with_dtype(np.bool)
+        return col_schema
+
+    transform.__doc__ = Operator.transform.__doc__
 
 
 class FillMedian(StatOperator):
@@ -146,20 +134,15 @@ class FillMedian(StatOperator):
     def clear(self):
         self.medians = {}
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        output_schema = Schema()
-        for column_name in col_selector.names:
-            column_schema = input_schema.column_schemas[column_name]
-            output_schema += Schema([self.transformed_schema(column_schema)])
+    def column_mapping(self, col_selector):
+        column_mapping = super().column_mapping(col_selector)
+        for col_name in col_selector.names:
             if self.add_binary_cols:
-                column_schema = column_schema.with_name(f"{column_name}_filled")
-                output_schema += Schema([column_schema])
-        return output_schema
+                column_mapping[f"{col_name}_filled"] = [col_name]
+        return column_mapping
 
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        output_cols = col_selector.names[:]
-        if self.add_binary_cols:
-            output_cols.extend([f"{col}_filled" for col in col_selector.names])
-        return ColumnSelector(output_cols)
+    def _compute_dtype(self, col_schema, input_schema):
+        col_schema = super()._compute_dtype(col_schema, input_schema)
+        if col_schema.name.endswith("_filled"):
+            col_schema = col_schema.with_dtype(np.bool)
+        return col_schema

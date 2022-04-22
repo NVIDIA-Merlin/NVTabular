@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from .benchmark_parsers import BenchFastAI, StandardBenchmark
+from tests.integration.common.parsers.benchmark_parsers import BenchFastAI, StandardBenchmark
 
 
 class RossBenchTensorFlow(StandardBenchmark):
@@ -24,7 +24,7 @@ class RossBenchTensorFlow(StandardBenchmark):
     def get_epoch(self, line, epoch=0):
         _, _, t_loss, t_rmspe = line.split(self.split)
         t_loss = self.loss(epoch, float(t_loss.split(": ")[1]))
-        t_rmspe = self.rmspe(epoch, float(t_rmspe.split(": ")[1]))
+        # t_rmspe = self.rmspe(epoch, float(t_rmspe.split(": ")[1]))
         return [t_loss, t_rmspe]
 
     def get_epochs(self, output):
@@ -37,7 +37,9 @@ class RossBenchTensorFlow(StandardBenchmark):
                 # epoch line, detected based on if 1st character is a number
                 post_evts = self.get_epoch(content_line, epoch=epoch)
                 epochs.append(post_evts)
-        return epochs
+            if "run_time" in line:
+                epochs.append(self.get_dl_timing(line))
+        return epochs[-1:]
 
 
 class RossBenchPytorch(StandardBenchmark):
@@ -49,8 +51,6 @@ class RossBenchPytorch(StandardBenchmark):
         epoch = epoch.split()[1]
         t_loss = self.loss(epoch, float(t_loss.split(": ")[1]))
         v_loss = self.loss(epoch, float(v_loss.split(": ")[1]), l_type="valid")
-        t_rmspe = self.rmspe(epoch, float(t_rmspe.split(": ")[1]))
-        v_rmspe = self.rmspe(epoch, float(v_rmspe.split(": ")[1].split(".")[0]))
         return [t_loss, v_loss, t_rmspe, v_rmspe]
 
     def get_epochs(self, output):
@@ -60,7 +60,9 @@ class RossBenchPytorch(StandardBenchmark):
                 # epoch line, detected based on if 1st character is a number
                 post_evts = self.get_epoch(line)
                 epochs.append(post_evts)
-        return epochs
+            if "run_time" in line:
+                epochs.append(self.get_dl_timing(line))
+        return epochs[-1:]
 
 
 class RossBenchFastAI(BenchFastAI):
@@ -71,6 +73,5 @@ class RossBenchFastAI(BenchFastAI):
         epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
         t_loss = self.loss(epoch, float(t_loss))
         v_loss = self.loss(epoch, float(v_loss), l_type="valid")
-        exp_rmspe = self.rmspe(epoch, float(exp_rmspe))
-        o_time = self.time(epoch, o_time)
+        # exp_rmspe = self.rmspe(epoch, float(exp_rmspe))
         return [t_loss, v_loss, exp_rmspe, o_time]

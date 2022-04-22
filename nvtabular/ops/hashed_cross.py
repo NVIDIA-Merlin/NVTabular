@@ -17,9 +17,8 @@ from typing import Dict, Union
 
 import numpy
 
-from nvtabular.dispatch import DataFrameType, _hash_series, annotate
+from merlin.core.dispatch import DataFrameType, annotate, hash_series
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -60,25 +59,27 @@ class HashedCross(Operator):
         for cross in _nest_columns(col_selector.names):
             val = 0
             for column in cross:
-                val ^= _hash_series(df[column])  # or however we want to do this aggregation
-
+                val = hash_series(df[column]) ^ val  # or however we want to do this aggregation
             if isinstance(self.num_buckets, dict):
                 val = val % self.num_buckets[cross]
             else:
                 val = val % self.num_buckets
-            new_df["_X_".join(cross)] = val
+            new_df["_X_".join(cross)] = val.astype(self.output_dtype)
         return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
-        return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        for cross in _nest_columns(col_selector):
+            output_col = "_X_".join(cross)
+            column_mapping[output_col] = [*cross]
 
-    def output_tags(self):
-        return [Tags.CATEGORICAL]
+        return column_mapping
 
-    def _get_dtypes(self):
-        return numpy.int64
+    @property
+    def output_dtype(self):
+        return numpy.int32
 
 
 def _nest_columns(columns):

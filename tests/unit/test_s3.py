@@ -19,8 +19,10 @@ from io import BytesIO
 
 import pytest
 from dask.dataframe.io.parquet.core import create_metadata_file
+from packaging.version import Version
 
 import nvtabular as nvt
+from merlin.core import dispatch
 from nvtabular import ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
@@ -52,10 +54,16 @@ def patch_aiobotocore(s3so):
             kwargs["endpoint_url"] = s3so["client_kwargs"]["endpoint_url"]
         return create_client(*args, **kwargs)
 
-    create_client = aiobotocore.AioSession.create_client
-    aiobotocore.AioSession.create_client = patched_create_client
+    # AioSession lives in different modules of AioBotocore depending on the version
+    if Version(aiobotocore.__version__) >= Version("2.0.0"):
+        session_module = aiobotocore.session
+    else:
+        session_module = aiobotocore
+
+    create_client = session_module.AioSession.create_client
+    session_module.AioSession.create_client = patched_create_client
     yield
-    aiobotocore.AioSession.create_client = create_client
+    session_module.AioSession.create_client = create_client
 
 
 @pytest.mark.parametrize("engine", ["parquet", "csv"])
@@ -93,7 +101,7 @@ def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df, patch_aiobotocor
 
         # Check that the iteration API works
         columns = mycols_pq if engine == "parquet" else mycols_csv
-        gdf = nvt.dispatch._concat(list(dataset.to_iter()))[columns]
+        gdf = dispatch.concat(list(dataset.to_iter()))[columns]
         assert_eq(gdf.reset_index(drop=True), df.reset_index(drop=True))
 
         cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]

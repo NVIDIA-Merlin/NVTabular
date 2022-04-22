@@ -15,14 +15,14 @@
 #
 import copy
 
-import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
-from nvtabular import ColumnSelector, dispatch, ops
+from merlin.core import dispatch
+from merlin.schema import Tags, TagSet
+from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -46,28 +46,28 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
     for col in op_columns:
-        values = dispatch._array(new_df[col])
-        original = dispatch._array(df[col])
+        values = dispatch.array(new_df[col])
+        original = dispatch.array(df[col])
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_logop_lists(tmpdir, cpu):
-    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df = dispatch.make_df(device="cpu" if cpu else "gpu")
     df["vals"] = [[np.exp(0) - 1, np.exp(1) - 1], [np.exp(2) - 1], []]
 
     features = ["vals"] >> nvt.ops.LogOp()
     workflow = nvt.Workflow(features)
     new_df = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
-    expected = dispatch._make_df(device="cpu" if cpu else "gpu")
+    expected = dispatch.make_df(device="cpu" if cpu else "gpu")
     expected["vals"] = [[0.0, 1.0], [2.0], []]
 
     assert_eq(expected, new_df)
 
 
 def test_valuecount(tmpdir):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "list1": [[1, 2, 3, 4], [3, 2, 1], [1, 4], [0]],
             "list2": [[1, 4], [3, 2, 1], [0, 4], [1, 4, 5]],
@@ -83,7 +83,7 @@ def test_valuecount(tmpdir):
     processor.transform(ds).to_parquet(tmpdir, out_files_per_proc=1)
     assert "list1" in list(val_count.stats.keys())
     assert "list2" in list(val_count.stats.keys())
-    new_df = nvt.Dataset(tmpdir, engine="parquet")
+    new_df = nvt.Dataset(str(tmpdir), engine="parquet")
     assert processor.output_schema.column_schemas["list1"].properties == {
         "value_count": {"min": 1, "max": 4}
     }
@@ -93,8 +93,8 @@ def test_valuecount(tmpdir):
     assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
     assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
 
-    assert new_df.schema.column_schemas["list1"].tags == [nvt.tags.Tags.CATEGORICAL]
-    assert new_df.schema.column_schemas["list2"].tags == [nvt.tags.Tags.CONTINUOUS]
+    assert new_df.schema.column_schemas["list1"].tags == TagSet([Tags.CATEGORICAL])
+    assert new_df.schema.column_schemas["list2"].tags == TagSet([Tags.CONTINUOUS])
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -109,7 +109,7 @@ def test_dropna(tmpdir, df, dataset, engine, cpu):
     processor.fit(dataset)
 
     new_df = processor.transform(dataset).to_ddf().compute()
-    assert new_df.columns.all() == df.columns.all()
+    assert set(new_df.columns) == set(df.columns)
     assert new_df.isnull().all().sum() < 1, "null values exist"
 
 
@@ -122,7 +122,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     cont_names = ["x", "y"]
     filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
     filter_df = df[df["y"] > 0.5].reset_index()
@@ -135,14 +135,14 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         df[col].iloc[idx] = None
 
     filtered = cont_names >> ops.Filter(f=lambda df: df[df.x.isnull()])
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
 
     # again testing filtering by returning a series rather than a df
     filtered = cont_names >> ops.Filter(f=lambda df: df.x.isnull())
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
@@ -150,7 +150,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # if the filter returns an invalid type we should get an exception immediately
     # (rather than causing problems downstream in the workflow)
     filtered = cont_names >> ops.Filter(f=lambda df: "some invalid value")
-    processor = nvtabular.Workflow(filtered)
+    processor = nvt.Workflow(filtered)
     with pytest.raises(ValueError):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -164,7 +164,7 @@ def test_difference_lag(cpu):
 
     diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(diff_features)
+    processor = nvt.Workflow(diff_features)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
@@ -198,7 +198,7 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
     dataset = nvt.Dataset(df, cpu=cpu)
-    processor = nvtabular.Workflow(hashed_cross)
+    processor = nvt.Workflow(hashed_cross)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
@@ -221,7 +221,7 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     bucketize_op = ops.Bucketize(dict(zip(cont_names, boundaries)))
 
     bucket_features = cont_names >> bucketize_op
-    processor = nvtabular.Workflow(bucket_features)
+    processor = nvt.Workflow(bucket_features)
 
     ds = copy.copy(dataset)
     if cpu:
@@ -248,12 +248,12 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
     label_name = ["label"]
     all_cols = cat_names + cont_names + label_name
 
-    dataset = nvtabular.Dataset(df, engine=engine, cpu=cpu)
+    dataset = nvt.Dataset(df, engine=engine, cpu=cpu)
 
     data_stats = ops.DataStats()
 
     features = all_cols >> data_stats
-    workflow = nvtabular.Workflow(features)
+    workflow = nvt.Workflow(features)
     workflow.fit(dataset)
 
     # get the output from the data_stats op
@@ -302,68 +302,6 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
 
 
 @pytest.mark.parametrize("cpu", _CPU)
-@pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
-def test_groupby_op(keys, cpu):
-    # Initial timeseries dataset
-    size = 60
-    df1 = nvt.dispatch._make_df(
-        {
-            "name": np.random.choice(["Dave", "Zelda"], size=size),
-            "id": np.random.choice([0, 1], size=size),
-            "ts": np.linspace(0.0, 10.0, num=size),
-            "x": np.arange(size),
-            "y": np.linspace(0.0, 10.0, num=size),
-            "shuffle": np.random.uniform(low=0.0, high=10.0, size=size),
-        }
-    )
-    df1 = df1.sort_values("shuffle").drop(columns="shuffle").reset_index(drop=True)
-
-    # Create a ddf, and be sure to shuffle by the groupby keys
-    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
-    dataset = nvt.Dataset(ddf1, cpu=cpu)
-    dataset.schema.column_schemas["x"] = (
-        dataset.schema.column_schemas["name"].with_name("x").with_tags("custom_tag")
-    )
-    # Define Groupby Workflow
-    groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
-        groupby_cols=keys,
-        sort_cols=["ts"],
-        aggs={
-            "x": ["list", "sum"],
-            "y": ["first", "last"],
-            "ts": ["min"],
-        },
-        name_sep="-",
-    )
-    processor = nvtabular.Workflow(groupby_features)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-
-    assert "custom_tag" in processor.output_schema.column_schemas["x-list"].tags
-
-    if not cpu:
-        # Make sure we are capturing the list type in `output_dtypes`
-        assert processor.output_dtypes["x-list"] == cudf.core.dtypes.ListDtype("int64")
-
-    # Check list-aggregation ordering
-    x = new_gdf["x-list"]
-    x = x.to_pandas() if hasattr(x, "to_pandas") else x
-    sums = []
-    for el in x.values:
-        _el = pd.Series(el)
-        sums.append(_el.sum())
-        assert _el.is_monotonic_increasing
-
-    # Check that list sums match sum aggregation
-    x = new_gdf["x-sum"]
-    x = x.to_pandas() if hasattr(x, "to_pandas") else x
-    assert list(x) == sums
-
-    # Check basic behavior or "y" column
-    assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
-
-
-@pytest.mark.parametrize("cpu", _CPU)
 def test_list_slice(cpu):
     DataFrame = pd.DataFrame if cpu else cudf.DataFrame
 
@@ -398,6 +336,45 @@ def test_list_slice(cpu):
     op = ops.ListSlice(-3, -1)
     transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
+    assert_eq(transformed, expected)
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_list_slice_pad(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+
+    # 0 pad to 5 elements
+    op = ops.ListSlice(5, pad=True)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3, 0], [1, 223, 4, 0, 0]]})
+    assert_eq(transformed, expected)
+
+    # make sure we can also pad when start != 0, and when pad_value is set
+    op = ops.ListSlice(1, 6, pad=True, pad_value=123)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767, 123], [2, 2, 3, 123, 123], [223, 4, 123, 123, 123]]})
+    assert_eq(transformed, expected)
+
+    # we should be able to do pad out negative offsets as well
+    op = ops.ListSlice(-4, pad=True, pad_value=-1)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-4, -1, pad=True, pad_value=-1)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2], [1, 2, 2], [1, 223, -1]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-4, pad=True, pad_value=-1)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
     assert_eq(transformed, expected)
 
 

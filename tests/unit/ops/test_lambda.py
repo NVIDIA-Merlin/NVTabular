@@ -21,7 +21,7 @@ from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-import nvtabular.io
+from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
 
 try:
@@ -32,6 +32,7 @@ try:
 except ImportError:
     _CPU = [True]
     _HAS_GPU = False
+    cp = None
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
@@ -43,8 +44,10 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Substring
     # Replacement
-    substring = ColumnSelector(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
-    processor = nvtabular.Workflow(substring)
+    substring = ColumnSelector(["name-cat", "name-string"]) >> ops.LambdaOp(
+        lambda col: col.str.slice(1, 3)
+    )
+    processor = nvt.Workflow(substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -54,10 +57,10 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # No Replacement from old API (skipped for other examples)
     substring = (
         ColumnSelector(["name-cat", "name-string"])
-        >> (lambda col: col.str.slice(1, 3))
+        >> ops.LambdaOp(lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(substring + ["name-cat", "name-string"])
+    processor = nvt.Workflow(substring + ["name-cat", "name-string"])
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -78,10 +81,10 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Replace
     # Replacement
-    oplambda = ColumnSelector(["name-cat", "name-string"]) >> (
+    oplambda = ColumnSelector(["name-cat", "name-string"]) >> ops.LambdaOp(
         lambda col: col.str.replace("e", "XX")
     )
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -92,8 +95,8 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # astype
     # Replacement
-    oplambda = ColumnSelector(["id"]) >> (lambda col: col.astype(float))
-    processor = nvtabular.Workflow(oplambda)
+    oplambda = ColumnSelector(["id"]) >> ops.LambdaOp(lambda col: col.astype(float))
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -103,10 +106,10 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # Replacement
     oplambda = (
         ColumnSelector(["name-cat"])
-        >> (lambda col: col.astype(str).str.slice(0, 1))
+        >> ops.LambdaOp(lambda col: col.astype(str).str.slice(0, 1))
         >> ops.Categorify()
     )
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert is_integer_dtype(new_gdf["name-cat"].dtype)
@@ -114,7 +117,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     oplambda = (
         ColumnSelector(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
     )
-    processor = nvtabular.Workflow(oplambda)
+    processor = nvt.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -139,9 +142,9 @@ def test_lambdaop_misalign(cpu):
     cat_names = ColumnSelector(["b"])
     label = ColumnSelector(["c"])
     if cpu:
-        label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
+        label_feature = label >> ops.LambdaOp(lambda col: np.where(col == 4, 0, 1))
     else:
-        label_feature = label >> (lambda col: cp.where(col == 4, 0, 1))
+        label_feature = label >> ops.LambdaOp(lambda col: cp.where(col == 4, 0, 1))
     workflow = nvt.Workflow(cat_names + cont_names + label_feature)
 
     dataset = nvt.Dataset(ddf0, cpu=cpu)
@@ -151,3 +154,93 @@ def test_lambdaop_misalign(cpu):
         transformed.to_ddf().compute()[["a", "b"]],
         check_index=False,
     )
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_lambdaop_schema_computation(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size),
+        }
+    )
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+
+    dtype = np.float64
+    tags = [Tags.TARGET]
+    properties = {"prop1": True}
+
+    label = ColumnSelector(["c"])
+    label_feature = label >> ops.LambdaOp(
+        lambda col: col.astype(dtype), dtype=dtype, tags=tags, properties=properties
+    )
+    workflow = nvt.Workflow(label_feature)
+    workflow.fit(dataset)
+
+    output_schema = workflow.output_node.output_schema
+
+    assert output_schema["c"].dtype == dtype
+    assert output_schema["c"].tags == TagSet(tags)
+    assert output_schema["c"].properties == properties
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_lambdaop_dtype_propagation(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size).astype(np.float32),
+        }
+    )
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+
+    dtype = np.float64
+
+    label = ColumnSelector(["c"])
+    label_feature = (
+        label >> ops.LambdaOp(lambda col: col.astype(dtype)) >> ops.Rename(postfix="_renamed")
+    )
+    workflow = nvt.Workflow(label_feature)
+    workflow.fit(dataset)
+
+    output_schema = workflow.output_node.output_schema
+
+    assert output_schema["c_renamed"].dtype == dtype
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_lambdaop_dtype_multi_op_propagation(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size).astype(np.float16),
+        }
+    )
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+
+    label = ColumnSelector(["a", "c"])
+
+    label_feature = (
+        label >> ops.LambdaOp(lambda col: col.astype(np.float32)) >> ops.Rename(postfix="_1st")
+    )
+    b_labels = (
+        label_feature["c_1st"]
+        >> ops.LambdaOp(lambda col: col.astype(np.float64))
+        >> ops.Rename(postfix="_2nd")
+    )
+
+    workflow = nvt.Workflow(b_labels)
+    workflow.fit(dataset)
+
+    output_schema = workflow.output_node.output_schema
+
+    assert output_schema["c_1st_2nd"].dtype == np.float64
