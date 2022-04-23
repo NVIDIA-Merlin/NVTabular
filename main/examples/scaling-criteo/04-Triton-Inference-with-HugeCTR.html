@@ -388,7 +388,7 @@ div.rendered_html tbody tr:hover {
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
 <p>The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as during training (ETL). We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integer before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the HugeCTR model as an ensemble model to Triton Inference. The ensemble model
 guarantees that the same transformation are applied to the raw inputs.</p>
-<p><img alt="92bf4964af9842e8a582da179ef358aa" class="no-scaled-link" src="../../_images/triton-hugectr.png" style="width: 25%;" /></p>
+<p><img alt="64dc940cf88f4b5ab3b1707083b8c476" class="no-scaled-link" src="../../_images/triton-hugectr.png" style="width: 25%;" /></p>
 <div class="section" id="Learning-objectives">
 <h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
 <p>In this notebook, we learn how to deploy our models to production:</p>
@@ -564,18 +564,18 @@ The script below creates an ensemble triton server model where - workflow is the
             <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;criteo&quot;</span><span class="p">,</span>
             <span class="s2">&quot;sparse_files&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;/model/criteo/1/0_sparse_9600.model&quot;</span><span class="p">],</span>
             <span class="s2">&quot;dense_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/model/criteo/1/_dense_9600.model&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;network_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/model/criteo/1/criteo.json&quot;</span>
+            <span class="s2">&quot;network_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/model/criteo/1/criteo.json&quot;</span><span class="p">,</span>
             <span class="s2">&quot;max_batch_size&quot;</span><span class="p">:</span> <span class="s2">&quot;64&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;gpucache&quot;</span><span class="p">:</span><span class="s2">&quot;true&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hit_rate_threshold&quot;</span><span class="p">:</span><span class="s2">&quot;0.9&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;gpucacheper&quot;</span><span class="p">:</span><span class="s2">&quot;0.5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gpucache&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hit_rate_threshold&quot;</span><span class="p">:</span> <span class="s2">&quot;0.9&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gpucacheper&quot;</span><span class="p">:</span> <span class="s2">&quot;0.5&quot;</span><span class="p">,</span>
             <span class="s2">&quot;num_of_worker_buffer_in_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;4&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;num_of_refresher_buffer_in_pool&quot;</span><span class="p">:</span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;cache_refresh_percentage_per_iteration&quot;</span><span class="p">:</span><span class="mf">0.2</span><span class="p">,</span>
-            <span class="s2">&quot;deployed_device_list&quot;</span><span class="p">:[</span><span class="s2">&quot;0&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;default_value_for_each_table&quot;</span><span class="p">:[</span><span class="s2">&quot;0.0&quot;</span><span class="p">,</span><span class="s2">&quot;0.0&quot;</span><span class="p">]</span>
+            <span class="s2">&quot;num_of_refresher_buffer_in_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cache_refresh_percentage_per_iteration&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+            <span class="s2">&quot;deployed_device_list&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;default_value_for_each_table&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;0.0&quot;</span><span class="p">,</span> <span class="s2">&quot;0.0&quot;</span><span class="p">],</span>
         <span class="p">}</span>
-    <span class="p">]</span>
+    <span class="p">],</span>
 <span class="p">}</span>
 </pre></div>
 </div>
