@@ -31,8 +31,9 @@ except ImportError:
 
 
 @pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("ascending", [True, False])
 @pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
-def test_groupby_op(keys, cpu):
+def test_groupby_op(keys, cpu, ascending):
     # Initial timeseries dataset
     size = 60
     df1 = make_df(
@@ -57,11 +58,12 @@ def test_groupby_op(keys, cpu):
         groupby_cols=keys,
         sort_cols=["ts"],
         aggs={
-            "x": ["list", "sum"],
+            "x": ["list", "sum", "first", "last"],
             "y": ["first", "last"],
             "ts": ["min"],
         },
         name_sep="-",
+        ascending=ascending,
     )
     processor = nvt.Workflow(groupby_features)
     processor.fit(dataset)
@@ -85,8 +87,10 @@ def test_groupby_op(keys, cpu):
     for el in x.values:
         _el = pd.Series(el)
         sums.append(_el.sum())
-        assert _el.is_monotonic_increasing
-
+        if ascending:
+            assert _el.is_monotonic_increasing
+        else:
+            assert _el.is_monotonic_decreasing
     # Check that list sums match sum aggregation
     x = new_gdf["x-sum"]
     x = x.to_pandas() if hasattr(x, "to_pandas") else x
@@ -94,6 +98,12 @@ def test_groupby_op(keys, cpu):
 
     # Check basic behavior or "y" column
     assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
+
+    for i in range(len(new_gdf)):
+        if ascending:
+            assert new_gdf["x-first"].iloc[i] == new_gdf["x-list"].iloc[i][0]
+        else:
+            assert new_gdf["x-first"].iloc[i] == new_gdf["x-list"].iloc[i][-1]
 
 
 @pytest.mark.parametrize("cpu", _CPU)
