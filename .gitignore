@@ -61,6 +61,7 @@ cover/
 
 # Sphinx documentation
 docs/build/
+docs/source/examples/
 
 # IPython
 profile_default/
