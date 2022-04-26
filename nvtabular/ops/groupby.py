@@ -63,13 +63,16 @@ class Groupby(Operator):
         String separator to use for new column names.
     """
 
-    def __init__(self, groupby_cols=None, sort_cols=None, aggs="list", name_sep="_"):
+    def __init__(
+        self, groupby_cols=None, sort_cols=None, aggs="list", name_sep="_", ascending=True
+    ):
         self.groupby_cols = groupby_cols
         self.sort_cols = sort_cols or []
         if isinstance(self.groupby_cols, str):
             self.groupby_cols = [self.groupby_cols]
         if isinstance(self.sort_cols, str):
             self.sort_cols = [self.sort_cols]
+        self.ascending = ascending
 
         # Split aggregations into "conventional" aggregations
         # and "list-based" aggregations.  After this block,
@@ -102,7 +105,7 @@ class Groupby(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # Sort if necessary
         if self.sort_cols:
-            df = df.sort_values(self.sort_cols, ignore_index=True)
+            df = df.sort_values(self.sort_cols, ascending=self.ascending, ignore_index=True)
 
         # List aggregations do not work with empty data.
         # Use synthetic metadata to predict output columns.
@@ -116,7 +119,14 @@ class Groupby(Operator):
         )
 
         # Apply aggregations
-        new_df = _apply_aggs(_df, self.groupby_cols, _list_aggs, _conv_aggs, name_sep=self.name_sep)
+        new_df = _apply_aggs(
+            _df,
+            self.groupby_cols,
+            _list_aggs,
+            _conv_aggs,
+            name_sep=self.name_sep,
+            ascending=self.ascending,
+        )
 
         if empty_df:
             return new_df.iloc[:0]
@@ -196,7 +206,7 @@ def _columns_out_from_aggs(aggs, name_sep="_"):
     return _agg_cols
 
 
-def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
+def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascending=True):
 
     # Apply conventional aggs
     _columns = list(set(groupby_cols) | set(_conv_aggs) | set(_list_aggs))
@@ -210,7 +220,9 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
     for col, aggs in _list_aggs.items():
         for _agg in aggs:
             if is_list_agg(_agg, custom=True):
-                df[f"{col}{name_sep}{_agg}"] = _first_or_last(df[f"{col}{name_sep}list"], _agg)
+                df[f"{col}{name_sep}{_agg}"] = _first_or_last(
+                    df[f"{col}{name_sep}list"], _agg, ascending=ascending
+                )
         if "list" not in aggs:
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
 
@@ -249,9 +261,14 @@ def is_list_agg(agg, custom=False):
         return agg in ("list", list, "first", "last")
 
 
-def _first_or_last(x, kind):
+def _first_or_last(x, kind, ascending=True):
     # Redirect to _first or _last
-    return _first(x) if kind == "first" else _last(x)
+    if kind == "first" and ascending:
+        return _first(x)
+    elif kind == "last" and not ascending:
+        return _first(x)
+    else:
+        return _last(x)
 
 
 def _first(x):
