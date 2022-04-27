@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TargetEncoding &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Operator" href="operator.html" />
+    <link rel="prev" title="ReduceDtypeSize" href="reduce_dtype_size.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../workflow/workflow.html">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../workflow/workflow_node.html">WorkflowNode</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Operators</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="bucketize.html">Bucketize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="categorify.html">Categorify</a></li>
+<li class="toctree-l3"><a class="reference internal" href="clip.html">Clip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="columnsimilarity.html">ColumnSimilarity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="differencelag.html">DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="drop_low_cardinality.html">DropLowCardinality</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dropna.html">Dropna</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fillmissing.html">FillMissing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fillmedian.html">FillMedian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filter.html">Filter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="groupby.html">Groupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hashbucket.html">HashBucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hashedcross.html">HashedCross</a></li>
+<li class="toctree-l3"><a class="reference internal" href="joinexternal.html">JoinExternal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="joingroupby.html">JoinGroupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="lambdaop.html">LambdaOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="listslice.html">ListSlice</a></li>
+<li class="toctree-l3"><a class="reference internal" href="log.html">LogOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="normalize.html">Normalize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="normalizeminmax.html">NormalizeMinMax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rename.html">Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reduce_dtype_size.html">ReduceDtypeSize</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">TargetEncoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="operator.html">Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stat_operator.html">StatOperator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html">Torch Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html#module-nvtabular.framework_utils.torch.layers.embeddings">Torch Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html">TensorFlow Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html#module-nvtabular.framework_utils.tensorflow.layers.embedding">TensorFlow Layers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">API Documentation</a> &raquo;</li>
+          <li><a href="index.html">Operators</a> &raquo;</li>
+      <li>TargetEncoding</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="targetencoding">
+<h1>TargetEncoding<a class="headerlink" href="#targetencoding" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="nvtabular.ops.TargetEncoding">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">TargetEncoding</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kfold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fold_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_smooth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'host'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_folds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="stat_operator.html#nvtabular.ops.stat_operator.StatOperator" title="nvtabular.ops.stat_operator.StatOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator</span></code></a></p>
+<p>Target encoding is a common feature-engineering technique for
+categorical columns in tabular datasets. For each categorical group,
+the mean of a continuous target column is calculated, and the
+group-specific mean of each row is used to create a new feature (column).
+To prevent overfitting, the following additional logic is applied:</p>
+<blockquote>
+<div><p>1. Cross Validation: To prevent overfitting in training data,
+a cross-validation strategy is used - The data is split into
+k random “folds”, and the mean values within the i-th fold are
+calculated with data from all other folds. The cross-validation
+strategy is only employed when the dataset is used to update
+recorded statistics. For transformation-only workflow execution,
+global-mean statistics are used instead.</p>
+<p>2. Smoothing: To prevent overfitting for low cardinality categories,
+the means are smoothed with the overall mean of the target variable.</p>
+</div></blockquote>
+<p>Target Encoding Function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">TE</span> <span class="o">=</span> <span class="p">((</span><span class="n">mean_cat</span><span class="o">*</span><span class="n">count_cat</span><span class="p">)</span><span class="o">+</span><span class="p">(</span><span class="n">mean_global</span><span class="o">*</span><span class="n">p_smooth</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">count_cat</span><span class="o">+</span><span class="n">p_smooth</span><span class="p">)</span>
+
+<span class="n">count_cat</span> <span class="o">:=</span> <span class="n">count</span> <span class="n">of</span> <span class="n">the</span> <span class="n">categorical</span> <span class="n">value</span>
+<span class="n">mean_cat</span> <span class="o">:=</span> <span class="n">mean</span> <span class="n">target</span> <span class="n">value</span> <span class="n">of</span> <span class="n">the</span> <span class="n">categorical</span> <span class="n">value</span>
+<span class="n">mean_global</span> <span class="o">:=</span> <span class="n">mean</span> <span class="n">target</span> <span class="n">value</span> <span class="n">of</span> <span class="n">the</span> <span class="n">whole</span> <span class="n">dataset</span>
+<span class="n">p_smooth</span> <span class="o">:=</span> <span class="n">smoothing</span> <span class="n">factor</span>
+</pre></div>
+</div>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># First, we can transform the label columns to binary targets</span>
+<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;label1&#39;</span><span class="p">,</span> <span class="s1">&#39;label2&#39;</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="p">(</span><span class="n">col</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int8&#39;</span><span class="p">))</span>
+<span class="c1"># We target encode cat1, cat2 and the cross columns cat1 x cat2</span>
+<span class="n">target_encode</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[</span><span class="s1">&#39;cat1&#39;</span><span class="p">,</span> <span class="s1">&#39;cat2&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;cat2&#39;</span><span class="p">,</span><span class="s1">&#39;cat3&#39;</span><span class="p">]]</span> <span class="o">&gt;&gt;</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">TargetEncoding</span><span class="p">(</span>
+        <span class="n">labels</span><span class="p">,</span>
+        <span class="n">kfold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">p_smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">out_dtype</span><span class="o">=</span><span class="s2">&quot;float32&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">processor</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">target_encode</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Continuous target column to use for the encoding of cat_groups.
+The same continuous target will be used for all <cite>cat_groups</cite>.</p></li>
+<li><p><strong>target_mean</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – Global mean of the target column to use for encoding.
+Supplying this value up-front will improve performance.</p></li>
+<li><p><strong>kfold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>default 3</em>) – Number of cross-validation folds to use while gathering statistics.</p></li>
+<li><p><strong>fold_seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>default 42</em>) – Random seed to use for numpy-based fold assignment.</p></li>
+<li><p><strong>p_smooth</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>default 20</em>) – Smoothing factor.</p></li>
+<li><p><strong>out_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em><em>, </em><em>default is problem-specific</em>) – Name of output target-encoding column. If <cite>cat_groups</cite> includes
+multiple elements, this should be a list of the same length (and
+elements must be unique).</p></li>
+<li><p><strong>out_dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>default is problem-specific</em>) – dtype of output target-encoding columns.</p></li>
+<li><p><strong>tree_width</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>optional</em>) – Tree width of the hash-based groupby reduction for each categorical
+column. High-cardinality columns may require a large <cite>tree_width</cite>,
+while low-cardinality columns can likely use <cite>tree_width=1</cite>.
+If passing a dict, each key and value should correspond to the column
+name and width, respectively. The default value is 8 for all columns.</p></li>
+<li><p><strong>cat_cache</strong> (<em>{&quot;device&quot;</em><em>, </em><em>&quot;host&quot;</em><em>, </em><em>&quot;disk&quot;}</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – Location to cache the list of unique categories for
+each categorical column. If passing a dict, each key and value
+should correspond to the column name and location, respectively.
+Default is “host” for all columns.</p></li>
+<li><p><strong>out_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>optional</em>) – Root directory where category statistics will be written out in
+parquet format.</p></li>
+<li><p><strong>on_host</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to convert cudf data to pandas between tasks in the hash-based
+groupby reduction. The extra host &lt;-&gt; device data movement can reduce
+performance.  However, using <cite>on_host=True</cite> typically improves stability
+(by avoiding device-level memory pressure).</p></li>
+<li><p><strong>name_sep</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>default &quot;_&quot;</em>) – String separator to use between concatenated column names
+for multi-column groups.</p></li>
+<li><p><strong>drop_folds</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to drop the “__fold__” column created. This is really only useful for unittests.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dask.dataframe.core.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.fit" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate statistics for this operator, and return a dask future
+to these statistics, which will be computed by the workflow.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.fit_finalize">
+<code class="sig-name descname"><span class="pre">fit_finalize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dask_stats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.fit_finalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.fit_finalize" title="Permalink to this definition"></a></dt>
+<dd><p>Finalize statistics calculation - the workflow calls this function with
+the computed statistics from the ‘fit’ object’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.dependencies">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dependencies</span></code><a class="headerlink" href="#nvtabular.ops.TargetEncoding.dependencies" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.compute_selector">
+<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.schema.schema.Schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.dag.selector.ColumnSelector</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.compute_selector" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.output_dtype">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_dtype</span></code><a class="headerlink" href="#nvtabular.ops.TargetEncoding.output_dtype" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.output_tags">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_tags</span></code><a class="headerlink" href="#nvtabular.ops.TargetEncoding.output_tags" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.target_columns">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">target_columns</span></code><a class="headerlink" href="#nvtabular.ops.TargetEncoding.target_columns" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.set_storage_path">
+<code class="sig-name descname"><span class="pre">set_storage_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.set_storage_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.set_storage_path" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.clear" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.TargetEncoding.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/target_encoding.html#TargetEncoding.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.TargetEncoding.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="reduce_dtype_size.html" class="btn btn-neutral float-left" title="ReduceDtypeSize" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="operator.html" class="btn btn-neutral float-right" title="Operator" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

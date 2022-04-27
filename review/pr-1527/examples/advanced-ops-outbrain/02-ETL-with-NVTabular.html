@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started Outbrain: ETL with NVTabular &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="NVTabular demo on Outbrain Data" href="03-Training-with-TF.html" />
+    <link rel="prev" title="Getting Started Outbrain: Download and Convert" href="01-Download-Convert.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with Movielens</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Advanced Ops with Outbrain</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ETL with NVTabular</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Overview">Overview</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Preparing-documents-metadata">Preparing documents metadata</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Initiate-NVTabular-Workflow">Initiate NVTabular Workflow</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Feature-Engineering">Feature Engineering</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Reviewing-processed-data">Reviewing processed data</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Training with TensorFlow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Tabular Data with Rossmann</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Examples</a> &raquo;</li>
+          <li><a href="index.html">Advanced Ops with Outbrain</a> &raquo;</li>
+      <li>Getting Started Outbrain: ETL with NVTabular</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt .copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Getting-Started-Outbrain:-ETL-with-NVTabular">
+<h1>Getting Started Outbrain: ETL with NVTabular<a class="headerlink" href="#Getting-Started-Outbrain:-ETL-with-NVTabular" title="Permalink to this headline"></a></h1>
+<div class="section" id="Overview">
+<h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
+<p>In this notebook we will do preprocessing and feature engineering using <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Kaggle Outbrain dataset</a>.</p>
+<p><strong>Learning objectives</strong></p>
+<p>In this notebook, we learn how to</p>
+<ul class="simple">
+<li><p>Use LambdaOp for custom row-wise dataframe manipulations with NVTabular</p></li>
+<li><p>Preprocess single-hot categorical input features with NVTabular</p></li>
+<li><p>Apply TargetEncoding to categorical features</p></li>
+<li><p>Create a custom operator to create time features</p></li>
+<li><p>Apply ColumnSimilarity to calculate the similarity between two columns using tf-idf metric</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+
+<span class="kn">import</span> <span class="nn">cupy</span>
+
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Shuffle</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FillMedian</span><span class="p">,</span>
+    <span class="n">Categorify</span><span class="p">,</span>
+    <span class="n">LogOp</span><span class="p">,</span>
+    <span class="n">TargetEncoding</span><span class="p">,</span>
+    <span class="n">Rename</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops.column_similarity</span> <span class="kn">import</span> <span class="n">ColumnSimilarity</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">ColumnGroup</span>
+</pre></div>
+</div>
+</div>
+<p>First, we set where the dataset should be saved once processed (OUTPUT_BUCKET_FOLDER), as well as where the dataset originally resides (DATA_BUCKET_FOLDER).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;~/nvt-examples/outbrain/data&quot;</span><span class="p">)</span>
+<span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s read our saved train and valid datasets.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train_gdf.parquet&quot;</span><span class="p">)</span>
+<span class="n">valid_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid_gdf.parquet&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Preparing-documents-metadata">
+<h2>Preparing documents metadata<a class="headerlink" href="#Preparing-documents-metadata" title="Permalink to this headline"></a></h2>
+<p>Let’s create the output directories to store the preprocessed parquet files.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output_train_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/&quot;</span><span class="p">)</span>
+<span class="n">output_valid_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/&quot;</span><span class="p">)</span>
+<span class="o">!</span> mkdir -p <span class="nv">$output_train_dir</span>
+<span class="o">!</span> mkdir -p <span class="nv">$output_valid_dir</span>
+</pre></div>
+</div>
+</div>
+<p>We read in three more cudf data frames, documents categories, topics, and entities, and use them to create sparse matrices in cupy. We will use these later to calculate cosine similarity between event document (landing page context) and ad document profile vectors (TF-IDF), i.e., how close in profile an ad is to the page that it is being displayed.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Alias for read_csv</span>
+<span class="n">read_csv</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span>
+
+<span class="n">documents_categories_cudf</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_categories.csv&quot;</span><span class="p">)</span>
+<span class="n">documents_topics_cudf</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_topics.csv&quot;</span><span class="p">)</span>
+<span class="n">documents_entities_cudf</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_entities.csv&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># read in document categories/topics/entities as cupy sparse matrices</span>
+<span class="k">def</span> <span class="nf">df_to_coo</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="s2">&quot;confidence_level&quot;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">cupy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">coo_matrix</span><span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="n">data</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)))</span>
+
+
+<span class="n">categories</span> <span class="o">=</span> <span class="n">df_to_coo</span><span class="p">(</span><span class="n">documents_categories_cudf</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;category_id&quot;</span><span class="p">)</span>
+<span class="n">topics</span> <span class="o">=</span> <span class="n">df_to_coo</span><span class="p">(</span><span class="n">documents_topics_cudf</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;topic_id&quot;</span><span class="p">)</span>
+<span class="n">documents_entities_cudf</span><span class="p">[</span><span class="s2">&quot;entity_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">documents_entities_cudf</span><span class="p">[</span><span class="s2">&quot;entity_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span>
+<span class="p">)</span>
+<span class="n">entities</span> <span class="o">=</span> <span class="n">df_to_coo</span><span class="p">(</span><span class="n">documents_entities_cudf</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;entity_id&quot;</span><span class="p">)</span>
+
+<span class="n">documents_categories_cudf</span> <span class="o">=</span> <span class="n">documents_topics_cudf</span> <span class="o">=</span> <span class="n">documents_entities_cudf</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Initiate-NVTabular-Workflow">
+<h2>Initiate NVTabular Workflow<a class="headerlink" href="#Initiate-NVTabular-Workflow" title="Permalink to this headline"></a></h2>
+<p>Now that our datasets, sparse matrices and udf are created, we can begin laying the groundwork for NVTabular. NVTabular requires input features to be defined as groups of columns , so we define our ColumnGroup features at this step. Note that feature engineering and preprocessing often happens to sets of columns, so we adopt that method and require the user to specify continuous and categoricals along with the target as lists within ColumnGroup.</p>
+<p>At this point, our data still isn’t in a form that’s ideal for consumption by our W&amp;D model that we will train in the next notebook. There are missing values, and our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices for embedding lookups. The distributions of our continuous variables are uncentered. We also would like to create new features that will help to increase the model accuracy.</p>
+<p>Let’s begin to create and process features using NVTabular ops: * geo_location_state and geo_location_country are created by stripping geo_location using the <code class="docutils literal notranslate"><span class="pre">LambdaOp</span></code> * publish_time_days_since_published and publish_time_promo_days_since_published features are created using the <code class="docutils literal notranslate"><span class="pre">calculate_delta</span></code> function in a <code class="docutils literal notranslate"><span class="pre">LambdaOp</span></code> * Missing values are filled using median value depending on the feature using <code class="docutils literal notranslate"><span class="pre">FillMedian()</span></code>op * Continuous features are log transformed with the <code class="docutils literal notranslate"><span class="pre">LogOp()</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op is used for categorification, i.e. encoding of categorical features. Categorify op takes a param called <code class="docutils literal notranslate"><span class="pre">freq_threshold</span></code> which is used for frequency capping. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency to the <em>same</em> index, keeping the model from overfitting to sparse signals. We don’t apply frequency thresholds in this example, but one can easily create a frequency threshold dictionary, assign a custom
+threshold value for each categorical feature, and feed that dictionary into the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op as <code class="docutils literal notranslate"><span class="pre">freq_threshold</span></code> param.</p>
+<p>One of the important part of building recommender systems is to do feature engineering. As a very promising feature engineering technique, <code class="docutils literal notranslate"><span class="pre">Target</span> <span class="pre">Encoding</span></code> processes the categorical features and makes them easier accessible to the model during training and validation. <em>Target Encoding (TE)</em> has emerged as being both effective and efficient in many data science projects. For example, it is the major component of Nvidia Kaggle Grandmasters team’s <a class="reference external" href="https://medium.com/rapids-ai/winning-solution-of-recsys2020-challenge-gpu-accelerated-feature-engineering-and-training-for-cd67c5a87b1f">winning
+solution</a> of <a class="reference external" href="http://www.recsyschallenge.com/2020/">Recsys Challenge 2020</a>. TE calculates the statistics from a target variable grouped by the unique values of one or more categorical features. For example in a binary classification problem, it calculates the probability that the target is true for each category value - a simple mean. In other words, for
+each distinct element in feature <span class="math notranslate nohighlight">\(x\)</span> we are going to compute the average of the corresponding values in target y. Then we are going to replace each <span class="math notranslate nohighlight">\(x_{i}\)</span> with the corresponding mean value. For more details on TargetEncoding please visit <a class="reference external" href="https://medium.com/rapids-ai/target-encoding-with-rapids-cuml-do-more-with-your-categorical-data-8c762c79e784">here</a> and <a class="reference external" href="https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_3_TargetEncoding.ipynb">here</a>.</p>
+<p>Here, we apply Target Encoding to certain categorical features with <em>kfold</em> of 5 and <em>smoothing</em> of 20 to avoid overfitting using <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/a0141d0a710698470160bc2cbc42b18ce2d49133/nvtabular/ops/target_encoding.py">TargetEncoding op</a>.</p>
+</div>
+<div class="section" id="Feature-Engineering">
+<h2>Feature Engineering<a class="headerlink" href="#Feature-Engineering" title="Permalink to this headline"></a></h2>
+<p>Below, we create a custom operator that calculates the time difference between a specified time column (either publish_time or publish_time_promo) and timestamp. This is used to calculate time elapsed since publication between the landing page and the ad.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># To save disk space, the timestamps in the entire dataset are relative to the first time in the dataset.</span>
+<span class="c1"># To recover the actual epoch time of the visit, we add 1465876799998 to the timestamp.</span>
+<span class="n">TIMESTAMP_DELTA</span> <span class="o">=</span> <span class="mi">1465876799998</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">Operator</span>
+
+
+<span class="k">class</span> <span class="nc">DaysSincePublished</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">gdf</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+            <span class="n">col</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">col</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;datetime64[ns]&quot;</span><span class="p">)</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="p">(</span><span class="n">gdf</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">TIMESTAMP_DELTA</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;datetime64[ms]&quot;</span><span class="p">)</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span>
+            <span class="n">gdf</span><span class="p">[</span><span class="n">column</span> <span class="o">+</span> <span class="s2">&quot;_since_published&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta</span> <span class="o">*</span> <span class="p">(</span><span class="n">delta</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">delta</span> <span class="o">&lt;=</span> <span class="mi">10</span> <span class="o">*</span> <span class="mi">365</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">gdf</span>
+
+    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnSelector</span><span class="p">([</span><span class="n">column</span> <span class="o">+</span> <span class="s2">&quot;_since_published&quot;</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># geo processing: apply two different lambda operators to the ‘geo_location’ column, and</span>
+<span class="c1"># extract the country/state from the geo_location value. The geo_location column</span>
+<span class="c1"># looks something like &quot;US&gt;CA&gt;12345&quot;, so we&#39;re using string slicing to pull out the country</span>
+<span class="c1"># and the country+state then</span>
+<span class="n">geo_location</span> <span class="o">=</span> <span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;geo_location&quot;</span><span class="p">])</span>
+<span class="n">country</span> <span class="o">=</span> <span class="n">geo_location</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_country&quot;</span><span class="p">)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">geo_location</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_state&quot;</span><span class="p">)</span>
+<span class="n">geo_features</span> <span class="o">=</span> <span class="n">geo_location</span> <span class="o">+</span> <span class="n">country</span> <span class="o">+</span> <span class="n">state</span>
+
+<span class="c1"># categoricals processing: categorify certain input columns as well as the geo features</span>
+<span class="n">cats</span> <span class="o">=</span> <span class="n">ColumnGroup</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="s2">&quot;ad_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;document_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;platform&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;document_id_promo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;campaign_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;advertiser_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;publisher_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;source_id_promo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;publisher_id_promo&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">geo_features</span> <span class="o">+</span> <span class="n">cats</span> <span class="o">&gt;&gt;</span> <span class="n">Categorify</span><span class="p">()</span>
+
+<span class="c1"># Apply TargetEncoding to certain categoricals with kfold of 5 and smoothing of 20</span>
+<span class="n">te_features</span> <span class="o">=</span> <span class="n">cats</span> <span class="o">&gt;&gt;</span> <span class="n">TargetEncoding</span><span class="p">(</span><span class="s2">&quot;clicked&quot;</span><span class="p">,</span> <span class="n">kfold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">p_smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="c1"># process dates using the ‘DaysSincePublished’ custom operator</span>
+<span class="n">dates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;publish_time&quot;</span><span class="p">,</span> <span class="s2">&quot;publish_time_promo&quot;</span><span class="p">]</span>
+<span class="n">date_features</span> <span class="o">=</span> <span class="n">dates</span> <span class="o">&gt;&gt;</span> <span class="n">DaysSincePublished</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">FillMedian</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">LogOp</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s visualize our calculation graph with the column groups we used and created so far.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="n">date_features</span> <span class="o">+</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">te_features</span> <span class="o">+</span> <span class="s2">&quot;clicked&quot;</span>
+<span class="n">features</span><span class="o">.</span><span class="n">graph</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/examples_advanced-ops-outbrain_02-ETL-with-NVTabular_24_0.svg" src="../../_images/examples_advanced-ops-outbrain_02-ETL-with-NVTabular_24_0.svg" /></div>
+</div>
+<p>A user might sometimes be interested to continue reading about the same topics of the current page. Computing the similarity between the textual content of the current page and the pages linked to the displayed ads, can be a relevant feature for a model that predicts which ad the user would click next. A simple, yet effective way to compute the similarity between documents is generating the TF-IDF vectors for each of them, which captures their most relevant terms, and then computing the cosine
+similarity between those vectors.</p>
+<p>Below, we calculate doc_event_doc_ad_sim_categories, topics, and entities using the <code class="docutils literal notranslate"><span class="pre">ColumnSimilarity</span></code> op, which utilizes the sparse categories, topics, and entities matrices that were created above to calculate landing page similarity for categories, topics, and entities. We calculate Cosine similarity between event doc (landing page) and ad doc aspects vectors (TF-IDF). Creating these extra features help to improve model accuracy and predictability.</p>
+<p>Note that we rename the column names to avoid duplicated column names.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sim_features_categ</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[[</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="s2">&quot;document_id_promo&quot;</span><span class="p">]]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">ColumnSimilarity</span><span class="p">(</span><span class="n">categories</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_categories&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">sim_features_topics</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[[</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="s2">&quot;document_id_promo&quot;</span><span class="p">]]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">ColumnSimilarity</span><span class="p">(</span><span class="n">topics</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_topics&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">sim_features_entities</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[[</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="s2">&quot;document_id_promo&quot;</span><span class="p">]]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">ColumnSimilarity</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_entities&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">sim_features</span> <span class="o">=</span> <span class="n">sim_features_categ</span> <span class="o">+</span> <span class="n">sim_features_topics</span> <span class="o">+</span> <span class="n">sim_features_entities</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># The workflow is created with the output node of the graph</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">features</span> <span class="o">+</span> <span class="n">sim_features</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We then create an NVTabular Dataset object both for train and validation sets. We calculate statistics for this workflow on the input dataset, i.e. on our training set, using the <code class="docutils literal notranslate"><span class="pre">workflow.fit()</span></code> method so that our Workflow can use these stats to transform any given input. When our Workflow transforms our datasets and, we also save the results out to parquet files for fast reading at train time.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_filename</span><span class="p">)</span>
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid_filename</span><span class="p">)</span>
+
+<span class="c1"># Calculate statistics on the training set</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/local/lib/python3.8/dist-packages/numba/cuda/compiler.py:865: NumbaPerformanceWarning: Grid size (1) &lt; 2 * SM count (112) will likely result in GPU under utilization due to low occupancy.
+  warn(NumbaPerformanceWarning(msg))
+/usr/local/lib/python3.8/dist-packages/numba/cuda/compiler.py:865: NumbaPerformanceWarning: Grid size (1) &lt; 2 * SM count (112) will likely result in GPU under utilization due to low occupancy.
+  warn(NumbaPerformanceWarning(msg))
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># use the calculated statistics to transform the train/valid datasets</span>
+<span class="c1"># and write out each as parquet</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">output_train_dir</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_PARTITION</span><span class="p">,</span> <span class="n">out_files_per_proc</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="n">output_valid_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can save the stats from the workflow and load it anytime, so we can run training without doing preprocessing.</p>
+<p>In the next notebooks, we will train a deep learning model. Our training pipeline requires information about the data schema to define the neural network architecture. We will save the NVTabular workflow to disk so that we can restore it in the next notebooks.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Reviewing-processed-data">
+<h2>Reviewing processed data<a class="headerlink" href="#Reviewing-processed-data" title="Permalink to this headline"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="n">VALID_PATHS</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01-Download-Convert.html" class="btn btn-neutral float-left" title="Getting Started Outbrain: Download and Convert" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Training-with-TF.html" class="btn btn-neutral float-right" title="NVTabular demo on Outbrain Data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
