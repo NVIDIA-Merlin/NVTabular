@@ -132,13 +132,16 @@
 <span class="sd">        String separator to use for new column names.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aggs</span><span class="o">=</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aggs</span><span class="o">=</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span> <span class="o">=</span> <span class="n">groupby_cols</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span> <span class="o">=</span> <span class="n">sort_cols</span> <span class="ow">or</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ascending</span> <span class="o">=</span> <span class="n">ascending</span>
 
         <span class="c1"># Split aggregations into &quot;conventional&quot; aggregations</span>
         <span class="c1"># and &quot;list-based&quot; aggregations.  After this block,</span>
@@ -171,7 +174,7 @@
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="c1"># Sort if necessary</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">:</span>
-            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ascending</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># List aggregations do not work with empty data.</span>
         <span class="c1"># Use synthetic metadata to predict output columns.</span>
@@ -185,7 +188,14 @@
         <span class="p">)</span>
 
         <span class="c1"># Apply aggregations</span>
-        <span class="n">new_df</span> <span class="o">=</span> <span class="n">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+        <span class="n">new_df</span> <span class="o">=</span> <span class="n">_apply_aggs</span><span class="p">(</span>
+            <span class="n">_df</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span>
+            <span class="n">_list_aggs</span><span class="p">,</span>
+            <span class="n">_conv_aggs</span><span class="p">,</span>
+            <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">,</span>
+            <span class="n">ascending</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ascending</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">empty_df</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">new_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">0</span><span class="p">]</span>
@@ -265,7 +275,7 @@
     <span class="k">return</span> <span class="n">_agg_cols</span>
 
 
-<span class="k">def</span> <span class="nf">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 
     <span class="c1"># Apply conventional aggs</span>
     <span class="n">_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">groupby_cols</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">))</span>
@@ -279,7 +289,9 @@
     <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">aggs</span> <span class="ow">in</span> <span class="n">_list_aggs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">_agg</span> <span class="ow">in</span> <span class="n">aggs</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">is_list_agg</span><span class="p">(</span><span class="n">_agg</span><span class="p">,</span> <span class="n">custom</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-                <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">_agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_first_or_last</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}</span><span class="s2">list&quot;</span><span class="p">],</span> <span class="n">_agg</span><span class="p">)</span>
+                <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">_agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_first_or_last</span><span class="p">(</span>
+                    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}</span><span class="s2">list&quot;</span><span class="p">],</span> <span class="n">_agg</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="n">ascending</span>
+                <span class="p">)</span>
         <span class="k">if</span> <span class="s2">&quot;list&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">aggs</span><span class="p">:</span>
             <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">col</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name_sep</span><span class="si">}</span><span class="s2">list&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -318,9 +330,14 @@
         <span class="k">return</span> <span class="n">agg</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="s2">&quot;last&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_first_or_last</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kind</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_first_or_last</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="c1"># Redirect to _first or _last</span>
-    <span class="k">return</span> <span class="n">_first</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;first&quot;</span> <span class="k">else</span> <span class="n">_last</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;first&quot;</span> <span class="ow">and</span> <span class="n">ascending</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_first</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;last&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ascending</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_first</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_last</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_first</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
