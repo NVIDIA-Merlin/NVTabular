@@ -1,5 +1,5 @@
-dask==2021.11.2
-distributed==2021.11.2
+dask==2022.3.0
+distributed==2022.3.0
 pandas>=1.2.0,<1.4.0dev0
 numba>=0.53.1
 tqdm>=4.0
