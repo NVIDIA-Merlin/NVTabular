@@ -359,7 +359,7 @@ div.rendered_html tbody tr:hover {
 }
 </style>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
@@ -379,7 +379,7 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="f1f9f089f33c4f48bc31ff68aa5e6819" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
+<p><img alt="11b729af3fa940f4bf31720010af5b67" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
 <div class="section" id="Getting-Started-MovieLens:-Training-with-TensorFlow">
 <h1>Getting Started MovieLens: Training with TensorFlow<a class="headerlink" href="#Getting-Started-MovieLens:-Training-with-TensorFlow" title="Permalink to this headline"></a></h1>
 <div class="section" id="Overview">
@@ -493,7 +493,7 @@ the purpose of this notebook is to explain how to integrate multi-hot categorica
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;userId&#39;: (162542, 512), &#39;movieId&#39;: (56662, 512), &#39;genres&#39;: (21, 16)}
+{&#39;userId&#39;: (162542, 512), &#39;movieId&#39;: (56747, 512), &#39;genres&#39;: (21, 16)}
 </pre></div></div>
 </div>
 </div>
@@ -508,17 +508,13 @@ the purpose of this notebook is to explain how to integrate multi-hot categorica
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
-<span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
-<span class="c1"># IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise</span>
-<span class="c1"># TF will have claimed all free GPU memory</span>
-<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_MEMORY_ALLOCATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.7&quot;</span>  <span class="c1"># fraction of free memory</span>
 <span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span><span class="p">,</span> <span class="n">KerasSequenceValidater</span>
 <span class="kn">from</span> <span class="nn">nvtabular.framework_utils.tensorflow</span> <span class="kn">import</span> <span class="n">layers</span>
 </pre></div>
 </div>
 </div>
 <p>First, we take a look on our data loader and how the data is represented as tensors. The NVTabular data loader are initialized as usually and we specify both single-hot and multi-hot categorical features as cat_names. The data loader will automatically recognize the single/multi-hot columns and represent them accordingly.</p>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
@@ -548,6 +544,15 @@ the purpose of this notebook is to explain how to integrate multi-hot categorica
 </pre></div>
 </div>
 </div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/local/lib/python3.8/dist-packages/cudf/core/dataframe.py:1292: UserWarning: The deep parameter is ignored and is only included for pandas compatibility.
+  warnings.warn(
+</pre></div></div>
+</div>
 <p>Let’s generate a batch and take a look on the input features. We can see, that the single-hot categorical features (<code class="docutils literal notranslate"><span class="pre">userId</span></code> and <code class="docutils literal notranslate"><span class="pre">movieId</span></code>) have a shape of <code class="docutils literal notranslate"><span class="pre">(32768,</span> <span class="pre">1)</span></code>, which is the batchsize (as usually). For the multi-hot categorical feature <code class="docutils literal notranslate"><span class="pre">genres</span></code>, we receive two Tensors <code class="docutils literal notranslate"><span class="pre">genres__values</span></code> and <code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code>. <code class="docutils literal notranslate"><span class="pre">genres__values</span></code> are the actual data, containing the genre IDs. Note that the Tensor has more values than the batch_size. The reason is, that one datapoint in the batch
 can contain more than one genre (multi-hot). <code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code> are a supporting Tensor, describing how many genres are associated with each datapoint in the batch. For example, - if the first value in <code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code> is <code class="docutils literal notranslate"><span class="pre">5</span></code>, then the first 5 values in <code class="docutils literal notranslate"><span class="pre">genres__values</span></code> are associated with the first datapoint in the batch (movieId/userId). - if the second value in <code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code> is <code class="docutils literal notranslate"><span class="pre">2</span></code>, then the 6th and the 7th values in <code class="docutils literal notranslate"><span class="pre">genres__values</span></code> are associated with the second datapoint in the
 batch (continuing after the previous value stopped). - if the third value in <code class="docutils literal notranslate"><span class="pre">genres_nnzs</span></code> is <code class="docutils literal notranslate"><span class="pre">1</span></code>, then the 8th value in <code class="docutils literal notranslate"><span class="pre">genres__values</span></code> are associated with the third datapoint in the batch. - and so on</p>
@@ -565,9 +570,10 @@ batch (continuing after the previous value stopped). - if the third value in <co
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-2021-12-02 01:17:48.483489: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F FMA
+2022-04-27 22:12:40.128861: I tensorflow/core/platform/cpu_feature_guard.cc:152] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE3 SSE4.1 SSE4.2 AVX
 To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2021-12-02 01:17:48.490106: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1510] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 22755 MB memory:  -&gt; device: 0, name: Quadro GV100, pci bus id: 0000:15:00.0, compute capability: 7.0
+2022-04-27 22:12:41.479738: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1525] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 16254 MB memory:  -&gt; device: 0, name: Quadro GV100, pci bus id: 0000:15:00.0, compute capability: 7.0
+2022-04-27 22:12:41.480359: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1525] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 30382 MB memory:  -&gt; device: 1, name: Quadro GV100, pci bus id: 0000:2d:00.0, compute capability: 7.0
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -576,38 +582,38 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;genres&#39;: (&lt;tf.Tensor: shape=(89167, 1), dtype=int64, numpy=
-  array([[12],
-         [11],
-         [ 4],
+{&#39;genres&#39;: (&lt;tf.Tensor: shape=(88833, 1), dtype=int64, numpy=
+  array([[ 1],
+         [ 2],
+         [ 8],
          ...,
          [ 2],
-         [ 1],
-         [ 6]])&gt;,
+         [ 7],
+         [17]])&gt;,
   &lt;tf.Tensor: shape=(32768, 1), dtype=int32, numpy=
-  array([[3],
+  array([[1],
+         [1],
          [3],
-         [1],
          ...,
+         [5],
          [4],
-         [1],
-         [3]], dtype=int32)&gt;),
+         [4]], dtype=int32)&gt;),
  &#39;movieId&#39;: &lt;tf.Tensor: shape=(32768, 1), dtype=int64, numpy=
- array([[ 1089],
-        [ 1071],
-        [21846],
+ array([[1179],
+        [ 229],
+        [1333],
         ...,
-        [   52],
-        [ 1428],
-        [ 5050]])&gt;,
+        [ 410],
+        [1153],
+        [ 460]])&gt;,
  &#39;userId&#39;: &lt;tf.Tensor: shape=(32768, 1), dtype=int64, numpy=
- array([[14098],
-        [ 9098],
-        [ 2005],
+ array([[   396],
+        [ 61511],
+        [   601],
         ...,
-        [67941],
-        [38484],
-        [22462]])&gt;}
+        [134355],
+        [ 14751],
+        [ 10238]])&gt;}
 </pre></div></div>
 </div>
 <p>We can see that the sum of <code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code> is equal to the shape of <code class="docutils literal notranslate"><span class="pre">genres__values</span></code>.</p>
@@ -625,7 +631,7 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;tf.Tensor: shape=(), dtype=int32, numpy=89167&gt;
+&lt;tf.Tensor: shape=(), dtype=int32, numpy=88833&gt;
 </pre></div></div>
 </div>
 <p>As each datapoint can have a different number of genres, it is more efficient to represent the genres as two flat tensors: One with the actual values (<code class="docutils literal notranslate"><span class="pre">genres__values</span></code>) and one with the length for each datapoint (<code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code>).</p>
@@ -696,9 +702,9 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-[EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key=&#39;movieId&#39;, number_buckets=56662, default_value=None), dimension=512, combiner=&#39;mean&#39;, initializer=&lt;tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7f585c6608b0&gt;, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True),
- EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key=&#39;userId&#39;, number_buckets=162542, default_value=None), dimension=512, combiner=&#39;mean&#39;, initializer=&lt;tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7f585c660910&gt;, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True),
- EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key=&#39;genres&#39;, number_buckets=21, default_value=None), dimension=16, combiner=&#39;mean&#39;, initializer=&lt;tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7f585c660970&gt;, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True)]
+[EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key=&#39;movieId&#39;, number_buckets=56747, default_value=None), dimension=512, combiner=&#39;mean&#39;, initializer=&lt;tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7fa4cc304460&gt;, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True),
+ EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key=&#39;userId&#39;, number_buckets=162542, default_value=None), dimension=512, combiner=&#39;mean&#39;, initializer=&lt;tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7fa4cc304c10&gt;, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True),
+ EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key=&#39;genres&#39;, number_buckets=21, default_value=None), dimension=16, combiner=&#39;mean&#39;, initializer=&lt;tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7fa4cc304a60&gt;, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True)]
 </pre></div></div>
 </div>
 <p>NVTabular implemented a custom TensorFlow layer <code class="docutils literal notranslate"><span class="pre">layers.DenseFeatures</span></code>, which takes as an input the different <code class="docutils literal notranslate"><span class="pre">tf.Keras.Input</span></code> and pre-initialized <code class="docutils literal notranslate"><span class="pre">tf.feature_column</span></code> and automatically concatenate them into a flat tensor. In the case of multi-hot categorical features, <code class="docutils literal notranslate"><span class="pre">DenseFeatures</span></code> organizes the inputs <code class="docutils literal notranslate"><span class="pre">__values</span></code> and <code class="docutils literal notranslate"><span class="pre">__nnzs</span></code> to define a <code class="docutils literal notranslate"><span class="pre">RaggedTensor</span></code> and combine them. <code class="docutils literal notranslate"><span class="pre">DenseFeatures</span></code> can handle numeric inputs, as well, but MovieLens does not provide numerical input features.</p>
@@ -736,7 +742,7 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;userId&#39;: (162542, 512), &#39;movieId&#39;: (56662, 512), &#39;genres&#39;: (21, 16)}
+{&#39;userId&#39;: (162542, 512), &#39;movieId&#39;: (56747, 512), &#39;genres&#39;: (21, 16)}
 </pre></div></div>
 </div>
 <p>We add multiple Dense Layers. Finally, we initialize the <code class="docutils literal notranslate"><span class="pre">tf.keras.Model</span></code> and add the optimizer.</p>
@@ -791,21 +797,14 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-2021-12-02 01:17:53.113076: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:185] None of the MLIR Optimization Passes are enabled (registered 2)
-</pre></div></div>
-</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-611/611 [==============================] - 19s 26ms/step - loss: 0.6654
-{&#39;val_loss&#39;: 0.6600587}
+609/611 [============================&gt;.] - ETA: 0s - loss: 0.6650{&#39;val_loss&#39;: 0.6597499}
+611/611 [==============================] - 17s 22ms/step - loss: 0.6650 - val_loss: 0.6597
+run_time: 19.14878249168396 - rows: 2292 - epochs: 1 - dl_thru: 119.69429393202323
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -824,7 +823,7 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-2021-12-02 01:18:14.791643: W tensorflow/python/util/util.cc:348] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.
+2022-04-27 22:13:04.741886: W tensorflow/python/util/util.cc:368] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.
 WARNING:absl:Function `_wrapped_model` contains input name(s) movieId, userId with unsupported characters which will be renamed to movieid, userid in the SavedModel.
 </pre></div></div>
 </div>
@@ -842,6 +841,7 @@ INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.saved
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
 INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.savedmodel/assets
+WARNING:absl:&lt;nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures object at 0x7fa4cc304370&gt; has the same name &#39;DenseFeatures&#39; as a built-in Keras object. Consider renaming &lt;class &#39;nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures&#39;&gt; to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.
 </pre></div></div>
 </div>
 <p>Before moving to the next notebook, <code class="docutils literal notranslate"><span class="pre">04a-Triton-Inference-with-TF.ipynb</span></code>, we need to generate the Triton Inference Server configurations and save the models in the correct format. We just saved TensorFlow model to disk, and in the previous notebook <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code>, we saved the NVTabular workflow. Let’s load the workflow.</p>
@@ -865,19 +865,44 @@ INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.saved
 </div>
 </div>
 <p>NVTabular provides a function to save the NVTabular workflow, TensorFlow model and Triton Inference Server (IS) config files via <code class="docutils literal notranslate"><span class="pre">export_tensorflow_ensemble</span></code>. We provide the model, workflow, a model name for ensemble model, path and output column.</p>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Creates an ensemble triton server model, where</span>
-<span class="c1">#   model: The tensorflow model that should be served</span>
-<span class="c1">#   workflow: The nvtabular workflow used in preprocessing</span>
-<span class="c1">#   name: The base name of the various triton models</span>
+<span class="c1">#  model: The tensorflow model that should be served</span>
+<span class="c1">#  workflow: The nvtabular workflow used in preprocessing</span>
+<span class="c1">#  name: The base name of the various triton models</span>
 
 <span class="kn">from</span> <span class="nn">nvtabular.inference.triton</span> <span class="kn">import</span> <span class="n">export_tensorflow_ensemble</span>
 <span class="n">export_tensorflow_ensemble</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">MODEL_NAME_ENSEMBLE</span><span class="p">,</span> <span class="n">MODEL_PATH</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;rating&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:absl:Function `_wrapped_model` contains input name(s) movieId, userId with unsupported characters which will be renamed to movieid, userid in the SavedModel.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+INFO:tensorflow:Assets written to: /root/nvt-examples/models/movielens_tf/1/model.savedmodel/assets
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+INFO:tensorflow:Assets written to: /root/nvt-examples/models/movielens_tf/1/model.savedmodel/assets
+WARNING:absl:&lt;nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures object at 0x7fa4cc304370&gt; has the same name &#39;DenseFeatures&#39; as a built-in Keras object. Consider renaming &lt;class &#39;nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures&#39;&gt; to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.
+</pre></div></div>
 </div>
 <p>Now, we can move to the next notebook, <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/04-Triton-Inference-with-TF.ipynb">04-Triton-Inference-with-TF.ipynb</a>, to send inference request to the Triton IS.</p>
 </div>
