@@ -388,7 +388,7 @@ div.rendered_html tbody tr:hover {
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
 <p>The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as during training (ETL). We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integer before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the HugeCTR model as an ensemble model to Triton Inference. The ensemble model
 guarantees that the same transformation are applied to the raw inputs.</p>
-<p><img alt="810652e580c24d008f63f5c161a4cea6" class="no-scaled-link" src="../../_images/triton-hugectr.png" style="width: 25%;" /></p>
+<p><img alt="75cb3deaa1d542118b1022cc2d4f09b7" class="no-scaled-link" src="../../_images/triton-hugectr.png" style="width: 25%;" /></p>
 <div class="section" id="Learning-objectives">
 <h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
 <p>In this notebook, we learn how to deploy our models to production:</p>
