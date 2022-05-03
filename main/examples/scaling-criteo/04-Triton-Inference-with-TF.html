@@ -388,7 +388,7 @@ div.rendered_html tbody tr:hover {
 <h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
 <p>The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as during training (ETL). We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integer before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the TensorFlow model as an ensemble model to Triton Inference. The ensemble model
 garantuees that the same transformation are applied to the raw inputs.</p>
-<p><img alt="590c2a809feb4f5dac41d8f6648e35cc" class="no-scaled-link" src="../../_images/triton-tf.png" style="width: 25%;" /></p>
+<p><img alt="a094d0c673f640c481fcad0d6648cd40" class="no-scaled-link" src="../../_images/triton-tf.png" style="width: 25%;" /></p>
 <div class="section" id="Learning-objectives">
 <h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
 <p>In this notebook, we learn how to deploy our models to production</p>
