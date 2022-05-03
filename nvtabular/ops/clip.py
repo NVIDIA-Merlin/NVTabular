@@ -48,6 +48,9 @@ class Clip(Operator):
 
     @annotate("Clip_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        """
+        Perform the clipping operation.
+        """
         z_df = df[col_selector.names]
         if self.min_value is not None:
             z_df[z_df < self.min_value] = self.min_value
