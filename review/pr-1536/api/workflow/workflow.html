@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workflow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="WorkflowNode" href="workflow_node.html" />
+    <link rel="prev" title="API Documentation" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow_node.html">WorkflowNode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ops/index.html">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html">Torch Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html#module-nvtabular.framework_utils.torch.layers.embeddings">Torch Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html">TensorFlow Dataloader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html#module-nvtabular.framework_utils.tensorflow.layers.embedding">TensorFlow Layers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">API Documentation</a> &raquo;</li>
+      <li>Workflow</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="module-nvtabular.workflow.workflow">
+<span id="workflow"></span><h1>Workflow<a class="headerlink" href="#module-nvtabular.workflow.workflow" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="nvtabular.workflow.workflow.Workflow">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+1.gbaf05c05)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
+<dd><p>The Workflow class applies a graph of operations onto a dataset, letting you transform
+datasets to do feature engineering and preprocessing operations. This class follows an API
+similar to Transformers in sklearn: we first <code class="docutils literal notranslate"><span class="pre">fit</span></code> the workflow by calculating statistics
+on the dataset, and then once fit we can <code class="docutils literal notranslate"><span class="pre">transform</span></code> datasets by applying these statistics.</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># define a graph of operations</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">CAT_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
+<span class="n">cont_features</span> <span class="o">=</span> <span class="n">CONT_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="s2">&quot;label&quot;</span><span class="p">)</span>
+
+<span class="c1"># calculate statistics on the training dataset</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">merlin</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATH</span><span class="p">))</span>
+
+<span class="c1"># transform the training and validation datasets and write out as parquet</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">merlin</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATH</span><span class="p">))</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="n">TRAIN_OUT_PATH</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">merlin</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">VALID_PATH</span><span class="p">))</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="n">VALID_OUT_PATH</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>output_node</strong> (<a class="reference internal" href="workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><em>WorkflowNode</em></a>) – The last node in the graph of operators this workflow should apply</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.io.dataset.Dataset</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.io.dataset.Dataset</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transforms the dataset by applying the graph of operators to it. Requires the <code class="docutils literal notranslate"><span class="pre">fit</span></code>
+method to have already been called, or calculated statistics to be loaded from disk</p>
+<p>This method returns a Dataset object, with the transformations lazily loaded. None
+of the actual computation will happen until the produced Dataset is consumed, or
+written out to disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataset</strong> (<em>Dataset</em>) – Input dataset to transform</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Transformed Dataset with the workflow graph applied to it</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.fit_schema">
+<code class="sig-name descname"><span class="pre">fit_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.schema.schema.Schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.fit_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.fit_schema" title="Permalink to this definition"></a></dt>
+<dd><p>Fits the schema onto the workflow, computing the Schema for each node in the Workflow Graph</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input_schema</strong> (<em>Schema</em>) – The input schema to use</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>This workflow where each node in the graph has a fitted schema</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow">Workflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.input_dtypes">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">input_dtypes</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.input_dtypes" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.input_schema">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">input_schema</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.input_schema" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.output_schema">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_schema</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.output_schema" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.output_dtypes">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_dtypes</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.output_dtypes" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.output_node">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_node</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.output_node" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.remove_inputs">
+<code class="sig-name descname"><span class="pre">remove_inputs</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_cols</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow"><span class="pre">nvtabular.workflow.workflow.Workflow</span></a><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.remove_inputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.remove_inputs" title="Permalink to this definition"></a></dt>
+<dd><p>Removes input columns from the workflow.</p>
+<p>This is useful for the case of inference where you might need to remove label columns
+from the processed set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input_cols</strong> (<em>list of str</em>) – List of column names to</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>This workflow with the input columns removed from it</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow">Workflow</a></p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference external" href="https://nvidia-merlin.github.io/core/main/api/merlin.dag.html#merlin.dag.Graph.remove_inputs" title="(in Merlin Core)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merlin.dag.Graph.remove_inputs</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.io.dataset.Dataset</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow"><span class="pre">nvtabular.workflow.workflow.Workflow</span></a><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.fit" title="Permalink to this definition"></a></dt>
+<dd><p>Calculates statistics for this workflow on the input dataset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataset</strong> (<em>Dataset</em>) – The input dataset to calculate statistics for. If there is a train/test split this
+data should be the training dataset only.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>This Workflow with statistics calculated on it</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow">Workflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.fit_transform">
+<code class="sig-name descname"><span class="pre">fit_transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.io.dataset.Dataset</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.io.dataset.Dataset</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.fit_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.fit_transform" title="Permalink to this definition"></a></dt>
+<dd><p>Convenience method to both fit the workflow and transform the dataset in a single
+call. Equivalent to calling <code class="docutils literal notranslate"><span class="pre">workflow.fit(dataset)</span></code> followed by
+<code class="docutils literal notranslate"><span class="pre">workflow.transform(dataset)</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataset</strong> (<em>Dataset</em>) – Input dataset to calculate statistics on, and transform results</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Transformed Dataset with the workflow graph applied to it</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Dataset</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.fit" title="nvtabular.workflow.workflow.Workflow.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>, <a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.transform" title="nvtabular.workflow.workflow.Workflow.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.save">
+<code class="sig-name descname"><span class="pre">save</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.save" title="Permalink to this definition"></a></dt>
+<dd><p>Save this workflow to disk</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The path to save the workflow to</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.load">
+<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">load</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow"><span class="pre">nvtabular.workflow.workflow.Workflow</span></a><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.load" title="Permalink to this definition"></a></dt>
+<dd><p>Load up a saved workflow object from disk</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The path to load the workflow from</p></li>
+<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+1.gbaf05c05)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Workflow loaded from disk</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow">Workflow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.clear_stats">
+<code class="sig-name descname"><span class="pre">clear_stats</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow.clear_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.clear_stats" title="Permalink to this definition"></a></dt>
+<dd><p>Removes calculated statistics from each node in the workflow graph</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="../ops/stat_operator.html#nvtabular.ops.stat_operator.StatOperator.clear" title="nvtabular.ops.stat_operator.StatOperator.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator.clear</span></code></a></p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="API Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="workflow_node.html" class="btn btn-neutral float-right" title="WorkflowNode" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
