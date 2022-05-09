@@ -2,8 +2,8 @@
  "cells": [
   {
    "cell_type": "code",
-   "execution_count": 1,
-   "id": "afe54ce9",
+   "execution_count": null,
+   "id": "716038a8",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -25,7 +25,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "83fad6cb",
+   "id": "ce578729",
    "metadata": {},
    "source": [
     "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
@@ -42,7 +42,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "16956c69",
+   "id": "2215198f",
    "metadata": {},
    "source": [
     "### Why using HugeCTR?\n",
@@ -57,7 +57,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "a7e099b5",
+   "id": "5edfe68f",
    "metadata": {},
    "source": [
     "### Other Features of HugeCTR\n",
@@ -72,7 +72,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "e8c0c88f",
+   "id": "5d2d9c94",
    "metadata": {},
    "source": [
     "### Getting Started"
@@ -80,7 +80,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "065096f1",
+   "id": "a569fcf6",
    "metadata": {},
    "source": [
     "In this example, we will train a neural network with HugeCTR. We will use preprocessed datasets generated via NVTabular in `02-ETL-with-NVTabular` notebook."
@@ -89,7 +89,7 @@
   {
    "cell_type": "code",
    "execution_count": 2,
-   "id": "add3372c",
+   "id": "60d42722",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -100,7 +100,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "ac22a3ba",
+   "id": "b180488d",
    "metadata": {},
    "source": [
     "We define our base directory, containing the data."
@@ -109,7 +109,7 @@
   {
    "cell_type": "code",
    "execution_count": 3,
-   "id": "b81cacce",
+   "id": "4c9d11dd",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -124,7 +124,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "6750ce01",
+   "id": "d5a646d7",
    "metadata": {},
    "source": [
     "Let's load our saved workflow from the `02-ETL-with-NVTabular` notebook."
@@ -133,7 +133,7 @@
   {
    "cell_type": "code",
    "execution_count": 4,
-   "id": "5ab5923c",
+   "id": "5fb19b6e",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -143,7 +143,7 @@
   {
    "cell_type": "code",
    "execution_count": 5,
-   "id": "aa5405c1",
+   "id": "1549fcf5",
    "metadata": {},
    "outputs": [
     {
@@ -151,7 +151,7 @@
       "text/plain": [
        "{'userId': dtype('int64'),\n",
        " 'movieId': dtype('int64'),\n",
-       " 'genres': ListDtype(int64),\n",
+       " 'genres': dtype('int64'),\n",
        " 'rating': dtype('int8')}"
       ]
      },
@@ -166,7 +166,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "94bef620",
+   "id": "fc61bf98",
    "metadata": {},
    "source": [
     "Note: We do not have numerical output columns"
@@ -174,7 +174,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "9e8ad562",
+   "id": "d036f265",
    "metadata": {},
    "source": [
     "Let's clear existing directory and create the output folders."
@@ -183,7 +183,7 @@
   {
    "cell_type": "code",
    "execution_count": 6,
-   "id": "0c678d48",
+   "id": "e3fd80fd",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -194,7 +194,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "435c7e86",
+   "id": "bef2934d",
    "metadata": {},
    "source": [
     "## Scaling Accelerated training with HugeCTR"
@@ -202,7 +202,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "5b76f6ea",
+   "id": "b897e86c",
    "metadata": {},
    "source": [
     "HugeCTR is a deep learning framework dedicated to recommendation systems. It is written in CUDA C++. As HugeCTR optimizes the training in CUDA++, we need to define the training pipeline and model architecture and execute it via the commandline. We will use the Python API, which is similar to Keras models."
@@ -210,7 +210,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "f2dd6843",
+   "id": "9eea2afa",
    "metadata": {},
    "source": [
     "HugeCTR has three main components:\n",
@@ -222,7 +222,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "e5f84cee",
+   "id": "c8b855d7",
    "metadata": {},
    "source": [
     "**Solver**\n",
@@ -243,7 +243,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "f9110dde",
+   "id": "6f026eb3",
    "metadata": {},
    "source": [
     "**Optimizer**\n",
@@ -261,7 +261,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "b0c39b01",
+   "id": "d7f6fdcf",
    "metadata": {},
    "source": [
     "**DataReader**\n",
@@ -282,7 +282,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "1c7577f2",
+   "id": "b939955b",
    "metadata": {},
    "source": [
     "**Model**\n",
@@ -303,7 +303,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "6db465c4",
+   "id": "16380e74",
    "metadata": {},
    "source": [
     "Input layer:\n",
@@ -354,7 +354,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "0624ca30",
+   "id": "31c83553",
    "metadata": {},
    "source": [
     "## Let's define our model\n",
@@ -364,7 +364,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "b258dce2",
+   "id": "fca06d03",
    "metadata": {},
    "source": [
     "We need the cardinalities of each categorical feature to assign as `slot_size_array` in the model below."
@@ -373,14 +373,14 @@
   {
    "cell_type": "code",
    "execution_count": 7,
-   "id": "2df2718b",
+   "id": "4dedb5e9",
    "metadata": {},
    "outputs": [
     {
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "({'userId': (162542, 512), 'movieId': (56595, 512)}, {'genres': (21, 16)})\n"
+      "({'userId': (162542, 512), 'movieId': (56635, 512)}, {'genres': (21, 16)})\n"
      ]
     }
    ],
@@ -393,7 +393,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "2e4aae50",
+   "id": "b4a6d2c2",
    "metadata": {},
    "source": [
     "We use `graph_to_json` to convert the model to a JSON configuration, required for the inference."
@@ -402,120 +402,28 @@
   {
    "cell_type": "code",
    "execution_count": 8,
-   "id": "f2f6a01e",
+   "id": "7bc3f7fb",
    "metadata": {},
    "outputs": [
     {
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "HugeCTR Version: 3.3\n",
+      "HugeCTR Version: 3.5\n",
       "====================================================Model Init=====================================================\n",
-      "[HUGECTR][19:15:20][WARNING][RANK0]: The model name is not specified when creating the solver.\n",
-      "[HUGECTR][19:15:20][INFO][RANK0]: Global seed is 1975903631\n",
-      "[HUGECTR][19:15:20][INFO][RANK0]: Device to NUMA mapping:\n",
+      "[HCTR][14:20:17][WARNING][RK0][main]: The model name is not specified when creating the solver.\n",
+      "[HCTR][14:20:17][WARNING][RK0][main]: MPI was already initialized somewhere elese. Lifetime service disabled.\n",
+      "[HCTR][14:20:17][INFO][RK0][main]: Global seed is 2794144061\n",
+      "[HCTR][14:20:17][INFO][RK0][main]: Device to NUMA mapping:\n",
       "  GPU 0 ->  node 0\n",
-      "\n",
-      "[HUGECTR][19:15:21][WARNING][RANK0]: Peer-to-peer access cannot be fully enabled.\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: Start all2all warmup\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: End all2all warmup\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: Using All-reduce algorithm: NCCL\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: Device 0: Tesla V100-DGXS-16GB\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: num of DataReader workers: 1\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: Vocabulary size: 219149\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: max_vocabulary_size_per_gpu_=3276800\n",
-      "[HUGECTR][19:15:21][INFO][RANK0]: Graph analysis to resolve tensor dependency\n",
-      "===================================================Model Compile===================================================\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: gpu0 start to init embedding\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: gpu0 init embedding done\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Starting AUC NCCL warm-up\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Warm-up done\n",
-      "===================================================Model Summary===================================================\n",
-      "label                                   Dense                         Sparse                        \n",
-      "label                                   dense                          data1                         \n",
-      "(None, 1)                               (None, 0)                               \n",
-      "——————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n",
-      "Layer Type                              Input Name                    Output Name                   Output Shape                  \n",
-      "——————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n",
-      "LocalizedSlotSparseEmbeddingHash        data1                         sparse_embedding1             (None, 3, 16)                 \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "Reshape                                 sparse_embedding1             reshape1                      (None, 48)                    \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "InnerProduct                            reshape1                      fc1                           (None, 128)                   \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "ReLU                                    fc1                           relu1                         (None, 128)                   \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "InnerProduct                            relu1                         fc2                           (None, 128)                   \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "ReLU                                    fc2                           relu2                         (None, 128)                   \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "InnerProduct                            relu2                         fc3                           (None, 1)                     \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "BinaryCrossEntropyLoss                  fc3                           loss                                                        \n",
-      "                                        label                                                                                     \n",
-      "------------------------------------------------------------------------------------------------------------------\n",
-      "=====================================================Model Fit=====================================================\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Use non-epoch mode with number of iterations: 2000\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Training batchsize: 2048, evaluation batchsize: 2048\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Evaluation interval: 200, snapshot interval: 1900\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Dense network trainable: True\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Sparse embedding sparse_embedding1 trainable: True\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Use mixed precision: False, scaler: 1.000000, use cuda graph: True\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: lr: 0.001000, warmup_steps: 1, end_lr: 0.000000\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: decay_start: 0, decay_steps: 1, decay_power: 2.000000\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Training source file: /root/nvt-examples/movielens/data/train/_file_list.txt\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Evaluation source file: /root/nvt-examples/movielens/data/valid/_file_list.txt\n",
-      "[HUGECTR][19:15:22][INFO][RANK0]: Iter: 100 Time(100 iters): 0.223968s Loss: 0.587505 lr:0.001000\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 200 Time(100 iters): 0.220862s Loss: 0.577032 lr:0.001000\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Evaluation, AUC: 0.748669\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Eval Time for 160 iters: 0.039598s\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 300 Time(100 iters): 0.262075s Loss: 0.563935 lr:0.001000\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 400 Time(100 iters): 0.220956s Loss: 0.533650 lr:0.001000\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Evaluation, AUC: 0.765075\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Eval Time for 160 iters: 0.038021s\n",
-      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 500 Time(100 iters): 0.290587s Loss: 0.545377 lr:0.001000\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 600 Time(100 iters): 0.221455s Loss: 0.544951 lr:0.001000\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Evaluation, AUC: 0.775103\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Eval Time for 160 iters: 0.036293s\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 700 Time(100 iters): 0.259013s Loss: 0.538431 lr:0.001000\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 800 Time(100 iters): 0.221748s Loss: 0.539337 lr:0.001000\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Evaluation, AUC: 0.780380\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Eval Time for 160 iters: 0.065051s\n",
-      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 900 Time(100 iters): 0.287830s Loss: 0.530380 lr:0.001000\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1000 Time(100 iters): 0.247687s Loss: 0.530518 lr:0.001000\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Evaluation, AUC: 0.784759\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Eval Time for 160 iters: 0.036482s\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1100 Time(100 iters): 0.258984s Loss: 0.525256 lr:0.001000\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1200 Time(100 iters): 0.221740s Loss: 0.532820 lr:0.001000\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Evaluation, AUC: 0.787621\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Eval Time for 160 iters: 0.036467s\n",
-      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1300 Time(100 iters): 0.259424s Loss: 0.510621 lr:0.001000\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1400 Time(100 iters): 0.221632s Loss: 0.530471 lr:0.001000\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Evaluation, AUC: 0.791757\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Eval Time for 160 iters: 0.066089s\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1500 Time(100 iters): 0.316840s Loss: 0.539018 lr:0.001000\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1600 Time(100 iters): 0.221609s Loss: 0.507900 lr:0.001000\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Evaluation, AUC: 0.793827\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Eval Time for 160 iters: 0.036891s\n",
-      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1700 Time(100 iters): 0.259825s Loss: 0.545857 lr:0.001000\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Iter: 1800 Time(100 iters): 0.221886s Loss: 0.523603 lr:0.001000\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Evaluation, AUC: 0.796364\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Eval Time for 160 iters: 0.036460s\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Iter: 1900 Time(100 iters): 0.259438s Loss: 0.522114 lr:0.001000\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Dump hash table from GPU0\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write hash table <key,value> pairs to file\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Done\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Dumping sparse weights to files, successful\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write optimzer state to file\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Done\n",
-      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write optimzer state to file\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Done\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping sparse optimzer states to files, successful\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping dense weights to file, successful\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping dense optimizer states to file, successful\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping untrainable weights to file, successful\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Finish 2000 iterations with batchsize: 2048 in 5.77s.\n",
-      "[HUGECTR][19:15:28][INFO][RANK0]: Save the model graph to /root/nvt-examples/movielens/data/model/movielens_hugectr/1/movielens.json successfully\n"
+      "[HCTR][14:20:18][WARNING][RK0][main]: Peer-to-peer access cannot be fully enabled.\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: Start all2all warmup\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: End all2all warmup\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: Using All-reduce algorithm: NCCL\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: Device 0: Quadro GV100\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: num of DataReader workers: 1\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: Vocabulary size: 219149\n",
+      "[HCTR][14:20:18][INFO][RK0][main]: max_vocabulary_size_per_gpu_=1092266\n"
      ]
     }
    ],
@@ -618,7 +526,114 @@
     "        bottom_names=[\"fc3\", \"label\"],\n",
     "        top_names=[\"loss\"],\n",
     "    )\n",
-    ")\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "2df637b3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[HCTR][14:20:18][INFO][RK0][main]: Graph analysis to resolve tensor dependency\n",
+      "===================================================Model Compile===================================================\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: gpu0 start to init embedding\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: gpu0 init embedding done\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Starting AUC NCCL warm-up\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Warm-up done\n",
+      "===================================================Model Summary===================================================\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: label                                   Dense                         Sparse                        \n",
+      "label                                   dense                          data1                         \n",
+      "(None, 1)                               (None, 0)                               \n",
+      "——————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n",
+      "Layer Type                              Input Name                    Output Name                   Output Shape                  \n",
+      "——————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n",
+      "LocalizedSlotSparseEmbeddingHash        data1                         sparse_embedding1             (None, 3, 16)                 \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "Reshape                                 sparse_embedding1             reshape1                      (None, 48)                    \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "InnerProduct                            reshape1                      fc1                           (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "ReLU                                    fc1                           relu1                         (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "InnerProduct                            relu1                         fc2                           (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "ReLU                                    fc2                           relu2                         (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "InnerProduct                            relu2                         fc3                           (None, 1)                     \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "BinaryCrossEntropyLoss                  fc3                           loss                                                        \n",
+      "                                        label                                                                                     \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "=====================================================Model Fit=====================================================\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Use non-epoch mode with number of iterations: 2000\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Training batchsize: 2048, evaluation batchsize: 2048\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Evaluation interval: 200, snapshot interval: 1900\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Dense network trainable: True\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Sparse embedding sparse_embedding1 trainable: True\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Use mixed precision: False, scaler: 1.000000, use cuda graph: True\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: lr: 0.001000, warmup_steps: 1, end_lr: 0.000000\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: decay_start: 0, decay_steps: 1, decay_power: 2.000000\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Training source file: /root/nvt-examples/movielens/data/train/_file_list.txt\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Evaluation source file: /root/nvt-examples/movielens/data/valid/_file_list.txt\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Iter: 100 Time(100 iters): 0.145249s Loss: 0.599668 lr:0.001\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Iter: 200 Time(100 iters): 0.14389s Loss: 0.569523 lr:0.001\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Evaluation, AUC: 0.747082\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Eval Time for 160 iters: 0.035607s\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Iter: 300 Time(100 iters): 0.177161s Loss: 0.548131 lr:0.001\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Iter: 400 Time(100 iters): 0.140567s Loss: 0.546302 lr:0.001\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Evaluation, AUC: 0.765986\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Eval Time for 160 iters: 0.041411s\n",
+      "[HCTR][14:20:20][INFO][RK0][main]: Iter: 500 Time(100 iters): 0.22512s Loss: 0.55636 lr:0.001\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Iter: 600 Time(100 iters): 0.141749s Loss: 0.541177 lr:0.001\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Evaluation, AUC: 0.774578\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Eval Time for 160 iters: 0.035427s\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Iter: 700 Time(100 iters): 0.177425s Loss: 0.545869 lr:0.001\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Iter: 800 Time(100 iters): 0.138808s Loss: 0.537519 lr:0.001\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Evaluation, AUC: 0.780465\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Eval Time for 160 iters: 0.073079s\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Iter: 900 Time(100 iters): 0.210899s Loss: 0.549535 lr:0.001\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Iter: 1000 Time(100 iters): 0.18031s Loss: 0.532493 lr:0.001\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Evaluation, AUC: 0.783634\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Eval Time for 160 iters: 0.036747s\n",
+      "[HCTR][14:20:21][INFO][RK0][main]: Iter: 1100 Time(100 iters): 0.174997s Loss: 0.543344 lr:0.001\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Iter: 1200 Time(100 iters): 0.136631s Loss: 0.525491 lr:0.001\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Evaluation, AUC: 0.786688\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Eval Time for 160 iters: 0.033862s\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Iter: 1300 Time(100 iters): 0.174932s Loss: 0.543256 lr:0.001\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Iter: 1400 Time(100 iters): 0.141826s Loss: 0.533403 lr:0.001\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Evaluation, AUC: 0.790685\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Eval Time for 160 iters: 0.075811s\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Iter: 1500 Time(100 iters): 0.261529s Loss: 0.516566 lr:0.001\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Iter: 1600 Time(100 iters): 0.138679s Loss: 0.516145 lr:0.001\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Evaluation, AUC: 0.792489\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Eval Time for 160 iters: 0.039438s\n",
+      "[HCTR][14:20:22][INFO][RK0][main]: Iter: 1700 Time(100 iters): 0.180547s Loss: 0.513846 lr:0.001\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Iter: 1800 Time(100 iters): 0.14265s Loss: 0.52191 lr:0.001\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Evaluation, AUC: 0.795303\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Eval Time for 160 iters: 0.035608s\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Iter: 1900 Time(100 iters): 0.18116s Loss: 0.508622 lr:0.001\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Rank0: Dump hash table from GPU0\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Rank0: Write hash table <key,value> pairs to file\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Done\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Dumping sparse weights to files, successful\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Rank0: Write optimzer state to file\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Done\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Rank0: Write optimzer state to file\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Done\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Dumping sparse optimzer states to files, successful\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Dumping dense weights to file, successful\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Dumping dense optimizer states to file, successful\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Finish 2000 iterations with batchsize: 2048 in 3.61s.\n",
+      "[HCTR][14:20:23][INFO][RK0][main]: Save the model graph to /root/nvt-examples/movielens/data/model/movielens_hugectr/1/movielens.json successfully\n"
+     ]
+    }
+   ],
+   "source": [
     "model.compile()\n",
     "model.summary()\n",
     "model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)\n",
@@ -627,7 +642,7 @@
   },
   {
    "cell_type": "markdown",
-   "id": "2ae972f8",
+   "id": "121d3c82",
    "metadata": {},
    "source": [
     "After training terminates, we can see that multiple `.model` files and folders are generated. We need to move them inside `1` folder under the `movielens_hugectr` folder. "
@@ -635,8 +650,8 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 9,
-   "id": "b085ceb4",
+   "execution_count": 10,
+   "id": "c8273275",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -660,7 +675,7 @@
    "name": "python",
    "nbconvert_exporter": "python",
    "pygments_lexer": "ipython3",
-   "version": "3.8.12"
+   "version": "3.8.10"
   }
  },
  "nbformat": 4,
