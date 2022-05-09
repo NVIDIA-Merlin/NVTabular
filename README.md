@@ -1,10 +1,10 @@
 ## [NVTabular](https://github.com/NVIDIA/NVTabular)
 
-[![Documentation](https://img.shields.io/badge/documentation-blue.svg)](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html)
 [![PyPI](https://img.shields.io/pypi/v/NVTabular?color=orange&label=version)](https://pypi.python.org/pypi/NVTabular/)
 [![LICENSE](https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular)](https://github.com/NVIDIA-Merlin/NVTabular/blob/main/LICENSE)
+[![Documentation](https://img.shields.io/badge/documentation-blue.svg)](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html)
 
-[NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
+[NVTabular](https://github.com/NVIDIA-Merlin/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
 
 NVTabular is a component of [NVIDIA Merlin](https://developer.nvidia.com/nvidia-merlin), an open source framework for building and deploying recommender systems and works with the other Merlin components including [Merlin Models](https://github.com/NVIDIA-Merlin/models), [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Merlin Systems](https://github.com/NVIDIA-Merlin/systems) to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s  [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server), the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.
 
@@ -26,7 +26,7 @@ NVTabular alleviates these challenges and helps data scientists and ML engineers
 * prepare datasets quickly and easily for experimentation so that more models can be trained.
 * deploy models into production by providing faster dataset transformation
 
-Learn more about NVTabular's [core features here](docs/source/core_features.md#core-features).
+Learn more in the NVTabular [core features documentation](https://nvidia-merlin.github.io/NVTabular/main/core_features.html).
 
 ### Performance
 

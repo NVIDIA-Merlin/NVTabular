@@ -61,6 +61,10 @@ cover/
 
 # Sphinx documentation
 docs/build/
+docs/source/examples/
+docs/jupyter_execute/
+docs/source/generated/
+
 
 # IPython
 profile_default/
