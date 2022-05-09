@@ -60,7 +60,6 @@ subtrees:
               - file: examples/multi-gpu-movielens/index.md
                 entries:
                   - file: examples/multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.ipynb
-                  - file: examples/multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.ipynb
                   - file: examples/multi-gpu-toy-example/multi-gpu_dask.ipynb
               - file: examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.ipynb
                 title: Winning Solution of the RecSys2020 Competition
