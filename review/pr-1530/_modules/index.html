@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Overview: module code &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
         <script src="../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" /> 
@@ -33,12 +39,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -66,12 +73,7 @@
            <div itemprop="articleBody">
              
   <h1>All modules for which code is available</h1>
-<ul><li><a href="nvtabular/framework_utils/tensorflow/layers/embedding.html">nvtabular.framework_utils.tensorflow.layers.embedding</a></li>
-<li><a href="nvtabular/framework_utils/tensorflow/layers/interaction.html">nvtabular.framework_utils.tensorflow.layers.interaction</a></li>
-<li><a href="nvtabular/framework_utils/torch/layers/embeddings.html">nvtabular.framework_utils.torch.layers.embeddings</a></li>
-<li><a href="nvtabular/framework_utils/torch/models.html">nvtabular.framework_utils.torch.models</a></li>
-<li><a href="nvtabular/loader/tensorflow.html">nvtabular.loader.tensorflow</a></li>
-<li><a href="nvtabular/loader/torch.html">nvtabular.loader.torch</a></li>
+<ul><li><a href="nvtabular/ops/add_metadata.html">nvtabular.ops.add_metadata</a></li>
 <li><a href="nvtabular/ops/bucketize.html">nvtabular.ops.bucketize</a></li>
 <li><a href="nvtabular/ops/categorify.html">nvtabular.ops.categorify</a></li>
 <li><a href="nvtabular/ops/clip.html">nvtabular.ops.clip</a></li>
@@ -95,6 +97,7 @@
 <li><a href="nvtabular/ops/rename.html">nvtabular.ops.rename</a></li>
 <li><a href="nvtabular/ops/stat_operator.html">nvtabular.ops.stat_operator</a></li>
 <li><a href="nvtabular/ops/target_encoding.html">nvtabular.ops.target_encoding</a></li>
+<li><a href="nvtabular/ops/value_counts.html">nvtabular.ops.value_counts</a></li>
 <li><a href="nvtabular/workflow/node.html">nvtabular.workflow.node</a></li>
 <li><a href="nvtabular/workflow/workflow.html">nvtabular.workflow.workflow</a></li>
 </ul>

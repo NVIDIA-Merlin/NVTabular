@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular demo on RecSys2020 Challenge &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,14 +14,16 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Applying the Techniques to other Tabular Problems with Rossmann" href="../tabular-data-rossmann/index.html" />
-    <link rel="prev" title="Scaling Criteo: Triton Inference with HugeCTR" href="../scaling-criteo/04-Triton-Inference-with-HugeCTR.html" /> 
+    <link rel="next" title="API Documentation" href="../../api.html" />
+    <link rel="prev" title="Multi-GPU Scaling in NVTabular with Dask" href="../multi-gpu-toy-example/multi-gpu_dask.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -37,32 +41,32 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with Movielens</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Winning Solution of the RecSys2020 Competition</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#Overview">Overview</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#RecSys2020-Challenge">RecSys2020 Challenge</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#Downloading-the-dataset">Downloading the dataset</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#Learning-objectives">Learning objectives</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id1">RecSys2020 Challenge</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#Preparing-our-dataset">Preparing our dataset</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#Splitting-dataset-into-training-and-test">Splitting dataset into training and test</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#Feature-Engineering">Feature Engineering</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#Training-our-model">Training our model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#preparing-our-dataset">Preparing our dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#splitting-dataset-into-training-and-test">Splitting dataset into training and test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#feature-engineering">Feature Engineering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#training-our-model">Training our model</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Tabular Data with Rossmann</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -80,7 +84,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Examples</a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
       <li>NVTabular demo on RecSys2020 Challenge</li>
       <li class="wy-breadcrumbs-aside">
       </li>
@@ -90,281 +94,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS for nbsphinx extension */
-
-/* remove conflicting styling from Sphinx themes */
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt *,
-div.nbinput.container div.input_area pre,
-div.nboutput.container div.output_area pre,
-div.nbinput.container div.input_area .highlight,
-div.nboutput.container div.output_area .highlight {
-    border: none;
-    padding: 0;
-    margin: 0;
-    box-shadow: none;
-}
-
-div.nbinput.container > div[class*=highlight],
-div.nboutput.container > div[class*=highlight] {
-    margin: 0;
-}
-
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt * {
-    background: none;
-}
-
-div.nboutput.container div.output_area .highlight,
-div.nboutput.container div.output_area pre {
-    background: unset;
-}
-
-div.nboutput.container div.output_area div.highlight {
-    color: unset;  /* override Pygments text color */
-}
-
-/* avoid gaps between output lines */
-div.nboutput.container div[class*=highlight] pre {
-    line-height: normal;
-}
-
-/* input/output containers */
-div.nbinput.container,
-div.nboutput.container {
-    display: -webkit-flex;
-    display: flex;
-    align-items: flex-start;
-    margin: 0;
-    width: 100%;
-}
-@media (max-width: 540px) {
-    div.nbinput.container,
-    div.nboutput.container {
-        flex-direction: column;
-    }
-}
-
-/* input container */
-div.nbinput.container {
-    padding-top: 5px;
-}
-
-/* last container */
-div.nblast.container {
-    padding-bottom: 5px;
-}
-
-/* input prompt */
-div.nbinput.container div.prompt pre {
-    color: #307FC1;
-}
-
-/* output prompt */
-div.nboutput.container div.prompt pre {
-    color: #BF5B3D;
-}
-
-/* all prompts */
-div.nbinput.container div.prompt,
-div.nboutput.container div.prompt {
-    width: 4.5ex;
-    padding-top: 5px;
-    position: relative;
-    user-select: none;
-}
-
-div.nbinput.container div.prompt > div,
-div.nboutput.container div.prompt > div {
-    position: absolute;
-    right: 0;
-    margin-right: 0.3ex;
-}
-
-@media (max-width: 540px) {
-    div.nbinput.container div.prompt,
-    div.nboutput.container div.prompt {
-        width: unset;
-        text-align: left;
-        padding: 0.4em;
-    }
-    div.nboutput.container div.prompt.empty {
-        padding: 0;
-    }
-
-    div.nbinput.container div.prompt > div,
-    div.nboutput.container div.prompt > div {
-        position: unset;
-    }
-}
-
-/* disable scrollbars on prompts */
-div.nbinput.container div.prompt pre,
-div.nboutput.container div.prompt pre {
-    overflow: hidden;
-}
-
-/* input/output area */
-div.nbinput.container div.input_area,
-div.nboutput.container div.output_area {
-    -webkit-flex: 1;
-    flex: 1;
-    overflow: auto;
-}
-@media (max-width: 540px) {
-    div.nbinput.container div.input_area,
-    div.nboutput.container div.output_area {
-        width: 100%;
-    }
-}
-
-/* input area */
-div.nbinput.container div.input_area {
-    border: 1px solid #e0e0e0;
-    border-radius: 2px;
-    /*background: #f5f5f5;*/
-}
-
-/* override MathJax center alignment in output cells */
-div.nboutput.container div[class*=MathJax] {
-    text-align: left !important;
-}
-
-/* override sphinx.ext.imgmath center alignment in output cells */
-div.nboutput.container div.math p {
-    text-align: left;
-}
-
-/* standard error */
-div.nboutput.container div.output_area.stderr {
-    background: #fdd;
-}
-
-/* ANSI colors */
-.ansi-black-fg { color: #3E424D; }
-.ansi-black-bg { background-color: #3E424D; }
-.ansi-black-intense-fg { color: #282C36; }
-.ansi-black-intense-bg { background-color: #282C36; }
-.ansi-red-fg { color: #E75C58; }
-.ansi-red-bg { background-color: #E75C58; }
-.ansi-red-intense-fg { color: #B22B31; }
-.ansi-red-intense-bg { background-color: #B22B31; }
-.ansi-green-fg { color: #00A250; }
-.ansi-green-bg { background-color: #00A250; }
-.ansi-green-intense-fg { color: #007427; }
-.ansi-green-intense-bg { background-color: #007427; }
-.ansi-yellow-fg { color: #DDB62B; }
-.ansi-yellow-bg { background-color: #DDB62B; }
-.ansi-yellow-intense-fg { color: #B27D12; }
-.ansi-yellow-intense-bg { background-color: #B27D12; }
-.ansi-blue-fg { color: #208FFB; }
-.ansi-blue-bg { background-color: #208FFB; }
-.ansi-blue-intense-fg { color: #0065CA; }
-.ansi-blue-intense-bg { background-color: #0065CA; }
-.ansi-magenta-fg { color: #D160C4; }
-.ansi-magenta-bg { background-color: #D160C4; }
-.ansi-magenta-intense-fg { color: #A03196; }
-.ansi-magenta-intense-bg { background-color: #A03196; }
-.ansi-cyan-fg { color: #60C6C8; }
-.ansi-cyan-bg { background-color: #60C6C8; }
-.ansi-cyan-intense-fg { color: #258F8F; }
-.ansi-cyan-intense-bg { background-color: #258F8F; }
-.ansi-white-fg { color: #C5C1B4; }
-.ansi-white-bg { background-color: #C5C1B4; }
-.ansi-white-intense-fg { color: #A1A6B2; }
-.ansi-white-intense-bg { background-color: #A1A6B2; }
-
-.ansi-default-inverse-fg { color: #FFFFFF; }
-.ansi-default-inverse-bg { background-color: #000000; }
-
-.ansi-bold { font-weight: bold; }
-.ansi-underline { text-decoration: underline; }
-
-
-div.nbinput.container div.input_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight].math,
-div.nboutput.container div.output_area.rendered_html,
-div.nboutput.container div.output_area > div.output_javascript,
-div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 5px;
-    margin: 0;
-}
-
-/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
-div.nbinput.container div.input_area > div[class^='highlight'],
-div.nboutput.container div.output_area > div[class^='highlight']{
-    overflow-y: hidden;
-}
-
-/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
-.prompt .copybtn {
-    display: none;
-}
-
-/* Some additional styling taken form the Jupyter notebook CSS */
-div.rendered_html table {
-  border: none;
-  border-collapse: collapse;
-  border-spacing: 0;
-  color: black;
-  font-size: 12px;
-  table-layout: fixed;
-}
-div.rendered_html thead {
-  border-bottom: 1px solid black;
-  vertical-align: bottom;
-}
-div.rendered_html tr,
-div.rendered_html th,
-div.rendered_html td {
-  text-align: right;
-  vertical-align: middle;
-  padding: 0.5em 0.5em;
-  line-height: normal;
-  white-space: normal;
-  max-width: none;
-  border: none;
-}
-div.rendered_html th {
-  font-weight: bold;
-}
-div.rendered_html tbody tr:nth-child(odd) {
-  background: #f5f5f5;
-}
-div.rendered_html tbody tr:hover {
-  background: rgba(66, 165, 245, 0.2);
-}
-
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
 <span class="c1"># you may not use this file except in compliance with the License.</span>
@@ -381,25 +113,25 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="15c7351d2db943a393aba6a9cd333847" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
-<div class="section" id="NVTabular-demo-on-RecSys2020-Challenge">
-<h1>NVTabular demo on RecSys2020 Challenge<a class="headerlink" href="#NVTabular-demo-on-RecSys2020-Challenge" title="Permalink to this headline"></a></h1>
-<div class="section" id="Overview">
-<h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
-<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.</p>
-<div class="section" id="RecSys2020-Challenge">
-<h3>RecSys2020 Challenge<a class="headerlink" href="#RecSys2020-Challenge" title="Permalink to this headline"></a></h3>
-<p>The <a class="reference external" href="https://recsys.acm.org/">RecSys</a> conference is the leading data science conference for recommender systems and organizes an annual competiton in recommender systems. The <a class="reference external" href="https://recsys-twitter.com/">RecSys Challenge 2020</a>, hosted by Twitter, was about predicting interactions of ~200 mio. tweet-user pairs. NVIDIA’s team scored 1st place. The team explained the solution in the
-<a class="reference external" href="https://medium.com/rapids-ai/winning-solution-of-recsys2020-challenge-gpu-accelerated-feature-engineering-and-training-for-cd67c5a87b1f">blogpost</a> and published the code on <a class="reference external" href="https://github.com/rapidsai/deeplearning/tree/main/RecSys2020">github</a>.</p>
 </div>
-<div class="section" id="Downloading-the-dataset">
-<h3>Downloading the dataset<a class="headerlink" href="#Downloading-the-dataset" title="Permalink to this headline"></a></h3>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-recsys2020-challenge">
+<h1>NVTabular demo on RecSys2020 Challenge<a class="headerlink" href="#nvtabular-demo-on-recsys2020-challenge" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.</p>
+<div class="section" id="recsys2020-challenge">
+<h3>RecSys2020 Challenge<a class="headerlink" href="#recsys2020-challenge" title="Permalink to this headline"></a></h3>
+<p>The <a class="reference external" href="https://recsys.acm.org/">RecSys</a> conference is the leading data science conference for recommender systems and organizes an annual competiton in recommender systems. The <a class="reference external" href="https://recsys-twitter.com/">RecSys Challenge 2020</a>, hosted by Twitter, was about predicting interactions of ~200 mio. tweet-user pairs. NVIDIA’s team scored 1st place. The team explained the solution in the <a class="reference external" href="https://medium.com/rapids-ai/winning-solution-of-recsys2020-challenge-gpu-accelerated-feature-engineering-and-training-for-cd67c5a87b1f">blogpost</a> and published the code on <a class="reference external" href="https://github.com/rapidsai/deeplearning/tree/main/RecSys2020">github</a>.</p>
+</div>
+<div class="section" id="downloading-the-dataset">
+<h3>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h3>
 <p>The dataset has to be downloaded from the original source, provided by Twitter. You need to create an account on the <a class="reference external" href="https://recsys-twitter.com/">RecSys Challenge 2020 website</a>. Twitter needs to (manually) approve your account, which can take a few days. After your account is approved, you can download the data <a class="reference external" href="https://recsys-twitter.com/data/show-downloads">here</a>. We will use only the <code class="docutils literal notranslate"><span class="pre">training.tsv</span></code> file, as we cannot make submissions anymore.</p>
 </div>
-<div class="section" id="Learning-objectives">
-<h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
 <p>This notebook covers the end-2-end pipeline, from loading the original .tsv file to training the models, with NVTabular, <a class="reference external" href="https://github.com/rapidsai/cudf">cuDF</a>, <a class="reference external" href="https://dask.org/">dask</a> and <a class="reference external" href="https://xgboost.readthedocs.io/">XGBoost</a>. We demonstrate multi-GPU support for NVTabular and new <code class="docutils literal notranslate"><span class="pre">nvt.ops</span></code>, implemented based on the success of our RecSys2020 solution.</p>
-<ol class="arabic simple">
+<ol class="simple">
 <li><p><strong>NVTabular</strong> to preprocess the original .tsv file.</p></li>
 <li><p><strong>dask_cudf</strong> to split the preprocessed data into a training and validation set.</p></li>
 <li><p><strong>NVTabular</strong> to create additional features with only <strong>~70 lines of code</strong>.</p></li>
@@ -409,11 +141,9 @@ div.rendered_html tbody tr:hover {
 </div>
 <div class="section" id="id1">
 <h2>RecSys2020 Challenge<a class="headerlink" href="#id1" title="Permalink to this headline"></a></h2>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External Dependencies</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External Dependencies</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">glob</span>
@@ -438,43 +168,36 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
+</div>
 <p>Let’s have a short look on the library versions and setup, we will use.</p>
 <p>We ran this example with 2x Quadro GV100 GPUs with each having 32GB of GPU memory. NVTabular used a single GPU whereas XGBoost trained with two GPUs.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_total_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_total_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-</pre></div>
 </div>
 </div>
 <p>We define our input directory containing the data, and output directory to save the processed files.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/dataset/&quot;</span><span class="p">)</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/dataset/&quot;</span><span class="p">)</span>
 <span class="n">OUTPUT_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<p>First, we initialize our local cuda cluster.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="s2">&quot;tcp&quot;</span><span class="p">)</span>
+<p>First, we initialize our local cuda cluster.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="s2">&quot;tcp&quot;</span><span class="p">)</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
 <span class="n">client</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
-</div>
-<div class="output_area rendered_html docutils container">
-<table style="border: 2px solid white;">
+<div class="cell_output docutils container">
+<div class="output text_html"><table style="border: 2px solid white;">
 <tr>
 <td style="vertical-align: top; border: 0px solid white">
 <h3 style="text-align: left;">Client</h3>
@@ -492,24 +215,21 @@ div.rendered_html tbody tr:hover {
 </ul>
 </td>
 </tr>
-</table></div>
+</table></div></div>
 </div>
 </div>
-<div class="section" id="Preparing-our-dataset">
-<h2>Preparing our dataset<a class="headerlink" href="#Preparing-our-dataset" title="Permalink to this headline"></a></h2>
+<div class="section" id="preparing-our-dataset">
+<h2>Preparing our dataset<a class="headerlink" href="#preparing-our-dataset" title="Permalink to this headline"></a></h2>
 <p>The original data format had multiple inefficiencies, resulting in requiring more disk space and memory:</p>
-<ol class="arabic simple">
+<ol class="simple">
 <li><p>The file format is <code class="docutils literal notranslate"><span class="pre">.tsv</span></code>, an uncompressed, text-based format. The <code class="docutils literal notranslate"><span class="pre">parquet</span></code> file format stores tabular data in a compressed, column-oriented format. This saves a significant amount of disk space which results in fewer i/o operations and faster execution.</p></li>
-<li><p>Some categorical features, such as tweet_id, user_id are hashed to String values (e.g. <code class="docutils literal notranslate"><span class="pre">cfcd208495d565ef66e7dff9f98764da</span></code>). These long Strings require significant amount of disk space/memory. We can encode the Categories as Integer values using <code class="docutils literal notranslate"><span class="pre">Categorify</span></code>. Representing the String <code class="docutils literal notranslate"><span class="pre">cfcd208495d565ef66e7dff9f98764da</span></code> as an Integer <code class="docutils literal notranslate"><span class="pre">0</span></code> can save up 90% in memory. Although other categorical features are no long hashes, they are still Strings (e.g. tweet_type) and we will represent them as
-Integers, as well.</p></li>
+<li><p>Some categorical features, such as tweet_id, user_id are hashed to String values (e.g. <code class="docutils literal notranslate"><span class="pre">cfcd208495d565ef66e7dff9f98764da</span></code>). These long Strings require significant amount of disk space/memory. We can encode the Categories as Integer values using <code class="docutils literal notranslate"><span class="pre">Categorify</span></code>. Representing the String <code class="docutils literal notranslate"><span class="pre">cfcd208495d565ef66e7dff9f98764da</span></code> as an Integer <code class="docutils literal notranslate"><span class="pre">0</span></code> can save up 90% in memory. Although other categorical features are no long hashes, they are still Strings (e.g. tweet_type) and we will represent them as Integers, as well.</p></li>
 <li><p>In our experiments, the text_tokens were not a significant feature and we will drop the column before we split the data.</p></li>
 </ol>
 <p>First, we define the column names in the original .tsv file. The .tsv file has no header and we need to specify the names.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
     <span class="c1"># Tweet Features</span>
     <span class="s2">&quot;text_tokens&quot;</span><span class="p">,</span>
     <span class="s2">&quot;hashtags&quot;</span><span class="p">,</span>
@@ -542,12 +262,15 @@ Integers, as well.</p></li>
 </pre></div>
 </div>
 </div>
-<p>We define two helper function, we apply in our NVTabular workflow: 1. splitmedia2 splits the entries in media by <code class="docutils literal notranslate"><span class="pre">\t</span></code> and keeps only the first two values (if available), 2. count_token counts the number of token in a column (e.g. how many hashtags are in a tweet),</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">splitmedia</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+<p>We define two helper function, we apply in our NVTabular workflow:</p>
+<ol class="simple">
+<li><p>splitmedia2 splits the entries in media by <code class="docutils literal notranslate"><span class="pre">\t</span></code> and keeps only the first two values (if available),</p></li>
+<li><p>count_token counts the number of token in a column (e.g. how many hashtags are in a tweet),</p></li>
+</ol>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">splitmedia</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">col</span>
     <span class="k">else</span><span class="p">:</span>
@@ -564,12 +287,12 @@ Integers, as well.</p></li>
 </pre></div>
 </div>
 </div>
-<p>We will define our data processing pipeline with NVTabular. We count the number of tokens in the columns hashtags, domains, links. We use the <code class="docutils literal notranslate"><span class="pre">count_token</span></code> helper function in a <code class="docutils literal notranslate"><span class="pre">lambda</span></code> function. Finally, we rename the column names to avoid duplicated names.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">count_features</span> <span class="o">=</span> <span class="p">(</span>
+<p>We will define our data processing pipeline with NVTabular.<br><br>
+We count the number of tokens in the columns hashtags, domains, links. We use the <code class="docutils literal notranslate"><span class="pre">count_token</span></code> helper function in a <code class="docutils literal notranslate"><span class="pre">lambda</span></code> function. Finally, we rename the column names to avoid duplicated names.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">count_features</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;hashtags&quot;</span><span class="p">,</span> <span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">])</span>
     <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">count_token</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">))</span>
     <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_count_t&quot;</span><span class="p">)</span>
@@ -577,42 +300,40 @@ Integers, as well.</p></li>
 </pre></div>
 </div>
 </div>
+</div>
 <p>We apply splitmedia function to split the media.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">split_media</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;media&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">splitmedia</span><span class="p">(</span><span class="n">col</span><span class="p">))</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">split_media</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;media&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">splitmedia</span><span class="p">(</span><span class="n">col</span><span class="p">))</span>
-</pre></div>
 </div>
 </div>
-<p>We encode categorical columns as a small, continuous integer to save memory. Some categorical columns contain long hashes of type String as values to preserve the privacy of the users (e.g. userId, language, etc.). Long hashes of type String requires significant amount of memory to store. We encode/map the Strings to continuous Integer to save significant memory. Before we can apply <code class="docutils literal notranslate"><span class="pre">Categorify</span></code>, we need to fill na/missing values in the columns <code class="docutils literal notranslate"><span class="pre">hashtags</span></code>, <code class="docutils literal notranslate"><span class="pre">domains</span></code> and <code class="docutils literal notranslate"><span class="pre">links</span></code>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multihot_filled</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hashtags&quot;</span><span class="p">,</span> <span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">FillMissing</span><span class="p">()</span>
+<p>We encode categorical columns as a small, continuous integer to save memory. Some categorical columns contain long hashes of type String as values to preserve the privacy of the users (e.g. userId, language, etc.). Long hashes of type String requires significant amount of memory to store. We encode/map the Strings to continuous Integer to save significant memory.
+<br><br>
+Before we can apply <code class="docutils literal notranslate"><span class="pre">Categorify</span></code>, we need to fill na/missing values in the columns <code class="docutils literal notranslate"><span class="pre">hashtags</span></code>, <code class="docutils literal notranslate"><span class="pre">domains</span></code> and <code class="docutils literal notranslate"><span class="pre">links</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multihot_filled</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hashtags&quot;</span><span class="p">,</span> <span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">FillMissing</span><span class="p">()</span>
 <span class="n">cat_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_id&quot;</span><span class="p">,</span> <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;b_user_id&quot;</span><span class="p">]</span>
 <span class="n">cat_features</span> <span class="o">=</span> <span class="n">split_media</span> <span class="o">+</span> <span class="n">multihot_filled</span> <span class="o">+</span> <span class="n">cat_columns</span> <span class="o">&gt;&gt;</span> <span class="n">Categorify</span><span class="p">(</span><span class="n">out_path</span><span class="o">=</span><span class="n">OUTPUT_DIR</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<p>We want to fill na/missing values in the label columns as well.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_name</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
+<p>We want to fill na/missing values in the label columns as well.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_name</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
 <span class="n">label_name_feature</span> <span class="o">=</span> <span class="n">label_name</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
-<p>We extract the weekday from the timestamp.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">weekday</span> <span class="o">=</span> <span class="p">(</span>
+<p>We extract the weekday from the timestamp.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">weekday</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
     <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">cudf</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">weekday</span><span class="p">)</span>
     <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_wd&quot;</span><span class="p">)</span>
@@ -620,40 +341,28 @@ Integers, as well.</p></li>
 </pre></div>
 </div>
 </div>
-<p>We can visualize our pipeline.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">count_features</span> <span class="o">+</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">label_name_feature</span> <span class="o">+</span> <span class="n">weekday</span>
+<p>We can visualize our pipeline.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">count_features</span> <span class="o">+</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">label_name_feature</span> <span class="o">+</span> <span class="n">weekday</span>
 <span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<img alt="../../_images/examples_winning-solution-recsys2020-twitter_01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_28_0.svg" src="../../_images/examples_winning-solution-recsys2020-twitter_01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_28_0.svg" /></div>
+<div class="cell_output docutils container">
+<img alt="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_28_0.svg" src="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_28_0.svg" /></div>
 </div>
 <p>Our calculation workflow looks correct. But we want to keep columns, which are not used in our pipeline (for <code class="docutils literal notranslate"><span class="pre">a_follower_count</span></code> or <code class="docutils literal notranslate"><span class="pre">b_follows_a</span></code>. Therefore, we include all columns in features, which are not part of our pipeline (except of <code class="docutils literal notranslate"><span class="pre">text_tokens</span></code>).</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">remaining_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">features</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">columns</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">])]</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">remaining_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">features</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">columns</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">])]</span>
 <span class="n">remaining_columns</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-[&#39;timestamp&#39;,
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[&#39;timestamp&#39;,
  &#39;a_follower_count&#39;,
  &#39;a_following_count&#39;,
  &#39;a_is_verified&#39;,
@@ -663,23 +372,22 @@ Integers, as well.</p></li>
  &#39;b_is_verified&#39;,
  &#39;b_account_creation&#39;,
  &#39;b_follows_a&#39;]
-</pre></div></div>
+</pre></div>
+</div>
+</div>
 </div>
 <p>We initialize our NVTabular workflow.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span> <span class="o">+</span> <span class="n">remaining_columns</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span> <span class="o">+</span> <span class="n">remaining_columns</span><span class="p">)</span>
-</pre></div>
 </div>
 </div>
 <p>We initialize a nvt.Dataset. The engine is <code class="docutils literal notranslate"><span class="pre">csv</span></code> as the <code class="docutils literal notranslate"><span class="pre">.tsv</span></code> file has a similar structure. The <code class="docutils literal notranslate"><span class="pre">.tsv</span></code> file uses the special character <code class="docutils literal notranslate"><span class="pre">\x01</span></code> to separate columns. There is no header in the file and we define column names with the parameter <code class="docutils literal notranslate"><span class="pre">names</span></code>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">trains_itrs</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">trains_itrs</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
     <span class="n">INPUT_DATA_DIR</span> <span class="o">+</span> <span class="s2">&quot;training.tsv&quot;</span><span class="p">,</span>
     <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">names</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -690,12 +398,11 @@ Integers, as well.</p></li>
 </pre></div>
 </div>
 </div>
-<p>First, we collect the training dataset statistics.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<p>First, we collect the training dataset statistics.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
 <span class="n">time_preproc_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 <span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">trains_itrs</span><span class="p">)</span>
@@ -703,21 +410,18 @@ Integers, as well.</p></li>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 1min 11s, sys: 1min 4s, total: 2min 16s
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1min 11s, sys: 1min 4s, total: 2min 16s
 Wall time: 3min 12s
-</pre></div></div>
-</div>
-<p>Next, we apply the transformation to the dataset and persist it to disk. We define the output datatypes for continuous columns to save memory. We can define the output datatypes as a dict and parse it to the <code class="docutils literal notranslate"><span class="pre">to_parquet</span></code> function.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
+</div>
+</div>
+<p>Next, we apply the transformation to the dataset and persist it to disk.<br><br>
+We define the output datatypes for continuous columns to save memory. We can define the output datatypes as a dict and parse it to the <code class="docutils literal notranslate"><span class="pre">to_parquet</span></code> function.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">label_name</span> <span class="o">+</span> <span class="p">[</span>
     <span class="s2">&quot;media&quot;</span><span class="p">,</span>
     <span class="s2">&quot;language&quot;</span><span class="p">,</span>
@@ -740,11 +444,10 @@ Wall time: 3min 12s
 </pre></div>
 </div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
 <span class="n">time_preproc_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 <span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">trains_itrs</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
@@ -754,25 +457,21 @@ Wall time: 3min 12s
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 1min 49s, sys: 1min 42s, total: 3min 31s
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 1min 49s, sys: 1min 42s, total: 3min 31s
 Wall time: 4min 40s
-</pre></div></div>
+</pre></div>
+</div>
+</div>
 </div>
 <p>We can take a look in the output folder.</p>
 </div>
-<div class="section" id="Splitting-dataset-into-training-and-test">
-<h2>Splitting dataset into training and test<a class="headerlink" href="#Splitting-dataset-into-training-and-test" title="Permalink to this headline"></a></h2>
+<div class="section" id="splitting-dataset-into-training-and-test">
+<h2>Splitting dataset into training and test<a class="headerlink" href="#splitting-dataset-into-training-and-test" title="Permalink to this headline"></a></h2>
 <p>We split the training data by time into a train and validation set. The first 5 days are train and the last 2 days are for validation. We use the weekday for it. The first day of the dataset is a Thursday (weekday id = 3) and the last day is Wednesday (weekday id = 2). Therefore, we split the weekday ids 1 and 2 into the validation set.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
 <span class="n">time_split_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
@@ -795,34 +494,24 @@ Wall time: 4min 40s
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 3.04 s, sys: 332 ms, total: 3.37 s
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 3.04 s, sys: 332 ms, total: 3.37 s
 Wall time: 31.5 s
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-9113
-</pre></div></div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>9113
+</pre></div>
 </div>
 </div>
-<div class="section" id="Feature-Engineering">
-<h2>Feature Engineering<a class="headerlink" href="#Feature-Engineering" title="Permalink to this headline"></a></h2>
+</div>
+</div>
+<div class="section" id="feature-engineering">
+<h2>Feature Engineering<a class="headerlink" href="#feature-engineering" title="Permalink to this headline"></a></h2>
 <p>Now, we can apply the actual feature engineering. We define our data pipelines.</p>
 <p>We count encode the columns <em>media</em>, <em>tweet_type</em>, <em>language</em>, <em>a_user_id</em>, <em>b_user_id</em>. CountEncoding is explained <a class="reference external" href="https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_4_CountEncoding.ipynb">here</a>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">count_encode</span> <span class="o">=</span> <span class="p">(</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">count_encode</span> <span class="o">=</span> <span class="p">(</span>
     <span class="p">[</span><span class="s2">&quot;media&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span> <span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;b_user_id&quot;</span><span class="p">]</span>
     <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_c&quot;</span><span class="p">)</span>
     <span class="o">&gt;&gt;</span> <span class="n">JoinGroupby</span><span class="p">(</span><span class="n">cont_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">],</span> <span class="n">stats</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">],</span> <span class="n">out_path</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">)</span>
@@ -830,34 +519,33 @@ Wall time: 31.5 s
 </pre></div>
 </div>
 </div>
-<p>We transform timestamp to datetime type.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">datetime</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="p">(</span>
+<p>We transform timestamp to datetime type.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">datetime</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="p">(</span>
     <span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">cudf</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">),</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<p>We extract hour from datetime. We extract minute from datetime. We extract seconds from datetime</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hour</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_hour&quot;</span><span class="p">)</span>
+<p>We extract hour from datetime.<br>
+We extract minute from datetime.<br>
+We extract seconds from datetime</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hour</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_hour&quot;</span><span class="p">)</span>
 <span class="n">minute</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">minute</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_minute&quot;</span><span class="p">)</span>
 <span class="n">seconds</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">second</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_second&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<p>We difference encode <em>b_follower_count, b_following_count, language</em> grouped by <em>b_user_id</em>. DifferenceEncoding is explained <a class="reference external" href="https://github.com/rapidsai/tdeeplearning/blob/main/RecSys2020Tutorial/05_2_TimeSeries_Differences.ipynb">here</a>. First, we need to transform the datatype to float32 to prevent overflow/underflow. After DifferenceEncoding, we want to fill NaN values with 0.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">diff_lag</span> <span class="o">=</span> <span class="p">(</span>
+<p>We difference encode <em>b_follower_count, b_following_count, language</em> grouped by <em>b_user_id</em>. DifferenceEncoding is explained <a class="reference external" href="https://github.com/rapidsai/tdeeplearning/blob/main/RecSys2020Tutorial/05_2_TimeSeries_Differences.ipynb">here</a>. First, we need to transform the datatype to float32 to prevent overflow/underflow. After DifferenceEncoding, we want to fill NaN values with 0.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">diff_lag</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;b_follower_count&quot;</span><span class="p">,</span> <span class="s2">&quot;b_following_count&quot;</span><span class="p">,</span> <span class="s2">&quot;language&quot;</span><span class="p">])</span>
     <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">))</span>
     <span class="o">&gt;&gt;</span> <span class="n">DifferenceLag</span><span class="p">(</span><span class="n">partition_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;b_user_id&quot;</span><span class="p">],</span> <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
@@ -866,22 +554,20 @@ Wall time: 31.5 s
 </pre></div>
 </div>
 </div>
-<p>We need to transform the LABEL_COLUMNS into boolean (0/1) targets.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
+<p>We need to transform the LABEL_COLUMNS into boolean (0/1) targets.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
 <span class="n">labels</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">(</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="p">(</span><span class="n">col</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
-<p>We apply TargetEncoding with kfold of 5 and smoothing of 20. TargetEncoding is explained in <a class="reference external" href="https://medium.com/rapids-ai/target-encoding-with-rapids-cuml-do-more-with-your-categorical-data-8c762c79e784">here</a> and <a class="reference external" href="https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_3_TargetEncoding.ipynb">here</a></p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">target_encode</span> <span class="o">=</span> <span class="p">[</span>
+<p>We apply TargetEncoding with kfold of 5 and smoothing of 20. TargetEncoding is explained in <a class="reference external" href="https://medium.com/rapids-ai/target-encoding-with-rapids-cuml-do-more-with-your-categorical-data-8c762c79e784">here</a> and <a class="reference external" href="https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_3_TargetEncoding.ipynb">here</a></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">target_encode</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;media&quot;</span><span class="p">,</span>
     <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span>
     <span class="s2">&quot;language&quot;</span><span class="p">,</span>
@@ -897,60 +583,43 @@ Wall time: 31.5 s
 </pre></div>
 </div>
 </div>
-<p>We visualize our NVTabular workflow.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">count_encode</span> <span class="o">+</span> <span class="n">hour</span> <span class="o">+</span> <span class="n">minute</span> <span class="o">+</span> <span class="n">seconds</span> <span class="o">+</span> <span class="n">diff_lag</span> <span class="o">+</span> <span class="n">labels</span> <span class="o">+</span> <span class="n">target_encode</span>
+<p>We visualize our NVTabular workflow.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">count_encode</span> <span class="o">+</span> <span class="n">hour</span> <span class="o">+</span> <span class="n">minute</span> <span class="o">+</span> <span class="n">seconds</span> <span class="o">+</span> <span class="n">diff_lag</span> <span class="o">+</span> <span class="n">labels</span> <span class="o">+</span> <span class="n">target_encode</span>
 <span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<img alt="../../_images/examples_winning-solution-recsys2020-twitter_01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_59_0.svg" src="../../_images/examples_winning-solution-recsys2020-twitter_01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_59_0.svg" /></div>
+<div class="cell_output docutils container">
+<img alt="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_59_0.svg" src="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_59_0.svg" /></div>
 </div>
 <p>We want to keep all columns of the input dataset. Therefore, we extract all column names from the first input parquet file.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_tmp</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;/nv_train/part.0.parquet&quot;</span><span class="p">)</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_tmp</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;/nv_train/part.0.parquet&quot;</span><span class="p">)</span>
 <span class="n">all_input_columns</span> <span class="o">=</span> <span class="n">df_tmp</span><span class="o">.</span><span class="n">columns</span>
 <span class="k">del</span> <span class="n">df_tmp</span>
 <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>37
 </pre></div>
 </div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-37
-</pre></div></div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">remaining_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">all_input_columns</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">columns</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">])]</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">remaining_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">all_input_columns</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">columns</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">])]</span>
 <span class="n">remaining_columns</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-[&#39;hashtags_count_t&#39;,
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[&#39;hashtags_count_t&#39;,
  &#39;domains_count_t&#39;,
  &#39;links_count_t&#39;,
  &#39;media&#39;,
@@ -973,23 +642,22 @@ Wall time: 31.5 s
  &#39;b_is_verified&#39;,
  &#39;b_account_creation&#39;,
  &#39;b_follows_a&#39;]
-</pre></div></div>
+</pre></div>
+</div>
+</div>
 </div>
 <p>We initialize our NVTabular workflow and add the “remaining” columns to it.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span> <span class="o">+</span> <span class="n">remaining_columns</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span> <span class="o">+</span> <span class="n">remaining_columns</span><span class="p">)</span>
-</pre></div>
 </div>
 </div>
 <p>We initialize the train and valid as NVTabular datasets.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
     <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_train/*.parquet&quot;</span><span class="p">),</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;2GB&quot;</span>
 <span class="p">)</span>
 <span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
@@ -998,12 +666,11 @@ Wall time: 31.5 s
 </pre></div>
 </div>
 </div>
-<p>We collect statistics from our train dataset.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<p>We collect statistics from our train dataset.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
 <span class="n">time_fe_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 <span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
@@ -1011,32 +678,27 @@ Wall time: 31.5 s
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 27.6 s, sys: 10.9 s, total: 38.4 s
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 27.6 s, sys: 10.9 s, total: 38.4 s
 Wall time: 42.3 s
-</pre></div></div>
-</div>
-<p>The columns <em>a_is_verified</em>, <em>b_is_verified</em> and <em>b_follows_a</em> have the datatype boolean. XGBoost does not support boolean datatypes and we need convert them to int8. We can define the output datatypes as a dict and parse it to the <code class="docutils literal notranslate"><span class="pre">.to_parquet</span></code> function.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
+</div>
+</div>
+<p>The columns <em>a_is_verified</em>, <em>b_is_verified</em> and <em>b_follows_a</em> have the datatype boolean. XGBoost does not support boolean datatypes and we need convert them to int8. We can define the output datatypes as a dict and parse it to the <code class="docutils literal notranslate"><span class="pre">.to_parquet</span></code> function.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;a_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_follows_a&quot;</span><span class="p">]:</span>
     <span class="n">dict_dtypes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span>
 </pre></div>
 </div>
 </div>
-<p>We apply the transformation to the train and valid datasets.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<p>We apply the transformation to the train and valid datasets.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
 <span class="n">time_fe_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 <span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
@@ -1049,54 +711,44 @@ Wall time: 42.3 s
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-CPU times: user 30.9 s, sys: 44.3 s, total: 1min 15s
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 30.9 s, sys: 44.3 s, total: 1min 15s
 Wall time: 1min 20s
-</pre></div></div>
-</div>
-</div>
-<div class="section" id="Training-our-model">
-<h2>Training our model<a class="headerlink" href="#Training-our-model" title="Permalink to this headline"></a></h2>
-<p>After the preprocessing and feature engineering is done, we can train a model to predict our targets. We load our datasets with <code class="docutils literal notranslate"><span class="pre">dask_cudf</span></code>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span> <span class="o">=</span> <span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="s2">&quot;nv_train_fe/*.parquet&quot;</span><span class="p">))</span>
+</div>
+</div>
+</div>
+<div class="section" id="training-our-model">
+<h2>Training our model<a class="headerlink" href="#training-our-model" title="Permalink to this headline"></a></h2>
+<p>After the preprocessing and feature engineering is done, we can train a model to predict our targets. We load our datasets with <code class="docutils literal notranslate"><span class="pre">dask_cudf</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span> <span class="o">=</span> <span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="s2">&quot;nv_train_fe/*.parquet&quot;</span><span class="p">))</span>
 <span class="n">valid</span> <span class="o">=</span> <span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="s2">&quot;nv_valid_fe/*.parquet&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="p">[[</span><span class="s2">&quot;a_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_follows_a&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dtypes</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="p">[[</span><span class="s2">&quot;a_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_follows_a&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dtypes</span>
-</pre></div>
 </div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-a_is_verified    int8
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>a_is_verified    int8
 b_is_verified    int8
 b_follows_a      int8
 dtype: object
-</pre></div></div>
-</div>
-<p>Some columns are only used for feature engineering. Therefore, we define the columns we want to ignore for training.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dont_use</span> <span class="o">=</span> <span class="p">[</span>
+</div>
+</div>
+<p>Some columns are only used for feature engineering. Therefore, we define the columns we want to ignore for training.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dont_use</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;__null_dask_index__&quot;</span><span class="p">,</span>
     <span class="s2">&quot;text_tokens&quot;</span><span class="p">,</span>
     <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span>
@@ -1118,13 +770,13 @@ dtype: object
 </pre></div>
 </div>
 </div>
-<p>We drop the columns, which are not required for training.</p>
-<p>Our experiments show that we require only 10% of the training dataset. Our feature engineering, such as TargetEncoding, uses the training datasets and leverage the information of the full dataset. In the competition, we trained our models with higher ratio (20% and 50%), but we could not observe an improvement in performance. We sample the training dataset to 10% of the size and drop all columns, which we do not want to use.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAMPLE_RATIO</span> <span class="o">=</span> <span class="mf">0.1</span>
+<p>We drop the columns, which are not required for training.</p>
+<p>Our experiments show that we require only 10% of the training dataset. Our feature engineering, such as TargetEncoding, uses the training datasets and leverage the information of the full dataset. In the competition, we trained our models with higher ratio (20% and 50%), but we could not observe an improvement in performance.<br><br>
+We sample the training dataset to 10% of the size and drop all columns, which we do not want to use.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAMPLE_RATIO</span> <span class="o">=</span> <span class="mf">0.1</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">1</span>
 
 <span class="k">if</span> <span class="n">SAMPLE_RATIO</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
@@ -1146,22 +798,18 @@ dtype: object
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-87914868
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>87914868
 8764882
 Using 51 features
-</pre></div></div>
-</div>
-<p>Similar to the training dataset, our experiments show that 35% of our validation dataset is enough to get a good estimate of the performance metric. 35% of the validation dataset has a similar size as the test set of the RecSys2020 competition.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[39]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAMPLE_RATIO</span> <span class="o">=</span> <span class="mf">0.35</span>
+</div>
+</div>
+<p>Similar to the training dataset, our experiments show that 35% of our validation dataset is enough to get a good estimate of the performance metric. 35% of the validation dataset has a similar size as the test set of the RecSys2020 competition.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAMPLE_RATIO</span> <span class="o">=</span> <span class="mf">0.35</span>
 <span class="n">SEED</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="k">if</span> <span class="n">SAMPLE_RATIO</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">))</span>
@@ -1179,21 +827,17 @@ Using 51 features
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-33471563
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>33471563
 13367169
-</pre></div></div>
-</div>
-<p>We initialize our XGBoost parameter.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[40]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;XGB Version&quot;</span><span class="p">,</span> <span class="n">xgb</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
+</div>
+</div>
+<p>We initialize our XGBoost parameter.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;XGB Version&quot;</span><span class="p">,</span> <span class="n">xgb</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
 
 <span class="n">xgb_parms</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;max_depth&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
@@ -1208,29 +852,30 @@ Using 51 features
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-XGB Version 1.3.3
-</pre></div></div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[41]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">)</span>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>XGB Version 1.3.3
 </pre></div>
 </div>
 </div>
-<p>We train our XGBoost models. The challenge requires to predict 4 targets, does a user 1. like a tweet 2. reply a tweet 3. comment a tweet 4. comment and reply a tweet</p>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We train our XGBoost models. The challenge requires to predict 4 targets, does a user</p>
+<ol class="simple">
+<li><p>like a tweet</p></li>
+<li><p>reply a tweet</p></li>
+<li><p>comment a tweet</p></li>
+<li><p>comment and reply a tweet</p></li>
+</ol>
 <p>We train 4x XGBoost models for 300 rounds on a GPU.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[42]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 <span class="n">time_train_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
 <span class="n">NROUND</span> <span class="o">=</span> <span class="mi">300</span>
@@ -1266,12 +911,8 @@ XGB Version 1.3.3
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-#########################
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>#########################
 ### reply
 #########################
 Creating DMatrix...
@@ -1279,17 +920,12 @@ Took 1.0 seconds
 Training...
 Took 16.8 seconds
 Predicting...
-</pre></div></div>
+</pre></div>
 </div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/opt/conda/envs/rapids/lib/python3.8/site-packages/distributed/worker.py:3451: UserWarning: Large object of size 7.93 MB detected in task graph:
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/opt/conda/envs/rapids/lib/python3.8/site-packages/distributed/worker.py:3451: UserWarning: Large object of size 7.93 MB detected in task graph: 
   [&lt;function _predict_async.&lt;locals&gt;.mapped_predict  ... titions&gt;, True]
 Consider scattering large objects ahead of time
-with client.scatter to reduce scheduler burden and
+with client.scatter to reduce scheduler burden and 
 keep data on workers
 
     future = client.submit(func, big_data)    # bad
@@ -1297,14 +933,9 @@ keep data on workers
     big_future = client.scatter(big_data)     # good
     future = client.submit(func, big_future)  # good
   warnings.warn(
-</pre></div></div>
+</pre></div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Took 1.8 seconds
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Took 1.8 seconds
 #########################
 ### retweet
 #########################
@@ -1334,40 +965,34 @@ Predicting...
 Took 1.7 seconds
 CPU times: user 8.7 s, sys: 1.06 s, total: 9.75 s
 Wall time: 1min 14s
-</pre></div></div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">yvalid</span> <span class="o">=</span> <span class="n">Y_valid</span><span class="p">[</span><span class="n">label_names</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">yvalid</span> <span class="o">=</span> <span class="n">Y_valid</span><span class="p">[</span><span class="n">label_names</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
 <span class="n">oof</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">preds</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
 </pre></div>
 </div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[44]:
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">yvalid</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">yvalid</span><span class="o">.</span><span class="n">shape</span>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(13367169, 4)
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[44]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-(13367169, 4)
-</pre></div></div>
 </div>
 <p>The hosts of the RecSys2020 competition provide code for calculating the performance metric <code class="docutils literal notranslate"><span class="pre">PRAUC</span></code> and <code class="docutils literal notranslate"><span class="pre">RCE</span></code>. We optimized the code to speed up the calculation, as well. Using cuDF / cupy, we calculate the performance metric on the GPU.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[45]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">auc</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">auc</span>
 
 
 <span class="k">def</span> <span class="nf">precision_recall_curve</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
@@ -1431,12 +1056,11 @@ Wall time: 1min 14s
 </pre></div>
 </div>
 </div>
-<p>Finally, we calculate the performance metric PRAUC and RCE for each target.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">txt</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<p>Finally, we calculate the performance metric PRAUC and RCE for each target.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">txt</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
     <span class="n">prauc</span> <span class="o">=</span> <span class="n">compute_prauc</span><span class="p">(</span><span class="n">oof</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">yvalid</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span>
     <span class="n">rce</span> <span class="o">=</span> <span class="n">compute_rce_fast</span><span class="p">(</span><span class="n">oof</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">yvalid</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
@@ -1446,30 +1070,25 @@ Wall time: 1min 14s
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-reply                PRAUC:0.13491 RCE:15.57019
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>reply                PRAUC:0.13491 RCE:15.57019
 retweet              PRAUC:0.50176 RCE:25.95678
 retweet_comment      PRAUC:0.04228 RCE:9.24986
 like                 PRAUC:0.76676 RCE:23.75791
-</pre></div></div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_total</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_total_start</span>
 </pre></div>
 </div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_total</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_total_start</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total time: </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_total</span><span class="p">))</span>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total time: </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_total</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;1. Preprocessing:       </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_preproc</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;2. Splitting:           </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_split</span><span class="p">))</span>
@@ -1478,18 +1097,16 @@ like                 PRAUC:0.76676 RCE:23.75791
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Total time: 848.91s
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Total time: 848.91s
 
 1. Preprocessing:       472.54s
 2. Splitting:           31.39s
 3. Feature engineering: 122.55s
 4. Training:            74.65s
-</pre></div></div>
+</pre></div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1498,8 +1115,8 @@ Total time: 848.91s
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../scaling-criteo/04-Triton-Inference-with-HugeCTR.html" class="btn btn-neutral float-left" title="Scaling Criteo: Triton Inference with HugeCTR" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../tabular-data-rossmann/index.html" class="btn btn-neutral float-right" title="Applying the Techniques to other Tabular Problems with Rossmann" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../multi-gpu-toy-example/multi-gpu_dask.html" class="btn btn-neutral float-left" title="Multi-GPU Scaling in NVTabular with Dask" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../api.html" class="btn btn-neutral float-right" title="API Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
