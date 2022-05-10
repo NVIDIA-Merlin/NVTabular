@@ -1,0 +1,69 @@
+root: index
+subtrees:
+  - caption: Contents
+    entries:
+      - file: Introduction.md
+        title: Introduction
+      - file: core_features.md
+      - file: training/index.rst
+      - file: examples/index.md
+        title: Example Notebooks
+        subtrees:
+          - entries:
+              - file: examples/getting-started-movielens/index.md
+                title: Getting Started with MovieLens
+                entries:
+                  - file: examples/getting-started-movielens/01-Download-Convert.ipynb
+                    title: Download and Convert
+                  - file: examples/getting-started-movielens/02-ETL-with-NVTabular.ipynb
+                    title: ETL with NVTabular
+                  - file: examples/getting-started-movielens/03-Training-with-HugeCTR.ipynb
+                    title: Train with HugeCTR
+                  - file: examples/getting-started-movielens/03-Training-with-TF.ipynb
+                    title: Train with TensorFlow
+                  - file: examples/getting-started-movielens/03-Training-with-PyTorch.ipynb
+                    title: Train with PyTorch
+                  - file: examples/getting-started-movielens/04-Triton-Inference-with-HugeCTR.ipynb
+                    title: Serve a HugeCTR Model
+                  - file: examples/getting-started-movielens/04-Triton-Inference-with-TF.ipynb
+                    title: Serve a TensorFlow Model
+              - file: examples/advanced-ops-outbrain/index.md
+                title: Advanced Ops with Outbrain
+                entries:
+                  - file: examples/advanced-ops-outbrain/01-Download-Convert.ipynb
+                  - file: examples/advanced-ops-outbrain/02-ETL-with-NVTabular.ipynb
+                  - file: examples/advanced-ops-outbrain/03-Training-with-TF.ipynb
+              - file: examples/scaling-criteo/index.md
+                entries:
+                  - file: examples/scaling-criteo/01-Download-Convert.ipynb
+                    title: Download and Convert
+                  - file: examples/scaling-criteo/02-ETL-with-NVTabular.ipynb
+                    title: ETL with NVTabular
+                  - file: examples/scaling-criteo/03-Training-with-HugeCTR.ipynb
+                    title: Train with HugeCTR
+                  - file: examples/scaling-criteo/03-Training-with-TF.ipynb
+                    title: Train with TensorFlow
+                  - file: examples/scaling-criteo/03-Training-with-FastAI.ipynb
+                    title: Train with FastAI
+                  - file: examples/scaling-criteo/04-Triton-Inference-with-HugeCTR.ipynb
+                    title: Serve a HugeCTR Model
+                  - file: examples/scaling-criteo/04-Triton-Inference-with-TF.ipynb
+                    title: Serve a TensorFlow Model
+              - file: examples/tabular-data-rossmann/index.md
+                title: Applying Techniques to Rossmann Stores Data
+                entries:
+                  - file: examples/tabular-data-rossmann/01-Download-Convert.ipynb
+                  - file: examples/tabular-data-rossmann/02-ETL-with-NVTabular.ipynb
+                  - file: examples/tabular-data-rossmann/03-Training-with-FastAI.ipynb
+                  - file: examples/tabular-data-rossmann/03-Training-with-TF.ipynb
+                  - file: examples/tabular-data-rossmann/03-Training-with-PyTorch.ipynb
+              - file: examples/multi-gpu-movielens/index.md
+                entries:
+                  - file: examples/multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.ipynb
+                  - file: examples/multi-gpu-toy-example/multi-gpu_dask.ipynb
+              - file: examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.ipynb
+                title: Winning Solution of the RecSys2020 Competition
+      - file: api
+        title: API Documentation
+      - file: resources/index
+        title: Additional Resources
