@@ -21,6 +21,7 @@ from distutils.spawn import find_executable
 from pybind11.setup_helpers import Pybind11Extension
 from pybind11.setup_helpers import build_ext as build_pybind11
 from setuptools import find_namespace_packages, find_packages, setup
+from setuptools.command.build_py import build_py as _build_py
 
 try:
     import versioneer
@@ -33,9 +34,8 @@ except ImportError:
     import versioneer
 
 
-class build_pybind_and_proto(build_pybind11):
+class build_proto(_build_py):
     def run(self):
-        build_pybind11.run(self)
         protoc = None
         if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
             protoc = os.environ["PROTOC"]
@@ -78,7 +78,8 @@ ext_modules = [
 
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = build_pybind_and_proto
+cmdclass["build_ext"] = build_pybind11
+cmdclass["build_py"] = build_proto
 
 
 def parse_requirements(filename):
