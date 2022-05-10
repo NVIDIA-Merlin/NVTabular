@@ -30,7 +30,6 @@ INFERENCE_BASE_DIR = "/model/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 
 CRITEO_DIR = "examples/scaling-criteo"
-ROSSMAN_DIR = "examples/tabular-data-rossmann"
 MOVIELENS_DIR = "examples/getting-started-movielens"
 
 

@@ -37,7 +37,6 @@ INFERENCE_BASE_DIR = "/model/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 
 CRITEO_DIR = "examples/scaling-criteo"
-ROSSMAN_DIR = "examples/tabular-data-rossmann"
 MOVIELENS_DIR = "examples/getting-started-movielens"
 
 allowed_hosts = [
@@ -117,64 +116,6 @@ def test_criteo(asv_db, bench_info, tmpdir, report):
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Tensorflow not installed, skipping " + notebook)
-
-
-def test_rossman(asv_db, bench_info, tmpdir, devices, report):
-    data_path = os.path.join(DATA_DIR, "rossman/data")
-    input_path = os.path.join(DATA_DIR, "rossman/input")
-    output_path = os.path.join(DATA_DIR, "rossman/output")
-
-    # Run Download & Convert for all
-    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "01-Download-Convert.ipynb")
-    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
-
-    # Run ETL for all
-    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "02-ETL-with-NVTabular.ipynb")
-    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
-
-    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
-
-    # Run training for PyTorch container
-    try:
-        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-FastAI.ipynb")
-        import torch
-
-        print(torch.__version__)
-        out = _run_notebook(
-            tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False
-        )
-        if report:
-            # bench_results = RossBenchFastAI().get_epochs(out.splitlines())
-            bench_results = RossBenchFastAI().get_dl_timing(out.splitlines())
-            send_results(asv_db, bench_info, bench_results)
-
-        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
-        out = _run_notebook(
-            tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False
-        )
-        if report:
-            # bench_results = RossBenchPytorch().get_epochs(out.splitlines())
-            bench_results = RossBenchPytorch().get_dl_timing(out.splitlines())
-            send_results(asv_db, bench_info, bench_results)
-    except ImportError:
-        print("PyTorch not installed, skipping " + notebook)
-
-    # Run training for TensorFlow container
-    try:
-        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-TF.ipynb")
-        import tensorflow
-
-        print(tensorflow.__version__)
-        out = _run_notebook(
-            tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False
-        )
-        if report:
-            # bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
-            bench_results = RossBenchTensorFlow().get_dl_timing(out.splitlines())
-            send_results(asv_db, bench_info, bench_results)
-    except ImportError:
-        print("Tensorflow not installed, skipping " + notebook)
-
 
 def test_movielens(asv_db, bench_info, tmpdir, devices):
     data_path = os.path.join(DATA_DIR, "movielens/data")
