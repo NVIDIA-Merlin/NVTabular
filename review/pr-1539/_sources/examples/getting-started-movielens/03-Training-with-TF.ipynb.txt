@@ -1,0 +1,766 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "# Getting Started MovieLens: Training with TensorFlow\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "We observed that TensorFlow training pipelines can be slow as the dataloader is a bottleneck. The native dataloader in TensorFlow randomly sample each item from the dataset, which is very slow. The window dataloader in TensorFlow is not much faster. In our experiments, we are able to speed-up existing TensorFlow pipelines by 9x using a highly optimized dataloader.<br><br>\n",
+    "\n",
+    "Applying deep learning models to recommendation systems faces unique challenges in comparison to other domains, such as computer vision and natural language processing. The datasets and common model architectures have unique characteristics, which require custom solutions. Recommendation system datasets have terabytes in size with billion examples but each example is represented by only a few bytes. For example, the [Criteo CTR dataset](https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/), the largest publicly available dataset, is 1.3TB with 4 billion examples. The model architectures have normally large embedding tables for the users and items, which do not fit on a single GPU. You can read more in our [blogpost](https://medium.com/nvidia-merlin/why-isnt-your-recommender-system-training-faster-on-gpu-and-what-can-you-do-about-it-6cb44a711ad4).\n",
+    "\n",
+    "### Learning objectives\n",
+    "This notebook explains, how to use the NVTabular dataloader to accelerate TensorFlow training.\n",
+    "\n",
+    "1. Use **NVTabular dataloader** with TensorFlow Keras model\n",
+    "2. Leverage **multi-hot encoded input features**\n",
+    "\n",
+    "### MovieLens25M\n",
+    "\n",
+    "The [MovieLens25M](https://grouplens.org/datasets/movielens/25m/) is a popular dataset for recommender systems and is used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well. For example, which genres a movie has. Although we may not improve state-of-the-art results with our neural network architecture, the purpose of this notebook is to explain how to integrate multi-hot categorical features into a neural network."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## NVTabular dataloader for TensorFlow\n",
+    "\n",
+    "We’ve identified that the dataloader is one bottleneck in deep learning recommender systems when training pipelines with TensorFlow. The dataloader cannot prepare the next batch fast enough and therefore, the GPU is not fully utilized. \n",
+    "\n",
+    "We developed a highly customized tabular dataloader for accelerating existing pipelines in TensorFlow. In our experiments, we see a speed-up by 9x of the same training workflow with NVTabular dataloader. NVTabular dataloader’s features are:\n",
+    "\n",
+    "- removing bottleneck of item-by-item dataloading\n",
+    "- enabling larger than memory dataset by streaming from disk\n",
+    "- reading data directly into GPU memory and remove CPU-GPU communication\n",
+    "- preparing batch asynchronously in GPU to avoid CPU-GPU communication\n",
+    "- supporting commonly used .parquet format\n",
+    "- easy integration into existing TensorFlow pipelines by using similar API - works with tf.keras models\n",
+    "\n",
+    "More information in our [blogpost](https://medium.com/nvidia-merlin/training-deep-learning-based-recommender-systems-9x-faster-with-tensorflow-cc5a2572ea49)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# External dependencies\n",
+    "import os\n",
+    "import glob\n",
+    "\n",
+    "import nvtabular as nvt"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We define our base input directory, containing the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "INPUT_DATA_DIR = os.environ.get(\n",
+    "    \"INPUT_DATA_DIR\", os.path.expanduser(\"~/nvt-examples/movielens/data/\")\n",
+    ")\n",
+    "# path to save the models\n",
+    "MODEL_BASE_DIR = os.environ.get(\"MODEL_BASE_DIR\", os.path.expanduser(\"~/nvt-examples/\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# avoid numba warnings\n",
+    "from numba import config\n",
+    "config.CUDA_LOW_OCCUPANCY_WARNINGS = 0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Defining Hyperparameters"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we define the data schema and differentiate between single-hot and multi-hot categorical features. Note, that we do not have any numerical input features. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "BATCH_SIZE = 1024 * 32  # Batch Size\n",
+    "CATEGORICAL_COLUMNS = [\"movieId\", \"userId\"]  # Single-hot\n",
+    "CATEGORICAL_MH_COLUMNS = [\"genres\"]  # Multi-hot\n",
+    "NUMERIC_COLUMNS = []\n",
+    "\n",
+    "# Output from ETL-with-NVTabular\n",
+    "TRAIN_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, \"train\", \"*.parquet\")))\n",
+    "VALID_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, \"valid\", \"*.parquet\")))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workflow = nvt.Workflow.load(os.path.join(INPUT_DATA_DIR, \"workflow\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form `(cardinality, embedding_size)`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'userId': (162542, 512), 'movieId': (56747, 512), 'genres': (21, 16)}"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(workflow)\n",
+    "EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)\n",
+    "EMBEDDING_TABLE_SHAPES"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Initializing NVTabular Dataloader for Tensorflow"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We import TensorFlow and some NVTabular TF extensions, such as custom TensorFlow layers supporting multi-hot and the NVTabular TensorFlow data loader."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import time\n",
+    "import tensorflow as tf\n",
+    "\n",
+    "from nvtabular.loader.tensorflow import KerasSequenceLoader, KerasSequenceValidater\n",
+    "from nvtabular.framework_utils.tensorflow import layers"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we take a look on our data loader and how the data is represented as tensors. The NVTabular data loader are initialized as usually and we specify both single-hot and multi-hot categorical features as cat_names. The data loader will automatically recognize the single/multi-hot columns and represent them accordingly."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.8/dist-packages/cudf/core/dataframe.py:1292: UserWarning: The deep parameter is ignored and is only included for pandas compatibility.\n",
+      "  warnings.warn(\n"
+     ]
+    }
+   ],
+   "source": [
+    "train_dataset_tf = KerasSequenceLoader(\n",
+    "    TRAIN_PATHS,  # you could also use a glob pattern\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    label_names=[\"rating\"],\n",
+    "    cat_names=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,\n",
+    "    cont_names=NUMERIC_COLUMNS,\n",
+    "    engine=\"parquet\",\n",
+    "    shuffle=True,\n",
+    "    buffer_size=0.06,  # how many batches to load at once\n",
+    "    parts_per_chunk=1,\n",
+    ")\n",
+    "\n",
+    "valid_dataset_tf = KerasSequenceLoader(\n",
+    "    VALID_PATHS,  # you could also use a glob pattern\n",
+    "    batch_size=BATCH_SIZE,\n",
+    "    label_names=[\"rating\"],\n",
+    "    cat_names=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,\n",
+    "    cont_names=NUMERIC_COLUMNS,\n",
+    "    engine=\"parquet\",\n",
+    "    shuffle=False,\n",
+    "    buffer_size=0.06,\n",
+    "    parts_per_chunk=1,\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's generate a batch and take a look on the input features.<br><br>\n",
+    "We can see, that the single-hot categorical features (`userId` and `movieId`) have a shape of `(32768, 1)`, which is the batchsize (as usually).<br><br>\n",
+    "For the multi-hot categorical feature `genres`, we receive two Tensors `genres__values` and `genres__nnzs`.<br><br>\n",
+    "`genres__values` are the actual data, containing the genre IDs. Note that the Tensor has more values than the batch_size. The reason is, that one datapoint in the batch can contain more than one genre (multi-hot).<br>\n",
+    "`genres__nnzs` are a supporting Tensor, describing how many genres are associated with each datapoint in the batch.<br><br>\n",
+    "For example,\n",
+    "- if the first value in `genres__nnzs` is `5`, then the first 5 values in `genres__values` are associated with the first datapoint in the batch (movieId/userId).<br>\n",
+    "- if the second value in `genres__nnzs` is `2`, then the 6th and the 7th values in `genres__values` are associated with the second datapoint in the batch (continuing after the previous value stopped).<br> \n",
+    "- if the third value in `genres_nnzs` is `1`, then the 8th value in `genres__values` are associated with the third datapoint in the batch. \n",
+    "- and so on"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "2022-04-27 22:12:40.128861: I tensorflow/core/platform/cpu_feature_guard.cc:152] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE3 SSE4.1 SSE4.2 AVX\n",
+      "To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.\n",
+      "2022-04-27 22:12:41.479738: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1525] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 16254 MB memory:  -> device: 0, name: Quadro GV100, pci bus id: 0000:15:00.0, compute capability: 7.0\n",
+      "2022-04-27 22:12:41.480359: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1525] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 30382 MB memory:  -> device: 1, name: Quadro GV100, pci bus id: 0000:2d:00.0, compute capability: 7.0\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'genres': (<tf.Tensor: shape=(88833, 1), dtype=int64, numpy=\n",
+       "  array([[ 1],\n",
+       "         [ 2],\n",
+       "         [ 8],\n",
+       "         ...,\n",
+       "         [ 2],\n",
+       "         [ 7],\n",
+       "         [17]])>,\n",
+       "  <tf.Tensor: shape=(32768, 1), dtype=int32, numpy=\n",
+       "  array([[1],\n",
+       "         [1],\n",
+       "         [3],\n",
+       "         ...,\n",
+       "         [5],\n",
+       "         [4],\n",
+       "         [4]], dtype=int32)>),\n",
+       " 'movieId': <tf.Tensor: shape=(32768, 1), dtype=int64, numpy=\n",
+       " array([[1179],\n",
+       "        [ 229],\n",
+       "        [1333],\n",
+       "        ...,\n",
+       "        [ 410],\n",
+       "        [1153],\n",
+       "        [ 460]])>,\n",
+       " 'userId': <tf.Tensor: shape=(32768, 1), dtype=int64, numpy=\n",
+       " array([[   396],\n",
+       "        [ 61511],\n",
+       "        [   601],\n",
+       "        ...,\n",
+       "        [134355],\n",
+       "        [ 14751],\n",
+       "        [ 10238]])>}"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "batch = next(iter(train_dataset_tf))\n",
+    "batch[0]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can see that the sum of `genres__nnzs` is equal to the shape of `genres__values`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<tf.Tensor: shape=(), dtype=int32, numpy=88833>"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "tf.reduce_sum(batch[0][\"genres\"][1])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "As each datapoint can have a different number of genres, it is more efficient to represent the genres as two flat tensors: One with the actual values (`genres__values`) and one with the length for each datapoint (`genres__nnzs`)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "del batch"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Defining Neural Network Architecture"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We will define a common neural network architecture for tabular data.\n",
+    "\n",
+    "* Single-hot categorical features are fed into an Embedding Layer\n",
+    "* Each value of a multi-hot categorical features is fed into an Embedding Layer and the multiple Embedding outputs are combined via averaging\n",
+    "* The output of the Embedding Layers are concatenated\n",
+    "* The concatenated layers are fed through multiple feed-forward layers (Dense Layers with ReLU activations)\n",
+    "* The final output is a single number with sigmoid activation function"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we will define some dictionary/lists for our network architecture."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "inputs = {}  # tf.keras.Input placeholders for each feature to be used\n",
+    "emb_layers = []  # output of all embedding layers, which will be concatenated"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We create `tf.keras.Input` tensors for all 4 input features."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "for col in CATEGORICAL_COLUMNS:\n",
+    "    inputs[col] = tf.keras.Input(name=col, dtype=tf.int64, shape=(1,))\n",
+    "# Note that we need two input tensors for multi-hot categorical features\n",
+    "for col in CATEGORICAL_MH_COLUMNS:\n",
+    "    inputs[col] = (tf.keras.Input(name=f\"{col}__values\", dtype=tf.int64, shape=(1,)),\n",
+    "                   tf.keras.Input(name=f\"{col}__nnzs\", dtype=tf.int64, shape=(1,)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next, we initialize Embedding Layers with `tf.feature_column.embedding_column`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key='movieId', number_buckets=56747, default_value=None), dimension=512, combiner='mean', initializer=<tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7fa4cc304460>, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True),\n",
+       " EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key='userId', number_buckets=162542, default_value=None), dimension=512, combiner='mean', initializer=<tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7fa4cc304c10>, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True),\n",
+       " EmbeddingColumn(categorical_column=IdentityCategoricalColumn(key='genres', number_buckets=21, default_value=None), dimension=16, combiner='mean', initializer=<tensorflow.python.ops.init_ops.TruncatedNormal object at 0x7fa4cc304a60>, ckpt_to_load_from=None, tensor_name_in_ckpt=None, max_norm=None, trainable=True, use_safe_embedding_lookup=True)]"
+      ]
+     },
+     "execution_count": 15,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:\n",
+    "    emb_layers.append(\n",
+    "        tf.feature_column.embedding_column(\n",
+    "            tf.feature_column.categorical_column_with_identity(\n",
+    "                col, EMBEDDING_TABLE_SHAPES[col][0]\n",
+    "            ),  # Input dimension (vocab size)\n",
+    "            EMBEDDING_TABLE_SHAPES[col][1],  # Embedding output dimension\n",
+    "        )\n",
+    "    )\n",
+    "emb_layers"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "NVTabular implemented a custom TensorFlow layer `layers.DenseFeatures`, which takes as an input the different `tf.Keras.Input` and pre-initialized `tf.feature_column` and automatically concatenate them into a flat tensor. In the case of multi-hot categorical features, `DenseFeatures` organizes the inputs `__values` and `__nnzs` to define a `RaggedTensor` and combine them. `DenseFeatures` can handle numeric inputs, as well, but MovieLens does not provide numerical input features."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<KerasTensor: shape=(None, 1040) dtype=float32 (created by layer 'dense_features')>"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "emb_layer = layers.DenseFeatures(emb_layers)\n",
+    "x_emb_output = emb_layer(inputs)\n",
+    "x_emb_output"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can see that the output shape of the concatenated layer is equal to the sum of the individual Embedding output dimensions (1040 = 16+512+512).\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'userId': (162542, 512), 'movieId': (56747, 512), 'genres': (21, 16)}"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "EMBEDDING_TABLE_SHAPES"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We add multiple Dense Layers. Finally, we initialize the `tf.keras.Model` and add the optimizer."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "x = tf.keras.layers.Dense(128, activation=\"relu\")(x_emb_output)\n",
+    "x = tf.keras.layers.Dense(128, activation=\"relu\")(x)\n",
+    "x = tf.keras.layers.Dense(128, activation=\"relu\")(x)\n",
+    "x = tf.keras.layers.Dense(1, activation=\"sigmoid\", name=\"output\")(x)\n",
+    "\n",
+    "model = tf.keras.Model(inputs=inputs, outputs=x)\n",
+    "model.compile(\"sgd\", \"binary_crossentropy\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAABD8AAAIjCAYAAAAEDbCUAAAABmJLR0QA/wD/AP+gvaeTAAAgAElEQVR4nOzdeXxU1f3/8fckmYQskAWQnQJWwCIGDSBBVoMsig3yACLKpmwuiIi4V0uRaguodQFZbBX69VsCfL9SEUSgYhUSBCKICAEVNwiBACYmhCXL+f3RX+bLMAlkst2Zm9fz8ZjHg5zc3PncO/ecTN7cOcdhjDECAAAAAACwqQCrCwAAAAAAAKhOhB8AAAAAAMDWCD8AAAAAAICtEX4AAAAAAABbC7q4ITU1VS+99JIVtQBAmaZPn674+Phq2TfjHoCqtnLlymrZL+MV4Buq833J8OHDq2W/QG0SHx+v6dOnu7V53Pnx008/adWqVTVWFFBe27Zt07Zt26wuAxZYtWqVfvrpp2rbP+MeqsOqVat0+PBhq8tADTt8+HC1jieMV76D9yW1V3W/L+H3R9Wo7vEYvmvbtm1KTU31aPe486NEdf2PBVBRJSk412bt43A4auR5uLZQlRwOhx5++GGNGDHC6lJQg1asWKGkpKRqfx7GK+vxvqT2qon3Jfz+qLyS8Zg+WvuUdfcUc34AAAAAAABbI/wAAAAAAAC2RvgBAAAAAABsjfADAAAAAADYGuEHAAAAAACwNcIPAAAAAABga4QfAAAAAADA1gg/AAAAAACArRF+AAAAAAAAWyP8AAAAAAAAtkb4AQAAAAAAbI3wAwAAAAAA2BrhBwAAAAAAsDXCj1pg3rx5cjgccjgcat68udXl1KiIiAjXsZc85s2bZ3VZFWKnYwHgyU593E7HAv/g7TW3fPly13Z16tTx2Tp9mZ2OBTXDH/qpna5rOx1LVSH8qAVmzJghY4xiY2OtLqXG5eXladeuXZKkxMREGWM0Y8YMi6uqGDsdCwBPdurjdjoWVL+8vDxdddVVGjx4cKX24c01d8cdd8gYo4SEhAo/Z0XYqW/Y6VhQM/yhn9rpurbTsVQVwg/Ah0RERKhHjx5WlwEAl8V4hapijFFxcbGKi4utLgUXoZ8Dvo0+6p0gqwsAAABA7VW3bl19++23VpcBALA57vwAAAAAAAC2VmXhR3p6uoYMGaLIyEiFhYWpa9euev/999WvXz/XBCsTJkxwbZ+VlaWpU6eqVatWCg4OVsOGDTV06FDt3r3btc3q1avdJmj5/vvvlZSUpKioKNWvX1+DBw92+5+Ci7c/cOCARowYofr167vaTpw4Ue7nl6Rz587p2WefVfv27RUWFqaYmBjddttteu+991RUVFRVp0/Z2dkeE9LMnj1bklRYWOjWPmzYMFd7cnKybr75ZjVu3FihoaHq2LGjXnnllXLdOjp79mzXPi+8XWr9+vWu9gYNGnj8nK+du4rw9tq6eNLYHTt2KCEhQXXr1lVYWJj69u2rrVu3urb39tyW7P/06dPaunWra5ugoIrfnFWe66Mi151Usf57qf7orxj3Kq+yx3u57SUpKirK4zoveQQEBOjw4cM1ftzeYLxivKqMi4/thx9+UFJSkurWrav69etr9OjR+vnnn/X999/rtttuU926ddWkSRNNnDhRubm5Hvs7efKkpk+friuvvFLBwcGKjo7WoEGDtHnzZknev04X13f27Fm35yvvuHU5F47X4eHh6tmzp7Zs2VLBs1r16Of084qqyPt5b37f1eS59eV+Sh+1SR81F0lOTjalNF/S119/baKiokyzZs3Mhg0bTG5urtm7d6/p16+fadiwoQkJCXHbPiMjw/zqV78yjRo1MmvXrnVt37t3b1OnTh2TkpLitn1iYqKRZBITE01KSorJy8szGzduNKGhoaZLly4e9ZRs37t3b7N582Zz+vRps23bNhMYGGiysrK8ev4JEyaYyMhIs2HDBpOfn28yMzPNjBkzjCSzefNmr85TeQwcONAEBASYb775xuN78fHx5r//+79dX69Zs8ZIMs8//7w5deqUycrKMq+++qoJCAgwM2bM8Pj52NhY06xZM4/28PBwc+ONN3q0x8XFmfr167u1WXnuhg0bZoYNG+b1z+3atct1/VzM22srNjbWhIeHm/j4eNf2O3bsMNdee60JDg42H3/8sdv23pzbS21fnmO5mDfXx4ABAy553b3zzjuuryvaf8vqj+UhySQnJ5dr24pg3LN23KvM8ZZn+8jISJObm+vWNmvWLFf/qK7jrsh1y3jl/+NVRcYTb1R0/yXHNnToULNz506Tl5dnli1bZiSZQYMGmcTERLNr1y6Tm5trFi5caCSZhx9+2G0fR48eNa1btzaNGjUya9asMTk5OebAgQNm6NChxuFwmCVLlri29eb9zIX1nTlzxtXm7etX1jVX2ni9Z88e079/f9OqVSuP8bq8eF9Se/t5db8vqcj+vXlt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9v3AwED16dNHmZmZmjt3rk6cOKEzZ85o8+bNWrhwoVfP1b9/f2VkZOj1119XXl6evv32Wz300EOl3mLmD+euukVGRuqpp55SamqqTp8+rZ07d2rUqFEKDg7WK6+84ratN+dWkq6//nodPHhQP/30k1JTU3Xo0CH17NnT6xoren3cf//9Cg0N1e9+9zv169dPv/71rz22sbr/+grGPf/x8MMPa926dVq8ePFl5+6w03FLjFdW9zu7eeGFF9S6dWtNmzZN77//vnJzc3Xw4EHdeeedOnr0qF555RXXx19KXO79zOWerypev9LG63379mnUqFGl3mLvb+jn9HPJ+9e2PL/vavLc2rmf0kd9qI9ePANqRWfFPXDggBkyZIipV6+eCQsLM927dzf//ve/TZ8+fUxYWJjH9idPnjTTp083bdq0MU6n0zRs2ND079/fbNy40bVNamqqkeT2ePrpp435zz03bo9bb7211O3LOpbyPL8xxuzevdtMnjzZXH311SYsLMzExMSYbt26mSVLlpji4mKvz5M3Hn30USPJfPHFF6V+Pysry0yePNm0aNHCOJ1O06hRIzNu3DjzxBNPuI49Li7OzJ07t8zzaIwx2dnZZsKECaZJkyYmNDTU9OjRw+zYscPExcW5tn/88cdd21t17ioyq3p4eLjHsc+dO9fra6tEyYo5+/btMwMGDDB169Y1oaGhpnfv3mbLli0ez+/tuU1PTzc9e/Y04eHhpkWLFmb+/PmXPJayHvv37y/39XGxiRMnljrz/4Uq2n8rMrYY45urvRjDuFcVquJ4L7X9zp07L9tf3n333Wo5bm+vW8Yre4xXvrbaS1nXz44dOzzaX3jhBfPpp596tP/+97937e/EiRNm2rRppnXr1sbpdJrIyEgzYMAA869//avMGi71fubdd9/1eL677rrL9f3yjltl9Z8SF47XJUtSvv/++yYhIcG1/fjx48t9Xo3hfUlt7ufeju81sX9vXltvft9V5bmt6X5akfGYPmqPPlrW+Owwxv3DOytWrFBSUlK554u4nPbt2+vMmTP64YcfqmR/qL2GDx8uSVq5cqVlNXTq1EknTpwo1+zy/uqtt97S/PnztXPnTqtLcXE4HEpOTtaIESOqZf+Me6gO1X3dXg7jlTWqejyp6f2j/HhfUjN8sZ9X9/hu9e8Pu/CF8ZI+ao2yxucq+dhL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FO14O8aaNWvS+PHjU8+ePVOXLl3SiBEj0hNPPJFqa2sLbxX5+te/Xpi/ZcuWdPPNN6dTTjkllZeXp969e6cLL7wwLV26tDBnxYoVhc/u3W677bZCxo9vY8eOTSmltHr16nT11Ven008/PXXt2jX16tUrnX322em+++5LLS0tRZn3JcP+ePzxx1vl2rvdd999+3289rztpVu3bq3OnWVZqqqqSmeccUa69tpr06pVqz7183m8Lu35eQbg6JallFIHdCwAQAllWRb19fUxefLkUkc5qi1atCimTJkSfv06MH6eAdhflr0AAAAAuab8AAAAAHJN+QEAHFWyLPuD2x133FHqmADAQeTR2gDAUcXzNgDg6OPODwAAACDXlB8AAABArik/AAAAgFxTfgAAAAC5pvwAAAAAck35AQAAAOSa8gMAAADINeUHAAAAkGvKDwAAACDXlB8AAABArik/AAAAgFxTfgAAAAC5pvwAAAAAcq2s1AEAgI7x3e9+Nx5++OFSxziqvffeexERMWnSpBInAYCjS5ZSSqUOAQAcWv7Y7hg//elP4/TTT4/evXuXOkru3XzzzVFTU1PqGAAcIZQfAAAHSZZlUV9fH5MnTy51FADgYzzzAwAAAMg15QcAAACQa8oPAAAAINeUHwAAAECuKT8AAACAXFN+AAAAALmm/AAAAAByTfkBAAAA5JryAwAAAMg15QcAAACQa8oPAAAAINeUHwAAAECuKT8AAACAXFN+AAAAALmm/AAAAAByTfkBAAAA5JryAwAAAMg15QcAAACQa8oPAAAAINeUHwAAAECuKT8AAACAXFN+AAAAALmm/AAAAAByTfkBAAAA5JryAwAAAMg15QcAAACQa8oPAAAAINeUHwAAAECuKT8AAACAXFN+AAAAALmm/AAAAAByTfkBAAAA5JryAwAAAMi1LKWUSh0CAOBIc/XVV8eaNWuKxl588cX47Gc/G8cff3xhrHPnzvGjH/0oTjrppI6OCAD8r7JSBwAAOBL16dMnfvCDH7Qa/+Uvf1n09aBBgxQfAFBilr0AALTDV7/61T84p6KiIr72ta8d+jAAwO9l2QsAQDsNHTo03nrrrfh9v06tWbMmBg8e3IGpAIBPcucHAEA7XX755dG5c+c292VZFn/yJ3+i+ACAw4DyAwCgnS699NLYs2dPm/vKyspi+vTpHZwIAGiL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Wo0/88wzsW3btqKx8ePHR58+fToqGgDwCVlKKZU6BADAkWb69OnxwAMPRHl5eWGspaUlsiyLLMsiImLPnj3RrVu32LRpU1RWVpYqKgAc9Sx7AQBoh6lTp0ZERFNTU2Hbs2dPNDc3F77u3LlzTJo0SfEBACWm/AAAaIcvf/nL0atXr987p6mpKS699NIOSgQAfBrlBwBAO5SVlcXUqVOLlr180nHHHRfnnXdex4UCANqk/AAAaKepU6dGU1NTm/sqKirisssui86dO3dwKgDgkzzwFACgnVJKcdJJJ8X69evb3P/SSy/FF77whQ5OBQB8kjs/AADaKcuyuPzyy9tc+jJgwIAYMWJECVIBAJ+k/AAAOABtLX0pLy+Pr33ta4VX3gIApWXZCwDAARoyZEisWbOmaOwXv/hFDB06tESJAICPc+cHAMABuuyyy4qWvnzuc59TfADAYUT5AQBwgKZOnRrNzc0R8bslL9OnTy9xIgDg4yx7AQA4CM4666x49dVXIyLi17/+dXzmM58pcSIAYC93fgAAHASXX355pJTiC1/4guIDAA4z7vwAgKPYokWLYsqUKaWOAW2aOHFiPPzww6WOAUAOlJU6AABQevX19aWOkAtz5syJ6667Lq666qqYOXNm1NTUlDrSEeu73/1uqSMAkCPKDwAgJk+eXOoIufCnf/qncdppp8VVV10VNTU1vq8HwB0fABxMnvkBAHCQnHbaaaWOAAC0QfkBAAAA5JryAwAAAMg15QcAAACQa8oPAAAAINeUHwAAAECuKT8AAACAXFN+AAAAALmm/AAAAAByTfkBAAAA5JryAwAAAMg15QcAAACQa8oPAAAAINeUHwAAJda9e/fIsqxo69SpUxx77LExbNiwuO6662LVqlWljgkARyzlBwBAie3cuTNee+21iIioq6uLlFI0NTVFQ0NDzJ49OxoaGuKss86KK664Inbv3l3itABw5FF+AACHle7du8e555571J5/r86dO0ffvn2jrq4uli1bFrfeemvcf//9MXXq1EgplToeABxRlB8AAEeAO++8M/7sz/4slixZEg899FCp4wDAEUX5AQBwBMiyLG644YaIiFiwYEGJ0wDAkUX5AQDsty1btsTNN98cp556alRUVMSxxx4bF110UTz33HOFOd/+9rcLD+/8+DKSp59+ujB+/PHHF8bnzZsXWZbFrl274sUXXyzMKSsrK9qfZVmcdNJJ8corr0RtbW306NEjunbtGueff368+OKLh+z8h4O9/46VK1dGU1NTYXzTpk1x4403xsCBA6OioiJ69+4dEyZMiNWrVxfmLF68uOiBqu+++25MmTIlqqur47jjjotx48bF2rVri87X2NgYt99+ewwZMiS6du0avXr1iosvvjiWLFkSe/bsKZq7LxkAoFSUHwDAfnn//fdjxIgR8eCDD8Y999wTmzdvjpdeeim6du0atbW18cMf/jAiIr75zW9GSim6detW9PkxY8ZESimGDx9eNH7LLbcU5n/xi1+MlFKklKK5ublo/7Bhw2Lbtm1x0003xbe//e14//3346c//Wls3bo1Ro0aFc8///whOf/hoF+/fhER0dzcHJs3b46IiA0bNsSIESNi0aJFsWDBgti6dWv85Cc/ia1bt0ZNTU2sWLEiIiLGjx8fKaWoq6uLiIiZM2fGzJkzY926dVFfXx/Lli2LqVOnFp3vhhtuiO9973vx/e9/P7Zs2RJvvfVWDBkyJOrq6uJnP/tZYd6+ZgCAUlF+AAD7ZdasWfHrX/86/uEf/iHGjRsXPXv2jMGDB8eDDz4YJ5xwQtx4443xwQcfHNIMu3btigULFkRNTU1069YtzjrrrPjXf/3X+O1vfxs33XTTIT13KbX1oNNZs2bFf/3Xf8Xdd98df/7nfx7du3ePoUOHxkMPPRQppfjGN77R5rGuvPLKwvfvy1/+cowdOzZeeeWVQqkSEfHss8/G0KFD44ILLoguXbpE37594+///u9j8ODBByUDAHQU5QcAsF8effTRiIgYO3Zs0XhlZWXU1tbGhx9+GP/+7/9+SDN069YtzjzzzKKxM844I0488cR4/fXXY8OGDYf0/KWy999VXl5eWLKzePHi6NSpU4wbN65obr9+/WLo0KGxatWqeO+991oda8SIEUVfDxgwICIi1q9fXxgbM2ZMLF++PK666qpYuXJlYanLmjVr4rzzzivMa28GAOgoyg8AYJ81NjbG9u3b45hjjokePXq02t+3b9+I+N3SmEOpurq6zfE+ffpERMTGjRsP6flL5YUXXoiIiJqamigvLy9cj5aWlqiqqip6pkeWZfHqq69GRMTbb7/d6lhVVVVFX1dUVEREREtLS2Fs/vz58cADD8Q777wTtbW10bNnzxgzZkyhAIuIA8oAAB1F+QEA7LPKysqoqqqKjz76KHbs2NFq/97lLnufTRER0alTp/jtb3/bau62bdvaPEeWZX8wx5YtW9pcArK39Nhbghyq85dCS0tLzJ8/PyIirr/++oj43fWorq6OsrKyaGpqKjyn5JPb+eef365zZlkWl112WTzzzDOxbdu2WLx4caSUYsKECXH33Xd3SAYAOBiUHwDAfrnkkksiIuLJJ58sGm9sbIxnn302unTpEqNHjy6Mn3DCCbFu3bqiue+//37893//d5vH79q1a1FZ8dnPfjZ+8IMfFM356KOP4pVXXika+4//+I9Yv359DBs2LE444YRDev5SmDVrVrz88stxySWXxKRJkwrjEyZMiObm5qI33ex11113xcknn9zuh7ZWV1dHQ0NDRPxuqc0FF1xQeGvMx6//ocwAAAeD8gMA2C9z5syJQYMGxcyZM+OJJ56IHTt2xK9+9au49NJLY8OGDXHPPfcUlr9ERFx44YWxfv36+Md//MfYuXNnrF27Nm666aaiuzM+7vOf/3z86le/it/85jexYsWKeOedd2LkyJFFc6qqquJv/uZvYsWKFbFr1674+c9/HtOmTYuKioq45557iuYeivN3hJaWlti4cWM89thjUVtbG3Pnzo0ZM2bEwoULi+5OmTNnTpx66qkxY8aMeOqpp2L79u2xdevWuPfee2P27Nkxb968A3pd7zXXXBNvvPFGNDY2xsaNG2Pu3LmRUopRo0Z1WAYAOGAJADhq1dfXp/b8OrB58+Y0c+bMNGjQoFReXp6qqqrS6NGj07PPPttq7rZt29KVV16ZTjjhhNSlS5d07rnnpldeeSUNHz48RUSKiPTXf/3XhfkNDQ1p5MiRqVu3bmnAgAFp/vz5RccbNmxY6t+/f3rzzTfT6NGjU48ePVKXLl3Sl770pfTCCy8c8vPvi4hI9fX1+zy/W7duhSx7tyzLUlVVVTrjjDPStddem1atWvWpn9+yZUu6+eab0ymnnJLKy8tT796904UXXpiWLl1amLNixYpW57jtttsKeT++jR07NqWU0urVq9PVV1+dTj/99NS1a9fUq1evdPbZZ6f77rsvtbS07HeG/TFx4sQ0ceLEdn0WAD4pS6mNBbMAwFFh0aJFMWXKlDafn3G4OvPMM2Pz5s2H9dtDsiyL+vr6mDx5cqmjHLH2Lu15+OGHS5wEgDyw7AUAAADINeUHAAAAkGvKDwDgiDBv3rzIsixef/31WLduXWRZFt/85jdLHQsAOAJ47DYAcES45ZZb4pZbbil1DADgCOTODwAAACDXlB8AAABArik/AAAAgFxTfgAAAAC5pvwAAAAAck35AQAAAOSa8gMAAADINeUHAAAAkGvKDwAAACDXlB8AAABArik/AAAAgFxTfgAAAAC5pvwAAAAAcq2s1AEAgNLLsqzUEXJnypQpMWXKlFLHOKJNnDix1BEAyIkspZRKHQIAKI333nsvli9fXuoY0KYBAwZETU1NqWMAkAPKDwAAACDXPPMDAAAAyDXlBwAAAJBryg8AAAAg18oi4uFShwAAAAA4VP4/OFNmQWNaqSoAAAAASUVORK5CYII=\n",
+      "text/plain": [
+       "<IPython.core.display.Image object>"
+      ]
+     },
+     "execution_count": 19,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# You need to install the dependencies\n",
+    "tf.keras.utils.plot_model(model)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Training the deep learning model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can train our model with `model.fit`. We need to use a Callback to add the validation dataloader."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "609/611 [============================>.] - ETA: 0s - loss: 0.6650{'val_loss': 0.6597499}\n",
+      "611/611 [==============================] - 17s 22ms/step - loss: 0.6650 - val_loss: 0.6597\n",
+      "run_time: 19.14878249168396 - rows: 2292 - epochs: 1 - dl_thru: 119.69429393202323\n"
+     ]
+    }
+   ],
+   "source": [
+    "validation_callback = KerasSequenceValidater(valid_dataset_tf)\n",
+    "EPOCHS = 1\n",
+    "start = time.time()\n",
+    "history = model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=EPOCHS)\n",
+    "t_final = time.time() - start\n",
+    "total_rows = train_dataset_tf.num_rows_processed + valid_dataset_tf.num_rows_processed\n",
+    "print(\n",
+    "    f\"run_time: {t_final} - rows: {total_rows * EPOCHS} - epochs: {EPOCHS} - dl_thru: {(EPOCHS * total_rows) / t_final}\"\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "2022-04-27 22:13:04.741886: W tensorflow/python/util/util.cc:368] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.\n",
+      "WARNING:absl:Function `_wrapped_model` contains input name(s) movieId, userId with unsupported characters which will be renamed to movieid, userid in the SavedModel.\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.savedmodel/assets\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Assets written to: /root/nvt-examples/movielens_tf/1/model.savedmodel/assets\n",
+      "WARNING:absl:<nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures object at 0x7fa4cc304370> has the same name 'DenseFeatures' as a built-in Keras object. Consider renaming <class 'nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures'> to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.\n"
+     ]
+    }
+   ],
+   "source": [
+    "MODEL_NAME_TF = os.environ.get(\"MODEL_NAME_TF\", \"movielens_tf\")\n",
+    "MODEL_PATH_TEMP_TF = os.path.join(MODEL_BASE_DIR, MODEL_NAME_TF, \"1/model.savedmodel\")\n",
+    "\n",
+    "model.save(MODEL_PATH_TEMP_TF)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Before moving to the next notebook, `04a-Triton-Inference-with-TF.ipynb`, we need to generate the Triton Inference Server configurations and save the models in the correct format. We just saved TensorFlow model to disk, and in the previous notebook `02-ETL-with-NVTabular`, we saved the NVTabular workflow. Let's load the workflow. "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The TensorFlow input layers expect the input datatype to be int32. Therefore, we need to change the output datatypes to int32 for our NVTabular workflow."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workflow = nvt.Workflow.load(os.path.join(INPUT_DATA_DIR, \"workflow\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "MODEL_NAME_ENSEMBLE = os.environ.get(\"MODEL_NAME_ENSEMBLE\", \"movielens\")\n",
+    "# model path to save the models\n",
+    "MODEL_PATH = os.environ.get(\"MODEL_PATH\", os.path.join(MODEL_BASE_DIR, \"models\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "NVTabular provides a function to save the NVTabular workflow, TensorFlow model and Triton Inference Server (IS) config files via `export_tensorflow_ensemble`. We provide the model, workflow, a model name for ensemble model, path and output column."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "WARNING:absl:Function `_wrapped_model` contains input name(s) movieId, userId with unsupported characters which will be renamed to movieid, userid in the SavedModel.\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Assets written to: /root/nvt-examples/models/movielens_tf/1/model.savedmodel/assets\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Assets written to: /root/nvt-examples/models/movielens_tf/1/model.savedmodel/assets\n",
+      "WARNING:absl:<nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures object at 0x7fa4cc304370> has the same name 'DenseFeatures' as a built-in Keras object. Consider renaming <class 'nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures'> to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Creates an ensemble triton server model, where\n",
+    "#  model: The tensorflow model that should be served\n",
+    "#  workflow: The nvtabular workflow used in preprocessing\n",
+    "#  name: The base name of the various triton models\n",
+    "\n",
+    "from nvtabular.inference.triton import export_tensorflow_ensemble\n",
+    "export_tensorflow_ensemble(model, workflow, MODEL_NAME_ENSEMBLE, MODEL_PATH, [\"rating\"])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now, we can move to the next notebook, [04-Triton-Inference-with-TF.ipynb](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/04-Triton-Inference-with-TF.ipynb), to send inference request to the Triton IS."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.10"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
