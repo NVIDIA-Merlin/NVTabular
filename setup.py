@@ -21,6 +21,8 @@ from distutils.spawn import find_executable
 from pybind11.setup_helpers import Pybind11Extension
 from pybind11.setup_helpers import build_ext as build_pybind11
 from setuptools import find_namespace_packages, find_packages, setup
+from setuptools.command.build_py import build_py as _build_py
+from setuptools.command.develop import develop as _develop
 
 try:
     import versioneer
@@ -33,9 +35,8 @@ except ImportError:
     import versioneer
 
 
-class build_pybind_and_proto(build_pybind11):
+class build_proto(_build_py):
     def run(self):
-        build_pybind11.run(self)
         protoc = None
         if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
             protoc = os.environ["PROTOC"]
@@ -61,6 +62,16 @@ class build_pybind_and_proto(build_pybind11):
             else:
                 print("not regenerating", output, " - file exists and proto hasn't been updated")
 
+        super().run()
+
+
+class develop(_develop):
+    def run(self):
+        # running setup.py develop doesn't seem to run 'build_py' force this to run
+        # so we get our proto files installed
+        self.run_command("build_py")
+        super().run()
+
 
 ext_modules = [
     Pybind11Extension(
@@ -78,7 +89,9 @@ ext_modules = [
 
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = build_pybind_and_proto
+cmdclass["build_ext"] = build_pybind11
+cmdclass["build_py"] = build_proto
+cmdclass["develop"] = develop
 
 
 def parse_requirements(filename):
