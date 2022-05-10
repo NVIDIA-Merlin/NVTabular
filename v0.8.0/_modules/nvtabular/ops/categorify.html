@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.categorify &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -104,11 +111,11 @@
 <span class="kn">from</span> <span class="nn">fsspec.core</span> <span class="kn">import</span> <span class="n">get_fs_token_paths</span>
 <span class="kn">from</span> <span class="nn">pyarrow</span> <span class="kn">import</span> <span class="n">parquet</span> <span class="k">as</span> <span class="n">pq</span>
 
-<span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">dispatch</span>
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">_is_cpu_object</span><span class="p">,</span> <span class="n">_nullable_series</span><span class="p">,</span> <span class="n">annotate</span>
-<span class="kn">from</span> <span class="nn">nvtabular.graph.tags</span> <span class="kn">import</span> <span class="n">Tags</span>
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span><span class="p">,</span> <span class="n">run_on_worker</span>
-<span class="kn">from</span> <span class="nn">nvtabular.worker</span> <span class="kn">import</span> <span class="n">fetch_table_data</span><span class="p">,</span> <span class="n">get_worker_cache</span>
+<span class="kn">from</span> <span class="nn">merlin.core</span> <span class="kn">import</span> <span class="n">dispatch</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">annotate</span><span class="p">,</span> <span class="n">is_cpu_object</span><span class="p">,</span> <span class="n">nullable_series</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span><span class="p">,</span> <span class="n">run_on_worker</span>
+<span class="kn">from</span> <span class="nn">merlin.io.worker</span> <span class="kn">import</span> <span class="n">fetch_table_data</span><span class="p">,</span> <span class="n">get_worker_cache</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">Tags</span>
 
 <span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
 <span class="kn">from</span> <span class="nn">.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
@@ -362,7 +369,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cannot use freq_threshold param together with max_size param&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># See: nvtabular.dispatch._hash_series</span>
+            <span class="c1"># See: merlin.core.dispatch.hash_series</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                 <span class="s2">&quot;Performing a hash-based transformation. Do not &quot;</span>
                 <span class="s2">&quot;expect Categorify to be consistent on GPU and CPU &quot;</span>
@@ -432,35 +439,37 @@
 
 <div class="viewcode-block" id="Categorify.fit_finalize"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">categories</span><span class="p">):</span>
         <span class="n">idx_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">:</span>
+
+        <span class="k">for</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">:</span>
             <span class="c1"># this is a path</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span>
             <span class="c1"># check the argument</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">single_table</span><span class="p">:</span>
-                <span class="n">cat_file_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+                <span class="n">cat_file_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span>
                 <span class="n">idx_count</span><span class="p">,</span> <span class="n">new_cat_file_path</span> <span class="o">=</span> <span class="n">run_on_worker</span><span class="p">(</span>
-                    <span class="n">_reset_df_index</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">cat_file_path</span><span class="p">,</span> <span class="n">idx_count</span>
+                    <span class="n">_reset_df_index</span><span class="p">,</span> <span class="n">cat</span><span class="p">,</span> <span class="n">cat_file_path</span><span class="p">,</span> <span class="n">idx_count</span>
                 <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_cat_file_path</span></div>
+                <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_cat_file_path</span></div>
 
 <div class="viewcode-block" id="Categorify.clear"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Clear the internal state of the operator&#39;s stats.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Categorify.process_vocabs"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.process_vocabs">[docs]</a>    <span class="k">def</span> <span class="nf">process_vocabs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vocabs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process vocabs passed in by the user.&quot;&quot;&quot;</span>
         <span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vocabs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">_is_series_object</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vocabs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">is_series_object</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
             <span class="n">fit_options</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_fit_options_from_columns</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">vocabs</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
             <span class="n">base_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">fit_options</span><span class="o">.</span><span class="n">stat_name</span><span class="p">)</span>
             <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">vocab</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">vocab</span><span class="p">}</span>
                 <span class="k">if</span> <span class="n">vocab</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">with_empty</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_add_to_series</span><span class="p">(</span><span class="n">vocab</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">with_empty</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">add_to_series</span><span class="p">(</span><span class="n">vocab</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
                     <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">with_empty</span><span class="p">}</span>
 
                 <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;unique.</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">.parquet&quot;</span><span class="p">)</span>
-                <span class="n">col_df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_make_df</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+                <span class="n">col_df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">make_df</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
                 <span class="n">col_df</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
                 <span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">save_path</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vocabs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
@@ -500,31 +509,23 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_type</span> <span class="o">==</span> <span class="s2">&quot;combo&quot;</span><span class="p">:</span>
-            <span class="c1"># Case (3) - We want to track multi- and single-column groups separately</span>
-            <span class="c1">#            when we are NOT performing a joint encoding. This is because</span>
-            <span class="c1">#            there is not a 1-to-1 mapping for columns in multi-col groups.</span>
-            <span class="c1">#            We use `multi_col_group` to preserve the list format of</span>
-            <span class="c1">#            multi-column groups only, and use `cat_names` to store the</span>
-            <span class="c1">#            string representation of both single- and multi-column groups.</span>
-            <span class="c1">#</span>
-            <span class="n">cat_names</span><span class="p">,</span> <span class="n">multi_col_group</span> <span class="o">=</span> <span class="n">_get_multicolumn_names</span><span class="p">(</span>
-                <span class="n">col_selector</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Case (1) &amp; (2) - Simple 1-to-1 mapping</span>
-            <span class="n">multi_col_group</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">cat_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">flatten</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">container</span><span class="o">=</span><span class="nb">tuple</span><span class="p">))</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="n">column_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">column_mapping</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
         <span class="c1"># Encode each column-group separately</span>
-        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">cat_names</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">column_names</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Use the column-group `list` directly (not the string name)</span>
-                <span class="n">use_name</span> <span class="o">=</span> <span class="n">multi_col_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="n">use_name</span> <span class="o">=</span> <span class="n">column_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
 
                 <span class="c1"># Storage name may be different than group for case (2)</span>
                 <span class="c1"># Only use the &quot;aliased&quot; `storage_name` if we are dealing with</span>
                 <span class="c1"># a multi-column group, or if we are doing joint encoding</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_name</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">use_name</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">use_name</span> <span class="o">=</span> <span class="n">use_name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_name</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">use_name</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">use_name</span> <span class="o">=</span> <span class="n">use_name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
                 <span class="k">if</span> <span class="n">use_name</span> <span class="o">!=</span> <span class="n">name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_type</span> <span class="o">==</span> <span class="s2">&quot;joint&quot;</span><span class="p">:</span>
                     <span class="n">storage_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
@@ -533,8 +534,10 @@
 
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
                     <span class="n">use_name</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">use_name</span><span class="p">)</span>
+
                 <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">storage_name</span><span class="p">]</span>
-                <span class="n">new_df</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_encode</span><span class="p">(</span>
+
+                <span class="n">encoded</span> <span class="o">=</span> <span class="n">_encode</span><span class="p">(</span>
                     <span class="n">use_name</span><span class="p">,</span>
                     <span class="n">storage_name</span><span class="p">,</span>
                     <span class="n">path</span><span class="p">,</span>
@@ -547,23 +550,77 @@
                     <span class="n">search_sorted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">search_sorted</span><span class="p">,</span>
                     <span class="n">buckets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span>
                     <span class="n">encode_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encode_type</span><span class="p">,</span>
-                    <span class="n">cat_names</span><span class="o">=</span><span class="n">cat_names</span><span class="p">,</span>
+                    <span class="n">cat_names</span><span class="o">=</span><span class="n">column_names</span><span class="p">,</span>
                     <span class="n">max_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span>
-                    <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dtype</span><span class="p">,</span>
                     <span class="n">start_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_index</span><span class="p">,</span>
                 <span class="p">)</span>
+                <span class="n">new_df</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to categorical encode column </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
 
         <span class="k">return</span> <span class="n">new_df</span></div>
 
-<div class="viewcode-block" id="Categorify.output_column_names"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
+<div class="viewcode-block" id="Categorify.column_mapping"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode_type</span> <span class="o">==</span> <span class="s2">&quot;combo&quot;</span><span class="p">:</span>
-            <span class="n">cat_names</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_get_multicolumn_names</span><span class="p">(</span>
-                <span class="n">col_selector</span><span class="p">,</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span>
-            <span class="p">)</span>
-            <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">cat_names</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">flatten</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">container</span><span class="o">=</span><span class="nb">tuple</span><span class="p">))</span></div>
+            <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">group</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+                    <span class="n">group</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">group</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">group</span>
+                    <span class="n">group</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="p">]</span>
+
+                <span class="n">column_mapping</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">group</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">column_mapping</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">new_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_properties</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="n">col_name</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="n">category_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="n">col_name</span><span class="p">)</span>
+        <span class="n">target_category_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">category_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="n">cardinality</span><span class="p">,</span> <span class="n">dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">([</span><span class="n">category_name</span><span class="p">])[</span><span class="n">category_name</span><span class="p">]</span>
+
+        <span class="n">to_add</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;num_buckets&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span>
+            <span class="s2">&quot;freq_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span>
+            <span class="s2">&quot;max_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span>
+            <span class="s2">&quot;start_index&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_index</span><span class="p">,</span>
+            <span class="s2">&quot;cat_path&quot;</span><span class="p">:</span> <span class="n">target_category_path</span><span class="p">,</span>
+            <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">category_name</span><span class="p">},</span>
+            <span class="s2">&quot;embedding_sizes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;cardinality&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">,</span> <span class="s2">&quot;dimension&quot;</span><span class="p">:</span> <span class="n">dimensions</span><span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_properties</span><span class="p">({</span><span class="o">**</span><span class="n">new_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span> <span class="o">**</span><span class="n">to_add</span><span class="p">})</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span>
+
+<div class="viewcode-block" id="Categorify.compute_selector"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">parents_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">dependencies_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">parents_selector</span><span class="p">,</span> <span class="s2">&quot;computing input selector&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parents_selector</span></div>
 
 <div class="viewcode-block" id="Categorify.get_embedding_sizes"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.get_embedding_sizes">[docs]</a>    <span class="k">def</span> <span class="nf">get_embedding_sizes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_get_embeddings_dask</span><span class="p">(</span>
@@ -584,41 +641,9 @@
 
         <span class="k">return</span> <span class="n">nvtabular_cpp</span><span class="o">.</span><span class="n">inference</span><span class="o">.</span><span class="n">CategorifyTransform</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Categorify.output_tags"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.output_tags">[docs]</a>    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">]</span></div>
-
-<div class="viewcode-block" id="Categorify.output_dtype"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.output_dtype">[docs]</a>    <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span></div>
-
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
     <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
-    <span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span>
-
-    <span class="k">def</span> <span class="nf">_add_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">column_schema</span><span class="p">):</span>
-        <span class="n">col_name</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">target_column_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_properties</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">cardinality</span><span class="p">,</span> <span class="n">dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">([</span><span class="n">col_name</span><span class="p">])[</span><span class="n">col_name</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">target_column_path</span><span class="p">:</span>
-            <span class="n">to_add</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;num_buckets&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span>
-                <span class="s2">&quot;freq_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span>
-                <span class="s2">&quot;max_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span>
-                <span class="s2">&quot;start_index&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_index</span><span class="p">,</span>
-                <span class="s2">&quot;cat_path&quot;</span><span class="p">:</span> <span class="n">target_column_path</span><span class="p">,</span>
-                <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">},</span>
-                <span class="s2">&quot;embedding_sizes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;cardinality&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">,</span> <span class="s2">&quot;dimension&quot;</span><span class="p">:</span> <span class="n">dimensions</span><span class="p">},</span>
-            <span class="p">}</span>
-            <span class="k">return</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">with_properties</span><span class="p">(</span><span class="n">to_add</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">column_schema</span>
-
-<div class="viewcode-block" id="Categorify.output_properties"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.output_properties">[docs]</a>    <span class="k">def</span> <span class="nf">output_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span></div></div>
+    <span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span></div>
 
 
 <span class="k">def</span> <span class="nf">get_embedding_sizes</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">output_dtypes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -652,7 +677,7 @@
     <span class="n">multihot_columns</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="n">cats_schema</span> <span class="o">=</span> <span class="n">output_node</span><span class="o">.</span><span class="n">output_schema</span><span class="o">.</span><span class="n">select_by_tag</span><span class="p">(</span><span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">col_name</span><span class="p">,</span> <span class="n">col_schema</span> <span class="ow">in</span> <span class="n">cats_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">and</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">_is_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">and</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">is_list</span> <span class="ow">and</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">is_ragged</span><span class="p">:</span>
             <span class="c1"># multi hot so remove from output and add to multihot</span>
             <span class="n">multihot_columns</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">col_name</span><span class="p">)</span>
 
@@ -847,9 +872,9 @@
 
         <span class="c1"># Perform groupby and flatten column index</span>
         <span class="c1"># (flattening provides better cudf/pd support)</span>
-        <span class="k">if</span> <span class="n">_is_list_col</span><span class="p">(</span><span class="n">cat_col_selector</span><span class="p">,</span> <span class="n">df_gb</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_list_col</span><span class="p">(</span><span class="n">cat_col_selector</span><span class="p">,</span> <span class="n">df_gb</span><span class="p">):</span>
             <span class="c1"># handle list columns by encoding the list values</span>
-            <span class="n">df_gb</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_flatten_list_column</span><span class="p">(</span><span class="n">df_gb</span><span class="p">[</span><span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+            <span class="n">df_gb</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">flatten_list_column</span><span class="p">(</span><span class="n">df_gb</span><span class="p">[</span><span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
         <span class="c1"># NOTE: groupby(..., dropna=False) requires pandas&gt;=1.1.0</span>
         <span class="n">gb</span> <span class="o">=</span> <span class="n">df_gb</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">agg_dict</span><span class="p">)</span>
         <span class="n">gb</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
@@ -865,7 +890,7 @@
         <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">split</span> <span class="ow">in</span> <span class="n">shuffle_group</span><span class="p">(</span>
             <span class="n">gb</span><span class="p">,</span> <span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nsplits</span><span class="p">,</span> <span class="n">nsplits</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">nsplits</span>
         <span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_cpu_object</span><span class="p">(</span><span class="n">split</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_cpu_object</span><span class="p">(</span><span class="n">split</span><span class="p">):</span>
                 <span class="n">output</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">split</span><span class="o">.</span><span class="n">to_arrow</span><span class="p">(</span><span class="n">preserve_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">output</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">split</span>
@@ -879,11 +904,11 @@
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">concat_groups</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)])</span>
 
-    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_cpu_object</span><span class="p">(</span><span class="n">dfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_cpu_object</span><span class="p">(</span><span class="n">dfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
         <span class="c1"># Construct gpu DataFrame from pyarrow data.</span>
         <span class="c1"># `on_host=True` implies gpu-backed data.</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">concat_tables</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span> <span class="n">promote</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_from_host</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">from_host</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -949,7 +974,7 @@
                 <span class="n">required</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name_std</span><span class="p">)</span>
                 <span class="n">gb</span><span class="p">[</span><span class="n">name_std</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_cpu_object</span><span class="p">(</span><span class="n">gb</span><span class="p">[</span><span class="n">required</span><span class="p">]):</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_cpu_object</span><span class="p">(</span><span class="n">gb</span><span class="p">[</span><span class="n">required</span><span class="p">]):</span>
         <span class="n">gb_pd</span> <span class="o">=</span> <span class="n">gb</span><span class="p">[</span><span class="n">required</span><span class="p">]</span><span class="o">.</span><span class="n">to_arrow</span><span class="p">(</span><span class="n">preserve_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">del</span> <span class="n">gb</span>
         <span class="k">return</span> <span class="n">gb_pd</span>
@@ -973,10 +998,10 @@
     <span class="n">rel_path</span> <span class="o">=</span> <span class="s2">&quot;cat_stats.</span><span class="si">%s</span><span class="s2">.parquet&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">))</span>
     <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">)</span>
     <span class="n">pwriter</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">or</span> <span class="n">_is_cpu_object</span><span class="p">(</span><span class="n">dfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dfs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">or</span> <span class="n">is_cpu_object</span><span class="p">(</span><span class="n">dfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dfs</span><span class="p">):</span>
         <span class="c1"># Want first non-empty df for schema (if there are any)</span>
         <span class="n">_d</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">df</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">dfs</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)),</span> <span class="n">dfs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">pwriter</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_parquet_writer_dispatch</span><span class="p">(</span><span class="n">_d</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">pwriter</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">parquet_writer_dispatch</span><span class="p">(</span><span class="n">_d</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="c1"># Loop over dfs and append to file</span>
     <span class="c1"># TODO: For high-cardinality columns, should support</span>
@@ -986,7 +1011,7 @@
     <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">dfs</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 
-            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_cpu_object</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">on_host</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_cpu_object</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
                 <span class="c1"># Use pyarrow - df is already a pyarrow table</span>
                 <span class="k">if</span> <span class="n">pwriter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">pwriter</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">ParquetWriter</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
@@ -1060,7 +1085,7 @@
                     <span class="c1"># we are only converting this column to</span>
                     <span class="c1"># cudf to take advantage of fast `max`</span>
                     <span class="c1"># performance.</span>
-                    <span class="n">size_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">_from_host</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="n">name</span><span class="p">])))</span>
+                    <span class="n">size_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">from_host</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="n">name</span><span class="p">])))</span>
                     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="n">name</span><span class="p">])</span>
                     <span class="c1"># Use numpy to calculate the &quot;minimum&quot;</span>
                     <span class="c1"># dtype needed to capture the &quot;size&quot; column,</span>
@@ -1069,10 +1094,10 @@
                     <span class="n">size_columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">typ</span><span class="p">)</span>
             <span class="c1"># Convert the remaining columns in df to cudf,</span>
             <span class="c1"># and append the type-casted &quot;size&quot; columns</span>
-            <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_concat_columns</span><span class="p">([</span><span class="n">dispatch</span><span class="o">.</span><span class="n">_from_host</span><span class="p">(</span><span class="n">df</span><span class="p">)]</span> <span class="o">+</span> <span class="n">size_columns</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">concat_columns</span><span class="p">([</span><span class="n">dispatch</span><span class="o">.</span><span class="n">from_host</span><span class="p">(</span><span class="n">df</span><span class="p">)]</span> <span class="o">+</span> <span class="n">size_columns</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Empty DataFrame - No need for type-casting</span>
-            <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_from_host</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">from_host</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># For now, if we are not concatenating in host memory,</span>
         <span class="c1"># we will assume that reducing the memory footprint of</span>
@@ -1104,7 +1129,9 @@
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
             <span class="n">name_size</span> <span class="o">=</span> <span class="n">col</span> <span class="o">+</span> <span class="s2">&quot;_size&quot;</span>
             <span class="n">null_size</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+            <span class="c1"># Set null size if first element in `col` is</span>
+            <span class="c1"># null, and the `size` aggregation is known</span>
+            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span> <span class="ow">and</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                 <span class="n">null_size</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
                 <span class="n">max_emb_size</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span>
@@ -1121,20 +1148,33 @@
                 <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`nlargest` cannot be 0 or negative&quot;</span><span class="p">)</span>
 
-                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                    <span class="c1"># remove NAs from column, we have na count from above.</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                    <span class="c1"># sort based on count (name_size column)</span>
                     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">name_size</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_series_has_nulls</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+                    <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
+                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
+                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="c1"># recreate newly &quot;count&quot; ordered df</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">new_cols</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">series_has_nulls</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
                 <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
                     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
                 <span class="n">nulls_missing</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">_nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
+                    <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
                     <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
                     <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                        <span class="p">[</span><span class="n">_nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
+                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
                         <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                     <span class="p">)</span>
 
@@ -1339,9 +1379,9 @@
     <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">selection_l</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">name</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">name</span><span class="p">])</span>
     <span class="n">selection_r</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">name</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">storage_name</span><span class="p">])</span>
-    <span class="n">list_col</span> <span class="o">=</span> <span class="n">_is_list_col</span><span class="p">(</span><span class="n">selection_l</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+    <span class="n">list_col</span> <span class="o">=</span> <span class="n">is_list_col</span><span class="p">(</span><span class="n">selection_l</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
-        <span class="n">read_pq_func</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_read_parquet_dispatch</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="n">read_pq_func</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">read_parquet_dispatch</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">cat_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">cat_cache</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">cat_cache</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cat_cache</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">cat_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">storage_name</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">)</span>
@@ -1362,27 +1402,33 @@
             <span class="p">)</span>
             <span class="n">value</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;labels&quot;</span>
             <span class="n">value</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">value</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">selection_r</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
             <span class="n">typ</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">dtype</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">df</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
-            <span class="n">value</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">_nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">typ</span><span class="p">)</span>
+            <span class="n">value</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">typ</span><span class="p">)</span>
         <span class="n">value</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;labels&quot;</span>
         <span class="n">value</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="ow">not</span> <span class="n">search_sorted</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">list_col</span><span class="p">:</span>
-            <span class="n">codes</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_flatten_list_column</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
-            <span class="n">codes</span><span class="p">[</span><span class="s2">&quot;order&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">codes</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
+            <span class="n">codes</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">flatten_list_column</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+            <span class="n">codes</span><span class="p">[</span><span class="s2">&quot;order&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">codes</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">codes</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)({</span><span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">)},</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="c1"># We go into this case</span>
+            <span class="n">codes</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)({</span><span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">)},</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
         <span class="k">for</span> <span class="n">cl</span><span class="p">,</span> <span class="n">cr</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">selection_r</span><span class="o">.</span><span class="n">names</span><span class="p">):</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
                 <span class="n">ser</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-                <span class="n">codes</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_flatten_list_column_values</span><span class="p">(</span><span class="n">ser</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">cr</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="n">codes</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">flatten_list_column_values</span><span class="p">(</span><span class="n">ser</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">cr</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">codes</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">cr</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">buckets</span> <span class="ow">and</span> <span class="n">storage_name</span> <span class="ow">in</span> <span class="n">buckets</span><span class="p">:</span>
             <span class="n">na_sentinel</span> <span class="o">=</span> <span class="n">_hash_bucket</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">buckets</span><span class="p">,</span> <span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">encode_type</span><span class="o">=</span><span class="n">encode_type</span><span class="p">)</span>
+
         <span class="c1"># apply frequency hashing</span>
         <span class="k">if</span> <span class="n">freq_threshold</span> <span class="ow">and</span> <span class="n">buckets</span> <span class="ow">and</span> <span class="n">storage_name</span> <span class="ow">in</span> <span class="n">buckets</span><span class="p">:</span>
             <span class="n">merged_df</span> <span class="o">=</span> <span class="n">codes</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
@@ -1416,11 +1462,14 @@
                 <span class="n">df</span><span class="p">[</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">],</span> <span class="n">side</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">na_position</span><span class="o">=</span><span class="s2">&quot;first&quot;</span>
             <span class="p">)</span>
         <span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">selection_r</span><span class="o">.</span><span class="n">names</span><span class="p">])]</span> <span class="o">=</span> <span class="n">na_sentinel</span>
+
     <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span> <span class="o">+</span> <span class="n">start_index</span>
+
     <span class="k">if</span> <span class="n">list_col</span><span class="p">:</span>
-        <span class="n">labels</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_encode_list_column</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">encode_list_column</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">selection_l</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">dtype</span><span class="p">:</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="n">labels</span>
 
 
@@ -1433,26 +1482,10 @@
     <span class="k">return</span> <span class="n">read_pq_func</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_get_multicolumn_names</span><span class="p">(</span><span class="n">col_selector</span><span class="p">,</span> <span class="n">df_columns</span><span class="p">,</span> <span class="n">name_sep</span><span class="p">):</span>
-    <span class="n">cat_names</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">multi_col_group</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_name</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">name_sep</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cat_names</span><span class="p">:</span>
-                <span class="n">cat_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-                <span class="c1"># TODO: Perhaps we should check that all columns from the group</span>
-                <span class="c1">#       are in df here?</span>
-                <span class="n">multi_col_group</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">col_name</span>
-        <span class="k">elif</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">df_columns</span><span class="p">:</span>
-            <span class="n">cat_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col_name</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">cat_names</span><span class="p">,</span> <span class="n">multi_col_group</span>
-
-
-<span class="k">def</span> <span class="nf">_is_list_col</span><span class="p">(</span><span class="n">col_selector</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">is_list_col</span><span class="p">(</span><span class="n">col_selector</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col_selector</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
         <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
-    <span class="n">has_lists</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">_is_list_dtype</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">])</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+    <span class="n">has_lists</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">is_list_dtype</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">])</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">has_lists</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Can&#39;t categorical encode multiple list columns&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">has_lists</span>
@@ -1461,7 +1494,7 @@
 <span class="k">def</span> <span class="nf">_hash_bucket</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">num_buckets</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">encode_type</span><span class="o">=</span><span class="s2">&quot;joint&quot;</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">encode_type</span> <span class="o">==</span> <span class="s2">&quot;joint&quot;</span><span class="p">:</span>
         <span class="n">nb</span> <span class="o">=</span> <span class="n">num_buckets</span><span class="p">[</span><span class="n">col</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
-        <span class="n">encoded</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_hash_series</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span> <span class="o">%</span> <span class="n">nb</span>
+        <span class="n">encoded</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">hash_series</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span> <span class="o">%</span> <span class="n">nb</span>
     <span class="k">elif</span> <span class="n">encode_type</span> <span class="o">==</span> <span class="s2">&quot;combo&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">name</span> <span class="o">=</span> <span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="nb">tuple</span><span class="p">(</span><span class="n">col</span><span class="p">),</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
@@ -1470,7 +1503,7 @@
         <span class="n">nb</span> <span class="o">=</span> <span class="n">num_buckets</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
         <span class="n">val</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">col</span><span class="p">:</span>
-            <span class="n">val</span> <span class="o">^=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_hash_series</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>  <span class="c1"># or however we want to do this aggregation</span>
+            <span class="n">val</span> <span class="o">^=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">hash_series</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>  <span class="c1"># or however we want to do this aggregation</span>
         <span class="n">val</span> <span class="o">=</span> <span class="n">val</span> <span class="o">%</span> <span class="n">nb</span>
         <span class="n">encoded</span> <span class="o">=</span> <span class="n">val</span>
     <span class="k">return</span> <span class="n">encoded</span>
@@ -1494,7 +1527,7 @@
 
 
 <span class="k">def</span> <span class="nf">_reset_df_index</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="n">cat_file_path</span><span class="p">,</span> <span class="n">idx_count</span><span class="p">):</span>
-    <span class="n">cat_df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">_read_parquet_dispatch</span><span class="p">(</span><span class="kc">None</span><span class="p">)(</span><span class="n">cat_file_path</span><span class="p">)</span>
+    <span class="n">cat_df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">read_parquet_dispatch</span><span class="p">(</span><span class="kc">None</span><span class="p">)(</span><span class="n">cat_file_path</span><span class="p">)</span>
     <span class="c1"># change indexes for category</span>
     <span class="n">cat_df</span><span class="o">.</span><span class="n">index</span> <span class="o">+=</span> <span class="n">idx_count</span>
     <span class="c1"># update count</span>
@@ -1537,10 +1570,10 @@
       <dt>Tags</dt>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="categorify.html">v0.8.0</a></dd>
       <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training and Inference with HugeCTR Model &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Overview" href="Training-with-HugeCTR.html" />
+    <link rel="prev" title="Overview" href="../04-Triton-Inference-with-TF.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Inference with HugeCTR</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pull-the-merlin-training-docker-container">1. Pull the Merlin Training Docker Container:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-example-notebooks">2. Run example notebooks:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#build-and-run-the-triton-inference-server-container">3. Build and Run the Triton Inference Server container:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Training-with-HugeCTR.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Training-with-HugeCTR.html#preparing-the-dataset-with-nvtabular">Preparing the dataset with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Training-with-HugeCTR.html#scaling-accelerated-training-with-hugectr">Scaling Accelerated training with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Training-with-HugeCTR.html#let-s-define-our-model">Let’s define our model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Triton-Inference-with-HugeCTR.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Triton-Inference-with-HugeCTR.html#getting-started">Getting Started</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+      <li>Training and Inference with HugeCTR Model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="training-and-inference-with-hugectr-model">
+<h1>Training and Inference with HugeCTR Model<a class="headerlink" href="#training-and-inference-with-hugectr-model" title="Permalink to this headline"></a></h1>
+<p>In this folder, we provide two example notebooks, <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb">Training-with-HugeCTR</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb">Triton-Inference-with-HugeCTR</a>, and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework.</p>
+<div class="section" id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline"></a></h2>
+<p>There are two containers that are needed in order to use the Merlin Inference API. The first one is for preprocessing with NVTabular and training a model with HugeCTR framework. The other one is for serving/inference.</p>
+</div>
+<div class="section" id="pull-the-merlin-training-docker-container">
+<h2>1. Pull the Merlin Training Docker Container:<a class="headerlink" href="#pull-the-merlin-training-docker-container" title="Permalink to this headline"></a></h2>
+<p>We start with pulling the <code class="docutils literal notranslate"><span class="pre">Merlin-Training</span></code> container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with HugeCTR framework with processed datasets.</p>
+<p>Before starting docker container, first create a <code class="docutils literal notranslate"><span class="pre">nvt_triton</span></code> directory and <code class="docutils literal notranslate"><span class="pre">data</span></code> subdirectory on your host machine:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">nvt_triton</span><span class="o">/</span><span class="n">data</span><span class="o">/</span>
+<span class="n">cd</span> <span class="n">nvt_triton</span>
+</pre></div>
+</div>
+<p>We will mount <code class="docutils literal notranslate"><span class="pre">nvt_triton</span></code> directory into the NVTabular docker container.</p>
+<p>Merlin containers are available in the NVIDIA container repository at the following location: <a class="reference external" href="http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular">http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular</a>.</p>
+<p>You can pull the <code class="docutils literal notranslate"><span class="pre">Merlin-Training</span></code> container by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:21.11 /bin/bash
+</pre></div>
+</div>
+<p>The container will open a shell when the run command execution is completed. You’ll have to start the jupyter lab on the Docker container. It should look similar to this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">@</span><span class="mi">2</span><span class="n">efa5b50b909</span><span class="p">:</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Start the jupyter-lab server by running the following command. In case the container does not have <code class="docutils literal notranslate"><span class="pre">JupyterLab</span></code>, you can easily <a class="reference external" href="https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html">install</a> it using pip.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jupyter</span><span class="o">-</span><span class="n">lab</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">root</span> <span class="o">--</span><span class="n">ip</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span> <span class="o">--</span><span class="n">NotebookApp</span><span class="o">.</span><span class="n">token</span><span class="o">=</span><span class="s1">&#39;&lt;password&gt;&#39;</span>
+</pre></div>
+</div>
+<p>Open any browser to access the jupyter-lab server using <code class="docutils literal notranslate"><span class="pre">https://&lt;host</span> <span class="pre">IP-Address&gt;:8888</span></code>.</p>
+</div>
+<div class="section" id="run-example-notebooks">
+<h2>2. Run example notebooks:<a class="headerlink" href="#run-example-notebooks" title="Permalink to this headline"></a></h2>
+<p>There are two example notebooks that should be run in order. The first one <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb">Training-with-HugeCTR</a> shows how to</p>
+<ul class="simple">
+<li><p>do preprocessing with NVTabular</p></li>
+<li><p>serialize and save a workflow to load later to transform new dataset</p></li>
+<li><p>train a HugeCTR MLP model and save it in the <code class="docutils literal notranslate"><span class="pre">/models</span></code> directory.</p></li>
+</ul>
+<p>The following notebook <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb">Triton-Inference-with-HugeCTR</a> shows how to send request to Triton IS</p>
+<ul class="simple">
+<li><p>to transform new data with NVTabular</p></li>
+<li><p>to generate prediction results for new dataset.</p></li>
+</ul>
+<p>Now you can start <code class="docutils literal notranslate"><span class="pre">Training-with-HugeCTR</span></code> and <code class="docutils literal notranslate"><span class="pre">Triton-Inference-with-HugeCTR</span></code> notebooks. Note that you need to mount the directory where your NVTAbular workflow and HugeCTR model is saved when launching the <code class="docutils literal notranslate"><span class="pre">tritonserver</span></code> docker image as shown below. Then you can run the <code class="docutils literal notranslate"><span class="pre">Triton-Inference-with-HugeCTR</span></code> example notebook once the server is started.</p>
+</div>
+<div class="section" id="build-and-run-the-triton-inference-server-container">
+<h2>3. Build and Run the Triton Inference Server container:<a class="headerlink" href="#build-and-run-the-triton-inference-server-container" title="Permalink to this headline"></a></h2>
+<ol class="simple">
+<li><p>Navigate to the <code class="docutils literal notranslate"><span class="pre">nvt_triton</span></code> directory that you saved NVTabular workflow, Tensorflow model and the ensemble model.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">&lt;</span><span class="n">path</span> <span class="n">to</span> <span class="n">nvt_triton</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Launch Merlin Triton Inference Server container:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:21.11
+
+</pre></div>
+</div>
+<p>The container will open a shell when the run command execution is completed. It should look similar to this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">@</span><span class="mi">02</span><span class="n">d56ff0738f</span><span class="p">:</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">tritonserver</span><span class="c1"># </span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Your saved models should be in the <code class="docutils literal notranslate"><span class="pre">/model</span></code> directory. Navigate to the <code class="docutils literal notranslate"><span class="pre">model</span></code> working directory inside the triton server container to check the saved models:</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">model</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Start the triton server and run Triton with the example model repository you just created. Note that you need to provide correct path for the models directory, and <code class="docutils literal notranslate"><span class="pre">movielens.json</span></code> file.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tritonserver</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">=/</span><span class="n">model</span><span class="o">/</span><span class="n">models</span><span class="o">/</span> <span class="o">--</span><span class="n">backend</span><span class="o">-</span><span class="n">config</span><span class="o">=</span><span class="n">hugectr</span><span class="p">,</span><span class="n">movielens</span><span class="o">=/</span><span class="n">model</span><span class="o">/</span><span class="n">models</span><span class="o">/</span><span class="n">movielens</span><span class="o">/</span><span class="mi">1</span><span class="o">/</span><span class="n">movielens</span><span class="o">.</span><span class="n">json</span> <span class="o">--</span><span class="n">backend</span><span class="o">-</span><span class="n">config</span><span class="o">=</span><span class="n">hugectr</span><span class="p">,</span><span class="n">supportlonglong</span><span class="o">=</span><span class="n">true</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">control</span><span class="o">-</span><span class="n">mode</span><span class="o">=</span><span class="n">explicit</span>
+</pre></div>
+</div>
+<p>After you start Triton you will see output on the console showing the server starting up. At this stage it does not load any model, you will load the <code class="docutils literal notranslate"><span class="pre">movielens_ens</span></code> model in the  <code class="docutils literal notranslate"><span class="pre">Triton-Inference-with-HugeCTR</span></code> notebook to be able to send the request. All the models should load successfully. If a model fails to load the status will report the failure and a reason for the failure. Once the models are successfully loaded, you can send requests to the Triton IS.</p>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../04-Triton-Inference-with-TF.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Training-with-HugeCTR.html" class="btn btn-neutral float-right" title="Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.8.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="index.html">v0.8.0</a></dd>
+      <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

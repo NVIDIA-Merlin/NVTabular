@@ -1,0 +1,668 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "afe54ce9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "83fad6cb",
+   "metadata": {},
+   "source": [
+    "<img src=\"http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png\" style=\"width: 90px; float: right;\">\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "In this notebook, we want to provide an overview what HugeCTR framework is, its features and benefits. We will use HugeCTR to train a basic neural network architecture.\n",
+    "\n",
+    "<b>Learning Objectives</b>:\n",
+    "* Adopt NVTabular workflow to provide input files to HugeCTR\n",
+    "* Define HugeCTR neural network architecture\n",
+    "* Train a deep learning model with HugeCTR"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "16956c69",
+   "metadata": {},
+   "source": [
+    "### Why using HugeCTR?\n",
+    "\n",
+    "HugeCTR is a GPU-accelerated recommender framework designed to distribute training across multiple GPUs and nodes and estimate Click-Through Rates (CTRs).<br>\n",
+    "\n",
+    "HugeCTR offers multiple advantages to train deep learning recommender systems:\n",
+    "1. **Speed**: HugeCTR is a highly efficient framework written C++. We experienced up to 10x speed up. HugeCTR on a NVIDIA DGX A100 system proved to be the fastest commercially available solution for training the architecture Deep Learning Recommender Model (DLRM) developed by Facebook.\n",
+    "2. **Scale**: HugeCTR supports model parallel scaling. It distributes the large embedding tables over multiple GPUs or multiple nodes. \n",
+    "3. **Easy-to-use**: Easy-to-use Python API similar to Keras. Examples for popular deep learning recommender systems architectures (Wide&Deep, DLRM, DCN, DeepFM) are available."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a7e099b5",
+   "metadata": {},
+   "source": [
+    "### Other Features of HugeCTR\n",
+    "\n",
+    "HugeCTR is designed to scale deep learning models for recommender systems. It provides a list of other important features:\n",
+    "* Proficiency in oversubscribing models to train embedding tables with single nodes that don’t fit within the GPU or CPU memory (only required embeddings are prefetched from a parameter server per batch)\n",
+    "* Asynchronous and multithreaded data pipelines\n",
+    "* A highly optimized data loader.\n",
+    "* Supported data formats such as parquet and binary\n",
+    "* Integration with Triton Inference Server for deployment to production"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e8c0c88f",
+   "metadata": {},
+   "source": [
+    "### Getting Started"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "065096f1",
+   "metadata": {},
+   "source": [
+    "In this example, we will train a neural network with HugeCTR. We will use preprocessed datasets generated via NVTabular in `02-ETL-with-NVTabular` notebook."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "add3372c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# External dependencies\n",
+    "import os\n",
+    "import nvtabular as nvt"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ac22a3ba",
+   "metadata": {},
+   "source": [
+    "We define our base directory, containing the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "b81cacce",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# path to preprocessed data\n",
+    "INPUT_DATA_DIR = os.environ.get(\n",
+    "    \"INPUT_DATA_DIR\", os.path.expanduser(\"~/nvt-examples/movielens/data/\")\n",
+    ")\n",
+    "\n",
+    "# path to save the models\n",
+    "MODEL_BASE_DIR = os.environ.get(\"MODEL_BASE_DIR\", os.path.expanduser(\"~/nvt-examples/\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6750ce01",
+   "metadata": {},
+   "source": [
+    "Let's load our saved workflow from the `02-ETL-with-NVTabular` notebook."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "5ab5923c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workflow = nvt.Workflow.load(os.path.join(INPUT_DATA_DIR, \"workflow\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "aa5405c1",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'userId': dtype('int64'),\n",
+       " 'movieId': dtype('int64'),\n",
+       " 'genres': ListDtype(int64),\n",
+       " 'rating': dtype('int8')}"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "workflow.output_dtypes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "94bef620",
+   "metadata": {},
+   "source": [
+    "Note: We do not have numerical output columns"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9e8ad562",
+   "metadata": {},
+   "source": [
+    "Let's clear existing directory and create the output folders."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "0c678d48",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "MODEL_DIR = os.path.join(INPUT_DATA_DIR, \"model/movielens_hugectr/\")\n",
+    "!rm -rf {MODEL_DIR}\n",
+    "!mkdir -p {MODEL_DIR}\"1\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "435c7e86",
+   "metadata": {},
+   "source": [
+    "## Scaling Accelerated training with HugeCTR"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5b76f6ea",
+   "metadata": {},
+   "source": [
+    "HugeCTR is a deep learning framework dedicated to recommendation systems. It is written in CUDA C++. As HugeCTR optimizes the training in CUDA++, we need to define the training pipeline and model architecture and execute it via the commandline. We will use the Python API, which is similar to Keras models."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f2dd6843",
+   "metadata": {},
+   "source": [
+    "HugeCTR has three main components:\n",
+    "* Solver: Specifies various details such as active GPU list, batchsize, and model_file\n",
+    "* Optimizer: Specifies the type of optimizer and its hyperparameters\n",
+    "* DataReader: Specifies the training/evaluation data\n",
+    "* Model: Specifies embeddings, and dense layers. Note that embeddings must precede the dense layers"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e5f84cee",
+   "metadata": {},
+   "source": [
+    "**Solver**\n",
+    "\n",
+    "Let's take a look on the parameter for the `Solver`. We should be familiar from other frameworks for the hyperparameter.\n",
+    "\n",
+    "```\n",
+    "solver = hugectr.CreateSolver(\n",
+    "- vvgpu: GPU indices used in the training process, which has two levels. For example: [[0,1],[1,2]] indicates that two physical nodes (each physical node can have multiple NUMA nodes) are used. In the first node, GPUs 0 and 1 are used while GPUs 1 and 2 are used for the second node. It is also possible to specify non-continuous GPU indices such as [0, 2, 4, 7].\n",
+    "- batchsize: Minibatch size used in training\n",
+    "- max_eval_batches: Maximum number of batches used in evaluation. It is recommended that the number is equal to or bigger than the actual number of bathces in the evaluation dataset.\n",
+    "On the other hand, with num_epochs, HugeCTR stops the evaluation if all the evaluation data is consumed    \n",
+    "- batchsize_eval: Minibatch size used in evaluation. The default value is 2048. Note that batchsize here is the global batch size across gpus and nodes, not per worker batch size.\n",
+    "- mixed_precision: Enables mixed precision training with the scaler specified here. Only 128,256, 512, and 1024 scalers are supported\n",
+    ")\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f9110dde",
+   "metadata": {},
+   "source": [
+    "**Optimizer**\n",
+    "\n",
+    "The optimizer is the algorithm to update the model parameters. HugeCTR supports the common algorithms.\n",
+    "\n",
+    "\n",
+    "```\n",
+    "optimizer = CreateOptimizer(\n",
+    "- optimizer_type: Optimizer algorithm - Adam, MomentumSGD, Nesterov, and SGD \n",
+    "- learning_rate: Learning Rate for optimizer\n",
+    ")\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b0c39b01",
+   "metadata": {},
+   "source": [
+    "**DataReader**\n",
+    "\n",
+    "The data reader defines the training and evaluation dataset.\n",
+    "\n",
+    "\n",
+    "```\n",
+    "reader = hugectr.DataReaderParams(\n",
+    "- data_reader_type: Data format to read\n",
+    "- source: The training dataset file list. IMPORTANT: This should be a list\n",
+    "- eval_source: The evaluation dataset file list.\n",
+    "- check_type: The data error detection mechanism (Sum: Checksum, None: no detection).\n",
+    "- slot_size_array: The list of categorical feature cardinalities\n",
+    ")\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1c7577f2",
+   "metadata": {},
+   "source": [
+    "**Model**\n",
+    "\n",
+    "We initialize the model with the solver, optimizer and data reader:\n",
+    "\n",
+    "```\n",
+    "model = hugectr.Model(solver, reader, optimizer)\n",
+    "```\n",
+    "\n",
+    "We can add multiple layers to the model with `model.add` function. We will focus on:\n",
+    "- `Input` defines the input data\n",
+    "- `SparseEmbedding` defines the embedding layer\n",
+    "- `DenseLayer` defines dense layers, such as fully connected, ReLU, BatchNorm, etc.\n",
+    "\n",
+    "**HugeCTR organizes the layers by names. For each layer, we define the input and output names.**"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6db465c4",
+   "metadata": {},
+   "source": [
+    "Input layer:\n",
+    "\n",
+    "This layer is required to define the input data.\n",
+    "\n",
+    "```\n",
+    "hugectr.Input(\n",
+    "    label_dim: Number of label columns\n",
+    "    label_name: Name of label columns in network architecture\n",
+    "    dense_dim: Number of continuous columns\n",
+    "    dense_name: Name of contiunous columns in network architecture\n",
+    "    data_reader_sparse_param_array: Configuration how to read sparse data and its names\n",
+    ")\n",
+    "```\n",
+    "\n",
+    "SparseEmbedding:\n",
+    "\n",
+    "This layer defines embedding table\n",
+    "\n",
+    "```\n",
+    "hugectr.SparseEmbedding(\n",
+    "    embedding_type: Different embedding options to distribute embedding tables \n",
+    "    workspace_size_per_gpu_in_mb: Maximum embedding table size in MB\n",
+    "    embedding_vec_size: Embedding vector size\n",
+    "    combiner: Intra-slot reduction op\n",
+    "    sparse_embedding_name: Layer name\n",
+    "    bottom_name: Input layer names\n",
+    "    optimizer: Optimizer to use\n",
+    ")\n",
+    "```\n",
+    "\n",
+    "DenseLayer:\n",
+    "\n",
+    "This layer is copied to each GPU and is normally used for the MLP tower.\n",
+    "\n",
+    "```\n",
+    "hugectr.DenseLayer(\n",
+    "    layer_type: Layer type, such as FullyConnected, Reshape, Concat, Loss, BatchNorm, etc.\n",
+    "    bottom_names: Input layer names\n",
+    "    top_names: Layer name\n",
+    "    ...: Depending on the layer type additional parameter can be defined\n",
+    ")\n",
+    "```\n",
+    "\n",
+    "This is only a short introduction in the API. You can read more in the official docs: [Python Interface](https://github.com/NVIDIA/HugeCTR/blob/master/docs/python_interface.md) and [Layer Book](https://github.com/NVIDIA/HugeCTR/blob/master/docs/hugectr_layer_book.md)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0624ca30",
+   "metadata": {},
+   "source": [
+    "## Let's define our model\n",
+    "\n",
+    "We walked through the documentation, but it is useful to understand the API. Finally, we can define our model. We will write the model to `./model.py` and execute it afterwards."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b258dce2",
+   "metadata": {},
+   "source": [
+    "We need the cardinalities of each categorical feature to assign as `slot_size_array` in the model below."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "2df2718b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "({'userId': (162542, 512), 'movieId': (56595, 512)}, {'genres': (21, 16)})\n"
+     ]
+    }
+   ],
+   "source": [
+    "from nvtabular.ops import get_embedding_sizes\n",
+    "\n",
+    "embeddings = get_embedding_sizes(workflow)\n",
+    "print(embeddings)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2e4aae50",
+   "metadata": {},
+   "source": [
+    "We use `graph_to_json` to convert the model to a JSON configuration, required for the inference."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "f2f6a01e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "HugeCTR Version: 3.3\n",
+      "====================================================Model Init=====================================================\n",
+      "[HUGECTR][19:15:20][WARNING][RANK0]: The model name is not specified when creating the solver.\n",
+      "[HUGECTR][19:15:20][INFO][RANK0]: Global seed is 1975903631\n",
+      "[HUGECTR][19:15:20][INFO][RANK0]: Device to NUMA mapping:\n",
+      "  GPU 0 ->  node 0\n",
+      "\n",
+      "[HUGECTR][19:15:21][WARNING][RANK0]: Peer-to-peer access cannot be fully enabled.\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: Start all2all warmup\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: End all2all warmup\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: Using All-reduce algorithm: NCCL\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: Device 0: Tesla V100-DGXS-16GB\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: num of DataReader workers: 1\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: Vocabulary size: 219149\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: max_vocabulary_size_per_gpu_=3276800\n",
+      "[HUGECTR][19:15:21][INFO][RANK0]: Graph analysis to resolve tensor dependency\n",
+      "===================================================Model Compile===================================================\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: gpu0 start to init embedding\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: gpu0 init embedding done\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Starting AUC NCCL warm-up\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Warm-up done\n",
+      "===================================================Model Summary===================================================\n",
+      "label                                   Dense                         Sparse                        \n",
+      "label                                   dense                          data1                         \n",
+      "(None, 1)                               (None, 0)                               \n",
+      "——————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n",
+      "Layer Type                              Input Name                    Output Name                   Output Shape                  \n",
+      "——————————————————————————————————————————————————————————————————————————————————————————————————————————————————\n",
+      "LocalizedSlotSparseEmbeddingHash        data1                         sparse_embedding1             (None, 3, 16)                 \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "Reshape                                 sparse_embedding1             reshape1                      (None, 48)                    \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "InnerProduct                            reshape1                      fc1                           (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "ReLU                                    fc1                           relu1                         (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "InnerProduct                            relu1                         fc2                           (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "ReLU                                    fc2                           relu2                         (None, 128)                   \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "InnerProduct                            relu2                         fc3                           (None, 1)                     \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "BinaryCrossEntropyLoss                  fc3                           loss                                                        \n",
+      "                                        label                                                                                     \n",
+      "------------------------------------------------------------------------------------------------------------------\n",
+      "=====================================================Model Fit=====================================================\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Use non-epoch mode with number of iterations: 2000\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Training batchsize: 2048, evaluation batchsize: 2048\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Evaluation interval: 200, snapshot interval: 1900\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Dense network trainable: True\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Sparse embedding sparse_embedding1 trainable: True\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Use mixed precision: False, scaler: 1.000000, use cuda graph: True\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: lr: 0.001000, warmup_steps: 1, end_lr: 0.000000\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: decay_start: 0, decay_steps: 1, decay_power: 2.000000\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Training source file: /root/nvt-examples/movielens/data/train/_file_list.txt\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Evaluation source file: /root/nvt-examples/movielens/data/valid/_file_list.txt\n",
+      "[HUGECTR][19:15:22][INFO][RANK0]: Iter: 100 Time(100 iters): 0.223968s Loss: 0.587505 lr:0.001000\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 200 Time(100 iters): 0.220862s Loss: 0.577032 lr:0.001000\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Evaluation, AUC: 0.748669\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Eval Time for 160 iters: 0.039598s\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 300 Time(100 iters): 0.262075s Loss: 0.563935 lr:0.001000\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 400 Time(100 iters): 0.220956s Loss: 0.533650 lr:0.001000\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Evaluation, AUC: 0.765075\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Eval Time for 160 iters: 0.038021s\n",
+      "[HUGECTR][19:15:23][INFO][RANK0]: Iter: 500 Time(100 iters): 0.290587s Loss: 0.545377 lr:0.001000\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 600 Time(100 iters): 0.221455s Loss: 0.544951 lr:0.001000\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Evaluation, AUC: 0.775103\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Eval Time for 160 iters: 0.036293s\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 700 Time(100 iters): 0.259013s Loss: 0.538431 lr:0.001000\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 800 Time(100 iters): 0.221748s Loss: 0.539337 lr:0.001000\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Evaluation, AUC: 0.780380\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Eval Time for 160 iters: 0.065051s\n",
+      "[HUGECTR][19:15:24][INFO][RANK0]: Iter: 900 Time(100 iters): 0.287830s Loss: 0.530380 lr:0.001000\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1000 Time(100 iters): 0.247687s Loss: 0.530518 lr:0.001000\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Evaluation, AUC: 0.784759\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Eval Time for 160 iters: 0.036482s\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1100 Time(100 iters): 0.258984s Loss: 0.525256 lr:0.001000\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1200 Time(100 iters): 0.221740s Loss: 0.532820 lr:0.001000\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Evaluation, AUC: 0.787621\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Eval Time for 160 iters: 0.036467s\n",
+      "[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1300 Time(100 iters): 0.259424s Loss: 0.510621 lr:0.001000\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1400 Time(100 iters): 0.221632s Loss: 0.530471 lr:0.001000\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Evaluation, AUC: 0.791757\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Eval Time for 160 iters: 0.066089s\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1500 Time(100 iters): 0.316840s Loss: 0.539018 lr:0.001000\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1600 Time(100 iters): 0.221609s Loss: 0.507900 lr:0.001000\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Evaluation, AUC: 0.793827\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Eval Time for 160 iters: 0.036891s\n",
+      "[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1700 Time(100 iters): 0.259825s Loss: 0.545857 lr:0.001000\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Iter: 1800 Time(100 iters): 0.221886s Loss: 0.523603 lr:0.001000\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Evaluation, AUC: 0.796364\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Eval Time for 160 iters: 0.036460s\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Iter: 1900 Time(100 iters): 0.259438s Loss: 0.522114 lr:0.001000\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Dump hash table from GPU0\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write hash table <key,value> pairs to file\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Done\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Dumping sparse weights to files, successful\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write optimzer state to file\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Done\n",
+      "[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write optimzer state to file\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Done\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping sparse optimzer states to files, successful\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping dense weights to file, successful\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping dense optimizer states to file, successful\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Dumping untrainable weights to file, successful\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Finish 2000 iterations with batchsize: 2048 in 5.77s.\n",
+      "[HUGECTR][19:15:28][INFO][RANK0]: Save the model graph to /root/nvt-examples/movielens/data/model/movielens_hugectr/1/movielens.json successfully\n"
+     ]
+    }
+   ],
+   "source": [
+    "import hugectr\n",
+    "from mpi4py import MPI  # noqa\n",
+    "\n",
+    "solver = hugectr.CreateSolver(\n",
+    "    vvgpu=[[0]],\n",
+    "    batchsize=2048,\n",
+    "    batchsize_eval=2048,\n",
+    "    max_eval_batches=160,\n",
+    "    i64_input_key=True,\n",
+    "    use_mixed_precision=False,\n",
+    "    repeat_dataset=True,\n",
+    ")\n",
+    "optimizer = hugectr.CreateOptimizer(optimizer_type=hugectr.Optimizer_t.Adam)\n",
+    "reader = hugectr.DataReaderParams(\n",
+    "    data_reader_type=hugectr.DataReaderType_t.Parquet,\n",
+    "    source=[INPUT_DATA_DIR + \"train/_file_list.txt\"],\n",
+    "    eval_source=INPUT_DATA_DIR + \"valid/_file_list.txt\",\n",
+    "    check_type=hugectr.Check_t.Non,\n",
+    "    slot_size_array=[162542, 56586, 21],\n",
+    ")\n",
+    "\n",
+    "\n",
+    "model = hugectr.Model(solver, reader, optimizer)\n",
+    "\n",
+    "model.add(\n",
+    "    hugectr.Input(\n",
+    "        label_dim=1,\n",
+    "        label_name=\"label\",\n",
+    "        dense_dim=0,\n",
+    "        dense_name=\"dense\",\n",
+    "        data_reader_sparse_param_array=[\n",
+    "            hugectr.DataReaderSparseParam(\"data1\", nnz_per_slot=10, is_fixed_length=False, slot_num=3)\n",
+    "        ],\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.SparseEmbedding(\n",
+    "        embedding_type=hugectr.Embedding_t.LocalizedSlotSparseEmbeddingHash,\n",
+    "        workspace_size_per_gpu_in_mb=200,\n",
+    "        embedding_vec_size=16,\n",
+    "        combiner=\"sum\",\n",
+    "        sparse_embedding_name=\"sparse_embedding1\",\n",
+    "        bottom_name=\"data1\",\n",
+    "        optimizer=optimizer,\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.Reshape,\n",
+    "        bottom_names=[\"sparse_embedding1\"],\n",
+    "        top_names=[\"reshape1\"],\n",
+    "        leading_dim=48,\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.InnerProduct,\n",
+    "        bottom_names=[\"reshape1\"],\n",
+    "        top_names=[\"fc1\"],\n",
+    "        num_output=128,\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.ReLU,\n",
+    "        bottom_names=[\"fc1\"],\n",
+    "        top_names=[\"relu1\"],\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.InnerProduct,\n",
+    "        bottom_names=[\"relu1\"],\n",
+    "        top_names=[\"fc2\"],\n",
+    "        num_output=128,\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.ReLU,\n",
+    "        bottom_names=[\"fc2\"],\n",
+    "        top_names=[\"relu2\"],\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.InnerProduct,\n",
+    "        bottom_names=[\"relu2\"],\n",
+    "        top_names=[\"fc3\"],\n",
+    "        num_output=1,\n",
+    "    )\n",
+    ")\n",
+    "model.add(\n",
+    "    hugectr.DenseLayer(\n",
+    "        layer_type=hugectr.Layer_t.BinaryCrossEntropyLoss,\n",
+    "        bottom_names=[\"fc3\", \"label\"],\n",
+    "        top_names=[\"loss\"],\n",
+    "    )\n",
+    ")\n",
+    "model.compile()\n",
+    "model.summary()\n",
+    "model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)\n",
+    "model.graph_to_json(graph_config_file=MODEL_DIR + \"1/movielens.json\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2ae972f8",
+   "metadata": {},
+   "source": [
+    "After training terminates, we can see that multiple `.model` files and folders are generated. We need to move them inside `1` folder under the `movielens_hugectr` folder. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "b085ceb4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "!mv *.model {MODEL_DIR}"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.12"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

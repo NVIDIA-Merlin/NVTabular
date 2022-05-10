@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Applying the Techniques to other Tabular Problems with Rossmann &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,12 +14,16 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Preprocessing the Rossmann Store Sales Dataset" href="01-Download-Convert.html" />
-    <link rel="prev" title="NVTabular demo on RecSys2020 Challenge" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" /> 
+    <link rel="prev" title="Scaling Criteo: Triton Inference with TensorFlow" href="../scaling-criteo/04-Triton-Inference-with-TF.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -35,23 +41,28 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with Movielens</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Tabular Data with Rossmann</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
-<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Training with TensorFlow</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">Training with PyTorch</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">Training with FastAI</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Applying Techniques to Rossmann Stores Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Preprocessing the Rossmann Store Sales Dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">NVTabular demo on Rossmann data - FastAI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">NVTabular demo on Rossmann data - TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">NVTabular demo on Rossmann data - PyTorch</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
@@ -72,7 +83,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Examples</a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
       <li>Applying the Techniques to other Tabular Problems with Rossmann</li>
       <li class="wy-breadcrumbs-aside">
       </li>
@@ -82,43 +93,21 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="applying-the-techniques-to-other-tabular-problems-with-rossmann">
+  <div class="tex2jax_ignore mathjax_ignore section" id="applying-the-techniques-to-other-tabular-problems-with-rossmann">
 <h1>Applying the Techniques to other Tabular Problems with Rossmann<a class="headerlink" href="#applying-the-techniques-to-other-tabular-problems-with-rossmann" title="Permalink to this headline"></a></h1>
-<p>Rossmann operates over 3,000 drug stores in 7 European countries. Historical sales data for 1,115 Rossmann stores are provided. The task is to forecast the “Sales” column for the test set. Kaggle hosted it as a
-<a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales/overview">competition</a>. These notebooks show how
-to use NVTabular for doing sales prediction on tabular data.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
-<li class="toctree-l1"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-Training-with-TF.html">Training with TensorFlow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-Training-with-PyTorch.html">Training with PyTorch</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-Training-with-FastAI.html">Training with FastAI</a></li>
+<p>Rossmann operates over 3,000 drug stores in 7 European countries.
+Historical sales data for 1,115 Rossmann stores are provided.
+The task is to forecast the <code class="docutils literal notranslate"><span class="pre">Sales</span></code> column for the test set.
+Kaggle hosted it as a <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales/overview">competition</a>.</p>
+<p>The following notebooks show how to use NVTabular to predict sales on tabular data.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="01-Download-Convert.html"><span class="doc std std-doc">Download and Convert</span></a></p></li>
+<li><p><a class="reference internal" href="02-ETL-with-NVTabular.html"><span class="doc std std-doc">ETL with NVTabular</span></a></p></li>
+<li><p><a class="reference internal" href="03-Training-with-TF.html"><span class="doc std std-doc">Training with TensorFlow</span></a></p></li>
+<li><p><a class="reference internal" href="03-Training-with-PyTorch.html"><span class="doc std std-doc">Training with PyTorch</span></a></p></li>
+<li><p><a class="reference internal" href="03-Training-with-FastAI.html"><span class="doc std std-doc">Training with FastAI</span></a></p></li>
 </ul>
+<div class="toctree-wrapper compound">
 </div>
 </div>
 
@@ -126,7 +115,7 @@ to use NVTabular for doing sales prediction on tabular data.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" class="btn btn-neutral float-left" title="NVTabular demo on RecSys2020 Challenge" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../scaling-criteo/04-Triton-Inference-with-TF.html" class="btn btn-neutral float-left" title="Scaling Criteo: Triton Inference with TensorFlow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="01-Download-Convert.html" class="btn btn-neutral float-right" title="Preprocessing the Rossmann Store Sales Dataset" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
@@ -156,16 +145,16 @@ to use NVTabular for doing sales prediction on tabular data.</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.10.0/examples/tabular-data-rossmann/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="index.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.7.1/examples/tabular-data-rossmann/index.html">v0.7.1</a></dd>
-      <dd><a href="../../../v0.8.0/examples/tabular-data-rossmann/index.html">v0.8.0</a></dd>
-      <dd><a href="../../../v0.9.0/examples/tabular-data-rossmann/index.html">v0.9.0</a></dd>
-      <dd><a href="../../../v1.0.0/examples/tabular-data-rossmann/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../../../main/examples/tabular-data-rossmann/index.html">main</a></dd>
+      <dd><a href="../../../main/index.html">main</a></dd>
     </dl>
   </div>
 </div><script>

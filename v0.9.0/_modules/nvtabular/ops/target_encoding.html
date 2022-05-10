@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.target_encoding &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -86,15 +93,15 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">Delayed</span>
 
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">DataFrameType</span><span class="p">,</span>
-    <span class="n">_arange</span><span class="p">,</span>
-    <span class="n">_concat_columns</span><span class="p">,</span>
-    <span class="n">_random_state</span><span class="p">,</span>
-    <span class="n">_read_parquet_dispatch</span><span class="p">,</span>
+    <span class="n">arange</span><span class="p">,</span>
+    <span class="n">concat_columns</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="p">,</span>
+    <span class="n">read_parquet_dispatch</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">nvtabular.graph</span> <span class="kn">import</span> <span class="n">Schema</span>
-<span class="kn">from</span> <span class="nn">nvtabular.graph.tags</span> <span class="kn">import</span> <span class="n">Tags</span>
+<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Node</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">Tags</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">categorify</span> <span class="k">as</span> <span class="n">nvt_cat</span>
 <span class="kn">from</span> <span class="nn">.moments</span> <span class="kn">import</span> <span class="n">_custom_moments</span>
@@ -211,8 +218,9 @@
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="p">[</span><span class="n">target</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">target</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">Node</span><span class="o">.</span><span class="n">construct_from</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">target_mean</span> <span class="o">=</span> <span class="n">target_mean</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kfold</span> <span class="o">=</span> <span class="n">kfold</span> <span class="ow">or</span> <span class="mi">3</span>
@@ -232,10 +240,10 @@
 
 <div class="viewcode-block" id="TargetEncoding.fit"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
         <span class="n">moments</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">names</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_mean</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># calculate the mean if we don&#39;t have it already</span>
-            <span class="n">moments</span> <span class="o">=</span> <span class="n">_custom_moments</span><span class="p">(</span><span class="n">ddf</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">])</span>
+            <span class="n">moments</span> <span class="o">=</span> <span class="n">_custom_moments</span><span class="p">(</span><span class="n">ddf</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">])</span>
 
         <span class="n">col_groups</span> <span class="o">=</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span>
 
@@ -262,7 +270,7 @@
             <span class="n">ddf</span><span class="p">,</span>
             <span class="n">nvt_cat</span><span class="o">.</span><span class="n">FitOptions</span><span class="p">(</span>
                 <span class="n">col_groups</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">,</span>
                 <span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="s2">&quot;sum&quot;</span><span class="p">],</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span>
                 <span class="mi">0</span><span class="p">,</span>
@@ -280,8 +288,9 @@
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">dask_stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dask_stats</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">col</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="TargetEncoding.dependencies"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.dependencies">[docs]</a>    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span></div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span>
 
 <div class="viewcode-block" id="TargetEncoding.compute_selector"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -295,14 +304,14 @@
 
 <div class="viewcode-block" id="TargetEncoding.column_mapping"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;output_columns&quot;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">output_columns</span>
 
         <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
             <span class="n">group</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
-            <span class="n">result_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_te_name</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">result_names</span><span class="p">:</span>
-                <span class="n">column_mapping</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">names</span>
+            <span class="n">tag</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">group</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">target_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">:</span>
+                <span class="n">result_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;TE_</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">column_mapping</span><span class="p">[</span><span class="n">result_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">target_name</span><span class="p">,</span> <span class="o">*</span><span class="n">group</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kfold</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_folds</span><span class="p">:</span>
             <span class="n">column_mapping</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">fold_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -311,13 +320,11 @@
 
     <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
-            <span class="n">source_col_name</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span>
-                <span class="n">input_schema</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
-                <span class="n">is_list</span><span class="o">=</span><span class="n">input_schema</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">_is_list</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="c1"># fold only, setting the np.int</span>
-        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+            <span class="n">new_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># fold only, setting the np.int</span>
+            <span class="n">new_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_schema</span>
 
     <span class="k">def</span> <span class="nf">_compute_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
@@ -326,8 +333,21 @@
         <span class="k">return</span> <span class="n">col_schema</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">target_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">output_schema</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">output_schema</span><span class="o">.</span><span class="n">column_names</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">selector</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
 
     <span class="k">def</span> <span class="nf">_compute_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
@@ -343,12 +363,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span></div>
 
-    <span class="k">def</span> <span class="nf">_make_te_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cat_group</span><span class="p">):</span>
-        <span class="n">tag</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
-        <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;TE_</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">_make_te_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cat_group</span><span class="p">,</span> <span class="n">target_columns</span><span class="p">,</span> <span class="n">name_sep</span><span class="p">):</span>
+        <span class="n">tag</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">name_sep</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;TE_</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">target_columns</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">_op_group_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cat_group</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">fit_folds</span><span class="p">,</span> <span class="n">group_ind</span><span class="p">):</span>
         <span class="c1"># Define name of new TE column</span>
@@ -358,13 +375,13 @@
             <span class="n">out_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_col</span><span class="p">[</span><span class="n">group_ind</span><span class="p">]</span>
             <span class="n">out_col</span> <span class="o">=</span> <span class="p">[</span><span class="n">out_col</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out_col</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">out_col</span>
             <span class="c1"># ToDo Test</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_col</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_col</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;out_col and target are different sizes.&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">out_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_te_name</span><span class="p">(</span><span class="n">cat_group</span><span class="p">)</span>
+            <span class="n">out_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_te_name</span><span class="p">(</span><span class="n">cat_group</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
 
         <span class="c1"># Initialize new data</span>
-        <span class="n">_read_pq_func</span> <span class="o">=</span> <span class="n">_read_parquet_dispatch</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="n">_read_pq_func</span> <span class="o">=</span> <span class="n">read_parquet_dispatch</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
         <span class="n">tmp</span> <span class="o">=</span> <span class="s2">&quot;__tmp__&quot;</span>
 
         <span class="k">if</span> <span class="n">fit_folds</span><span class="p">:</span>
@@ -375,7 +392,7 @@
             <span class="n">agg_each_fold</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_read_groupby_stat_df</span><span class="p">(</span>
                 <span class="n">path_folds</span><span class="p">,</span> <span class="n">storage_name_folds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span><span class="p">,</span> <span class="n">_read_pq_func</span>
             <span class="p">)</span>
-            <span class="n">agg_each_fold</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">cols</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;count_y&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">]</span>
+            <span class="n">agg_each_fold</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">cols</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;count_y&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">cols</span> <span class="o">=</span> <span class="n">cat_group</span>
 
@@ -385,12 +402,14 @@
         <span class="n">agg_all</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_read_groupby_stat_df</span><span class="p">(</span>
             <span class="n">path_all</span><span class="p">,</span> <span class="n">storage_name_all</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span><span class="p">,</span> <span class="n">_read_pq_func</span>
         <span class="p">)</span>
-        <span class="n">agg_all</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">cat_group</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">]</span>
+        <span class="n">agg_all</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cat_group</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">]</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">fit_folds</span><span class="p">:</span>
             <span class="n">agg_each_fold</span> <span class="o">=</span> <span class="n">agg_each_fold</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">agg_all</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
             <span class="n">agg_each_fold</span><span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agg_each_fold</span><span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">agg_each_fold</span><span class="p">[</span><span class="s2">&quot;count_y&quot;</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">):</span>
                 <span class="n">agg_each_fold</span><span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">agg_each_fold</span><span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">agg_each_fold</span><span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y&quot;</span><span class="p">]</span>
                 <span class="p">)</span>
@@ -400,19 +419,19 @@
 
             <span class="n">agg_each_fold</span> <span class="o">=</span> <span class="n">agg_each_fold</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
                 <span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">,</span> <span class="s2">&quot;count_y&quot;</span><span class="p">]</span>
-                <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">]</span>
-                <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">],</span>
+                <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">]</span>
+                <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">],</span>
                 <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">tran_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">cols</span> <span class="o">+</span> <span class="p">[</span><span class="n">tmp</span><span class="p">]]</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">agg_each_fold</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
             <span class="k">del</span> <span class="n">agg_each_fold</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">):</span>
                 <span class="n">agg_all</span><span class="p">[</span><span class="n">out_col</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">agg_all</span><span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_smooth</span> <span class="o">*</span> <span class="n">y_mean</span><span class="p">[</span><span class="n">x</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span>
                     <span class="n">agg_all</span><span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_smooth</span>
                 <span class="p">)</span>
             <span class="n">agg_all</span> <span class="o">=</span> <span class="n">agg_all</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
-                <span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">[</span><span class="s2">&quot;count_y_all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="o">+</span> <span class="s2">&quot;_sum_y_all&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
             <span class="p">)</span>
             <span class="n">tran_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">cols</span> <span class="o">+</span> <span class="p">[</span><span class="n">tmp</span><span class="p">]]</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">agg_all</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
             <span class="k">del</span> <span class="n">agg_all</span>
@@ -420,7 +439,7 @@
         <span class="c1"># TODO: There is no need to perform the `agg_each_fold.merge(agg_all, ...)` merge</span>
         <span class="c1">#     for every partition.  We can/should cache the result for better performance.</span>
 
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span><span class="p">):</span>
             <span class="n">tran_df</span><span class="p">[</span><span class="n">out_col</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">tran_df</span><span class="p">[</span><span class="n">out_col</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">y_mean</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">tran_df</span><span class="p">[</span><span class="n">out_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">tran_df</span><span class="p">[</span><span class="n">out_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span><span class="p">)</span>
@@ -436,7 +455,7 @@
 <div class="viewcode-block" id="TargetEncoding.transform"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="c1"># Add temporary column for sorting</span>
         <span class="n">tmp</span> <span class="o">=</span> <span class="s2">&quot;__tmp__&quot;</span>
-        <span class="n">df</span><span class="p">[</span><span class="n">tmp</span><span class="p">]</span> <span class="o">=</span> <span class="n">_arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">tmp</span><span class="p">]</span> <span class="o">=</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
 
         <span class="n">fit_folds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kfold</span> <span class="o">&gt;</span> <span class="mi">1</span>
         <span class="k">if</span> <span class="n">fit_folds</span><span class="p">:</span>
@@ -454,10 +473,14 @@
                 <span class="n">cat_group</span> <span class="o">=</span> <span class="p">[</span><span class="n">cat_group</span><span class="p">]</span>
 
             <span class="k">if</span> <span class="n">new_df</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">new_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_group_logic</span><span class="p">(</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">fit_folds</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+                <span class="n">new_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_group_logic</span><span class="p">(</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">fit_folds</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_dtype</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_group_logic</span><span class="p">(</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">fit_folds</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
-                <span class="n">new_df</span> <span class="o">=</span> <span class="n">_concat_columns</span><span class="p">([</span><span class="n">new_df</span><span class="p">,</span> <span class="n">_df</span><span class="p">])</span>
+                <span class="n">_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op_group_logic</span><span class="p">(</span><span class="n">cat_group</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">y_mean</span><span class="p">,</span> <span class="n">fit_folds</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_dtype</span>
+                <span class="p">)</span>
+                <span class="n">new_df</span> <span class="o">=</span> <span class="n">concat_columns</span><span class="p">([</span><span class="n">new_df</span><span class="p">,</span> <span class="n">_df</span><span class="p">])</span>
 
         <span class="c1"># Drop temporary columns</span>
         <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">tmp</span><span class="p">,</span> <span class="s2">&quot;__fold__&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">fit_folds</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_folds</span> <span class="k">else</span> <span class="p">[</span><span class="n">tmp</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -477,12 +500,12 @@
     <span class="k">if</span> <span class="n">fold_seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># If we don&#39;t have a specific seed,</span>
         <span class="c1"># just use a simple modulo-based mapping</span>
-        <span class="n">fold</span> <span class="o">=</span> <span class="n">_arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">typ</span><span class="p">)</span>
+        <span class="n">fold</span> <span class="o">=</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">typ</span><span class="p">)</span>
         <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="n">fold</span><span class="p">,</span> <span class="n">kfold</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">fold</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">fold</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">state</span> <span class="o">=</span> <span class="n">_random_state</span><span class="p">(</span><span class="n">fold_seed</span><span class="p">,</span> <span class="n">like_df</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">_arange</span><span class="p">(</span><span class="n">kfold</span><span class="p">,</span> <span class="n">like_df</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">typ</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">random_state</span><span class="p">(</span><span class="n">fold_seed</span><span class="p">,</span> <span class="n">like_df</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">arange</span><span class="p">(</span><span class="n">kfold</span><span class="p">,</span> <span class="n">like_df</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">typ</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
 </pre></div>
 
            </div>
@@ -517,10 +540,10 @@
       <dt>Tags</dt>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="target_encoding.html">v0.9.0</a></dd>
       <dd><a href="../../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started MovieLens: Serving a TensorFlow Model &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Advanced Ops with Outbrain" href="../advanced-ops-outbrain/index.html" />
+    <link rel="prev" title="Getting Started MovieLens: Serving a HugeCTR Model" href="04-Triton-Inference-with-HugeCTR.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Getting Started with MovieLens</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">Train with PyTorch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Serve a HugeCTR Model</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Serve a TensorFlow Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Getting Started with Movielens</a> &raquo;</li>
+      <li>Getting Started MovieLens: Serving a TensorFlow Model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2020 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-movielens-serving-a-tensorflow-model">
+<h1>Getting Started MovieLens: Serving a TensorFlow Model<a class="headerlink" href="#getting-started-movielens-serving-a-tensorflow-model" title="Permalink to this headline"></a></h1>
+<p>The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as done during training ETL. We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integers before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the TensorFlow model as an ensemble model to Triton Inference. The ensemble model guarantees that the same transformation are applied to the raw inputs.</p>
+<center><img src="./imgs/triton-tf.png" width="300" height="200"></center><div class="section" id="learning-objectives">
+<h2>Learning Objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h2>
+<p>In the previous notebook we explained and showed how we can preprocess data with multi-hot columns with NVTabular, and train an TF MLP model using NVTabular <code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code>. We learned how to save a workflow, a trained TF model, and the ensemble model. In this notebook, we will show an example request script sent to the Triton Inference Server. We will learn</p>
+<ul class="simple">
+<li><p>to transform new/streaming data with NVTabular library</p></li>
+<li><p>to deploy the end-to-end pipeline to generate prediction results for new data from trained TF model</p></li>
+</ul>
+</div>
+<div class="section" id="launching-and-starting-the-triton-server">
+<h2>Launching and Starting the Triton Server<a class="headerlink" href="#launching-and-starting-the-triton-server" title="Permalink to this headline"></a></h2>
+<p>Before we get started, you should launch the Triton Inference Server docker container with the following script. This script will mount your local <code class="docutils literal notranslate"><span class="pre">model-repository</span></code> folder that includes your saved models from the previous notebook (<code class="docutils literal notranslate"><span class="pre">03a-Training-with-TF.ipynb</span></code>) to <code class="docutils literal notranslate"><span class="pre">/model</span></code> directory in the <code class="docutils literal notranslate"><span class="pre">merlin-inference</span></code> docker container.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus device=0 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-tensorflow-inference:22.04
+</pre></div>
+</div>
+<p>After you started the <code class="docutils literal notranslate"><span class="pre">merlin-inference</span></code> container, you can start triton server with the command below. You need to provide correct path for the <code class="docutils literal notranslate"><span class="pre">models</span></code> directory.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tritonserver</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">=</span><span class="n">path_to_models</span> <span class="o">--</span><span class="n">backend</span><span class="o">-</span><span class="n">config</span><span class="o">=</span><span class="n">tensorflow</span><span class="p">,</span><span class="n">version</span><span class="o">=</span><span class="mi">2</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">control</span><span class="o">-</span><span class="n">mode</span><span class="o">=</span><span class="n">explicit</span> 
+</pre></div>
+</div>
+<p>Note: The model-repository path is <code class="docutils literal notranslate"><span class="pre">/model/nvt-examples/models/</span></code>. The models haven’t been loaded, yet. Below, we will request the Triton server to load the saved ensemble model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">grpcclient</span>
+<span class="kn">import</span> <span class="nn">nvtabular.inference.triton</span> <span class="k">as</span> <span class="nn">nvt_triton</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We define our base directory, containing the data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># path to preprocessed data</span>
+<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s deactivate the warnings before sending requests.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="loading-ensemble-model-with-triton-inference-serve">
+<h2>Loading Ensemble Model with Triton Inference Serve<a class="headerlink" href="#loading-ensemble-model-with-triton-inference-serve" title="Permalink to this headline"></a></h2>
+<p>At this stage, you should have launched the Triton Inference Server docker container with the instructions above.</p>
+<p>Let’s connect to the Triton Inference Server. Use Triton’s ready endpoint to verify that the server and the models are ready for inference. Replace localhost with your host ip address.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonhttpclient</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">triton_client</span> <span class="o">=</span> <span class="n">tritonhttpclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;client created.&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel creation failed: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>client created.
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/tritonhttpclient/__init__.py:30: DeprecationWarning: The package `tritonhttpclient` is deprecated and will be removed in a future version. Please use instead `tritonclient.http`
+  warnings.warn(
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/ipykernel/ipkernel.py:283: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.
+  and should_run_async(code)
+</pre></div>
+</div>
+</div>
+</div>
+<p>We check if the server is alive.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">is_server_live</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>GET /v2/health/live, headers None
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-length&#39;: &#39;0&#39;, &#39;content-type&#39;: &#39;text/plain&#39;}&gt;
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>True
+</pre></div>
+</div>
+</div>
+</div>
+<p>The HTTP request returns status 200 if Triton is ready and non-200 if it is not ready.</p>
+<p>We check the available models in the repositories:</p>
+<p>movielens: Ensemble <br>
+movielens_nvt: NVTabular <br>
+movielens_tf: TensorFlow model</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">get_model_repository_index</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/index, headers None
+
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;71&#39;}&gt;
+bytearray(b&#39;[{&quot;name&quot;:&quot;movielens&quot;},{&quot;name&quot;:&quot;movielens_nvt&quot;},{&quot;name&quot;:&quot;movielens_tf&quot;}]&#39;)
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;name&#39;: &#39;movielens&#39;}, {&#39;name&#39;: &#39;movielens_nvt&#39;}, {&#39;name&#39;: &#39;movielens_tf&#39;}]
+</pre></div>
+</div>
+</div>
+</div>
+<p>We load the ensemble model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+
+<span class="n">triton_client</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/movielens/load, headers None
+
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
+Loaded model &#39;movielens&#39;
+CPU times: user 2.05 ms, sys: 1.62 ms, total: 3.66 ms
+Wall time: 9.09 s
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="send-request-to-triton-is-to-transform-raw-dataset">
+<h2>Send request to Triton IS to transform raw dataset<a class="headerlink" href="#send-request-to-triton-is-to-transform-raw-dataset" title="Permalink to this headline"></a></h2>
+<p>A minimal model repository for a TensorFlow SavedModel model is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>  <span class="o">&lt;</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">-</span><span class="n">path</span><span class="o">&gt;/&lt;</span><span class="n">model</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;/</span>
+      <span class="n">config</span><span class="o">.</span><span class="n">pbtxt</span>
+      <span class="mi">1</span><span class="o">/</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">savedmodel</span><span class="o">/</span>
+           <span class="o">&lt;</span><span class="n">saved</span><span class="o">-</span><span class="n">model</span> <span class="n">files</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Let’s check out our model repository layout. You can install tree library with <code class="docutils literal notranslate"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">tree</span></code>, and then run <code class="docutils literal notranslate"><span class="pre">!tree</span> <span class="pre">/model/models/</span></code> to print out the model repository layout as below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>/model/models/
+|-- movielens
+|   |-- 1
+|   `-- config.pbtxt
+|-- movielens_nvt
+|   |-- 1
+|   |   |-- __pycache__
+|   |   |   `-- model.cpython-38.pyc
+|   |   |-- model.py
+|   |   `-- workflow
+|   |       |-- categories
+|   |       |   |-- unique.genres.parquet
+|   |       |   |-- unique.movieId.parquet
+|   |       |   `-- unique.userId.parquet
+|   |       |-- metadata.json
+|   |       `-- workflow.pkl
+|   `-- config.pbtxt
+`-- movielens_tf
+    |-- 1
+    |   `-- model.savedmodel
+    |       |-- assets
+    |       |-- saved_model.pb
+    |       `-- variables
+    |           |-- variables.data-00000-of-00001
+    |           `-- variables.index
+    `-- config.pbtxt
+</pre></div>
+</div>
+<p>You can see that we have a <code class="docutils literal notranslate"><span class="pre">config.pbtxt</span></code> file. Each model in a model repository must include a model configuration that provides required and optional information about the model. Typically, this configuration is provided in a <code class="docutils literal notranslate"><span class="pre">config.pbtxt</span></code> file specified as <a class="reference external" href="https://github.com/triton-inference-server/server/blob/r20.12/src/core/model_config.proto">ModelConfig protobuf</a>.</p>
+<p>Let’s read the raw validation set, and send 3 rows of <code class="docutils literal notranslate"><span class="pre">userId</span></code> and <code class="docutils literal notranslate"><span class="pre">movieId</span></code> as input to the saved NVTabular model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>          userId  movieId
+15347762   99476   104374
+16647840  107979     2634
+23915192  155372     1614
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span> <span class="o">=</span> <span class="n">nvt_triton</span><span class="o">.</span><span class="n">convert_df_to_triton_input</span><span class="p">([</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">,</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">)</span>
+
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__nnzs&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__values&quot;</span><span class="p">]</span>
+<span class="p">]</span>
+
+<span class="n">MODEL_NAME_NVT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_NVT&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens_nvt&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">MODEL_NAME_NVT</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__nnzs&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__values&quot;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="n">col</span><span class="p">),</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>userId [[ 99476]
+ [107979]
+ [155372]] (3, 1)
+movieId [[19997]
+ [ 2543]
+ [ 1557]] (3, 1)
+genres__nnzs [[3]
+ [1]
+ [1]] (3, 1)
+genres__values [[ 9]
+ [10]
+ [16]
+ [12]
+ [ 6]] (5, 1)
+</pre></div>
+</div>
+</div>
+</div>
+<p>You might notice that we don’t need to send the genres column as an input. The reason for that is the nvt model will look up the genres for each movie as part of the <code class="docutils literal notranslate"><span class="pre">JoinExternal</span></code> op it applies. Also notice that when creating the request for the <code class="docutils literal notranslate"><span class="pre">movielens_nvt</span></code> model, we return 2 columns (values and nnzs) for the <code class="docutils literal notranslate"><span class="pre">genres</span></code> column rather than 1.</p>
+</div>
+<div class="section" id="end-2-end-inference-pipeline">
+<h2>END-2-END INFERENCE PIPELINE<a class="headerlink" href="#end-2-end-inference-pipeline" title="Permalink to this headline"></a></h2>
+<p>We will do the same, but this time we directly read in first 3 rows of the the raw <code class="docutils literal notranslate"><span class="pre">valid.parquet</span></code> file with cuDF.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;raw data:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># convert the batch to a triton inputs</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">nvt_triton</span><span class="o">.</span><span class="n">convert_df_to_triton_input</span><span class="p">([</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">,</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">)</span>
+
+<span class="c1"># placeholder variables for the output</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">grpcclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)]</span>
+
+<span class="n">MODEL_NAME_ENSEMBLE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_ENSEMBLE&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+
+<span class="c1"># build a client to connect to our server.</span>
+<span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
+<span class="c1"># make the request with tritonclient.grpc.InferInput object</span>
+
+<span class="k">with</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">MODEL_NAME_ENSEMBLE</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted sigmoid result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>raw data:
+           userId  movieId
+15347762   99476   104374
+16647840  107979     2634
+23915192  155372     1614 
+
+predicted sigmoid result:
+ [[0.628711  ]
+ [0.6082093 ]
+ [0.60346156]]
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s send request for a larger batch size and measure the total run time and throughput.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">64</span>
+<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">),</span>
+    <span class="n">num_rows</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+<span class="c1"># convert the batch to a triton inputs</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">nvt_triton</span><span class="o">.</span><span class="n">convert_df_to_triton_input</span><span class="p">([</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">,</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">)</span>
+
+<span class="c1"># placeholder variables for the output</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">grpcclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)]</span>
+
+<span class="n">MODEL_NAME_ENSEMBLE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_ENSEMBLE&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+
+<span class="c1"># build a client to connect to our server.</span>
+<span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
+<span class="c1"># make the request with tritonclient.grpc.InferInput object</span>
+
+<span class="k">with</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">MODEL_NAME_ENSEMBLE</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
+
+<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted sigmoid result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">),</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;run_time(sec): </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2"> - inference_thru: </span><span class="si">{</span><span class="n">batch_size</span> <span class="o">/</span> <span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>predicted sigmoid result:
+ [[0.628711  ]
+ [0.6082093 ]
+ [0.60346156]
+ [0.62520176]
+ [0.6164747 ]
+ [0.6355395 ]
+ [0.6193519 ]
+ [0.61882406]
+ [0.6275068 ]
+ [0.6138062 ]
+ [0.6202122 ]
+ [0.62851   ]
+ [0.6351558 ]
+ [0.62927085]
+ [0.6350106 ]
+ [0.61985826]
+ [0.621534  ]
+ [0.6181114 ]
+ [0.63753897]
+ [0.61673135]
+ [0.6167665 ]
+ [0.6212634 ]
+ [0.62160015]
+ [0.63293964]
+ [0.6352973 ]
+ [0.61357415]
+ [0.6352516 ]
+ [0.6211146 ]
+ [0.6320578 ]
+ [0.62171084]
+ [0.60404694]
+ [0.63201594]
+ [0.6052745 ]
+ [0.61897206]
+ [0.61399895]
+ [0.6196497 ]
+ [0.618947  ]
+ [0.61561245]
+ [0.62465805]
+ [0.6257206 ]
+ [0.61907804]
+ [0.62646204]
+ [0.61661446]
+ [0.61312085]
+ [0.60481817]
+ [0.6146393 ]
+ [0.6135305 ]
+ [0.6233996 ]
+ [0.6268691 ]
+ [0.6368837 ]
+ [0.6286694 ]
+ [0.61883575]
+ [0.6271743 ]
+ [0.62324375]
+ [0.61735946]
+ [0.63762474]
+ [0.6315052 ]
+ [0.6226361 ]
+ [0.6040064 ]
+ [0.6273543 ]
+ [0.62771416]
+ [0.6178839 ]
+ [0.6200199 ]
+ [0.6220759 ]] 
+
+run_time(sec): 0.057904958724975586 - rows: 64 - inference_thru: 1105.2594010812325
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s unload all the models.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+<span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens_nvt&quot;</span><span class="p">)</span>
+<span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens_tf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/movielens/unload, headers None
+{&quot;parameters&quot;:{&quot;unload_dependents&quot;:false}}
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
+Loaded model &#39;movielens&#39;
+POST /v2/repository/models/movielens_nvt/unload, headers None
+{&quot;parameters&quot;:{&quot;unload_dependents&quot;:false}}
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
+Loaded model &#39;movielens_nvt&#39;
+POST /v2/repository/models/movielens_tf/unload, headers None
+{&quot;parameters&quot;:{&quot;unload_dependents&quot;:false}}
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
+Loaded model &#39;movielens_tf&#39;
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="04-Triton-Inference-with-HugeCTR.html" class="btn btn-neutral float-left" title="Getting Started MovieLens: Serving a HugeCTR Model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../advanced-ops-outbrain/index.html" class="btn btn-neutral float-right" title="Advanced Ops with Outbrain" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="04-Triton-Inference-with-TF.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

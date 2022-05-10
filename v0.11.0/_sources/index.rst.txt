@@ -1,24 +1,28 @@
-.. NVTabular documentation master file, created by
-   sphinx-quickstart on Tue Mar 17 19:39:13 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Merlin NVTabular
+================
 
-Welcome to NVTabular's documentation!
-=====================================
+The Merlin NVTabular library provides feature engineering and preprocessing for tabular data.
+The library enables you to manipulate datasets easily for training deep-learning recommender systems.
 
-.. toctree::
-   :maxdepth: 3
+To learn more, start with the `Introduction <Introduction.html>`_.
 
-   Introduction <Introduction>
-   Core Features <core_features>
-   Accelerated Training <training/index>
-   Examples <examples/index>
-   API Documentation <api/index>
-   Additional Resources <resources/index>
+Related Resources
+-----------------
 
-Indices and tables
-==================
+Merlin NVTabular GitHub Repository
+  `<https://github.com/NVIDIA-Merlin/NVTabular>`_
+
+About Merlin
+  Merlin is the overarching project that brings together the Merlin projects.
+  See the `documentation <https://nvidia-merlin.github.io/Merlin/main/README.html>`_
+  or the `repository <https://github.com/NVIDIA-Merlin/Merlin>`_ on GitHub.
+
+Developer website for Merlin
+  More information about Merlin is available at our developer website:
+  `<https://developer.nvidia.com/nvidia-merlin>`_.
+
+Index
+-----
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`

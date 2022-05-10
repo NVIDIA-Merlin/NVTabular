@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.groupby &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -132,13 +139,16 @@
 <span class="sd">        String separator to use for new column names.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aggs</span><span class="o">=</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aggs</span><span class="o">=</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span> <span class="o">=</span> <span class="n">groupby_cols</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span> <span class="o">=</span> <span class="n">sort_cols</span> <span class="ow">or</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ascending</span> <span class="o">=</span> <span class="n">ascending</span>
 
         <span class="c1"># Split aggregations into &quot;conventional&quot; aggregations</span>
         <span class="c1"># and &quot;list-based&quot; aggregations.  After this block,</span>
@@ -171,7 +181,7 @@
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="c1"># Sort if necessary</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">:</span>
-            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ascending</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># List aggregations do not work with empty data.</span>
         <span class="c1"># Use synthetic metadata to predict output columns.</span>
@@ -185,7 +195,14 @@
         <span class="p">)</span>
 
         <span class="c1"># Apply aggregations</span>
-        <span class="n">new_df</span> <span class="o">=</span> <span class="n">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+        <span class="n">new_df</span> <span class="o">=</span> <span class="n">_apply_aggs</span><span class="p">(</span>
+            <span class="n">_df</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">,</span>
+            <span class="n">_list_aggs</span><span class="p">,</span>
+            <span class="n">_conv_aggs</span><span class="p">,</span>
+            <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">,</span>
+            <span class="n">ascending</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ascending</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">empty_df</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">new_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">0</span><span class="p">]</span>
@@ -265,7 +282,7 @@
     <span class="k">return</span> <span class="n">_agg_cols</span>
 
 
-<span class="k">def</span> <span class="nf">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 
     <span class="c1"># Apply conventional aggs</span>
     <span class="n">_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">groupby_cols</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">))</span>
@@ -279,7 +296,9 @@
     <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">aggs</span> <span class="ow">in</span> <span class="n">_list_aggs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">_agg</span> <span class="ow">in</span> <span class="n">aggs</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">is_list_agg</span><span class="p">(</span><span class="n">_agg</span><span class="p">,</span> <span class="n">custom</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-                <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">_agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_first_or_last</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}</span><span class="s2">list&quot;</span><span class="p">],</span> <span class="n">_agg</span><span class="p">)</span>
+                <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">_agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_first_or_last</span><span class="p">(</span>
+                    <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}{</span><span class="n">name_sep</span><span class="si">}</span><span class="s2">list&quot;</span><span class="p">],</span> <span class="n">_agg</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="n">ascending</span>
+                <span class="p">)</span>
         <span class="k">if</span> <span class="s2">&quot;list&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">aggs</span><span class="p">:</span>
             <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">col</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name_sep</span><span class="si">}</span><span class="s2">list&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -318,9 +337,14 @@
         <span class="k">return</span> <span class="n">agg</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="s2">&quot;last&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_first_or_last</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kind</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_first_or_last</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="c1"># Redirect to _first or _last</span>
-    <span class="k">return</span> <span class="n">_first</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;first&quot;</span> <span class="k">else</span> <span class="n">_last</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;first&quot;</span> <span class="ow">and</span> <span class="n">ascending</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_first</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;last&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ascending</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_first</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_last</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_first</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
@@ -381,10 +405,10 @@
       <dt>Tags</dt>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="groupby.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

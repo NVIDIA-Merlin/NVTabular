@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,13 +14,15 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="NVTabular demo on Rossmann data - TensorFlow" href="03-Training-with-TF.html" />
+    <link rel="next" title="NVTabular demo on Rossmann data - FastAI" href="03-Training-with-FastAI.html" />
     <link rel="prev" title="Preprocessing the Rossmann Store Sales Dataset" href="01-Download-Convert.html" /> 
 </head>
 
@@ -37,27 +41,28 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with Movielens</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Applying Techniques to Rossmann Stores Data</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Preprocessing the Rossmann Store Sales Dataset</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">NVTabular demo on Rossmann data - FastAI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">NVTabular demo on Rossmann data - TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">NVTabular demo on Rossmann data - PyTorch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="index.html">Tabular Data with Rossmann</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">ETL with NVTabular</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#Overview">Overview</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#Preparing-our-dataset">Preparing our dataset</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Training with TensorFlow</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">Training with PyTorch</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">Training with FastAI</a></li>
-</ul>
-</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
@@ -78,7 +83,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Examples</a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
           <li><a href="index.html">Applying the Techniques to other Tabular Problems with Rossmann</a> &raquo;</li>
       <li>NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing</li>
       <li class="wy-breadcrumbs-aside">
@@ -89,281 +94,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS for nbsphinx extension */
-
-/* remove conflicting styling from Sphinx themes */
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt *,
-div.nbinput.container div.input_area pre,
-div.nboutput.container div.output_area pre,
-div.nbinput.container div.input_area .highlight,
-div.nboutput.container div.output_area .highlight {
-    border: none;
-    padding: 0;
-    margin: 0;
-    box-shadow: none;
-}
-
-div.nbinput.container > div[class*=highlight],
-div.nboutput.container > div[class*=highlight] {
-    margin: 0;
-}
-
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt * {
-    background: none;
-}
-
-div.nboutput.container div.output_area .highlight,
-div.nboutput.container div.output_area pre {
-    background: unset;
-}
-
-div.nboutput.container div.output_area div.highlight {
-    color: unset;  /* override Pygments text color */
-}
-
-/* avoid gaps between output lines */
-div.nboutput.container div[class*=highlight] pre {
-    line-height: normal;
-}
-
-/* input/output containers */
-div.nbinput.container,
-div.nboutput.container {
-    display: -webkit-flex;
-    display: flex;
-    align-items: flex-start;
-    margin: 0;
-    width: 100%;
-}
-@media (max-width: 540px) {
-    div.nbinput.container,
-    div.nboutput.container {
-        flex-direction: column;
-    }
-}
-
-/* input container */
-div.nbinput.container {
-    padding-top: 5px;
-}
-
-/* last container */
-div.nblast.container {
-    padding-bottom: 5px;
-}
-
-/* input prompt */
-div.nbinput.container div.prompt pre {
-    color: #307FC1;
-}
-
-/* output prompt */
-div.nboutput.container div.prompt pre {
-    color: #BF5B3D;
-}
-
-/* all prompts */
-div.nbinput.container div.prompt,
-div.nboutput.container div.prompt {
-    width: 4.5ex;
-    padding-top: 5px;
-    position: relative;
-    user-select: none;
-}
-
-div.nbinput.container div.prompt > div,
-div.nboutput.container div.prompt > div {
-    position: absolute;
-    right: 0;
-    margin-right: 0.3ex;
-}
-
-@media (max-width: 540px) {
-    div.nbinput.container div.prompt,
-    div.nboutput.container div.prompt {
-        width: unset;
-        text-align: left;
-        padding: 0.4em;
-    }
-    div.nboutput.container div.prompt.empty {
-        padding: 0;
-    }
-
-    div.nbinput.container div.prompt > div,
-    div.nboutput.container div.prompt > div {
-        position: unset;
-    }
-}
-
-/* disable scrollbars on prompts */
-div.nbinput.container div.prompt pre,
-div.nboutput.container div.prompt pre {
-    overflow: hidden;
-}
-
-/* input/output area */
-div.nbinput.container div.input_area,
-div.nboutput.container div.output_area {
-    -webkit-flex: 1;
-    flex: 1;
-    overflow: auto;
-}
-@media (max-width: 540px) {
-    div.nbinput.container div.input_area,
-    div.nboutput.container div.output_area {
-        width: 100%;
-    }
-}
-
-/* input area */
-div.nbinput.container div.input_area {
-    border: 1px solid #e0e0e0;
-    border-radius: 2px;
-    /*background: #f5f5f5;*/
-}
-
-/* override MathJax center alignment in output cells */
-div.nboutput.container div[class*=MathJax] {
-    text-align: left !important;
-}
-
-/* override sphinx.ext.imgmath center alignment in output cells */
-div.nboutput.container div.math p {
-    text-align: left;
-}
-
-/* standard error */
-div.nboutput.container div.output_area.stderr {
-    background: #fdd;
-}
-
-/* ANSI colors */
-.ansi-black-fg { color: #3E424D; }
-.ansi-black-bg { background-color: #3E424D; }
-.ansi-black-intense-fg { color: #282C36; }
-.ansi-black-intense-bg { background-color: #282C36; }
-.ansi-red-fg { color: #E75C58; }
-.ansi-red-bg { background-color: #E75C58; }
-.ansi-red-intense-fg { color: #B22B31; }
-.ansi-red-intense-bg { background-color: #B22B31; }
-.ansi-green-fg { color: #00A250; }
-.ansi-green-bg { background-color: #00A250; }
-.ansi-green-intense-fg { color: #007427; }
-.ansi-green-intense-bg { background-color: #007427; }
-.ansi-yellow-fg { color: #DDB62B; }
-.ansi-yellow-bg { background-color: #DDB62B; }
-.ansi-yellow-intense-fg { color: #B27D12; }
-.ansi-yellow-intense-bg { background-color: #B27D12; }
-.ansi-blue-fg { color: #208FFB; }
-.ansi-blue-bg { background-color: #208FFB; }
-.ansi-blue-intense-fg { color: #0065CA; }
-.ansi-blue-intense-bg { background-color: #0065CA; }
-.ansi-magenta-fg { color: #D160C4; }
-.ansi-magenta-bg { background-color: #D160C4; }
-.ansi-magenta-intense-fg { color: #A03196; }
-.ansi-magenta-intense-bg { background-color: #A03196; }
-.ansi-cyan-fg { color: #60C6C8; }
-.ansi-cyan-bg { background-color: #60C6C8; }
-.ansi-cyan-intense-fg { color: #258F8F; }
-.ansi-cyan-intense-bg { background-color: #258F8F; }
-.ansi-white-fg { color: #C5C1B4; }
-.ansi-white-bg { background-color: #C5C1B4; }
-.ansi-white-intense-fg { color: #A1A6B2; }
-.ansi-white-intense-bg { background-color: #A1A6B2; }
-
-.ansi-default-inverse-fg { color: #FFFFFF; }
-.ansi-default-inverse-bg { background-color: #000000; }
-
-.ansi-bold { font-weight: bold; }
-.ansi-underline { text-decoration: underline; }
-
-
-div.nbinput.container div.input_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight].math,
-div.nboutput.container div.output_area.rendered_html,
-div.nboutput.container div.output_area > div.output_javascript,
-div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 5px;
-    margin: 0;
-}
-
-/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
-div.nbinput.container div.input_area > div[class^='highlight'],
-div.nboutput.container div.output_area > div[class^='highlight']{
-    overflow-y: hidden;
-}
-
-/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
-.prompt .copybtn {
-    display: none;
-}
-
-/* Some additional styling taken form the Jupyter notebook CSS */
-div.rendered_html table {
-  border: none;
-  border-collapse: collapse;
-  border-spacing: 0;
-  color: black;
-  font-size: 12px;
-  table-layout: fixed;
-}
-div.rendered_html thead {
-  border-bottom: 1px solid black;
-  vertical-align: bottom;
-}
-div.rendered_html tr,
-div.rendered_html th,
-div.rendered_html td {
-  text-align: right;
-  vertical-align: middle;
-  padding: 0.5em 0.5em;
-  line-height: normal;
-  white-space: normal;
-  max-width: none;
-  border: none;
-}
-div.rendered_html th {
-  font-weight: bold;
-}
-div.rendered_html tbody tr:nth-child(odd) {
-  background: #f5f5f5;
-}
-div.rendered_html tbody tr:hover {
-  background: rgba(66, 165, 245, 0.2);
-}
-
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
 <span class="c1"># you may not use this file except in compliance with the License.</span>
@@ -380,23 +113,20 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<p><img alt="0cd5c51771a74908a04cf5c835fa1b20" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" /></p>
-<div class="section" id="NVTabular-demo-on-Rossmann-data---Feature-Engineering-&amp;-Preprocessing">
-<h1>NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing<a class="headerlink" href="#NVTabular-demo-on-Rossmann-data---Feature-Engineering-&-Preprocessing" title="Permalink to this headline"></a></h1>
-<div class="section" id="Overview">
-<h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
-<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.</p>
-<div class="section" id="Learning-objectives">
-<h3>Learning objectives<a class="headerlink" href="#Learning-objectives" title="Permalink to this headline"></a></h3>
-<p>This notebook demonstrates the steps for carrying out data preprocessing, transformation and loading with NVTabular on the Kaggle Rossmann <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales/overview">dataset</a>. Rossmann operates over 3,000 drug stores in 7 European countries. Historical sales data for 1,115 Rossmann stores are provided. The task is to forecast the “Sales” column for the test set.</p>
-<p>The following example will illustrate how to use NVTabular to preprocess and feature engineer the data for further training deep learning models. We provide notebooks for training neural networks in <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/03a-Training-with-TF.ipynb">TensorFlow</a>,
-<a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/03b-Training-with-PyTorch.ipynb">PyTorch</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/04-Training-with-FastAI.ipynb">FastAI</a>. We’ll use a <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/lesson6-rossmann.ipynb">dataset built by FastAI</a> for solving the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Kaggle Rossmann Store Sales
-competition</a>. Some cuDF preprocessing is required to build the appropriate feature set, so make sure to run <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb">01-Download-Convert.ipynb</a> first before going through this notebook.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-rossmann-data-feature-engineering-preprocessing">
+<h1>NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing<a class="headerlink" href="#nvtabular-demo-on-rossmann-data-feature-engineering-preprocessing" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.</p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>This notebook demonstrates the steps for carrying out data preprocessing, transformation and loading with NVTabular on the Kaggle Rossmann <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales/overview">dataset</a>.  Rossmann operates over 3,000 drug stores in 7 European countries. Historical sales data for 1,115 Rossmann stores are provided. The task is to forecast the “Sales” column for the test set.</p>
+<p>The following example will illustrate how to use NVTabular to preprocess and feature engineer the data for further training deep learning models. We provide notebooks for training neural networks in <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/03a-Training-with-TF.ipynb">TensorFlow</a>, <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/03b-Training-with-PyTorch.ipynb">PyTorch</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/04-Training-with-FastAI.ipynb">FastAI</a>. We’ll use a <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/lesson6-rossmann.ipynb">dataset built by FastAI</a> for solving the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Kaggle Rossmann Store Sales competition</a>. Some cuDF preprocessing is required to build the appropriate feature set, so make sure to run <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb">01-Download-Convert.ipynb</a> first before going through this notebook.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
 
@@ -406,14 +136,14 @@ competition</a>. Some cuDF preprocessing is required to build the appropriate fe
 </div>
 </div>
 </div>
-<div class="section" id="Preparing-our-dataset">
-<h2>Preparing our dataset<a class="headerlink" href="#Preparing-our-dataset" title="Permalink to this headline"></a></h2>
-<p>Let’s start by defining some of the a priori information about our data, including its schema (what columns to use and what sorts of variables they represent), as well as the location of the files corresponding to some particular sampling from this schema. Note that throughout, I’ll use UPPERCASE variables to represent this sort of a priori information that you might usually encode using commandline arguments or config files. We use the data schema to define our pipeline.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+<div class="section" id="preparing-our-dataset">
+<h2>Preparing our dataset<a class="headerlink" href="#preparing-our-dataset" title="Permalink to this headline"></a></h2>
+<p>Let’s start by defining some of the a priori information about our data, including its schema (what columns to use and what sorts of variables they represent), as well as the location of the files corresponding to some particular sampling from this schema. Note that throughout, I’ll use UPPERCASE variables to represent this sort of a priori information that you might usually encode using commandline arguments or config files.<br><br>
+We use the data schema to define our pipeline.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/data/&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 
@@ -466,66 +196,58 @@ competition</a>. Some cuDF preprocessing is required to build the appropriate fe
 </pre></div>
 </div>
 </div>
+</div>
 <p>What files are available to train on in our data directory?</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span> ls <span class="nv">$DATA_DIR</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span> ls <span class="nv">$DATA_DIR</span>
-</pre></div>
 </div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-output.csv                test.csv                          valid.csv
-ross_pre                  test_inference_rossmann_data.csv  workflow
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>output.csv		  test.csv			    valid.csv
+ross_pre		  test_inference_rossmann_data.csv  workflow
 rossmann_predictions.csv  train.csv
-</pre></div></div>
+</pre></div>
+</div>
+</div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">train.csv</span></code> and <code class="docutils literal notranslate"><span class="pre">valid.csv</span></code> seem like good candidates, let’s use those.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.csv&quot;</span><span class="p">)</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.csv&quot;</span><span class="p">)</span>
 <span class="n">VALID_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.csv&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="section" id="Defining-our-Data-Pipeline">
-<h3>Defining our Data Pipeline<a class="headerlink" href="#Defining-our-Data-Pipeline" title="Permalink to this headline"></a></h3>
-<p>The first step is to define the feature engineering and preprocessing pipeline. NVTabular has already implemented multiple calculations, called <code class="docutils literal notranslate"><span class="pre">ops</span></code>. An <code class="docutils literal notranslate"><span class="pre">op</span></code> can be applied to a <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code> from an overloaded <code class="docutils literal notranslate"><span class="pre">&gt;&gt;</span></code> operator, which in turn returns a new <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code>. A <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code> is a list of column names as text. <strong>Example:</strong> features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt;&gt; <em>&lt;op2&gt;</em> &gt;&gt; …</p>
-<p>This may sounds more complicated as it is. Let’s define our first pipeline for the Rossmann dataset. We need to categorify the categorical input features. This converts the categorical values of a feature into continuous integers (0, …, |C|), which is required by an embedding layer of a neural network.</p>
+</div>
+<div class="section" id="defining-our-data-pipeline">
+<h3>Defining our Data Pipeline<a class="headerlink" href="#defining-our-data-pipeline" title="Permalink to this headline"></a></h3>
+<p>The first step is to define the feature engineering and preprocessing pipeline.<br><br>
+NVTabular has already implemented multiple calculations, called <code class="docutils literal notranslate"><span class="pre">ops</span></code>. An <code class="docutils literal notranslate"><span class="pre">op</span></code> can be applied to a <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code> from an overloaded <code class="docutils literal notranslate"><span class="pre">&gt;&gt;</span></code> operator, which in turn returns a new <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code>. A <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code> is a list of column names as text.<br><br>
+<strong>Example:</strong><br>
+features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt;&gt; <em>&lt;op2&gt;</em> &gt;&gt; …</p>
+<p>This may sounds more complicated as it is. Let’s define our first pipeline for the Rossmann dataset. <br><br>We need to categorify the categorical input features. This converts the categorical values of a feature into continuous integers (0, …, |C|), which is required by an embedding layer of a neural network.</p>
 <ul class="simple">
 <li><p>Initial <code class="docutils literal notranslate"><span class="pre">ColumnGroup</span></code> is <code class="docutils literal notranslate"><span class="pre">CATEGORICAL_COLUMNS</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Op</span></code> is <code class="docutils literal notranslate"><span class="pre">Categorify</span></code></p></li>
 </ul>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
-</pre></div>
 </div>
 </div>
 <p>We can visualize the calculation with <code class="docutils literal notranslate"><span class="pre">graphviz</span></code>.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
-</pre></div>
 </div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<img alt="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_13_0.svg" src="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_13_0.svg" /></div>
+<div class="cell_output docutils container">
+<img alt="../../_images/02-ETL-with-NVTabular_13_01.svg" src="../../_images/02-ETL-with-NVTabular_13_01.svg" /></div>
 </div>
 <p>Our next step is to process the continuous columns. We want to fill in missing values and normalize the continuous features with mean=0 and std=1.</p>
 <ul class="simple">
@@ -533,101 +255,76 @@ rossmann_predictions.csv  train.csv
 <li><p>First <code class="docutils literal notranslate"><span class="pre">Op</span></code> is <code class="docutils literal notranslate"><span class="pre">FillMissing</span></code></p></li>
 <li><p>Second <code class="docutils literal notranslate"><span class="pre">Op</span></code> is <code class="docutils literal notranslate"><span class="pre">Normalize</span></code></p></li>
 </ul>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cont_features</span> <span class="o">=</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cont_features</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cont_features</span> <span class="o">=</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cont_features</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
-<div class="output_area docutils container">
-<img alt="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_16_0.svg" src="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_16_0.svg" /></div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/02-ETL-with-NVTabular_16_0.svg" src="../../_images/02-ETL-with-NVTabular_16_0.svg" /></div>
 </div>
 <p>Finally, we need to apply the LogOp to the label/target column.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_feature</span> <span class="o">=</span> <span class="n">LABEL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">LogOp</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_feature</span> <span class="o">=</span> <span class="n">LABEL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">LogOp</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
-<div class="output_area docutils container">
-<img alt="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_19_0.svg" src="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_19_0.svg" /></div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/02-ETL-with-NVTabular_19_0.svg" src="../../_images/02-ETL-with-NVTabular_19_0.svg" /></div>
 </div>
 <p>We can visualize the full workflow by concatenating the output <code class="docutils literal notranslate"><span class="pre">ColumnGroups</span></code>.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
-</pre></div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../_images/02-ETL-with-NVTabular_21_0.svg" src="../../_images/02-ETL-with-NVTabular_21_0.svg" /></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<img alt="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_21_0.svg" src="../../_images/examples_tabular-data-rossmann_02-ETL-with-NVTabular_21_0.svg" /></div>
-</div>
-</div>
-<div class="section" id="Workflow">
-<h3>Workflow<a class="headerlink" href="#Workflow" title="Permalink to this headline"></a></h3>
+<div class="section" id="workflow">
+<h3>Workflow<a class="headerlink" href="#workflow" title="Permalink to this headline"></a></h3>
 <p>A NVTabular <code class="docutils literal notranslate"><span class="pre">workflow</span></code> orchastrates the pipelines. We initialize the NVTabular <code class="docutils literal notranslate"><span class="pre">workflow</span></code> with the output <code class="docutils literal notranslate"><span class="pre">ColumnGroups</span></code>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span>
-</pre></div>
 </div>
 </div>
 </div>
-<div class="section" id="Datasets">
-<h3>Datasets<a class="headerlink" href="#Datasets" title="Permalink to this headline"></a></h3>
+<div class="section" id="datasets">
+<h3>Datasets<a class="headerlink" href="#datasets" title="Permalink to this headline"></a></h3>
 <p>In general, the <code class="docutils literal notranslate"><span class="pre">Op</span></code>s in our <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> will require measurements of statistical properties of our data in order to be leveraged. For example, the <code class="docutils literal notranslate"><span class="pre">Normalize</span></code> op requires measurements of the dataset mean and standard deviation, and the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op requires an accounting of all the categories a particular feature can manifest. However, we frequently need to measure these properties across datasets which are too large to fit into GPU memory (or CPU memory for that matter) at once.</p>
-<p>NVTabular solves this by providing the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> class, which breaks a set of parquet or csv files into into a collection of <code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code> chunks that can fit in device memory. Under the hood, the data decomposition corresponds to the construction of a <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">dask_cudf.DataFrame</a> object. By representing our dataset as a lazily-evaluated <a class="reference external" href="https://dask.org/">Dask</a> collection, we can handle the calculation of complex global statistics
-(and later, can also iterate over the partitions while feeding data into a neural network).</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATH</span><span class="p">)</span>
+<p>NVTabular solves this by providing the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> class, which breaks a set of parquet or csv files into into a collection of <code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code> chunks that can fit in device memory.  Under the hood, the data decomposition corresponds to the construction of a <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">dask_cudf.DataFrame</a> object.  By representing our dataset as a lazily-evaluated <a class="reference external" href="https://dask.org/">Dask</a> collection, we can handle the calculation of complex global statistics (and later, can also iterate over the partitions while feeding data into a neural network).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATH</span><span class="p">)</span>
 <span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">VALID_PATH</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ross_pre/&quot;</span><span class="p">)</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ross_pre/&quot;</span><span class="p">)</span>
 <span class="n">PREPROCESS_DIR_TRAIN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">)</span>
 <span class="n">PREPROCESS_DIR_VALID</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">)</span>
 
@@ -637,54 +334,45 @@ rossmann_predictions.csv  train.csv
 </pre></div>
 </div>
 </div>
+</div>
 <p>Now that we have our datasets, we’ll apply our <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> to them and save the results out to parquet files for fast reading at train time. Similar to the <code class="docutils literal notranslate"><span class="pre">scikit</span> <span class="pre">learn</span></code> API, we collect the statistics of our train dataset with <code class="docutils literal notranslate"><span class="pre">.fit</span></code>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
-</pre></div>
 </div>
 </div>
 <p>We apply and transform our dataset with <code class="docutils literal notranslate"><span class="pre">.transform</span></code> and persist it to disk with <code class="docutils literal notranslate"><span class="pre">.to_parquet</span></code>. We want to shuffle our train dataset before storing to disk to provide more randomness during our deep learning training.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">)</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">)</span>
 <span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
+</div>
 <p>Then, we save the workflow to be used by the Triton export functions for inference.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
-</pre></div>
 </div>
 </div>
 </div>
-<div class="section" id="Finalize-embedding-tables">
-<h3>Finalize embedding tables<a class="headerlink" href="#Finalize-embedding-tables" title="Permalink to this headline"></a></h3>
+<div class="section" id="finalize-embedding-tables">
+<h3>Finalize embedding tables<a class="headerlink" href="#finalize-embedding-tables" title="Permalink to this headline"></a></h3>
 <p>In the next steps, we will train a deep learning model with either TensorFlow, PyTorch or FastAI. Our training pipeline requires information about the data schema to define the neural network architecture. In addition, we store the embedding tables structure.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
 <span class="n">EMBEDDING_TABLE_SHAPES</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-{&#39;Assortment&#39;: (4, 16),
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;Assortment&#39;: (4, 16),
  &#39;CompetitionMonthsOpen&#39;: (26, 16),
  &#39;CompetitionOpenSinceYear&#39;: (24, 16),
  &#39;Day&#39;: (32, 16),
@@ -706,13 +394,13 @@ rossmann_predictions.csv  train.csv
  &#39;StoreType&#39;: (5, 16),
  &#39;Week&#39;: (53, 16),
  &#39;Year&#39;: (4, 16)}
-</pre></div></div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
     <span class="p">{</span>
         <span class="s2">&quot;EMBEDDING_TABLE_SHAPES&quot;</span><span class="p">:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">,</span>
         <span class="s2">&quot;CATEGORICAL_COLUMNS&quot;</span><span class="p">:</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
@@ -724,21 +412,18 @@ rossmann_predictions.csv  train.csv
 </pre></div>
 </div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR</span>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>stats.json  train  valid
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-stats.json  train  valid
-</pre></div></div>
 </div>
 </div>
 </div>
@@ -749,7 +434,7 @@ stats.json  train  valid
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="01-Download-Convert.html" class="btn btn-neutral float-left" title="Preprocessing the Rossmann Store Sales Dataset" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="03-Training-with-TF.html" class="btn btn-neutral float-right" title="NVTabular demo on Rossmann data - TensorFlow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="03-Training-with-FastAI.html" class="btn btn-neutral float-right" title="NVTabular demo on Rossmann data - FastAI" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
@@ -780,10 +465,10 @@ stats.json  train  valid
       <dt>Tags</dt>
       <dd><a href="02-ETL-with-NVTabular.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-GPU Scaling in NVTabular with Dask &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="NVTabular demo on RecSys2020 Challenge" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" />
+    <link rel="prev" title="Multi-GPU with MovieLens: ETL and Training" href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html">Multi-GPU with MovieLens: ETL and Training</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html">Multi-GPU with MovieLens: ETL and Training</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Multi-GPU Scaling in NVTabular with Dask</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a> &raquo;</li>
+      <li>Multi-GPU Scaling in NVTabular with Dask</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="tex2jax_ignore mathjax_ignore section" id="multi-gpu-scaling-in-nvtabular-with-dask">
+<h1>Multi-GPU Scaling in NVTabular with Dask<a class="headerlink" href="#multi-gpu-scaling-in-nvtabular-with-dask" title="Permalink to this headline"></a></h1>
+<div class="section" id="nvtabular-dask-integration">
+<h2>NVTabular + Dask Integration<a class="headerlink" href="#nvtabular-dask-integration" title="Permalink to this headline"></a></h2>
+<p>NVTabular enables the use of <a class="reference external" href="https://dask.org/">Dask</a> for multi-GPU parallelism, which integrates the following classes with the <a class="reference external" href="https://rapids.ai/">RAPIDS</a> Dask-CuDF library:</p>
+<ul class="simple">
+<li><p><strong>nvtabular.Dataset</strong>: Most NVTabular functionality requires the raw data to be converted to a Dataset object. The conversion is very inexpensive, as it requires minimal IO (if any at all).  A Dataset can be initialized using file/directory paths (“csv” or “parquet”), a PyArrow Table, a Pandas/CuDF DataFrame, or a Pandas/CuDF-based <em>Dask</em> DataFrame.  The purpose of this “wrapper” class is to provide other NVTabular components with reliable mechanisms to (1) translate the target data into a Dask collection, and to (2) iterate over the target data in small-enough chunks to fit comfortably in GPU memory.</p></li>
+<li><p><strong>nvtabular.Workflow</strong>: This is the central class used in NVTabular to compose a GPU-accelerated preprocessing pipeline.  The Workflow class now tracks the state of the underlying data by applying all operations to an internal Dask-CuDF DataFrame object (<code class="docutils literal notranslate"><span class="pre">ddf</span></code>).</p></li>
+<li><p><strong>nvtabular.ops.StatOperator</strong>: All “statistics-gathering” operations must be designed to operate directly on the Workflow object’s internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code>.  This requirement facilitates the ability of NVTabular to handle the calculation of global statistics in a scalable way.</p></li>
+</ul>
+<p><strong>Big Picture</strong>:  NVTabular is tightly integrated with Dask-CuDF. By representing the underlying dataset as a (lazily-evaluated) collection of CuDF DataFrame objects (i.e. a single <code class="docutils literal notranslate"><span class="pre">dask_cudf.DataFrame</span></code>), we can seamlessly scale our preprocessing workflow to multiple GPUs.</p>
+</div>
+<div class="section" id="simple-multi-gpu-toy-example">
+<h2>Simple Multi-GPU Toy Example<a class="headerlink" href="#simple-multi-gpu-toy-example" title="Permalink to this headline"></a></h2>
+<p>In order to illustrate the Dask-CuDF-based functionality of NVTabular, we will walk through a simple preprocessing example using <em>toy</em> data.</p>
+<div class="section" id="resolving-memory-errors">
+<h3>Resolving Memory Errors<a class="headerlink" href="#resolving-memory-errors" title="Permalink to this headline"></a></h3>
+<p>This notebook was developed on a DGX-1 system (8 V100 GPUs with 1TB host memory). Users with limited device and/or host memory (less than 16GB on device, and less than 32GB on host) may need to modify one or more of the default options. Here are the best places to start:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">device_memory_limit</span></code>: Reduce the memory limit for workers in your cluster. This setting may need to be much lower than the actual memory capacity of your device.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">part_mem_fraction</span></code>: Reduce the partition size of your Dataset. Smaller partition sizes enable better control over memory spilling on the workers (but reduces compute efficiency).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">out_files_per_proc</span></code>: Increase the number of output files per worker. The worker must be able to shuffle each output file in device memory for the per-worker shuffling algorithm.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shuffle</span></code>: Change the shuffling option to <code class="docutils literal notranslate"><span class="pre">Shuffle.PER_PARTITION</span></code> in <code class="docutils literal notranslate"><span class="pre">workflow.apply</span></code>. The default (per-worker) option currently requires the entire output dataset to fit in host memory.</p></li>
+</ul>
+</div>
+<div class="section" id="step-1-import-libraries-and-cleanup-working-directories">
+<h3>Step 1: Import Libraries and Cleanup Working Directories<a class="headerlink" href="#step-1-import-libraries-and-cleanup-working-directories" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard Libraries</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="c1"># External Dependencies</span>
+<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="kn">import</span> <span class="nn">cudf</span>
+<span class="kn">import</span> <span class="nn">dask_cudf</span>
+<span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">delayed</span>
+<span class="kn">import</span> <span class="nn">rmm</span>
+
+<span class="c1"># NVTabular</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">import</span> <span class="nn">nvtabular.ops</span> <span class="k">as</span> <span class="nn">ops</span>
+<span class="kn">from</span> <span class="nn">nvtabular.io</span> <span class="kn">import</span> <span class="n">Shuffle</span>
+<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Note that it is often a good idea to set-aside (fast) dedicated disk space for Dask “workers” to spill data and write logging information. To make things simple, we will perform all IO within a single <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code> for this example. Make sure to reset this environment variable as desired.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Choose a &quot;fast&quot; root directory for this example</span>
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./basedir&quot;</span><span class="p">)</span>
+
+<span class="c1"># Define and clean our worker/output directories</span>
+<span class="n">dask_workdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">)</span>
+<span class="n">demo_output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;demo_output&quot;</span><span class="p">)</span>
+<span class="n">demo_dataset_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;demo_dataset&quot;</span><span class="p">)</span>
+
+<span class="c1"># Ensure BASE_DIR exists</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean worker space for Dask</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean output path</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">)</span>
+
+<span class="c1"># Get device memory capacity</span>
+<span class="n">capacity</span> <span class="o">=</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="step-2-deploy-a-distributed-dask-cluster">
+<h3>Step 2: Deploy a Distributed-Dask Cluster<a class="headerlink" href="#step-2-deploy-a-distributed-dask-cluster" title="Permalink to this headline"></a></h3>
+<p>Before we walk through the rest of this multi-GPU preprocessing example, it is important to reiterate that Dask-CuDF is used extensively within NVTabular. This essentially means that you do <strong>not</strong> need to do anything special to <em>use</em> Dask here. With that said, the default behavior of NVTabular is to to utilize Dask’s <a class="reference external" href="https://docs.dask.org/en/latest/scheduling.html">“synchronous”</a> task scheduler, which precludes distributed processing. In order to properly utilize a multi-GPU system, you need to deploy a <code class="docutils literal notranslate"><span class="pre">dask.distributed</span></code> <em>cluster</em>.</p>
+<p>There are many different ways to create a distributed Dask cluster. This notebook will focus only on the <code class="docutils literal notranslate"><span class="pre">LocalCUDACluster</span></code> API, which is provided by the RAPIDS <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-CUDA</a> library. It is also recommended that you check out <a class="reference external" href="https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters">this blog article</a> to see a high-level summary of the many other cluster-deployment utilities.</p>
+<p>For this example, we will assume that you want to perform preprocessing on a single machine with multiple GPUs. In this case, we can use <code class="docutils literal notranslate"><span class="pre">dask_cuda.LocalCUDACluster</span></code> to deploy a distributed cluster with each worker process being pinned to a distinct GPU. This class also provides our workers with mechanisms for device-to-host memory spilling (explained below), and (optionally) enables the use of NVLink and infiniband-based inter-process communication via UCX.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy a Single-Machine Multi-GPU Cluster</span>
+<span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;tcp&quot;</span>  <span class="c1"># &quot;tcp&quot; or &quot;ucx&quot;</span>
+<span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;0,1,2,3&quot;</span>  <span class="c1"># Delect devices to place workers</span>
+<span class="n">device_spill_frac</span> <span class="o">=</span> <span class="mf">0.9</span>  <span class="c1"># Spill GPU-Worker memory to host at this limit.</span>
+<span class="c1"># Reduce if spilling fails to prevent</span>
+<span class="c1"># device memory errors.</span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># (Optional) Specify existing scheduler port</span>
+<span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span>
+        <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
+        <span class="n">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="n">visible_devices</span><span class="p">,</span>
+        <span class="n">local_directory</span><span class="o">=</span><span class="n">dask_workdir</span><span class="p">,</span>
+        <span class="n">device_memory_limit</span><span class="o">=</span><span class="n">capacity</span> <span class="o">*</span> <span class="n">device_spill_frac</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="c1"># Create the distributed client</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="n">client</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><table style="border: 2px solid white;">
+<tr>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Client</h3>
+<ul style="text-align: left; list-style: none; margin: 0; padding: 0;">
+  <li><b>Scheduler: </b>tcp://127.0.0.1:39937</li>
+  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>
+</ul>
+</td>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Cluster</h3>
+<ul style="text-align: left; list-style:none; margin: 0; padding: 0;">
+  <li><b>Workers: </b>4</li>
+  <li><b>Cores: </b>4</li>
+  <li><b>Memory: </b>1.08 TB</li>
+</ul>
+</td>
+</tr>
+</table></div></div>
+</div>
+<div class="section" id="the-dask-diagnostics-dashboard">
+<h4>The Dask Diagnostics Dashboard<a class="headerlink" href="#the-dask-diagnostics-dashboard" title="Permalink to this headline"></a></h4>
+<p>If you created a new distributed cluster in the previous cell, the output should specify the address of a <a class="reference external" href="https://docs.dask.org/en/latest/diagnostics-distributed.html">diagnostics dashboard</a> (e.g. <strong>Dashboard</strong>: <a class="reference external" href="http://IP:8787/status">http://IP:8787/status</a>). You can also run <code class="docutils literal notranslate"><span class="pre">client.dashboard_link</span></code> to get the same information. If you have <a class="reference external" href="https://bokeh.org/">Bokeh</a> installed in your environment, the scheduler will create this dashboard by default. If you click on the link, or paste the url in a web browser, you will see a page that looks something like the figure below. Note that you may need to update the IP address in the link if you are working on a remote machine.</p>
+<p><img alt="dask-dashboard.png" src="../../_images/dask-dashboard.png" /></p>
+<p>The Dask dashboard is typically the best way to visualize the execution progress and resource usage of a Multi-GPU NVTabular workflow. For <a class="reference external" href="https://jupyterlab.readthedocs.io/en/stable/">JupyterLab</a> users, the <a class="reference external" href="https://github.com/dask/dask-labextension">Dask JupyterLab Extension</a> further integrates the same diagnostic figures into the notebook environment itself.</p>
+</div>
+<div class="section" id="device-to-host-memory-spilling">
+<h4>Device-to-Host Memory Spilling<a class="headerlink" href="#device-to-host-memory-spilling" title="Permalink to this headline"></a></h4>
+<p>One of the advantages of using <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-CUDA</a> to deploy a distributed cluster is that the workers will move data between device memory and host memory, and between host memory and disk, to avoid out-of-memory (OOM) errors. To set the threshold for device-to-host spilling, a specific byte size can be specified with <code class="docutils literal notranslate"><span class="pre">device_memory_limit</span></code>. Since the worker can only consider the size of input data, and previously finished task output, this limit must be set lower than the actual GPU memory capacity. If the limit is set too high, temporary memory allocations within the execution of task may lead to OOM. With that said, since spilling can dramatically reduce the overall performance of a workflow, a conservative <code class="docutils literal notranslate"><span class="pre">device_memory_limit</span></code> setting is only advised when it proves absolutely necessary (i.e. heavy spilling is deemed inevitable for a given workflow).</p>
+</div>
+<div class="section" id="initializing-memory-pools">
+<h4>Initializing Memory Pools<a class="headerlink" href="#initializing-memory-pools" title="Permalink to this headline"></a></h4>
+<p>Since allocating memory is often a performance bottleneck, it is usually a good idea to initialize a memory pool on each of our workers. When using a distributed cluster, we must use the <code class="docutils literal notranslate"><span class="pre">client.run</span></code> utility to make sure a function is exectuted on all available workers.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize RMM pool on ALL workers</span>
+<span class="k">def</span> <span class="nf">_rmm_pool</span><span class="p">():</span>
+    <span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span>
+        <span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">initial_pool_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Use default size</span>
+    <span class="p">)</span>
+
+
+<span class="n">client</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_rmm_pool</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;tcp://127.0.0.1:35199&#39;: None,
+ &#39;tcp://127.0.0.1:36255&#39;: None,
+ &#39;tcp://127.0.0.1:40587&#39;: None,
+ &#39;tcp://127.0.0.1:43255&#39;: None}
+</pre></div>
+</div>
+</div>
+</div>
+<p><strong>Note</strong>: If you have problems with this, it <em>may</em> be a <code class="docutils literal notranslate"><span class="pre">numba-0.51</span></code> problem. Try: <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">numba=0.50</span></code></p>
+</div>
+</div>
+<div class="section" id="step-3-create-a-toy-parquet-dataset">
+<h3>Step 3: Create a “Toy” Parquet Dataset<a class="headerlink" href="#step-3-create-a-toy-parquet-dataset" title="Permalink to this headline"></a></h3>
+<p>In order to illustrate the power of multi-GPU scaling, without requiring an excessive runtime, we can use the <code class="docutils literal notranslate"><span class="pre">cudf.datasets.timeseries</span></code> API to generate a largish (~20GB) toy dataset with Dask-CuDF.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+
+<span class="c1"># Write a &quot;largish&quot; dataset (~20GB).</span>
+<span class="c1"># Change `write_count` and/or `freq` for larger or smaller dataset.</span>
+<span class="c1"># Avoid re-writing dataset if it already exists.</span>
+<span class="n">write_count</span> <span class="o">=</span> <span class="mi">25</span>
+<span class="n">freq</span> <span class="o">=</span> <span class="s2">&quot;1s&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">make_df</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">timeseries</span><span class="p">(</span>
+            <span class="n">start</span><span class="o">=</span><span class="s2">&quot;2000-01-01&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;2000-12-31&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">i</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;object&quot;</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uint8&quot;</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">df</span>
+
+    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">delayed</span><span class="p">(</span><span class="n">make_df</span><span class="p">)(</span><span class="n">freq</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">write_count</span><span class="p">)]</span>
+    <span class="n">dask_cudf</span><span class="o">.</span><span class="n">from_delayed</span><span class="p">(</span><span class="n">dfs</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">,</span> <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">dfs</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 7.39 s, sys: 2.75 s, total: 10.1 s
+Wall time: 3min 31s
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="step-4-create-an-nvtabular-dataset-object">
+<h3>Step 4: Create an NVTabular Dataset object<a class="headerlink" href="#step-4-create-an-nvtabular-dataset-object" title="Permalink to this headline"></a></h3>
+<p>As discussed above, the <code class="docutils literal notranslate"><span class="pre">nvt.Workflow</span></code> class requires data to be represented as an <code class="docutils literal notranslate"><span class="pre">nvt.Dataset</span></code>. This convention allows NVTabular to abstract away the raw format of the data, and convert everything to a consistent <code class="docutils literal notranslate"><span class="pre">dask_cudf.DataFrame</span></code> representation. Since the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> API effectively wraps functions like <code class="docutils literal notranslate"><span class="pre">dask_cudf.read_csv</span></code>, the syntax is very simple and the computational cost is minimal.</p>
+<p><strong>Important Dataset API Considerations</strong>:</p>
+<ul class="simple">
+<li><p>Can be initialized with the following objects:</p>
+<ul>
+<li><p>1+ file/directory paths. An <code class="docutils literal notranslate"><span class="pre">engine</span></code> argument is required to specify the file format (unless file names are appended with <code class="docutils literal notranslate"><span class="pre">csv</span></code> or <code class="docutils literal notranslate"><span class="pre">parquet</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code>. Internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code> will have 1 partition.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>. Internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code> will have 1 partition.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pyarrow.Table</span></code>. Internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code> will have 1 partition.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dask_cudf.DataFrame</span></code>. Internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code> will be a shallow copy of the input.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dask.dataframe.DataFrame</span></code>. Internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code> will be a direct pandas-&gt;cudf conversion of the input.</p></li>
+</ul>
+</li>
+<li><p>For file-based data initialization, the size of the internal <code class="docutils literal notranslate"><span class="pre">ddf</span></code> partitions will be chosen according to the following arguments (in order of precedence):</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">part_size</span></code>: Desired maximum size of each partition <strong>in bytes</strong>.  Note that you can pass a string here. like <code class="docutils literal notranslate"><span class="pre">&quot;2GB&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">part_mem_fraction</span></code>: Desired maximum size of each partition as a <strong>fraction of total GPU memory</strong>.</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>Note on Dataset Partitioning</strong>:
+The <code class="docutils literal notranslate"><span class="pre">part_size</span></code> and <code class="docutils literal notranslate"><span class="pre">part_mem_fraction</span></code> options will be used to specify the desired maximum partition size <strong>after</strong> conversion to CuDF, not the partition size in parquet format (which may be compressed and/or dictionary encoded). For the “parquet” engine, these parameters do not result in the direct mapping of a file byte-range to a partition. Instead, the first row-group in the dataset is converted to a <code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code>, and the size of that DataFrame is used to estimate the number of contiguous row-groups to assign to each partition. In the current “parquet” engine implementation, row-groups stored in different files will always be mapped to different partitions.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="c1"># Create a Dataset</span>
+<span class="c1"># (`engine` argument optional if file names appended with `csv` or `parquet`)</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;500MB&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 114 ms, sys: 33.5 ms, total: 147 ms
+Wall time: 2.88 s
+</pre></div>
+</div>
+</div>
+</div>
+<p>Once your data is converted to a Dataset object, it can be converted to a <code class="docutils literal notranslate"><span class="pre">dask_cudf.DataFrame</span></code> using the <code class="docutils literal notranslate"><span class="pre">to_ddf</span></code> method. The wonderful thing about this DataFrame object, is that you are free to operate on it using a familiar CuDF/Pandas API.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ds</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>timestamp</th>
+      <th>id</th>
+      <th>name</th>
+      <th>x</th>
+      <th>y</th>
+      <th>label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2000-01-01 00:00:00</td>
+      <td>1019</td>
+      <td>Michael</td>
+      <td>0.168205</td>
+      <td>-0.547230</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2000-01-01 00:00:01</td>
+      <td>984</td>
+      <td>Patricia</td>
+      <td>-0.145077</td>
+      <td>-0.240521</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2000-01-01 00:00:02</td>
+      <td>935</td>
+      <td>Victor</td>
+      <td>0.557024</td>
+      <td>-0.098855</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2000-01-01 00:00:03</td>
+      <td>970</td>
+      <td>Alice</td>
+      <td>0.527366</td>
+      <td>-0.632569</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2000-01-01 00:00:04</td>
+      <td>997</td>
+      <td>Dan</td>
+      <td>0.309193</td>
+      <td>0.704845</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>Note that the output of a Dataset (a <code class="docutils literal notranslate"><span class="pre">ddf</span></code>) can be used to initialize a new Dataset. This means we can use Dask-CuDF to perform complex ETL on our data before we process it in a Workflow. For example, although NVTabular does not support global shuffling transformations (yet), these operations <strong>can</strong> be performed before (and/or after) a Workflow. The catch here is that operations requiring the global movement of data between partitions can require more device memory than available.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example of global shuffling outside an NVT Workflow</span>
+<span class="n">ddf</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">ddf</span><span class="p">)</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div><strong>Dask DataFrame Structure:</strong></div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>timestamp</th>
+      <th>id</th>
+      <th>name</th>
+      <th>x</th>
+      <th>y</th>
+      <th>label</th>
+    </tr>
+    <tr>
+      <th>npartitions=75</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th></th>
+      <td>datetime64[us]</td>
+      <td>int64</td>
+      <td>object</td>
+      <td>float64</td>
+      <td>float64</td>
+      <td>uint8</td>
+    </tr>
+    <tr>
+      <th></th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th></th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th></th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<div>Dask Name: shuffle, 2019 tasks</div></div></div>
+</div>
+<p>Since global shuffling operations can lead to significant GPU-memory pressure, we will start with a simpler Dataset definition for this example.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">del</span> <span class="n">ds</span>
+<span class="k">del</span> <span class="n">ddf</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_mem_fraction</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Note that the default value for part_mem_fraction (0.125) is usually safe, but we will use a slightly smaller partition size for this example to be conservative.</p>
+<p><strong>Note</strong>: If you have a system with limited device and/or host memory (less than 16GB on device, and less than 32GB on host), you may need to use an even smaller <code class="docutils literal notranslate"><span class="pre">part_mem_fraction</span></code> here.</p>
+</div>
+<div class="section" id="step-5-define-our-nvtabular-workflow">
+<h3>Step 5: Define our NVTabular Workflow<a class="headerlink" href="#step-5-define-our-nvtabular-workflow" title="Permalink to this headline"></a></h3>
+<p>Now that we have our Dask cluster up and running, we can use the NVTabular API as usual. For NVTabular versions newer than <code class="docutils literal notranslate"><span class="pre">0.9.0</span></code>, the global <code class="docutils literal notranslate"><span class="pre">client</span></code> (created above) will be used automatically for multi-GPU (or CPU) execution.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cat_features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span>
+    <span class="n">out_path</span><span class="o">=</span><span class="n">demo_output_path</span><span class="p">,</span>  <span class="c1"># Path to write unique values used for encoding</span>
+<span class="p">)</span>
+<span class="n">cont_features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="step-6-apply-our-workflow">
+<h3>Step 6: Apply our Workflow<a class="headerlink" href="#step-6-apply-our-workflow" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="n">shuffle</span> <span class="o">=</span> <span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span>  <span class="c1"># Shuffle algorithm</span>
+<span class="n">out_files_per_proc</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># Number of output files per worker</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;processed&quot;</span><span class="p">),</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+    <span class="n">out_files_per_proc</span><span class="o">=</span><span class="n">out_files_per_proc</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 3.73 s, sys: 1.27 s, total: 5 s
+Wall time: 2min 19s
+</pre></div>
+</div>
+</div>
+</div>
+<p>For this (modestly sized) toy dataset, we get a great performance boost when we move from 1 to 2 V100 GPUs, and the workflow scales reasonably well to a full <a class="reference external" href="https://www.nvidia.com/en-gb/data-center/dgx-systems/dgx-1/">DGX-1 system</a>. Although the 8-GPU performance reflects a parallel efficiency of only 50% or so, higher effiencies can be expected for larger datasets. In fact, recent <a class="reference external" href="https://medium.com/rapids-ai/no-more-waiting-interactive-big-data-now-32f7b903cf41">TPCx-BB benchmarking studies</a> have clearly demonstrated that NVTabular’s parallel backend, Dask-CuDF, can effectively scale to many V100 or A100-based nodes (utilizing more than 100 GPUs).</p>
+<p><strong>Note on Communication</strong>:
+It is important to recognize that multi-GPU and multi-node scaling is typically much more successful with UCX support (enabling both NVLink and Infiniband communication).</p>
+<p><strong>Example Results</strong>:</p>
+<p><strong>1 x 32GB V100 GPU</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CPU</span> <span class="n">times</span><span class="p">:</span> <span class="n">user</span> <span class="mf">5.74</span> <span class="n">s</span><span class="p">,</span> <span class="n">sys</span><span class="p">:</span> <span class="mf">3.87</span> <span class="n">s</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="mf">9.62</span> <span class="n">s</span>
+<span class="n">Wall</span> <span class="n">time</span><span class="p">:</span> <span class="mf">50.9</span> <span class="n">s</span>
+</pre></div>
+</div>
+<p><strong>2 x 32GB V100 GPUs</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CPU</span> <span class="n">times</span><span class="p">:</span> <span class="n">user</span> <span class="mf">6.64</span> <span class="n">s</span><span class="p">,</span> <span class="n">sys</span><span class="p">:</span> <span class="mf">3.53</span> <span class="n">s</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="mf">10.2</span> <span class="n">s</span>
+<span class="n">Wall</span> <span class="n">time</span><span class="p">:</span> <span class="mf">24.3</span> <span class="n">s</span>
+</pre></div>
+</div>
+<p><strong>8 x 32GB V100 GPUs</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CPU</span> <span class="n">times</span><span class="p">:</span> <span class="n">user</span> <span class="mf">6.84</span> <span class="n">s</span><span class="p">,</span> <span class="n">sys</span><span class="p">:</span> <span class="mf">3.73</span> <span class="n">s</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="mf">10.6</span> <span class="n">s</span>
+<span class="n">Wall</span> <span class="n">time</span><span class="p">:</span> <span class="mf">13.5</span> <span class="n">s</span>
+</pre></div>
+</div>
+<p>Now that we are done executing our Workflow, we can check the output data to confirm that everything is looking good.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;processed&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>x</th>
+      <th>y</th>
+      <th>timestamp</th>
+      <th>name</th>
+      <th>id</th>
+      <th>label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-1.402733</td>
+      <td>-0.412443</td>
+      <td>2000-01-10 05:00:09</td>
+      <td>4</td>
+      <td>186</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>-0.875414</td>
+      <td>0.320949</td>
+      <td>2000-01-04 13:51:37</td>
+      <td>20</td>
+      <td>180</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1.176552</td>
+      <td>1.059950</td>
+      <td>2000-11-10 16:18:51</td>
+      <td>15</td>
+      <td>141</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>-0.877984</td>
+      <td>-0.868687</td>
+      <td>2000-01-07 01:50:27</td>
+      <td>14</td>
+      <td>153</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1.045782</td>
+      <td>1.382661</td>
+      <td>2000-02-27 08:11:48</td>
+      <td>6</td>
+      <td>185</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+</div>
+<div class="section" id="step-7-optional-follow-up-processing-writing-with-dask-cudf">
+<h3>Step 7: (Optional) Follow-up Processing/Writing with dask_cudf<a class="headerlink" href="#step-7-optional-follow-up-processing-writing-with-dask-cudf" title="Permalink to this headline"></a></h3>
+<p>Instead of using to_parquet to persist your processed dataset to disk, it is also possible to get a dask dataframe from the transformed dataset and perform follow-up operations with the Dask-CuDF API. For example, if you want to convert the entire dataset into a <code class="docutils literal notranslate"><span class="pre">groupby</span></code> aggregation, you could do something like the following.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="n">ddf</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+<span class="n">ddf</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;name&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>  <span class="c1"># Optional follow-up processing</span>
+<span class="n">ddf</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;dask_output&quot;</span><span class="p">),</span> <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 191 ms, sys: 4.06 ms, total: 195 ms
+Wall time: 2.26 s
+</pre></div>
+</div>
+</div>
+</div>
+<p>As always, we can use either <code class="docutils literal notranslate"><span class="pre">nvt.Dataset</span></code> or <code class="docutils literal notranslate"><span class="pre">dask_cudf</span></code> directly to read back our data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;dask_output&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>x</th>
+      <th>y</th>
+      <th>timestamp</th>
+      <th>id</th>
+      <th>label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-30 23:59:59</td>
+      <td>356</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>362</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>357</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>349</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>360</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:59</td>
+      <td>359</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>354</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:58</td>
+      <td>364</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>354</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>359</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>357</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>349</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:58</td>
+      <td>362</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>361</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>352</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-30 23:59:58</td>
+      <td>353</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>349</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>353</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>360</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:58</td>
+      <td>351</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:59</td>
+      <td>363</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>1.732032</td>
+      <td>1.731953</td>
+      <td>2000-12-30 23:59:57</td>
+      <td>357</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>365</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-31 00:00:00</td>
+      <td>350</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:59</td>
+      <td>353</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>1.732032</td>
+      <td>1.731952</td>
+      <td>2000-12-30 23:59:59</td>
+      <td>359</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+</div>
+</div>
+<div class="section" id="notes-on-shuffling">
+<h2>Notes on Shuffling<a class="headerlink" href="#notes-on-shuffling" title="Permalink to this headline"></a></h2>
+<p>NVTabular currently supports two shuffling options when writing output to disk:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">nvt.io.Shuffle.PER_PARTITION</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nvt.io.Shuffle.PER_WORKER</span></code></p></li>
+</ul>
+<p>For both these cases, the partitions of the underlying dataset/ddf are randomly ordered before any processing is performed. If <code class="docutils literal notranslate"><span class="pre">PER_PARTITION</span></code> is specified, each worker/process will also shuffle the rows within each partition before splitting and appending the data to a number (<code class="docutils literal notranslate"><span class="pre">out_files_per_proc</span></code>) of output files. Output files are distinctly mapped to each worker process. If <code class="docutils literal notranslate"><span class="pre">PER_WORKER</span></code> is specified, each worker will follow the same procedure as <code class="docutils literal notranslate"><span class="pre">PER_PARTITION</span></code>, but will re-shuffle each file after all data is persisted. This results in a full shuffle of the data processed by each worker. To improve performance, this option currently uses host-memory <code class="docutils literal notranslate"><span class="pre">BytesIO</span></code> objects for the intermediate persist stage. The general <code class="docutils literal notranslate"><span class="pre">PER_WORKER</span></code> algorithm is illustrated here:</p>
+<p><img alt="image.png" src="../../_images/per_worker_shuffle.png" /></p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html" class="btn btn-neutral float-left" title="Multi-GPU with MovieLens: ETL and Training" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" class="btn btn-neutral float-right" title="NVTabular demo on RecSys2020 Challenge" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.11.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="multi-gpu_dask.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

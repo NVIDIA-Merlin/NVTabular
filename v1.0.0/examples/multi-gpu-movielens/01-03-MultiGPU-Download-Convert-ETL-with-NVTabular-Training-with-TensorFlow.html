@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-GPU with MovieLens: ETL and Training &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Multi-GPU with MovieLens: ETL and Training" href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html" />
+    <link rel="prev" title="Multi-GPU Example Notebooks" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Multi-GPU Example Notebooks</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Multi-GPU with MovieLens: ETL and Training</a></li>
+<li class="toctree-l3"><a class="reference internal" href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html">Multi-GPU with MovieLens: ETL and Training</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi-gpu-toy-example/multi-gpu_dask.html">Multi-GPU Scaling in NVTabular with Dask</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Multi-GPU Example Notebooks</a> &raquo;</li>
+      <li>Multi-GPU with MovieLens: ETL and Training</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="multi-gpu-with-movielens-etl-and-training">
+<h1>Multi-GPU with MovieLens: ETL and Training<a class="headerlink" href="#multi-gpu-with-movielens-etl-and-training" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVIDIA Merlin is a open source framework to accelerate and scale end-to-end recommender system pipelines on GPU. In this notebook, we use NVTabular, Merlin’s ETL component, to scale feature engineering and pre-processing to multiple GPUs and then perform data-parallel distributed training of a neural network on multiple GPUs with TensorFlow, <a class="reference external" href="https://horovod.readthedocs.io/en/stable/">Horovod</a>, and <a class="reference external" href="https://developer.nvidia.com/nccl">NCCL</a>.</p>
+<p>The pre-requisites for this notebook are to be familiar with NVTabular and its API:</p>
+<ul class="simple">
+<li><p>You can read more about NVTabular, its API and specialized dataloaders in <a class="reference internal" href="../getting-started-movielens/index.html"><span class="xref myst">Getting Started with Movielens notebooks</span></a>.</p></li>
+<li><p>You can read more about scaling NVTabular ETL in <a class="reference internal" href="../scaling-criteo/index.html"><span class="xref myst">Scaling Criteo notebooks</span></a>.</p></li>
+</ul>
+<p><strong>In this notebook, we will focus only on the new information related to multi-GPU training, so please check out the other notebooks first (if you haven’t already.)</strong></p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we learn how to scale ETL and deep learning taining to multiple GPUs</p>
+<ul class="simple">
+<li><p>Learn to use larger than GPU/host memory datasets for ETL and training</p></li>
+<li><p>Use multi-GPU or multi node for ETL with NVTabular</p></li>
+<li><p>Use NVTabular dataloader to accelerate TensorFlow pipelines</p></li>
+<li><p>Scale TensorFlow training with Horovod</p></li>
+</ul>
+</div>
+<div class="section" id="dataset">
+<h3>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we use the <a class="reference external" href="https://grouplens.org/datasets/movielens/25m/">MovieLens25M</a> dataset. It is popular for recommender systems and is used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well.</p>
+<p>Note: We are using the MovieLens 25M dataset in this example for simplicity, although the dataset is not large enough to require multi-GPU training. However, the functionality demonstrated in this notebook can be easily extended to scale recommender pipelines for larger datasets in the same way.</p>
+</div>
+<div class="section" id="tools">
+<h3>Tools<a class="headerlink" href="#tools" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://horovod.readthedocs.io/en/stable/">Horovod</a> is a distributed deep learning framework that provides tools for multi-GPU optimization.</p></li>
+<li><p>The <a class="reference external" href="https://developer.nvidia.com/nccl">NVIDIA Collective Communication Library (NCCL)</a> provides the underlying GPU-based implementations of the <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/operations.html#allgather">allgather</a> and <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/operations.html#allreduce">allreduce</a> cross-GPU communication operations.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="download-and-convert">
+<h2>Download and Convert<a class="headerlink" href="#download-and-convert" title="Permalink to this headline"></a></h2>
+<p>First, we will download and convert the dataset to Parquet. This section is based on <a class="reference internal" href="../getting-started-movielens/01-Download-Convert.html"><span class="doc std std-doc">01-Download-Convert.ipynb</span></a>.</p>
+<div class="section" id="download">
+<h3>Download<a class="headerlink" href="#download" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+
+<span class="kn">import</span> <span class="nn">cudf</span>  <span class="c1"># cuDF is an implementation of Pandas-like Dataframe on GPU</span>
+
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+
+<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;~/nvt-examples/multigpu-movielens/data/&quot;</span>
+<span class="p">)</span>
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+<span class="n">zip_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m.zip&quot;</span><span class="p">)</span>
+<span class="n">download_file</span><span class="p">(</span>
+    <span class="s2">&quot;http://files.grouplens.org/datasets/movielens/ml-25m.zip&quot;</span><span class="p">,</span> <span class="n">zip_path</span><span class="p">,</span> <span class="n">redownload</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>downloading ml-25m.zip: 262MB [00:06, 41.9MB/s]                                                                                                                                            
+unzipping files: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 8/8 [00:04&lt;00:00,  1.74files/s]
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="convert">
+<h3>Convert<a class="headerlink" href="#convert" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;movies.csv&quot;</span><span class="p">))</span>
+<span class="n">movies</span><span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">movies</span><span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+<span class="n">movies</span> <span class="o">=</span> <span class="n">movies</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">movies</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="split-into-train-and-validation-datasets">
+<h3>Split into train and validation datasets<a class="headerlink" href="#split-into-train-and-validation-datasets" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ratings</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;ratings.csv&quot;</span><span class="p">))</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">ratings</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># shuffle the dataset</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">ratings</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ratings</span><span class="p">),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># split the train_df as training and validation data sets.</span>
+<span class="n">num_valid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ratings</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">)</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">ratings</span><span class="p">[:</span><span class="o">-</span><span class="n">num_valid</span><span class="p">]</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">ratings</span><span class="p">[</span><span class="o">-</span><span class="n">num_valid</span><span class="p">:]</span>
+
+<span class="n">train</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))</span>
+<span class="n">valid</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="etl-with-nvtabular">
+<h2>ETL with NVTabular<a class="headerlink" href="#etl-with-nvtabular" title="Permalink to this headline"></a></h2>
+<p>We finished downloading and converting the dataset. We will preprocess and engineer features with NVTabular on multiple GPUs. You can read more</p>
+<ul class="simple">
+<li><p>about NVTabular’s features and API in <a class="reference internal" href="../getting-started-movielens/02-ETL-with-NVTabular.html"><span class="doc std std-doc">getting-started-movielens/02-ETL-with-NVTabular.ipynb</span></a>.</p></li>
+<li><p>scaling NVTabular ETL to multiple GPUs <a class="reference internal" href="../scaling-criteo/02-ETL-with-NVTabular.html"><span class="doc std std-doc">scaling-criteo/02-ETL-with-NVTabular.ipynb</span></a>.</p></li>
+</ul>
+<div class="section" id="deploy-a-distributed-dask-cluster">
+<h3>Deploy a Distributed-Dask Cluster<a class="headerlink" href="#deploy-a-distributed-dask-cluster" title="Permalink to this headline"></a></h3>
+<p>This section is based on <a class="reference internal" href="../scaling-criteo/02-ETL-with-NVTabular.html"><span class="doc std std-doc">scaling-criteo/02-ETL-with-NVTabular.ipynb</span></a> and <a class="reference internal" href="../multi-gpu-toy-example/multi-gpu_dask.html"><span class="doc std std-doc">multi-gpu-toy-example/multi-gpu_dask.ipynb</span></a></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard Libraries</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="c1"># External Dependencies</span>
+<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">cudf</span>
+<span class="kn">import</span> <span class="nn">dask_cudf</span>
+<span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">from</span> <span class="nn">dask.utils</span> <span class="kn">import</span> <span class="n">parse_bytes</span>
+<span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">delayed</span>
+<span class="kn">import</span> <span class="nn">rmm</span>
+
+<span class="c1"># NVTabular</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">import</span> <span class="nn">nvtabular.ops</span> <span class="k">as</span> <span class="nn">ops</span>
+<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Shuffle</span>
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define some information about where to get our data</span>
+<span class="n">input_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;converted&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+<span class="n">dask_workdir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask&quot;</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">)</span>
+<span class="n">output_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask&quot;</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">)</span>
+<span class="n">stats_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask&quot;</span><span class="p">,</span> <span class="s2">&quot;stats&quot;</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean worker space for Dask</span>
+<span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
+<span class="n">dask_workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean stats space for Dask</span>
+<span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">stats_path</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">stats_path</span><span class="p">)</span>
+<span class="n">stats_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean output path</span>
+<span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">output_path</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+<span class="n">output_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Get device memory capacity</span>
+<span class="n">capacity</span> <span class="o">=</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy a Single-Machine Multi-GPU Cluster</span>
+<span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;tcp&quot;</span>  <span class="c1"># &quot;tcp&quot; or &quot;ucx&quot;</span>
+<span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;0,1&quot;</span>  <span class="c1"># Delect devices to place workers</span>
+<span class="n">device_spill_frac</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># Spill GPU-Worker memory to host at this limit.</span>
+<span class="c1"># Reduce if spilling fails to prevent</span>
+<span class="c1"># device memory errors.</span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># (Optional) Specify existing scheduler port</span>
+<span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span>
+        <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
+        <span class="n">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="n">visible_devices</span><span class="p">,</span>
+        <span class="n">local_directory</span><span class="o">=</span><span class="n">dask_workdir</span><span class="p">,</span>
+        <span class="n">device_memory_limit</span><span class="o">=</span><span class="n">capacity</span> <span class="o">*</span> <span class="n">device_spill_frac</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="c1"># Create the distributed client</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="n">client</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><table style="border: 2px solid white;">
+<tr>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Client</h3>
+<ul style="text-align: left; list-style: none; margin: 0; padding: 0;">
+  <li><b>Scheduler: </b>tcp://127.0.0.1:37469</li>
+  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>
+</ul>
+</td>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Cluster</h3>
+<ul style="text-align: left; list-style:none; margin: 0; padding: 0;">
+  <li><b>Workers: </b>2</li>
+  <li><b>Cores: </b>2</li>
+  <li><b>Memory: </b>125.84 GiB</li>
+</ul>
+</td>
+</tr>
+</table></div></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize RMM pool on ALL workers</span>
+<span class="k">def</span> <span class="nf">_rmm_pool</span><span class="p">():</span>
+    <span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span>
+        <span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">initial_pool_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Use default size</span>
+    <span class="p">)</span>
+
+
+<span class="n">client</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_rmm_pool</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;tcp://127.0.0.1:40789&#39;: None, &#39;tcp://127.0.0.1:43439&#39;: None}
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="defining-our-preprocessing-pipeline">
+<h3>Defining our Preprocessing Pipeline<a class="headerlink" href="#defining-our-preprocessing-pipeline" title="Permalink to this headline"></a></h3>
+<p>This subsection is based on <a class="reference internal" href="../getting-started-movielens/02-ETL-with-NVTabular.html"><span class="doc std std-doc">getting-started-movielens/02-ETL-with-NVTabular.ipynb</span></a>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
+<span class="n">joined</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">JoinExternal</span><span class="p">(</span><span class="n">movies</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;movieId&quot;</span><span class="p">])</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">joined</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnSelector</span><span class="p">([</span><span class="s2">&quot;rating&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">LambdaOp</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="p">(</span><span class="n">col</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">ratings</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+<span class="o">!</span>rm -rf <span class="nv">$BASE_DIR</span>/train
+<span class="o">!</span>rm -rf <span class="nv">$BASE_DIR</span>/valid
+<span class="n">train_iter</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))],</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;100MB&quot;</span><span class="p">)</span>
+<span class="n">valid_iter</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))],</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;100MB&quot;</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_iter</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">)))</span>
+<span class="n">shuffle</span> <span class="o">=</span> <span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span>  <span class="c1"># Shuffle algorithm</span>
+<span class="n">out_files_per_proc</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># Number of output files per worker</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_iter</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">),</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+    <span class="n">out_files_per_proc</span><span class="o">=</span><span class="n">out_files_per_proc</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_iter</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">),</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+    <span class="n">out_files_per_proc</span><span class="o">=</span><span class="n">out_files_per_proc</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">client</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+<span class="n">cluster</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/distributed/worker.py:3560: UserWarning: Large object of size 1.90 MiB detected in task graph: 
+  (&quot;(&#39;read-parquet-d36dd514a8adc53a9a91115c9be1d852&#39; ... 1115c9be1d852&#39;)
+Consider scattering large objects ahead of time
+with client.scatter to reduce scheduler burden and 
+keep data on workers
+
+    future = client.submit(func, big_data)    # bad
+
+    big_future = client.scatter(big_data)     # good
+    future = client.submit(func, big_future)  # good
+  warnings.warn(
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="training-with-tensorflow-on-multigpus">
+<h2>Training with TensorFlow on multiGPUs<a class="headerlink" href="#training-with-tensorflow-on-multigpus" title="Permalink to this headline"></a></h2>
+<p>In this section, we will train a TensorFlow model with multi-GPU support. In the NVTabular v0.5 release, we added multi-GPU support for NVTabular dataloaders. We will modify the <a class="reference internal" href="../getting-started-movielens/03-Training-with-TF.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-TF.ipynb</span></a> to use multiple GPUs. Please review that notebook, if you have questions about the general functionality of the NVTabular dataloaders or the neural network architecture.</p>
+<div class="section" id="nvtabular-dataloader-for-tensorflow">
+<h3>NVTabular dataloader for TensorFlow<a class="headerlink" href="#nvtabular-dataloader-for-tensorflow" title="Permalink to this headline"></a></h3>
+<p>We’ve identified that the dataloader is one bottleneck in deep learning recommender systems when training pipelines with TensorFlow. The normal TensorFlow dataloaders cannot prepare the next training batches fast enough and therefore, the GPU is not fully utilized.</p>
+<p>We developed a highly customized tabular dataloader for accelerating existing pipelines in TensorFlow. In our experiments, we see a speed-up by 9x of the same training workflow with NVTabular dataloader. NVTabular dataloader’s features are:</p>
+<ul class="simple">
+<li><p>removing bottleneck of item-by-item dataloading</p></li>
+<li><p>enabling larger than memory dataset by streaming from disk</p></li>
+<li><p>reading data directly into GPU memory and remove CPU-GPU communication</p></li>
+<li><p>preparing batch asynchronously in GPU to avoid CPU-GPU communication</p></li>
+<li><p>supporting commonly used .parquet format</p></li>
+<li><p>easy integration into existing TensorFlow pipelines by using similar API - works with tf.keras models</p></li>
+<li><p><strong>supporting multi-GPU training with Horovod</strong></p></li>
+</ul>
+<p>You can find more information on the dataloaders in our <a class="reference external" href="https://medium.com/nvidia-merlin/training-deep-learning-based-recommender-systems-9x-faster-with-tensorflow-cc5a2572ea49">blogpost</a>.</p>
+</div>
+<div class="section" id="using-horovod-with-tensorflow-and-nvtabular">
+<h3>Using Horovod with Tensorflow and NVTabular<a class="headerlink" href="#using-horovod-with-tensorflow-and-nvtabular" title="Permalink to this headline"></a></h3>
+<p>The training script below is based on <a class="reference internal" href="../getting-started-movielens/03-Training-with-TF.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-TF.ipynb</span></a>, with a few important changes:</p>
+<ul class="simple">
+<li><p>We provide several additional parameters to the <code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code> class, including the total number of workers <code class="docutils literal notranslate"><span class="pre">hvd.size()</span></code>, the current worker’s id number <code class="docutils literal notranslate"><span class="pre">hvd.rank()</span></code>, and a function for generating random seeds <code class="docutils literal notranslate"><span class="pre">seed_fn()</span></code>.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+        <span class="o">...</span>
+        <span class="n">global_size</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span>
+        <span class="n">global_rank</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">(),</span>
+        <span class="n">seed_fn</span><span class="o">=</span><span class="n">seed_fn</span><span class="p">,</span>
+    <span class="p">)</span>
+
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>The seed function uses Horovod to collectively generate a random seed that’s shared by all workers so that they can each shuffle the dataset in a consistent way and select partitions to work on without overlap. The seed function is called by the dataloader during the shuffling process at the beginning of each epoch:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">seed_fn</span><span class="p">():</span>
+        <span class="n">min_int</span><span class="p">,</span> <span class="n">max_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="o">.</span><span class="n">limits</span>
+        <span class="n">max_rand</span> <span class="o">=</span> <span class="n">max_int</span> <span class="o">//</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+        <span class="c1"># Generate a seed fragment on each worker</span>
+        <span class="n">seed_fragment</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_rand</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="c1"># Aggregate seed fragments from all Horovod workers</span>
+        <span class="n">seed_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">seed_fragment</span><span class="p">)</span>
+        <span class="n">reduced_seed</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="n">seed_tensor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shuffle_seed&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">mpi_ops</span><span class="o">.</span><span class="n">Sum</span><span class="p">)</span> 
+
+        <span class="k">return</span> <span class="n">reduced_seed</span> <span class="o">%</span> <span class="n">max_rand</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We wrap the TensorFlow optimizer with Horovod’s <code class="docutils literal notranslate"><span class="pre">DistributedOptimizer</span></code> class and scale the learning rate by the number of workers:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">opt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
+    <span class="n">opt</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedOptimizer</span><span class="p">(</span><span class="n">opt</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We wrap the TensorFlow gradient tape with Horovod’s <code class="docutils literal notranslate"><span class="pre">DistributedGradientTape</span></code> class:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+        <span class="o">...</span>
+    <span class="n">tape</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedGradientTape</span><span class="p">(</span><span class="n">tape</span><span class="p">,</span> <span class="n">sparse_as_dense</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>After the first batch, we broadcast the model and optimizer parameters to all workers with Horovod:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="c1"># Note: broadcast should be done after the first gradient step to</span>
+    <span class="c1"># ensure optimizer initialization.</span>
+    <span class="k">if</span> <span class="n">first_batch</span><span class="p">:</span>
+        <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_variables</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">variables</span><span class="p">,</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_variables</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">variables</span><span class="p">(),</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We only save checkpoints from the first worker to avoid multiple workers trying to write to the same files:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">if</span> <span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">checkpoint</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The rest of the script is the same as the MovieLens example in <a class="reference internal" href="../getting-started-movielens/03-Training-with-TF.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-TF.ipynb</span></a>. In order to run it with Horovod, we first need to write it to a file.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%writefile</span> &#39;./tf_trainer.py&#39;
+
+<span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">cupy</span>
+
+<span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
+<span class="c1"># IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise</span>
+<span class="c1"># TF will have claimed all free GPU memory</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_MEMORY_ALLOCATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.3&quot;</span>  <span class="c1"># fraction of free memory</span>
+
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>  <span class="c1"># noqa: E402 isort:skip</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.tensorflow</span> <span class="kn">import</span> <span class="n">layers</span>  <span class="c1"># noqa: E402 isort:skip</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span>  <span class="c1"># noqa: E402 isort:skip</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>  <span class="c1"># noqa: E402 isort:skip</span>
+<span class="kn">import</span> <span class="nn">horovod.tensorflow</span> <span class="k">as</span> <span class="nn">hvd</span>  <span class="c1"># noqa: E402 isort:skip</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Process some integers.&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--dir_in&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input directory&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--batch_size&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;batch size&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--cats&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;categorical columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--cats_mh&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;categorical multihot columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--conts&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;continuous columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--labels&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;continuous columns&quot;</span><span class="p">)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">dir_in</span> <span class="ow">or</span> <span class="s2">&quot;./data/&quot;</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">batch_size</span> <span class="ow">or</span> <span class="mi">16384</span><span class="p">)</span>  <span class="c1"># Batch Size</span>
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cats</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;userId&quot;</span><span class="p">]</span>  <span class="c1"># Single-hot</span>
+<span class="n">CATEGORICAL_MH_COLUMNS</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cats_mh</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span>  <span class="c1"># Multi-hot</span>
+<span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">conts</span> <span class="ow">or</span> <span class="p">[]</span>
+<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+    <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">))</span>
+<span class="p">)</span>  <span class="c1"># Output from ETL-with-NVTabular</span>
+<span class="n">hvd</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="c1"># Seed with system randomness (or a static seed)</span>
+<span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">seed_fn</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate consistent dataloader shuffle seeds across workers</span>
+
+<span class="sd">    Reseeds each worker&#39;s dataloader each epoch to get fresh a shuffle</span>
+<span class="sd">    that&#39;s consistent across workers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">min_int</span><span class="p">,</span> <span class="n">max_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="o">.</span><span class="n">limits</span>
+    <span class="n">max_rand</span> <span class="o">=</span> <span class="n">max_int</span> <span class="o">//</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+    <span class="c1"># Generate a seed fragment on each worker</span>
+    <span class="n">seed_fragment</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_rand</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+    <span class="c1"># Aggregate seed fragments from all Horovod workers</span>
+    <span class="n">seed_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">seed_fragment</span><span class="p">)</span>
+    <span class="n">reduced_seed</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="n">seed_tensor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shuffle_seed&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">mpi_ops</span><span class="o">.</span><span class="n">Sum</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">reduced_seed</span> <span class="o">%</span> <span class="n">max_rand</span>
+
+
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow/&quot;</span><span class="p">))</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">,</span> <span class="n">MH_EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">MH_EMBEDDING_TABLE_SHAPES</span><span class="p">)</span>
+
+<span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">TRAIN_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rating&quot;</span><span class="p">],</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>  <span class="c1"># how many batches to load at once</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">global_size</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span>
+    <span class="n">global_rank</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">(),</span>
+    <span class="n">seed_fn</span><span class="o">=</span><span class="n">seed_fn</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># tf.keras.Input placeholders for each feature to be used</span>
+<span class="n">emb_layers</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># output of all embedding layers, which will be concatenated</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
+    <span class="n">inputs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+<span class="c1"># Note that we need two input tensors for multi-hot categorical features</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">:</span>
+    <span class="n">inputs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> \
+        <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">__values&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,)),</span>
+         <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">__nnzs&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,)))</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">:</span>
+    <span class="n">emb_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span>
+                <span class="n">col</span><span class="p">,</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">),</span>  <span class="c1"># Input dimension (vocab size)</span>
+            <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>  <span class="c1"># Embedding output dimension</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+<span class="n">emb_layer</span> <span class="o">=</span> <span class="n">layers</span><span class="o">.</span><span class="n">DenseFeatures</span><span class="p">(</span><span class="n">emb_layers</span><span class="p">)</span>
+<span class="n">x_emb_output</span> <span class="o">=</span> <span class="n">emb_layer</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)(</span><span class="n">x_emb_output</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">BinaryCrossentropy</span><span class="p">()</span>
+<span class="n">opt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
+<span class="n">opt</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedOptimizer</span><span class="p">(</span><span class="n">opt</span><span class="p">)</span>
+<span class="n">checkpoint_dir</span> <span class="o">=</span> <span class="s2">&quot;./checkpoints&quot;</span>
+<span class="n">checkpoint</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">opt</span><span class="p">)</span>
+
+
+<span class="nd">@tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">experimental_relax_shapes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">training_step</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">first_batch</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">loss_value</span> <span class="o">=</span> <span class="n">loss</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">probs</span><span class="p">)</span>
+    <span class="c1"># Horovod: add Horovod Distributed GradientTape.</span>
+    <span class="n">tape</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedGradientTape</span><span class="p">(</span><span class="n">tape</span><span class="p">,</span> <span class="n">sparse_as_dense</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">grads</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">loss_value</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">)</span>
+    <span class="n">opt</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">))</span>
+    <span class="c1"># Horovod: broadcast initial variable states from rank 0 to all other processes.</span>
+    <span class="c1"># This is necessary to ensure consistent initialization of all workers when</span>
+    <span class="c1"># training is started with random weights or restored from a checkpoint.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Note: broadcast should be done after the first gradient step to ensure optimizer</span>
+    <span class="c1"># initialization.</span>
+    <span class="k">if</span> <span class="n">first_batch</span><span class="p">:</span>
+        <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_variables</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">variables</span><span class="p">,</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_variables</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">variables</span><span class="p">(),</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">loss_value</span>
+
+
+<span class="c1"># Horovod: adjust number of steps based on number of GPUs.</span>
+<span class="k">for</span> <span class="n">batch</span><span class="p">,</span> <span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">train_dataset_tf</span><span class="p">):</span>
+    <span class="n">loss_value</span> <span class="o">=</span> <span class="n">training_step</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">batch</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">batch</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">hvd</span><span class="o">.</span><span class="n">local_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Step #</span><span class="si">%d</span><span class="se">\t</span><span class="s2">Loss: </span><span class="si">%.6f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">loss_value</span><span class="p">))</span>
+<span class="n">hvd</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+<span class="c1"># Horovod: save checkpoints only on worker 0 to prevent other workers from</span>
+<span class="c1"># corrupting it.</span>
+<span class="k">if</span> <span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">checkpoint</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting ./tf_trainer.py
+</pre></div>
+</div>
+</div>
+</div>
+<p>We’ll also need a small wrapper script to check environment variables set by the Horovod runner to see which rank we’ll be assigned, in order to set CUDA_VISIBLE_DEVICES properly for each worker:</p>
+<div class="cell tag_flake8-noqa-cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%writefile &#39;./hvd_wrapper.sh&#39;
+
+#!/bin/bash
+
+# Get local process ID from OpenMPI or alternatively from SLURM
+if [ -z &quot;${CUDA_VISIBLE_DEVICES:-}&quot; ]; then
+    if [ -n &quot;${OMPI_COMM_WORLD_LOCAL_RANK:-}&quot; ]; then
+        LOCAL_RANK=&quot;${OMPI_COMM_WORLD_LOCAL_RANK}&quot;
+    elif [ -n &quot;${SLURM_LOCALID:-}&quot; ]; then
+        LOCAL_RANK=&quot;${SLURM_LOCALID}&quot;
+    fi
+    export CUDA_VISIBLE_DEVICES=${LOCAL_RANK}
+fi
+
+exec &quot;$@&quot;
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting ./hvd_wrapper.sh
+</pre></div>
+</div>
+</div>
+</div>
+<p>OpenMPI and Slurm are tools for running distributed computed jobs. In this example, we’re using OpenMPI, but depending on the environment you run distributed training jobs in, you may need to check slightly different environment variables to find the total number of workers (global size) and each process’s worker number (global rank.)</p>
+<p>Why do we have to check environment variables instead of using <code class="docutils literal notranslate"><span class="pre">hvd.rank()</span></code> and <code class="docutils literal notranslate"><span class="pre">hvd.local_rank()</span></code>? NVTabular does some GPU configuration when imported and needs to be imported before Horovod to avoid conflicts. We need to set GPU visibility before NVTabular is imported (when Horovod isn’t yet available) so that multiple processes don’t each try to configure all the GPUs, so as a workaround, we “cheat” and peek at environment variables set by horovodrun to decide which GPU each process should use.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>horovodrun -np <span class="m">2</span> sh hvd_wrapper.sh python tf_trainer.py --dir_in <span class="nv">$BASE_DIR</span> --batch_size <span class="m">16384</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2021-06-04 16:39:06.000313: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:08.979997: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:09.064191: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.138200: I tensorflow/compiler/jit/xla_cpu_device.cc:41] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.138376: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcuda.so.1
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139777: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,0]&lt;stderr&gt;:pciBusID: 0000:0b:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,0]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.91GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139823: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139907: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139949: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139990: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140029: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140084: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140123: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140169: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.144021: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.367414: I tensorflow/compiler/jit/xla_cpu_device.cc:41] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.367496: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcuda.so.1
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368324: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,1]&lt;stderr&gt;:pciBusID: 0000:42:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,1]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.92GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368347: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368396: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368424: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368451: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368475: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368512: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368537: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368573: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.369841: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.730033: I tensorflow/compiler/jit/xla_gpu_device.cc:99] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.730907: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,1]&lt;stderr&gt;:pciBusID: 0000:42:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,1]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.92GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.730990: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731005: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731018: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731029: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731038: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731049: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731059: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731078: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732312: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732350: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732473: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1287] Device interconnect StreamExecutor with strength 1 edge matrix:
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732487: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1293]      0 
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732493: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1306] 0:   N 
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.734431: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1432] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 3352 MB memory) -&gt; physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:42:00.0, compute capability: 6.1)
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.821346: I tensorflow/compiler/jit/xla_gpu_device.cc:99] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822270: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,0]&lt;stderr&gt;:pciBusID: 0000:0b:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,0]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.91GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822360: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822376: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822389: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822400: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822411: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822425: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822434: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822454: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823684: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823731: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823868: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1287] Device interconnect StreamExecutor with strength 1 edge matrix:
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823881: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1293]      0 
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823888: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1306] 0:   N 
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.825784: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1432] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 3352 MB memory) -&gt; physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:0b:00.0, compute capability: 6.1)
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.634485: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:116] None of the MLIR optimization passes are enabled (registered 2)
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.668915: I tensorflow/core/platform/profile_utils/cpu_utils.cc:112] CPU Frequency: 2993950000 Hz
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:17.694128: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:116] None of the MLIR optimization passes are enabled (registered 2)
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:17.703326: I tensorflow/core/platform/profile_utils/cpu_utils.cc:112] CPU Frequency: 2993950000 Hz
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.780825: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:17.810644: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.984966: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:18.012113: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,0]&lt;stdout&gt;:Step #0	Loss: 0.695094
+[1,0]&lt;stdout&gt;:Step #100	Loss: 0.669580
+[1,0]&lt;stdout&gt;:Step #200	Loss: 0.661098
+[1,0]&lt;stdout&gt;:Step #300	Loss: 0.660680
+[1,0]&lt;stdout&gt;:Step #400	Loss: 0.658633
+[1,0]&lt;stdout&gt;:Step #500	Loss: 0.660251
+[1,0]&lt;stdout&gt;:Step #600	Loss: 0.657047
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Multi-GPU Example Notebooks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html" class="btn btn-neutral float-right" title="Multi-GPU with MovieLens: ETL and Training" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.0.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

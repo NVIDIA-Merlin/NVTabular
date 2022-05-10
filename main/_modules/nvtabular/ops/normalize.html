@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.normalize &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +39,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -100,7 +107,7 @@
 <span class="kn">from</span> <span class="nn">.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 
 
-<div class="viewcode-block" id="Normalize"><a class="viewcode-back" href="../../../api/ops/normalize.html#nvtabular.ops.Normalize">[docs]</a><span class="k">class</span> <span class="nc">Normalize</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
+<div class="viewcode-block" id="Normalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize">[docs]</a><span class="k">class</span> <span class="nc">Normalize</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Standardizing the features around 0 with a standard deviation</span>
 <span class="sd">    of 1 is a common technique to compare measurements that have</span>
@@ -117,21 +124,21 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Normalize.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span></div>
 
-<div class="viewcode-block" id="Normalize.fit"><a class="viewcode-back" href="../../../api/ops/normalize.html#nvtabular.ops.Normalize.fit">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Normalize_fit&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="Normalize.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.fit">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Normalize_fit&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_custom_moments</span><span class="p">(</span><span class="n">ddf</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="Normalize.fit_finalize"><a class="viewcode-back" href="../../../api/ops/normalize.html#nvtabular.ops.Normalize.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
+<div class="viewcode-block" id="Normalize.fit_finalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">dask_stats</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stds</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">col</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="Normalize.transform"><a class="viewcode-back" href="../../../api/ops/normalize.html#nvtabular.ops.Normalize.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Normalize_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="Normalize.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Normalize_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="n">new_df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
@@ -162,7 +169,7 @@
             <span class="o">|</span> <span class="n">Supports</span><span class="o">.</span><span class="n">GPU_DATAFRAME</span>
         <span class="p">)</span>
 
-<div class="viewcode-block" id="Normalize.clear"><a class="viewcode-back" href="../../../api/ops/normalize.html#nvtabular.ops.Normalize.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Normalize.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span></div>
 
@@ -179,7 +186,7 @@
     <span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span></div>
 
 
-<div class="viewcode-block" id="NormalizeMinMax"><a class="viewcode-back" href="../../../api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax">[docs]</a><span class="k">class</span> <span class="nc">NormalizeMinMax</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
+<div class="viewcode-block" id="NormalizeMinMax"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax">[docs]</a><span class="k">class</span> <span class="nc">NormalizeMinMax</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This operator standardizes continuous features such that they are between 0 and 1.</span>
 
@@ -191,12 +198,12 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="NormalizeMinMax.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mins</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span></div>
 
-<div class="viewcode-block" id="NormalizeMinMax.transform"><a class="viewcode-back" href="../../../api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="NormalizeMinMax.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">):</span>
         <span class="c1"># TODO: should we clip values if they are out of bounds (below 0 or 1)</span>
         <span class="c1"># (could happen in validation dataset if datapoint)</span>
@@ -212,14 +219,14 @@
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
 
-<div class="viewcode-block" id="NormalizeMinMax.fit"><a class="viewcode-back" href="../../../api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax.fit">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_fit&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="NormalizeMinMax.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.fit">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_fit&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;mins&quot;</span><span class="p">:</span> <span class="n">ddf</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
             <span class="s2">&quot;maxs&quot;</span><span class="p">:</span> <span class="n">ddf</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
         <span class="p">}</span></div>
 
-<div class="viewcode-block" id="NormalizeMinMax.fit_finalize"><a class="viewcode-back" href="../../../api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax.fit_finalize">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_finalize&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="NormalizeMinMax.fit_finalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.fit_finalize">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_finalize&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
         <span class="n">index</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;mins&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
         <span class="n">cols</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">values_host</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;values_host&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">index</span><span class="o">.</span><span class="n">values</span>
@@ -227,7 +234,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">mins</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;mins&quot;</span><span class="p">][</span><span class="n">col</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="p">[</span><span class="s2">&quot;maxs&quot;</span><span class="p">][</span><span class="n">col</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="NormalizeMinMax.clear"><a class="viewcode-back" href="../../../api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="NormalizeMinMax.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mins</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span></div>
 
@@ -285,10 +292,10 @@
       <dt>Tags</dt>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

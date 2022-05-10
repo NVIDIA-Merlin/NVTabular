@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Workflow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -35,11 +41,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="workflow_node.html">WorkflowNode</a></li>
@@ -77,36 +84,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="module-nvtabular.workflow.workflow">
+  <div class="section" id="module-nvtabular.workflow.workflow">
 <span id="workflow"></span><h1>Workflow<a class="headerlink" href="#module-nvtabular.workflow.workflow" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt id="nvtabular.workflow.workflow.Workflow">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+12.g8411c2db)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
-<dd><p>The Workflow class applies a graph of operations onto a dataset, letting you transform
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+16.gdecfe7fd)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>The Workflow class applies a graph of operations onto a dataset, letting you transform
 datasets to do feature engineering and preprocessing operations. This class follows an API
 similar to Transformers in sklearn: we first <code class="docutils literal notranslate"><span class="pre">fit</span></code> the workflow by calculating statistics
 on the dataset, and then once fit we can <code class="docutils literal notranslate"><span class="pre">transform</span></code> datasets by applying these statistics.</p>
@@ -275,7 +259,7 @@ call. Equivalent to calling <code class="docutils literal notranslate"><span cla
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The path to load the workflow from</p></li>
-<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+12.g8411c2db)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
+<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+16.gdecfe7fd)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -337,14 +321,14 @@ call. Equivalent to calling <code class="docutils literal notranslate"><span cla
       <dt>Tags</dt>
       <dd><a href="../../../v0.10.0/api/workflow/workflow.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/workflow/workflow.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.7.1/api/workflow/workflow.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/workflow/workflow.html">v0.8.0</a></dd>
       <dd><a href="../../../v0.9.0/api/workflow/workflow.html">v0.9.0</a></dd>
       <dd><a href="workflow.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../../../main/api/workflow/workflow.html">main</a></dd>
+      <dd><a href="../../../main/index.html">main</a></dd>
     </dl>
   </div>
 </div><script>

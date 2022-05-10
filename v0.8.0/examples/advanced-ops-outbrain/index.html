@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Advanced Ops with Outbrain &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,12 +14,16 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Getting Started Outbrain: Download and Convert" href="01-Download-Convert.html" />
-    <link rel="prev" title="Getting Started MovieLens: Training with PyTorch" href="../getting-started-movielens/03-Training-with-PyTorch.html" /> 
+    <link rel="prev" title="Overview" href="../getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -35,21 +41,27 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with Movielens</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/inference-HugeCTR/index.html">Inference with HugeCTR</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Advanced Ops with Outbrain</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
-<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Training with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Getting Started Outbrain: Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">Getting Started Outbrain: ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">NVTabular demo on Outbrain Data</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Tabular Data with Rossmann</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
@@ -70,7 +82,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Examples</a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
       <li>Advanced Ops with Outbrain</li>
       <li class="wy-breadcrumbs-aside">
       </li>
@@ -80,44 +92,22 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="advanced-ops-with-outbrain">
+  <div class="tex2jax_ignore mathjax_ignore section" id="advanced-ops-with-outbrain">
 <h1>Advanced Ops with Outbrain<a class="headerlink" href="#advanced-ops-with-outbrain" title="Permalink to this headline"></a></h1>
-<p><a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Outbrain dataset</a> is based on a Kaggle Competition in which Kagglers were challenged to predict on which ads and other forms of sponsored content its global users would click. We will teach to use more of the available NVTabular operators:</p>
+<p>The <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Outbrain click prediction dataset</a> is based on a Kaggle competition in which Kagglers were challenged to predict which ads and other forms of sponsored content its global users would click.
+We can use the dataset to learn more about the NVTabular operators:</p>
 <ul class="simple">
-<li><p>Getting familiar with a wide range of NVTabular operators</p></li>
-<li><p>Writing a custom operator</p></li>
-<li><p>Training Wide&amp;Deep model with NVTabular dataloader in TensorFlow</p></li>
+<li><p>Become familiar with a wide range of NVTabular operators.</p></li>
+<li><p>Write a custom operator.</p></li>
+<li><p>Train a wide and deep model with NVTabular dataloader in TensorFlow.</p></li>
+</ul>
+<p>Refer to the following notebooks:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="01-Download-Convert.html"><span class="doc std std-doc">Download and Convert</span></a></p></li>
+<li><p><a class="reference internal" href="02-ETL-with-NVTabular.html"><span class="doc std std-doc">ETL with NVTabular</span></a></p></li>
+<li><p><a class="reference internal" href="03-Training-with-TF.html"><span class="doc std std-doc">Training with TensorFlow</span></a></p></li>
 </ul>
 <div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
-<li class="toctree-l1"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-Training-with-TF.html">Training with TensorFlow</a></li>
-</ul>
 </div>
 </div>
 
@@ -125,7 +115,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../getting-started-movielens/03-Training-with-PyTorch.html" class="btn btn-neutral float-left" title="Getting Started MovieLens: Training with PyTorch" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="01-Download-Convert.html" class="btn btn-neutral float-right" title="Getting Started Outbrain: Download and Convert" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
@@ -155,16 +145,16 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../v0.10.0/examples/advanced-ops-outbrain/index.html">v0.10.0</a></dd>
-      <dd><a href="../../../v0.11.0/examples/advanced-ops-outbrain/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.7.1/examples/advanced-ops-outbrain/index.html">v0.7.1</a></dd>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
       <dd><a href="index.html">v0.8.0</a></dd>
-      <dd><a href="../../../v0.9.0/examples/advanced-ops-outbrain/index.html">v0.9.0</a></dd>
-      <dd><a href="../../../v1.0.0/examples/advanced-ops-outbrain/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../../../main/examples/advanced-ops-outbrain/index.html">main</a></dd>
+      <dd><a href="../../../main/index.html">main</a></dd>
     </dl>
   </div>
 </div><script>

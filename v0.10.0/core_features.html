@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Core Features &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -35,7 +41,8 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Core Features</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#tensorflow-and-pytorch-interoperability">TensorFlow and PyTorch Interoperability</a></li>
@@ -49,7 +56,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
 </ul>
@@ -77,42 +84,18 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="core-features">
+  <div class="tex2jax_ignore mathjax_ignore section" id="core-features">
 <h1>Core Features<a class="headerlink" href="#core-features" title="Permalink to this headline"></a></h1>
 <p>NVTabular supports the following core features:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#tensorflow-and-pytorch-interoperability">TensorFlow and PyTorch Interoperability</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#hugectr-interoperability">HugeCTR Interoperability</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#multi-gpu-support">Multi-GPU Support</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#multi-node-support">Multi-Node Support</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#multi-hot-encoding-and-pre-existing-embeddings">Multi-Hot Encoding and Pre-Existing Embeddings</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#shuffling-datasets">Shuffling Datasets</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#cloud-integration">Cloud Integration</a></p></li>
-<li><p><a class="reference external" href="/NVTabular/v0.10.0/core_features.html#cpu-support">CPU Support</a></p></li>
+<li><p><a class="reference internal" href="#tensorflow-and-pytorch-interoperability"><span class="std std-doc">TensorFlow and PyTorch Interoperability</span></a></p></li>
+<li><p><a class="reference internal" href="#hugectr-interoperability"><span class="std std-doc">HugeCTR Interoperability</span></a></p></li>
+<li><p><a class="reference internal" href="#multi-gpu-support"><span class="std std-doc">Multi-GPU Support</span></a></p></li>
+<li><p><a class="reference internal" href="#multi-node-support"><span class="std std-doc">Multi-Node Support</span></a></p></li>
+<li><p><a class="reference internal" href="#multi-hot-encoding-and-pre-existing-embeddings"><span class="std std-doc">Multi-Hot Encoding and Pre-Existing Embeddings</span></a></p></li>
+<li><p><a class="reference internal" href="#shuffling-datasets"><span class="std std-doc">Shuffling Datasets</span></a></p></li>
+<li><p><a class="reference internal" href="#cloud-integration"><span class="std std-doc">Cloud Integration</span></a></p></li>
+<li><p><a class="reference internal" href="#cpu-support"><span class="std std-doc">CPU Support</span></a></p></li>
 </ul>
 <div class="section" id="tensorflow-and-pytorch-interoperability">
 <h2>TensorFlow and PyTorch Interoperability<a class="headerlink" href="#tensorflow-and-pytorch-interoperability" title="Permalink to this headline"></a></h2>
@@ -168,7 +151,7 @@ columns. Instead we train models with multi-hot embeddings for these features by
 </div>
 <div class="section" id="cloud-integration">
 <h2>Cloud Integration<a class="headerlink" href="#cloud-integration" title="Permalink to this headline"></a></h2>
-<p>NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Cloud Platform (GCP), giving you the ability to build, train, and deploy models on the cloud using datasets. For additional information, see <a class="reference internal" href="resources/cloud_integration.html#amazon-web-services"><span class="std std-ref">Amazon Web Services</span></a> and <a class="reference internal" href="resources/cloud_integration.html#google-cloud-platform"><span class="std std-ref">Google Cloud Platform</span></a>.</p>
+<p>NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Cloud Platform (GCP), giving you the ability to build, train, and deploy models on the cloud using datasets. For additional information, see <a class="reference internal" href="resources/cloud_integration.html#amazon-web-services"><span class="std std-doc">Amazon Web Services</span></a> and <a class="reference internal" href="resources/cloud_integration.html#google-cloud-platform"><span class="std std-doc">Google Cloud Platform</span></a>.</p>
 </div>
 <div class="section" id="cpu-support">
 <h2>CPU Support<a class="headerlink" href="#cpu-support" title="Permalink to this headline"></a></h2>
@@ -216,10 +199,10 @@ columns. Instead we train models with multi-hot embeddings for these features by
       <dt>Tags</dt>
       <dd><a href="core_features.html">v0.10.0</a></dd>
       <dd><a href="../v0.11.0/core_features.html">v0.11.0</a></dd>
-      <dd><a href="../v0.7.1/core_features.html">v0.7.1</a></dd>
       <dd><a href="../v0.8.0/core_features.html">v0.8.0</a></dd>
       <dd><a href="../v0.9.0/core_features.html">v0.9.0</a></dd>
       <dd><a href="../v1.0.0/core_features.html">v1.0.0</a></dd>
+      <dd><a href="../v1.1.0/core_features.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Index &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
 </ul>
@@ -69,8 +76,7 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#_"><strong>_</strong></a>
- | <a href="#B"><strong>B</strong></a>
+ <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
  | <a href="#F"><strong>F</strong></a>
@@ -87,24 +93,9 @@
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
- | <a href="#V"><strong>V</strong></a>
  | <a href="#W"><strong>W</strong></a>
  
 </div>
-<h2 id="_">_</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/graph/schema.html#nvtabular.graph.schema.ColumnSchema.__weakref__">__weakref__ (nvtabular.graph.schema.ColumnSchema attribute)</a>
-
-      <ul>
-        <li><a href="api/graph/schema.html#nvtabular.graph.schema.Schema.__weakref__">(nvtabular.graph.schema.Schema attribute)</a>
-</li>
-        <li><a href="api/graph/selector.html#nvtabular.graph.selector.ColumnSelector.__weakref__">(nvtabular.graph.selector.ColumnSelector attribute)</a>
-</li>
-      </ul></li>
-  </ul></td>
-</tr></table>
-
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -186,13 +177,7 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/graph/schema.html#nvtabular.graph.schema.ColumnSchema">ColumnSchema (class in nvtabular.graph.schema)</a>
-</li>
-      <li><a href="api/graph/selector.html#nvtabular.graph.selector.ColumnSelector">ColumnSelector (class in nvtabular.graph.selector)</a>
-</li>
       <li><a href="api/ops/columnsimilarity.html#nvtabular.ops.column_similarity.ColumnSimilarity">ColumnSimilarity (class in nvtabular.ops.column_similarity)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.compute">compute() (nvtabular.io.dataset.Dataset method)</a>
 </li>
       <li><a href="api/ops/groupby.html#nvtabular.ops.Groupby.compute_output_schema">compute_output_schema() (nvtabular.ops.Groupby method)</a>
 
@@ -232,20 +217,18 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset">Dataset (class in nvtabular.io.dataset)</a>
-</li>
       <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.dataset">dataset (nvtabular.loader.torch.DLDataLoader attribute)</a>
 </li>
       <li><a href="api/tensorflow_dataloader.html#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures">DenseFeatures (class in nvtabular.framework_utils.tensorflow.layers.embedding)</a>
 </li>
-      <li><a href="api/ops/differencelag.html#nvtabular.ops.DifferenceLag.dependencies">dependencies() (nvtabular.ops.DifferenceLag method)</a>
+      <li><a href="api/ops/differencelag.html#nvtabular.ops.DifferenceLag.dependencies">dependencies() (nvtabular.ops.DifferenceLag property)</a>
 
       <ul>
-        <li><a href="api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.dependencies">(nvtabular.ops.JoinGroupby method)</a>
+        <li><a href="api/ops/joingroupby.html#nvtabular.ops.JoinGroupby.dependencies">(nvtabular.ops.JoinGroupby property)</a>
 </li>
-        <li><a href="api/ops/lambdaop.html#nvtabular.ops.LambdaOp.dependencies">(nvtabular.ops.LambdaOp method)</a>
+        <li><a href="api/ops/lambdaop.html#nvtabular.ops.LambdaOp.dependencies">(nvtabular.ops.LambdaOp property)</a>
 </li>
-        <li><a href="api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.dependencies">(nvtabular.ops.TargetEncoding method)</a>
+        <li><a href="api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.dependencies">(nvtabular.ops.TargetEncoding property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -270,8 +253,6 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.file_partition_map">file_partition_map() (nvtabular.io.dataset.Dataset property)</a>
-</li>
       <li><a href="api/ops/fillmedian.html#nvtabular.ops.FillMedian">FillMedian (class in nvtabular.ops)</a>
 </li>
       <li><a href="api/ops/fillmissing.html#nvtabular.ops.FillMissing">FillMissing (class in nvtabular.ops)</a>
@@ -362,16 +343,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/ops/hashedcross.html#nvtabular.ops.HashedCross">HashedCross (class in nvtabular.ops)</a>
 </li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.head">head() (nvtabular.io.dataset.Dataset method)</a>
-</li>
   </ul></td>
 </tr></table>
 
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.infer_schema">infer_schema() (nvtabular.io.dataset.Dataset method)</a>
-</li>
       <li><a href="api/ops/categorify.html#nvtabular.ops.Categorify.inference_initialize">inference_initialize() (nvtabular.ops.Categorify method)</a>
 
       <ul>
@@ -440,8 +417,6 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/tensorflow_dataloader.html#nvtabular.loader.tensorflow.KerasSequenceLoader.map">map() (nvtabular.loader.tensorflow.KerasSequenceLoader method)</a>
 </li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.merge">merge() (nvtabular.io.dataset.Dataset class method)</a>
-</li>
       <li><a href="api/torch_dataloader.html#nvtabular.framework_utils.torch.models.Model">Model (class in nvtabular.framework_utils.torch.models)</a>
 </li>
       <li>
@@ -455,8 +430,6 @@
         <li><a href="api/torch_dataloader.html#module-nvtabular.framework_utils.torch.layers.embeddings">nvtabular.framework_utils.torch.layers.embeddings</a>
 </li>
         <li><a href="api/torch_dataloader.html#module-nvtabular.framework_utils.torch.models">nvtabular.framework_utils.torch.models</a>
-</li>
-        <li><a href="api/graph/schema.html#module-nvtabular.graph.schema">nvtabular.graph.schema</a>
 </li>
         <li><a href="api/graph/selector.html#module-nvtabular.graph.selector">nvtabular.graph.selector</a>
 </li>
@@ -484,10 +457,6 @@
       <li><a href="api/ops/normalize.html#nvtabular.ops.Normalize">Normalize (class in nvtabular.ops)</a>
 </li>
       <li><a href="api/ops/normalizeminmax.html#nvtabular.ops.NormalizeMinMax">NormalizeMinMax (class in nvtabular.ops)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.npartitions">npartitions() (nvtabular.io.dataset.Dataset property)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.num_rows">num_rows() (nvtabular.io.dataset.Dataset property)</a>
 </li>
       <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.num_workers">num_workers (nvtabular.loader.torch.DLDataLoader attribute)</a>
 </li>
@@ -521,13 +490,6 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
-    nvtabular.graph.schema
-
-      <ul>
-        <li><a href="api/graph/schema.html#module-nvtabular.graph.schema">module</a>
-</li>
-      </ul></li>
       <li>
     nvtabular.graph.selector
 
@@ -644,14 +606,10 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.partition_lens">partition_lens() (nvtabular.io.dataset.Dataset property)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.persist">persist() (nvtabular.io.dataset.Dataset method)</a>
+      <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.pin_memory">pin_memory (nvtabular.loader.torch.DLDataLoader attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.pin_memory">pin_memory (nvtabular.loader.torch.DLDataLoader attribute)</a>
-</li>
       <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.prefetch_factor">prefetch_factor (nvtabular.loader.torch.DLDataLoader attribute)</a>
 </li>
       <li><a href="api/ops/categorify.html#nvtabular.ops.Categorify.process_vocabs">process_vocabs() (nvtabular.ops.Categorify method)</a>
@@ -662,17 +620,11 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.regenerate_dataset">regenerate_dataset() (nvtabular.io.dataset.Dataset method)</a>
-</li>
       <li><a href="api/workflow/workflow.html#nvtabular.workflow.workflow.Workflow.remove_inputs">remove_inputs() (nvtabular.workflow.workflow.Workflow method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/ops/rename.html#nvtabular.ops.Rename">Rename (class in nvtabular.ops)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.repartition">repartition() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-      <li><a href="api/graph/selector.html#nvtabular.graph.selector.ColumnSelector.resolve">resolve() (nvtabular.graph.selector.ColumnSelector method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -680,13 +632,9 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.sample_dtypes">sample_dtypes() (nvtabular.io.dataset.Dataset method)</a>
-</li>
       <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.sampler">sampler (nvtabular.loader.torch.DLDataLoader attribute)</a>
 </li>
       <li><a href="api/workflow/workflow.html#nvtabular.workflow.workflow.Workflow.save">save() (nvtabular.workflow.workflow.Workflow method)</a>
-</li>
-      <li><a href="api/graph/schema.html#nvtabular.graph.schema.Schema">Schema (class in nvtabular.graph.schema)</a>
 </li>
       <li><a href="api/ops/categorify.html#nvtabular.ops.Categorify.set_storage_path">set_storage_path() (nvtabular.ops.Categorify method)</a>
 
@@ -700,8 +648,6 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.shuffle_by_keys">shuffle_by_keys() (nvtabular.io.dataset.Dataset method)</a>
-</li>
       <li><a href="api/ops/stat_operator.html#nvtabular.ops.stat_operator.StatOperator">StatOperator (class in nvtabular.ops.stat_operator)</a>
 </li>
       <li><a href="api/ops/normalize.html#nvtabular.ops.Normalize.supports">supports() (nvtabular.ops.Normalize property)</a>
@@ -716,25 +662,11 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.tail">tail() (nvtabular.io.dataset.Dataset method)</a>
-</li>
       <li><a href="api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.target_columns">target_columns() (nvtabular.ops.TargetEncoding property)</a>
 </li>
       <li><a href="api/ops/targetencoding.html#nvtabular.ops.TargetEncoding">TargetEncoding (class in nvtabular.ops)</a>
 </li>
       <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.DLDataLoader.timeout">timeout (nvtabular.loader.torch.DLDataLoader attribute)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.to_cpu">to_cpu() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.to_ddf">to_ddf() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.to_gpu">to_gpu() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.to_hugectr">to_hugectr() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.to_iter">to_iter() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.to_parquet">to_parquet() (nvtabular.io.dataset.Dataset method)</a>
 </li>
       <li><a href="api/torch_dataloader.html#nvtabular.loader.torch.TorchAsyncItr">TorchAsyncItr (class in nvtabular.loader.torch)</a>
 </li>
@@ -797,18 +729,14 @@
   </ul></td>
 </tr></table>
 
-<h2 id="V">V</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/dataset.html#nvtabular.io.dataset.Dataset.validate_dataset">validate_dataset() (nvtabular.io.dataset.Dataset method)</a>
-</li>
-  </ul></td>
-</tr></table>
-
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/workflow/workflow.html#nvtabular.workflow.workflow.Workflow">Workflow (class in nvtabular.workflow.workflow)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/workflow/workflow_node.html#nvtabular.workflow.node.WorkflowNode">WorkflowNode (class in nvtabular.workflow.node)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -847,10 +775,10 @@
       <dt>Tags</dt>
       <dd><a href="genindex.html">v0.10.0</a></dd>
       <dd><a href="../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

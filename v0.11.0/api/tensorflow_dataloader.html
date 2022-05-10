@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TensorFlow Dataloader &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
         <script src="../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -35,19 +41,20 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">API Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="workflow/workflow.html">Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="workflow/workflow_node.html">WorkflowNode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="ops/index.html">Operators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="torch_dataloader.html">Torch Dataloader</a></li>
-<li class="toctree-l2"><a class="reference internal" href="torch_dataloader.html#torch-layers">Torch Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="torch_dataloader.html#module-nvtabular.framework_utils.torch.layers.embeddings">Torch Layers</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">TensorFlow Dataloader</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#tensorflow-layers">TensorFlow Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-nvtabular.framework_utils.tensorflow.layers.embedding">TensorFlow Layers</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
@@ -77,35 +84,265 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="tensorflow-dataloader">
-<h1>TensorFlow Dataloader<a class="headerlink" href="#tensorflow-dataloader" title="Permalink to this headline"></a></h1>
+  <div class="section" id="module-nvtabular.loader.tensorflow">
+<span id="tensorflow-dataloader"></span><h1>TensorFlow Dataloader<a class="headerlink" href="#module-nvtabular.loader.tensorflow" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="nvtabular.loader.tensorflow.KerasSequenceLoader">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.loader.tensorflow.</span></code><code class="sig-name descname"><span class="pre">KerasSequenceLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paths_or_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cont_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parts_per_chunk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_rank</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_last</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sparse_as_dense</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/loader/tensorflow.html#KerasSequenceLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.loader.tensorflow.KerasSequenceLoader" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">keras.utils.data_utils.Sequence</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.loader.backend.DataLoader</span></code></p>
+<p>Infinite generator used to asynchronously iterate through CSV or Parquet
+dataframes on GPU by leveraging an NVTabular <cite>Dataset</cite>. Applies preprocessing
+via NVTabular <cite>Workflow</cite> objects and outputs tabular dictionaries of TensorFlow
+Tensors via <a class="reference external" href="https://github.com/dmlc/dlpack">dlpack</a>. Useful for training tabular models
+built in Keras and trained via
+<a class="reference external" href="https://www.tensorflow.org/api_docs/python/tf/keras/Model">tf.keras.Model.fit</a>.</p>
+<p>The data loading scheme is implemented by loading, preprocessing, and
+batching data in an asynchronous thread. The amount of randomness in
+shuffling is controlled by the <cite>buffer_size</cite> and <cite>parts_per_chunk</cite>
+kwargs. At load time, sub-chunks of data with size controlled by
+<cite>buffer_size</cite> are loaded from random partitions in the dataset,
+and <cite>parts_per_chunk</cite> of them are concatenated into a single chunk,
+shuffled, and split into batches. This means that each chunk has
+<cite>buffer_size*parts_per_chunk</cite> rows, and due to the asynchronous
+nature of the dataloader that means there are, including the batch
+being processed by your network, <cite>3*buffer_size*parts_per_chunk</cite>
+rows of data in GPU memory at any given time. This means that
+for a fixed memory budget, using more <cite>parts_per_chunk</cite> will
+come at the expense of smaller <cite>buffer_size</cite>, increasing the number
+of reads and reducing throughput. The goal should be to maximize the
+total amount of memory utilized at once without going OOM and with
+the fewest number of reads to meet your epoch-level randomness needs.</p>
+<p>An important thing to note is that TensorFlow’s default behavior
+is to claim all GPU memory for itself at initialziation time,
+which leaves none for NVTabular to load or preprocess data.
+As such, we attempt to configure TensorFlow to restrict
+its memory allocation on a given GPU using the environment variables
+<cite>TF_MEMORY_ALLOCATION</cite> and <cite>TF_VISIBLE_DEVICE</cite>. If <cite>TF_MEMORY_ALLOCATION &lt; 1</cite>,
+it will be assumed that this refers to a fraction of free GPU
+memory on the given device. Otherwise, it will refer to an explicit
+allocation amount in MB. <cite>TF_VISIBLE_DEVICE</cite> should be an integer GPU
+index.</p>
+<p>Iterator output is of the form <cite>(dict(features), list(labels))</cite>,
+where each element of the features dict is a
+<cite>feature_name: feature_tensor</cite>  and each elemtn of the labels
+list is a tensor, and all tensors are of shape <cite>(batch_size, 1)</cite>.
+Note that this means vectorized continuous and multi-hot categorical
+features are not currently supported.
+The underlying NVTabular <cite>Dataset</cite> object is stored in the <cite>data</cite>
+attribute, and should be used for updating NVTabular <cite>Workflow</cite>
+statistics:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">update_stats</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">to_iter</span><span class="p">(),</span> <span class="n">record_stats</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
 </div>
-<div class="section" id="tensorflow-layers">
-<h1>TensorFlow Layers<a class="headerlink" href="#tensorflow-layers" title="Permalink to this headline"></a></h1>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>paths_or_dataset</strong> (<em>-</em>) – Either a string representing a file pattern (see <cite>tf.glob</cite> for
+pattern rules), a list of filenames to be iterated through, or
+a Dataset object, in which case <cite>buffer_size</cite>, <cite>engine</cite>, and
+<cite>reader_kwargs</cite> will be ignored</p></li>
+<li><p><strong>batch_size</strong> (<em>-</em>) – Number of samples to yield at each iteration</p></li>
+<li><p><strong>label_names</strong> (<em>-</em>) – Column name of the target variable in the dataframe specified by
+<cite>paths_or_dataset</cite></p></li>
+<li><p><strong>feature_columns</strong> (<em>-</em>) – A list of TensorFlow feature columns representing the inputs
+exposed to the model to be trained. Columns with parent columns
+will climb the parent tree, and the names of the columns in the
+unique set of terminal columns will be used as the column names.
+If left as None, must specify <cite>cat_names</cite> and <cite>cont_names</cite></p></li>
+<li><p><strong>cat_names</strong> (<em>-</em>) – List of categorical column names. Ignored if <cite>feature_columns</cite> is
+specified</p></li>
+<li><p><strong>cont_names</strong> (<em>-</em>) – List of continuous column names. Ignored if <cite>feature_columns</cite> is
+specified</p></li>
+<li><p><strong>engine</strong> (<em>-</em>) – String specifying the type of read engine to use. If left as <cite>None</cite>,
+will try to infer the engine type from the file extension.</p></li>
+<li><p><strong>shuffle</strong> (<em>-</em>) – Whether to shuffle chunks of batches before iterating through them.</p></li>
+<li><p><strong>buffer_size</strong> (<em>-</em>) – If <cite>0 &lt;  buffer_size &lt; 1</cite>, <cite>buffer_size</cite> will refer to the fraction of
+total GPU memory to occupy with a buffered chunk. If <cite>1 &lt; buffer_size &lt;
+batch_size</cite>, the number of rows read for a buffered chunk will
+be equal to <cite>int(buffer_size*batch_size)</cite>. Otherwise, if <cite>buffer_size &gt;
+batch_size</cite>, <cite>buffer_size</cite> rows will be read in each chunk (except for
+the last chunk in a dataset, which will, in general, be smaller).
+Larger chunk sizes will lead to more efficiency and randomness,
+but require more memory.</p></li>
+<li><p><strong>device</strong> (<em>-</em>) – Which GPU device to load from. Ignored for now</p></li>
+<li><p><strong>parts_per_chunk</strong> (<em>-</em>) – Number of dataset partitions with size dictated by <cite>buffer_size</cite>
+to load and concatenate asynchronously. More partitions leads to
+better epoch-level randomness but can negatively impact throughput</p></li>
+<li><p><strong>reader_kwargs</strong> (<em>-</em>) – extra kwargs to pass when instantiating the underlying
+<cite>nvtabular.Dataset</cite></p></li>
+<li><p><strong>sparse_list</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>) or </em><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a>) – list with column names of columns that should be represented as sparse tensors</p></li>
+<li><p><strong>sparse_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – dictionary of key: column_name + value: integer representing max sequence length for column</p></li>
+<li><p><strong>sparse_dense</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – bool value to activate transforming sparse tensors to dense</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.loader.tensorflow.KerasSequenceLoader.map">
+<code class="sig-name descname"><span class="pre">map</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/loader/tensorflow.html#KerasSequenceLoader.map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.loader.tensorflow.KerasSequenceLoader.map" title="Permalink to this definition"></a></dt>
+<dd><p>Applying a function to each batch.</p>
+<p>This can for instance be used to add <cite>sample_weight</cite> to the model.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="nvtabular.loader.tensorflow.KerasSequenceValidater">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.loader.tensorflow.</span></code><code class="sig-name descname"><span class="pre">KerasSequenceValidater</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataloader</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/loader/tensorflow.html#KerasSequenceValidater"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.loader.tensorflow.KerasSequenceValidater" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">keras.callbacks.Callback</span></code></p>
+<dl class="py method">
+<dt id="nvtabular.loader.tensorflow.KerasSequenceValidater.on_epoch_end">
+<code class="sig-name descname"><span class="pre">on_epoch_end</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/loader/tensorflow.html#KerasSequenceValidater.on_epoch_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.loader.tensorflow.KerasSequenceValidater.on_epoch_end" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-nvtabular.framework_utils.tensorflow.layers.embedding">
+<span id="tensorflow-layers"></span><h1>TensorFlow Layers<a class="headerlink" href="#module-nvtabular.framework_utils.tensorflow.layers.embedding" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.framework_utils.tensorflow.layers.embedding.</span></code><code class="sig-name descname"><span class="pre">DenseFeatures</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#DenseFeatures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">keras.engine.base_layer.Layer</span></code></p>
+<p>Layer which maps a dictionary of input tensors to a dense, continuous
+vector digestible by a neural network. Meant to reproduce the API exposed
+by <cite>tf.keras.layers.DenseFeatures</cite> while reducing overhead for the
+case of one-hot categorical and scalar numeric features.</p>
+<p>Uses TensorFlow <cite>feature_column</cite> to represent inputs to the layer, but
+does not perform any preprocessing associated with those columns. As such,
+it should only be passed <cite>numeric_column</cite> objects and their subclasses,
+<cite>embedding_column</cite> and <cite>indicator_column</cite>. Preprocessing functionality should
+be moved to NVTabular.</p>
+<p>For multi-hot categorical or vector continuous data, represent the data for
+a feature with a dictionary entry <cite>“&lt;feature_name&gt;__values”</cite> corresponding
+to the flattened array of all values in the batch. For multi-hot categorical
+data, there should be a corresponding <cite>“&lt;feature_name&gt;__nnzs”</cite> entry that
+describes how many categories are present in each sample (and so has length
+<cite>batch_size</cite>).</p>
+<p>Note that categorical columns should be wrapped in embedding or
+indicator columns first, consistent with the API used by
+<cite>tf.keras.layers.DenseFeatures</cite>.</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">column_a</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+<span class="n">column_b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">column_b_embedding</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span><span class="n">column_b</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="n">inputs</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">DenseFeatures</span><span class="p">([</span><span class="n">column_a</span><span class="p">,</span> <span class="n">column_b_embedding</span><span class="p">])(</span><span class="n">inputs</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>feature_columns</strong> (list of <cite>tf.feature_column</cite>) – feature columns describing the inputs to the layer</p></li>
+<li><p><strong>aggregation</strong> (<em>str in</em><em> (</em><em>&quot;concat&quot;</em><em>, </em><em>&quot;stack&quot;</em><em>)</em>) – how to combine the embeddings from multiple features</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.build">
+<code class="sig-name descname"><span class="pre">build</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shapes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#DenseFeatures.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.build" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.call">
+<code class="sig-name descname"><span class="pre">call</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#DenseFeatures.call"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.call" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.compute_output_shape">
+<code class="sig-name descname"><span class="pre">compute_output_shape</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shapes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#DenseFeatures.compute_output_shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.compute_output_shape" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.get_config">
+<code class="sig-name descname"><span class="pre">get_config</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#DenseFeatures.get_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.DenseFeatures.get_config" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.framework_utils.tensorflow.layers.embedding.</span></code><code class="sig-name descname"><span class="pre">LinearFeatures</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#LinearFeatures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">keras.engine.base_layer.Layer</span></code></p>
+<p>Layer which implements a linear combination of one-hot categorical
+and scalar numeric features. Based on the “wide” branch of the Wide &amp; Deep
+network architecture.</p>
+<p>Uses TensorFlow <code class="docutils literal notranslate"><span class="pre">feature_column``s</span> <span class="pre">to</span> <span class="pre">represent</span> <span class="pre">inputs</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">layer,</span> <span class="pre">but</span>
+<span class="pre">does</span> <span class="pre">not</span> <span class="pre">perform</span> <span class="pre">any</span> <span class="pre">preprocessing</span> <span class="pre">associated</span> <span class="pre">with</span> <span class="pre">those</span> <span class="pre">columns.</span> <span class="pre">As</span> <span class="pre">such,</span>
+<span class="pre">it</span> <span class="pre">should</span> <span class="pre">only</span> <span class="pre">be</span> <span class="pre">passed</span> <span class="pre">``numeric_column</span></code> and
+<code class="docutils literal notranslate"><span class="pre">categorical_column_with_identity</span></code>. Preprocessing functionality should
+be moved to NVTabular.</p>
+<p>Also note that, unlike ScalarDenseFeatures, categorical columns should
+NOT be wrapped in embedding or indicator columns first.</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">column_a</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+<span class="n">column_b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+<span class="n">inputs</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">ScalarLinearFeatures</span><span class="p">([</span><span class="n">column_a</span><span class="p">,</span> <span class="n">column_b</span><span class="p">])(</span><span class="n">inputs</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>feature_columns</strong> (<em>list of tf.feature_column</em>) – feature columns describing the inputs to the layer</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.build">
+<code class="sig-name descname"><span class="pre">build</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shapes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#LinearFeatures.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.build" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.call">
+<code class="sig-name descname"><span class="pre">call</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#LinearFeatures.call"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.call" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.compute_output_shape">
+<code class="sig-name descname"><span class="pre">compute_output_shape</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shapes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#LinearFeatures.compute_output_shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.compute_output_shape" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.get_config">
+<code class="sig-name descname"><span class="pre">get_config</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/embedding.html#LinearFeatures.get_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.embedding.LinearFeatures.get_config" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-nvtabular.framework_utils.tensorflow.layers.interaction"></span><dl class="py class">
+<dt id="nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.framework_utils.tensorflow.layers.interaction.</span></code><code class="sig-name descname"><span class="pre">DotProductInteraction</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/interaction.html#DotProductInteraction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">keras.engine.base_layer.Layer</span></code></p>
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.build">
+<code class="sig-name descname"><span class="pre">build</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shape</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/interaction.html#DotProductInteraction.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.build" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.call">
+<code class="sig-name descname"><span class="pre">call</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/interaction.html#DotProductInteraction.call"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.call" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.compute_output_shape">
+<code class="sig-name descname"><span class="pre">compute_output_shape</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shape</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/interaction.html#DotProductInteraction.compute_output_shape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.compute_output_shape" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.get_config">
+<code class="sig-name descname"><span class="pre">get_config</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/framework_utils/tensorflow/layers/interaction.html#DotProductInteraction.get_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.framework_utils.tensorflow.layers.interaction.DotProductInteraction.get_config" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -144,14 +381,14 @@
       <dt>Tags</dt>
       <dd><a href="../../v0.10.0/api/tensorflow_dataloader.html">v0.10.0</a></dd>
       <dd><a href="tensorflow_dataloader.html">v0.11.0</a></dd>
-      <dd><a href="../../v0.7.1/api/tensorflow_dataloader.html">v0.7.1</a></dd>
       <dd><a href="../../v0.8.0/api/tensorflow_dataloader.html">v0.8.0</a></dd>
       <dd><a href="../../v0.9.0/api/tensorflow_dataloader.html">v0.9.0</a></dd>
       <dd><a href="../../v1.0.0/api/tensorflow_dataloader.html">v1.0.0</a></dd>
+      <dd><a href="../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../../main/api/tensorflow_dataloader.html">main</a></dd>
+      <dd><a href="../../main/index.html">main</a></dd>
     </dl>
   </div>
 </div><script>

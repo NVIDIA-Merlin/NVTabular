@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.categorify &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -432,23 +439,25 @@
 
 <div class="viewcode-block" id="Categorify.fit_finalize"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">categories</span><span class="p">):</span>
         <span class="n">idx_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">:</span>
+
+        <span class="k">for</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">:</span>
             <span class="c1"># this is a path</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span>
             <span class="c1"># check the argument</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">single_table</span><span class="p">:</span>
-                <span class="n">cat_file_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+                <span class="n">cat_file_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span>
                 <span class="n">idx_count</span><span class="p">,</span> <span class="n">new_cat_file_path</span> <span class="o">=</span> <span class="n">run_on_worker</span><span class="p">(</span>
-                    <span class="n">_reset_df_index</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">cat_file_path</span><span class="p">,</span> <span class="n">idx_count</span>
+                    <span class="n">_reset_df_index</span><span class="p">,</span> <span class="n">cat</span><span class="p">,</span> <span class="n">cat_file_path</span><span class="p">,</span> <span class="n">idx_count</span>
                 <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_cat_file_path</span></div>
+                <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_cat_file_path</span></div>
 
 <div class="viewcode-block" id="Categorify.clear"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Clear the internal state of the operator&#39;s stats.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Categorify.process_vocabs"><a class="viewcode-back" href="../../../api/ops/categorify.html#nvtabular.ops.Categorify.process_vocabs">[docs]</a>    <span class="k">def</span> <span class="nf">process_vocabs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vocabs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process vocabs passed in by the user.&quot;&quot;&quot;</span>
         <span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
-
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vocabs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">is_series_object</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
             <span class="n">fit_options</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_fit_options_from_columns</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">vocabs</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
             <span class="n">base_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">fit_options</span><span class="o">.</span><span class="n">stat_name</span><span class="p">)</span>
@@ -572,26 +581,26 @@
         <span class="n">new_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_properties</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
         <span class="n">col_name</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span>
 
-        <span class="n">target_column_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">cardinality</span><span class="p">,</span> <span class="n">dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">([</span><span class="n">col_name</span><span class="p">])[</span><span class="n">col_name</span><span class="p">]</span>
+        <span class="n">category_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="n">col_name</span><span class="p">)</span>
+        <span class="n">target_category_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">category_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
-        <span class="n">to_add</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="n">target_column_path</span><span class="p">:</span>
-            <span class="n">to_add</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;num_buckets&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span>
-                <span class="s2">&quot;freq_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span>
-                <span class="s2">&quot;max_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span>
-                <span class="s2">&quot;start_index&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_index</span><span class="p">,</span>
-                <span class="s2">&quot;cat_path&quot;</span><span class="p">:</span> <span class="n">target_column_path</span><span class="p">,</span>
-                <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">},</span>
-                <span class="s2">&quot;embedding_sizes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;cardinality&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">,</span> <span class="s2">&quot;dimension&quot;</span><span class="p">:</span> <span class="n">dimensions</span><span class="p">},</span>
-            <span class="p">}</span>
+        <span class="n">cardinality</span><span class="p">,</span> <span class="n">dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">([</span><span class="n">category_name</span><span class="p">])[</span><span class="n">category_name</span><span class="p">]</span>
+
+        <span class="n">to_add</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;num_buckets&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span>
+            <span class="s2">&quot;freq_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_threshold</span><span class="p">,</span>
+            <span class="s2">&quot;max_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span>
+            <span class="s2">&quot;start_index&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_index</span><span class="p">,</span>
+            <span class="s2">&quot;cat_path&quot;</span><span class="p">:</span> <span class="n">target_category_path</span><span class="p">,</span>
+            <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">category_name</span><span class="p">},</span>
+            <span class="s2">&quot;embedding_sizes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;cardinality&quot;</span><span class="p">:</span> <span class="n">cardinality</span><span class="p">,</span> <span class="s2">&quot;dimension&quot;</span><span class="p">:</span> <span class="n">dimensions</span><span class="p">},</span>
+        <span class="p">}</span>
 
         <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_properties</span><span class="p">({</span><span class="o">**</span><span class="n">new_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span> <span class="o">**</span><span class="n">to_add</span><span class="p">})</span>
 
@@ -1139,8 +1148,21 @@
                 <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`nlargest` cannot be 0 or negative&quot;</span><span class="p">)</span>
 
-                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                    <span class="c1"># remove NAs from column, we have na count from above.</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                    <span class="c1"># sort based on count (name_size column)</span>
                     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">name_size</span><span class="p">)</span>
+                    <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
+                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
+                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="c1"># recreate newly &quot;count&quot; ordered df</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">new_cols</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">series_has_nulls</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
                 <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
                     <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1548,10 +1570,10 @@
       <dt>Tags</dt>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../../../../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="categorify.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

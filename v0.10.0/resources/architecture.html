@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Architecture &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
         <script src="../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -35,11 +41,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Documentation</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Additional Resources</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="support_matrix.html">Support Matrix</a></li>
@@ -80,31 +87,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="architecture">
+  <div class="tex2jax_ignore mathjax_ignore section" id="architecture">
 <h1>Architecture<a class="headerlink" href="#architecture" title="Permalink to this headline"></a></h1>
 <p>The NVTabular engine uses the <a class="reference external" href="http://www.rapids.ai">RAPIDS</a> <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-cuDF library</a>, which provides the bulk of the functionality for accelerating dataframe operations on the GPU and scaling across multiple GPUs. NVTabular provides functionality commonly found in deep learning recommendation workflows, allowing you to focus on what you want to do with your data, and not how you need to do it. NVTabular also provides a template for our core compute mechanism, which is referred to as Operations (ops), allowing you to build your own custom ops from cuDF and other libraries.</p>
 <p>Once NVTabular is installed, the next step is to define the preprocessing and feature engineering pipeline by applying the ops that you need. For additional information about installing NVTabular, see <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html#installation">Installation</a>.</p>
@@ -208,10 +191,10 @@
       <dt>Tags</dt>
       <dd><a href="architecture.html">v0.10.0</a></dd>
       <dd><a href="../../v0.11.0/resources/architecture.html">v0.11.0</a></dd>
-      <dd><a href="../../v0.7.1/resources/architecture.html">v0.7.1</a></dd>
       <dd><a href="../../v0.8.0/resources/architecture.html">v0.8.0</a></dd>
       <dd><a href="../../v0.9.0/resources/architecture.html">v0.9.0</a></dd>
       <dd><a href="../../v1.0.0/resources/architecture.html">v1.0.0</a></dd>
+      <dd><a href="../../v1.1.0/resources/architecture.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

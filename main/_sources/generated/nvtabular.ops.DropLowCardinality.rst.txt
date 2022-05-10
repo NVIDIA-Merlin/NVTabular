@@ -1,0 +1,43 @@
+﻿nvtabular.ops.DropLowCardinality
+================================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: DropLowCardinality
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DropLowCardinality.__init__
+      ~DropLowCardinality.column_mapping
+      ~DropLowCardinality.compute_column_schema
+      ~DropLowCardinality.compute_input_schema
+      ~DropLowCardinality.compute_output_schema
+      ~DropLowCardinality.compute_selector
+      ~DropLowCardinality.create_node
+      ~DropLowCardinality.inference_initialize
+      ~DropLowCardinality.output_column_names
+      ~DropLowCardinality.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DropLowCardinality.dependencies
+      ~DropLowCardinality.dynamic_dtypes
+      ~DropLowCardinality.label
+      ~DropLowCardinality.output_dtype
+      ~DropLowCardinality.output_properties
+      ~DropLowCardinality.output_tags
+      ~DropLowCardinality.supports
+   
+   

@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overview &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Getting Started MovieLens: Training with TensorFlow" href="03-Training-with-TF.html" />
+    <link rel="prev" title="Getting Started MovieLens: ETL with NVTabular" href="02-ETL-with-NVTabular.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Getting Started with MovieLens</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scaling-accelerated-training-with-hugectr">Scaling Accelerated training with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#let-s-define-our-model">Let’s define our model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">Train with PyTorch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html#getting-started">Getting Started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#learning-objectives">Learning Objectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#launching-and-starting-the-triton-server">Launching and Starting the Triton Server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#loading-ensemble-model-with-triton-inference-serve">Loading Ensemble Model with Triton Inference Serve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#send-request-to-triton-is-to-transform-raw-dataset">Send request to Triton IS to transform raw dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#end-2-end-inference-pipeline">END-2-END INFERENCE PIPELINE</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Getting Started with Movielens</a> &raquo;</li>
+      <li>Overview</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h1>
+<p>In this notebook, we want to provide an overview what HugeCTR framework is, its features and benefits. We will use HugeCTR to train a basic neural network architecture.</p>
+<p><b>Learning Objectives</b>:</p>
+<ul class="simple">
+<li><p>Adopt NVTabular workflow to provide input files to HugeCTR</p></li>
+<li><p>Define HugeCTR neural network architecture</p></li>
+<li><p>Train a deep learning model with HugeCTR</p></li>
+</ul>
+<div class="section" id="why-using-hugectr">
+<h2>Why using HugeCTR?<a class="headerlink" href="#why-using-hugectr" title="Permalink to this headline"></a></h2>
+<p>HugeCTR is a GPU-accelerated recommender framework designed to distribute training across multiple GPUs and nodes and estimate Click-Through Rates (CTRs).<br></p>
+<p>HugeCTR offers multiple advantages to train deep learning recommender systems:</p>
+<ol class="simple">
+<li><p><strong>Speed</strong>: HugeCTR is a highly efficient framework written C++. We experienced up to 10x speed up. HugeCTR on a NVIDIA DGX A100 system proved to be the fastest commercially available solution for training the architecture Deep Learning Recommender Model (DLRM) developed by Facebook.</p></li>
+<li><p><strong>Scale</strong>: HugeCTR supports model parallel scaling. It distributes the large embedding tables over multiple GPUs or multiple nodes.</p></li>
+<li><p><strong>Easy-to-use</strong>: Easy-to-use Python API similar to Keras. Examples for popular deep learning recommender systems architectures (Wide&amp;Deep, DLRM, DCN, DeepFM) are available.</p></li>
+</ol>
+</div>
+<div class="section" id="other-features-of-hugectr">
+<h2>Other Features of HugeCTR<a class="headerlink" href="#other-features-of-hugectr" title="Permalink to this headline"></a></h2>
+<p>HugeCTR is designed to scale deep learning models for recommender systems. It provides a list of other important features:</p>
+<ul class="simple">
+<li><p>Proficiency in oversubscribing models to train embedding tables with single nodes that don’t fit within the GPU or CPU memory (only required embeddings are prefetched from a parameter server per batch)</p></li>
+<li><p>Asynchronous and multithreaded data pipelines</p></li>
+<li><p>A highly optimized data loader.</p></li>
+<li><p>Supported data formats such as parquet and binary</p></li>
+<li><p>Integration with Triton Inference Server for deployment to production</p></li>
+</ul>
+</div>
+<div class="section" id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline"></a></h2>
+<p>In this example, we will train a neural network with HugeCTR. We will use preprocessed datasets generated via NVTabular in <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code> notebook.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We define our base directory, containing the data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># path to preprocessed data</span>
+<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># path to save the models</span>
+<span class="n">MODEL_BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_BASE_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s load our saved workflow from the <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code> notebook.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span><span class="o">.</span><span class="n">output_dtypes</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;userId&#39;: dtype(&#39;int64&#39;),
+ &#39;movieId&#39;: dtype(&#39;int64&#39;),
+ &#39;genres&#39;: ListDtype(int64),
+ &#39;rating&#39;: dtype(&#39;int8&#39;)}
+</pre></div>
+</div>
+</div>
+</div>
+<p>Note: We do not have numerical output columns</p>
+<p>Let’s clear existing directory and create the output folders.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">MODEL_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;model/movielens_hugectr/&quot;</span><span class="p">)</span>
+<span class="o">!</span>rm -rf <span class="o">{</span>MODEL_DIR<span class="o">}</span>
+<span class="o">!</span>mkdir -p <span class="o">{</span>MODEL_DIR<span class="o">}</span><span class="s2">&quot;1&quot;</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="scaling-accelerated-training-with-hugectr">
+<h1>Scaling Accelerated training with HugeCTR<a class="headerlink" href="#scaling-accelerated-training-with-hugectr" title="Permalink to this headline"></a></h1>
+<p>HugeCTR is a deep learning framework dedicated to recommendation systems. It is written in CUDA C++. As HugeCTR optimizes the training in CUDA++, we need to define the training pipeline and model architecture and execute it via the commandline. We will use the Python API, which is similar to Keras models.</p>
+<p>HugeCTR has three main components:</p>
+<ul class="simple">
+<li><p>Solver: Specifies various details such as active GPU list, batchsize, and model_file</p></li>
+<li><p>Optimizer: Specifies the type of optimizer and its hyperparameters</p></li>
+<li><p>DataReader: Specifies the training/evaludation data</p></li>
+<li><p>Model: Specifies embeddings, and dense layers. Note that embeddings must precede the dense layers</p></li>
+</ul>
+<p><strong>Solver</strong></p>
+<p>Let’s take a look on the parameter for the <code class="docutils literal notranslate"><span class="pre">Solver</span></code>. We should be familiar from other frameworks for the hyperparameter.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">solver</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">CreateSolver</span><span class="p">(</span>
+<span class="o">-</span> <span class="n">vvgpu</span><span class="p">:</span> <span class="n">GPU</span> <span class="n">indices</span> <span class="n">used</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">training</span> <span class="n">process</span><span class="p">,</span> <span class="n">which</span> <span class="n">has</span> <span class="n">two</span> <span class="n">levels</span><span class="o">.</span> <span class="n">For</span> <span class="n">example</span><span class="p">:</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]]</span> <span class="n">indicates</span> <span class="n">that</span> <span class="n">two</span> <span class="n">physical</span> <span class="n">nodes</span> <span class="p">(</span><span class="n">each</span> <span class="n">physical</span> <span class="n">node</span> <span class="n">can</span> <span class="n">have</span> <span class="n">multiple</span> <span class="n">NUMA</span> <span class="n">nodes</span><span class="p">)</span> <span class="n">are</span> <span class="n">used</span><span class="o">.</span> <span class="n">In</span> <span class="n">the</span> <span class="n">first</span> <span class="n">node</span><span class="p">,</span> <span class="n">GPUs</span> <span class="mi">0</span> <span class="ow">and</span> <span class="mi">1</span> <span class="n">are</span> <span class="n">used</span> <span class="k">while</span> <span class="n">GPUs</span> <span class="mi">1</span> <span class="ow">and</span> <span class="mi">2</span> <span class="n">are</span> <span class="n">used</span> <span class="k">for</span> <span class="n">the</span> <span class="n">second</span> <span class="n">node</span><span class="o">.</span> <span class="n">It</span> <span class="ow">is</span> <span class="n">also</span> <span class="n">possible</span> <span class="n">to</span> <span class="n">specify</span> <span class="n">non</span><span class="o">-</span><span class="n">continuous</span> <span class="n">GPU</span> <span class="n">indices</span> <span class="n">such</span> <span class="k">as</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span><span class="o">.</span>
+<span class="o">-</span> <span class="n">batchsize</span><span class="p">:</span> <span class="n">Minibatch</span> <span class="n">size</span> <span class="n">used</span> <span class="ow">in</span> <span class="n">training</span>
+<span class="o">-</span> <span class="n">max_eval_batches</span><span class="p">:</span> <span class="n">Maximum</span> <span class="n">number</span> <span class="n">of</span> <span class="n">batches</span> <span class="n">used</span> <span class="ow">in</span> <span class="n">evaluation</span><span class="o">.</span> <span class="n">It</span> <span class="ow">is</span> <span class="n">recommended</span> <span class="n">that</span> <span class="n">the</span> <span class="n">number</span> <span class="ow">is</span> <span class="n">equal</span> <span class="n">to</span> <span class="ow">or</span> <span class="n">bigger</span> <span class="n">than</span> <span class="n">the</span> <span class="n">actual</span> <span class="n">number</span> <span class="n">of</span> <span class="n">bathces</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">evaluation</span> <span class="n">dataset</span><span class="o">.</span>
+<span class="n">On</span> <span class="n">the</span> <span class="n">other</span> <span class="n">hand</span><span class="p">,</span> <span class="k">with</span> <span class="n">num_epochs</span><span class="p">,</span> <span class="n">HugeCTR</span> <span class="n">stops</span> <span class="n">the</span> <span class="n">evaluation</span> <span class="k">if</span> <span class="nb">all</span> <span class="n">the</span> <span class="n">evaluation</span> <span class="n">data</span> <span class="ow">is</span> <span class="n">consumed</span>    
+<span class="o">-</span> <span class="n">batchsize_eval</span><span class="p">:</span> <span class="n">Minibatch</span> <span class="n">size</span> <span class="n">used</span> <span class="ow">in</span> <span class="n">evaluation</span><span class="o">.</span> <span class="n">The</span> <span class="n">default</span> <span class="n">value</span> <span class="ow">is</span> <span class="mf">2048.</span> <span class="n">Note</span> <span class="n">that</span> <span class="n">batchsize</span> <span class="n">here</span> <span class="ow">is</span> <span class="n">the</span> <span class="k">global</span> <span class="n">batch</span> <span class="n">size</span> <span class="n">across</span> <span class="n">gpus</span> <span class="ow">and</span> <span class="n">nodes</span><span class="p">,</span> <span class="ow">not</span> <span class="n">per</span> <span class="n">worker</span> <span class="n">batch</span> <span class="n">size</span><span class="o">.</span>
+<span class="o">-</span> <span class="n">mixed_precision</span><span class="p">:</span> <span class="n">Enables</span> <span class="n">mixed</span> <span class="n">precision</span> <span class="n">training</span> <span class="k">with</span> <span class="n">the</span> <span class="n">scaler</span> <span class="n">specified</span> <span class="n">here</span><span class="o">.</span> <span class="n">Only</span> <span class="mi">128</span><span class="p">,</span><span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="ow">and</span> <span class="mi">1024</span> <span class="n">scalers</span> <span class="n">are</span> <span class="n">supported</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Optimizer</strong></p>
+<p>The optimizer is the algorithm to update the model parameters. HugeCTR supports the common algorithms.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">CreateOptimizer</span><span class="p">(</span>
+<span class="o">-</span> <span class="n">optimizer_type</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="n">algorithm</span> <span class="o">-</span> <span class="n">Adam</span><span class="p">,</span> <span class="n">MomentumSGD</span><span class="p">,</span> <span class="n">Nesterov</span><span class="p">,</span> <span class="ow">and</span> <span class="n">SGD</span> 
+<span class="o">-</span> <span class="n">learning_rate</span><span class="p">:</span> <span class="n">Learning</span> <span class="n">Rate</span> <span class="k">for</span> <span class="n">optimizer</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>DataReader</strong></p>
+<p>The data reader defines the training and evaluation dataset.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderParams</span><span class="p">(</span>
+<span class="o">-</span> <span class="n">data_reader_type</span><span class="p">:</span> <span class="n">Data</span> <span class="nb">format</span> <span class="n">to</span> <span class="n">read</span>
+<span class="o">-</span> <span class="n">source</span><span class="p">:</span> <span class="n">The</span> <span class="n">training</span> <span class="n">dataset</span> <span class="n">file</span> <span class="nb">list</span><span class="o">.</span> <span class="n">IMPORTANT</span><span class="p">:</span> <span class="n">This</span> <span class="n">should</span> <span class="n">be</span> <span class="n">a</span> <span class="nb">list</span>
+<span class="o">-</span> <span class="n">eval_source</span><span class="p">:</span> <span class="n">The</span> <span class="n">evaluation</span> <span class="n">dataset</span> <span class="n">file</span> <span class="nb">list</span><span class="o">.</span>
+<span class="o">-</span> <span class="n">check_type</span><span class="p">:</span> <span class="n">The</span> <span class="n">data</span> <span class="n">error</span> <span class="n">detection</span> <span class="n">mechanism</span> <span class="p">(</span><span class="n">Sum</span><span class="p">:</span> <span class="n">Checksum</span><span class="p">,</span> <span class="kc">None</span><span class="p">:</span> <span class="n">no</span> <span class="n">detection</span><span class="p">)</span><span class="o">.</span>
+<span class="o">-</span> <span class="n">slot_size_array</span><span class="p">:</span> <span class="n">The</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">categorical</span> <span class="n">feature</span> <span class="n">cardinalities</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Model</strong></p>
+<p>We initialize the model with the solver, optimizer and data reader:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">solver</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can add multiple layers to the model with <code class="docutils literal notranslate"><span class="pre">model.add</span></code> function. We will focus on:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Input</span></code> defines the input data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SparseEmbedding</span></code> defines the embedding layer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DenseLayer</span></code> defines dense layers, such as fully connected, ReLU, BatchNorm, etc.</p></li>
+</ul>
+<p><strong>HugeCTR organizes the layers by names. For each layer, we define the input and output names.</strong></p>
+<p>Input layer:</p>
+<p>This layer is required to define the input data.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">hugectr</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+    <span class="n">label_dim</span><span class="p">:</span> <span class="n">Number</span> <span class="n">of</span> <span class="n">label</span> <span class="n">columns</span>
+    <span class="n">label_name</span><span class="p">:</span> <span class="n">Name</span> <span class="n">of</span> <span class="n">label</span> <span class="n">columns</span> <span class="ow">in</span> <span class="n">network</span> <span class="n">architecture</span>
+    <span class="n">dense_dim</span><span class="p">:</span> <span class="n">Number</span> <span class="n">of</span> <span class="n">continuous</span> <span class="n">columns</span>
+    <span class="n">dense_name</span><span class="p">:</span> <span class="n">Name</span> <span class="n">of</span> <span class="n">contiunous</span> <span class="n">columns</span> <span class="ow">in</span> <span class="n">network</span> <span class="n">architecture</span>
+    <span class="n">data_reader_sparse_param_array</span><span class="p">:</span> <span class="n">Configuration</span> <span class="n">how</span> <span class="n">to</span> <span class="n">read</span> <span class="n">sparse</span> <span class="n">data</span> <span class="ow">and</span> <span class="n">its</span> <span class="n">names</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>SparseEmbedding:</p>
+<p>This layer defines embedding table</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">hugectr</span><span class="o">.</span><span class="n">SparseEmbedding</span><span class="p">(</span>
+    <span class="n">embedding_type</span><span class="p">:</span> <span class="n">Different</span> <span class="n">embedding</span> <span class="n">options</span> <span class="n">to</span> <span class="n">distribute</span> <span class="n">embedding</span> <span class="n">tables</span> 
+    <span class="n">workspace_size_per_gpu_in_mb</span><span class="p">:</span> <span class="n">Maximum</span> <span class="n">embedding</span> <span class="n">table</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">MB</span>
+    <span class="n">embedding_vec_size</span><span class="p">:</span> <span class="n">Embedding</span> <span class="n">vector</span> <span class="n">size</span>
+    <span class="n">combiner</span><span class="p">:</span> <span class="n">Intra</span><span class="o">-</span><span class="n">slot</span> <span class="n">reduction</span> <span class="n">op</span>
+    <span class="n">sparse_embedding_name</span><span class="p">:</span> <span class="n">Layer</span> <span class="n">name</span>
+    <span class="n">bottom_name</span><span class="p">:</span> <span class="n">Input</span> <span class="n">layer</span> <span class="n">names</span>
+    <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="n">to</span> <span class="n">use</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>DenseLayer:</p>
+<p>This layer is copied to each GPU and is normally used for the MLP tower.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+    <span class="n">layer_type</span><span class="p">:</span> <span class="n">Layer</span> <span class="nb">type</span><span class="p">,</span> <span class="n">such</span> <span class="k">as</span> <span class="n">FullyConnected</span><span class="p">,</span> <span class="n">Reshape</span><span class="p">,</span> <span class="n">Concat</span><span class="p">,</span> <span class="n">Loss</span><span class="p">,</span> <span class="n">BatchNorm</span><span class="p">,</span> <span class="n">etc</span><span class="o">.</span>
+    <span class="n">bottom_names</span><span class="p">:</span> <span class="n">Input</span> <span class="n">layer</span> <span class="n">names</span>
+    <span class="n">top_names</span><span class="p">:</span> <span class="n">Layer</span> <span class="n">name</span>
+    <span class="o">...</span><span class="p">:</span> <span class="n">Depending</span> <span class="n">on</span> <span class="n">the</span> <span class="n">layer</span> <span class="nb">type</span> <span class="n">additional</span> <span class="n">parameter</span> <span class="n">can</span> <span class="n">be</span> <span class="n">defined</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This is only a short introduction in the API. You can read more in the official docs: <a class="reference external" href="https://github.com/NVIDIA/HugeCTR/blob/master/docs/python_interface.md">Python Interface</a> and <a class="reference external" href="https://github.com/NVIDIA/HugeCTR/blob/master/docs/hugectr_layer_book.md">Layer Book</a></p>
+</div>
+<div class="section" id="let-s-define-our-model">
+<h1>Let’s define our model<a class="headerlink" href="#let-s-define-our-model" title="Permalink to this headline"></a></h1>
+<p>We walked through the documentation, but it is useful to understand the API. Finally, we can define our model. We will write the model to <code class="docutils literal notranslate"><span class="pre">./model.py</span></code> and execute it afterwards.</p>
+<p>We need the cardinalities of each categorical feature to assign as <code class="docutils literal notranslate"><span class="pre">slot_size_array</span></code> in the model below.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">get_embedding_sizes</span>
+
+<span class="n">embeddings</span> <span class="o">=</span> <span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>({&#39;userId&#39;: (162542, 512), &#39;movieId&#39;: (56595, 512)}, {&#39;genres&#39;: (21, 16)})
+</pre></div>
+</div>
+</div>
+</div>
+<p>We use <code class="docutils literal notranslate"><span class="pre">graph_to_json</span></code> to convert the model to a JSON configuration, required for the inference.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">hugectr</span>
+<span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>  <span class="c1"># noqa</span>
+
+<span class="n">solver</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">CreateSolver</span><span class="p">(</span>
+    <span class="n">vvgpu</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">]],</span>
+    <span class="n">batchsize</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
+    <span class="n">batchsize_eval</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
+    <span class="n">max_eval_batches</span><span class="o">=</span><span class="mi">160</span><span class="p">,</span>
+    <span class="n">i64_input_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">use_mixed_precision</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">repeat_dataset</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">CreateOptimizer</span><span class="p">(</span><span class="n">optimizer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Optimizer_t</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderParams</span><span class="p">(</span>
+    <span class="n">data_reader_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderType_t</span><span class="o">.</span><span class="n">Parquet</span><span class="p">,</span>
+    <span class="n">source</span><span class="o">=</span><span class="p">[</span><span class="n">INPUT_DATA_DIR</span> <span class="o">+</span> <span class="s2">&quot;train/_file_list.txt&quot;</span><span class="p">],</span>
+    <span class="n">eval_source</span><span class="o">=</span><span class="n">INPUT_DATA_DIR</span> <span class="o">+</span> <span class="s2">&quot;valid/_file_list.txt&quot;</span><span class="p">,</span>
+    <span class="n">check_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Check_t</span><span class="o">.</span><span class="n">Non</span><span class="p">,</span>
+    <span class="n">slot_size_array</span><span class="o">=</span><span class="p">[</span><span class="mi">162542</span><span class="p">,</span> <span class="mi">56586</span><span class="p">,</span> <span class="mi">21</span><span class="p">],</span>
+<span class="p">)</span>
+
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">solver</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">)</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+        <span class="n">label_dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">label_name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
+        <span class="n">dense_dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">dense_name</span><span class="o">=</span><span class="s2">&quot;dense&quot;</span><span class="p">,</span>
+        <span class="n">data_reader_sparse_param_array</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderSparseParam</span><span class="p">(</span><span class="s2">&quot;data1&quot;</span><span class="p">,</span> <span class="n">nnz_per_slot</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">is_fixed_length</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">slot_num</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="p">],</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">SparseEmbedding</span><span class="p">(</span>
+        <span class="n">embedding_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Embedding_t</span><span class="o">.</span><span class="n">LocalizedSlotSparseEmbeddingHash</span><span class="p">,</span>
+        <span class="n">workspace_size_per_gpu_in_mb</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">embedding_vec_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+        <span class="n">combiner</span><span class="o">=</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span>
+        <span class="n">sparse_embedding_name</span><span class="o">=</span><span class="s2">&quot;sparse_embedding1&quot;</span><span class="p">,</span>
+        <span class="n">bottom_name</span><span class="o">=</span><span class="s2">&quot;data1&quot;</span><span class="p">,</span>
+        <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">Reshape</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sparse_embedding1&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reshape1&quot;</span><span class="p">],</span>
+        <span class="n">leading_dim</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">InnerProduct</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reshape1&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc1&quot;</span><span class="p">],</span>
+        <span class="n">num_output</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">ReLU</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc1&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu1&quot;</span><span class="p">],</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">InnerProduct</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu1&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc2&quot;</span><span class="p">],</span>
+        <span class="n">num_output</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">ReLU</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc2&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu2&quot;</span><span class="p">],</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">InnerProduct</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu2&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc3&quot;</span><span class="p">],</span>
+        <span class="n">num_output</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
+        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">BinaryCrossEntropyLoss</span><span class="p">,</span>
+        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc3&quot;</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">],</span>
+        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">eval_interval</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">snapshot</span><span class="o">=</span><span class="mi">1900</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">graph_to_json</span><span class="p">(</span><span class="n">graph_config_file</span><span class="o">=</span><span class="n">MODEL_DIR</span> <span class="o">+</span> <span class="s2">&quot;1/movielens.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>HugeCTR Version: 3.3
+====================================================Model Init=====================================================
+[HUGECTR][19:15:20][WARNING][RANK0]: The model name is not specified when creating the solver.
+[HUGECTR][19:15:20][INFO][RANK0]: Global seed is 1975903631
+[HUGECTR][19:15:20][INFO][RANK0]: Device to NUMA mapping:
+  GPU 0 -&gt;  node 0
+
+[HUGECTR][19:15:21][WARNING][RANK0]: Peer-to-peer access cannot be fully enabled.
+[HUGECTR][19:15:21][INFO][RANK0]: Start all2all warmup
+[HUGECTR][19:15:21][INFO][RANK0]: End all2all warmup
+[HUGECTR][19:15:21][INFO][RANK0]: Using All-reduce algorithm: NCCL
+[HUGECTR][19:15:21][INFO][RANK0]: Device 0: Tesla V100-DGXS-16GB
+[HUGECTR][19:15:21][INFO][RANK0]: num of DataReader workers: 1
+[HUGECTR][19:15:21][INFO][RANK0]: Vocabulary size: 219149
+[HUGECTR][19:15:21][INFO][RANK0]: max_vocabulary_size_per_gpu_=3276800
+[HUGECTR][19:15:21][INFO][RANK0]: Graph analysis to resolve tensor dependency
+===================================================Model Compile===================================================
+[HUGECTR][19:15:22][INFO][RANK0]: gpu0 start to init embedding
+[HUGECTR][19:15:22][INFO][RANK0]: gpu0 init embedding done
+[HUGECTR][19:15:22][INFO][RANK0]: Starting AUC NCCL warm-up
+[HUGECTR][19:15:22][INFO][RANK0]: Warm-up done
+===================================================Model Summary===================================================
+label                                   Dense                         Sparse                        
+label                                   dense                          data1                         
+(None, 1)                               (None, 0)                               
+——————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+Layer Type                              Input Name                    Output Name                   Output Shape                  
+——————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+LocalizedSlotSparseEmbeddingHash        data1                         sparse_embedding1             (None, 3, 16)                 
+------------------------------------------------------------------------------------------------------------------
+Reshape                                 sparse_embedding1             reshape1                      (None, 48)                    
+------------------------------------------------------------------------------------------------------------------
+InnerProduct                            reshape1                      fc1                           (None, 128)                   
+------------------------------------------------------------------------------------------------------------------
+ReLU                                    fc1                           relu1                         (None, 128)                   
+------------------------------------------------------------------------------------------------------------------
+InnerProduct                            relu1                         fc2                           (None, 128)                   
+------------------------------------------------------------------------------------------------------------------
+ReLU                                    fc2                           relu2                         (None, 128)                   
+------------------------------------------------------------------------------------------------------------------
+InnerProduct                            relu2                         fc3                           (None, 1)                     
+------------------------------------------------------------------------------------------------------------------
+BinaryCrossEntropyLoss                  fc3                           loss                                                        
+                                        label                                                                                     
+------------------------------------------------------------------------------------------------------------------
+=====================================================Model Fit=====================================================
+[HUGECTR][19:15:22][INFO][RANK0]: Use non-epoch mode with number of iterations: 2000
+[HUGECTR][19:15:22][INFO][RANK0]: Training batchsize: 2048, evaluation batchsize: 2048
+[HUGECTR][19:15:22][INFO][RANK0]: Evaluation interval: 200, snapshot interval: 1900
+[HUGECTR][19:15:22][INFO][RANK0]: Dense network trainable: True
+[HUGECTR][19:15:22][INFO][RANK0]: Sparse embedding sparse_embedding1 trainable: True
+[HUGECTR][19:15:22][INFO][RANK0]: Use mixed precision: False, scaler: 1.000000, use cuda graph: True
+[HUGECTR][19:15:22][INFO][RANK0]: lr: 0.001000, warmup_steps: 1, end_lr: 0.000000
+[HUGECTR][19:15:22][INFO][RANK0]: decay_start: 0, decay_steps: 1, decay_power: 2.000000
+[HUGECTR][19:15:22][INFO][RANK0]: Training source file: /root/nvt-examples/movielens/data/train/_file_list.txt
+[HUGECTR][19:15:22][INFO][RANK0]: Evaluation source file: /root/nvt-examples/movielens/data/valid/_file_list.txt
+[HUGECTR][19:15:22][INFO][RANK0]: Iter: 100 Time(100 iters): 0.223968s Loss: 0.587505 lr:0.001000
+[HUGECTR][19:15:23][INFO][RANK0]: Iter: 200 Time(100 iters): 0.220862s Loss: 0.577032 lr:0.001000
+[HUGECTR][19:15:23][INFO][RANK0]: Evaluation, AUC: 0.748669
+[HUGECTR][19:15:23][INFO][RANK0]: Eval Time for 160 iters: 0.039598s
+[HUGECTR][19:15:23][INFO][RANK0]: Iter: 300 Time(100 iters): 0.262075s Loss: 0.563935 lr:0.001000
+[HUGECTR][19:15:23][INFO][RANK0]: Iter: 400 Time(100 iters): 0.220956s Loss: 0.533650 lr:0.001000
+[HUGECTR][19:15:23][INFO][RANK0]: Evaluation, AUC: 0.765075
+[HUGECTR][19:15:23][INFO][RANK0]: Eval Time for 160 iters: 0.038021s
+[HUGECTR][19:15:23][INFO][RANK0]: Iter: 500 Time(100 iters): 0.290587s Loss: 0.545377 lr:0.001000
+[HUGECTR][19:15:24][INFO][RANK0]: Iter: 600 Time(100 iters): 0.221455s Loss: 0.544951 lr:0.001000
+[HUGECTR][19:15:24][INFO][RANK0]: Evaluation, AUC: 0.775103
+[HUGECTR][19:15:24][INFO][RANK0]: Eval Time for 160 iters: 0.036293s
+[HUGECTR][19:15:24][INFO][RANK0]: Iter: 700 Time(100 iters): 0.259013s Loss: 0.538431 lr:0.001000
+[HUGECTR][19:15:24][INFO][RANK0]: Iter: 800 Time(100 iters): 0.221748s Loss: 0.539337 lr:0.001000
+[HUGECTR][19:15:24][INFO][RANK0]: Evaluation, AUC: 0.780380
+[HUGECTR][19:15:24][INFO][RANK0]: Eval Time for 160 iters: 0.065051s
+[HUGECTR][19:15:24][INFO][RANK0]: Iter: 900 Time(100 iters): 0.287830s Loss: 0.530380 lr:0.001000
+[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1000 Time(100 iters): 0.247687s Loss: 0.530518 lr:0.001000
+[HUGECTR][19:15:25][INFO][RANK0]: Evaluation, AUC: 0.784759
+[HUGECTR][19:15:25][INFO][RANK0]: Eval Time for 160 iters: 0.036482s
+[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1100 Time(100 iters): 0.258984s Loss: 0.525256 lr:0.001000
+[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1200 Time(100 iters): 0.221740s Loss: 0.532820 lr:0.001000
+[HUGECTR][19:15:25][INFO][RANK0]: Evaluation, AUC: 0.787621
+[HUGECTR][19:15:25][INFO][RANK0]: Eval Time for 160 iters: 0.036467s
+[HUGECTR][19:15:25][INFO][RANK0]: Iter: 1300 Time(100 iters): 0.259424s Loss: 0.510621 lr:0.001000
+[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1400 Time(100 iters): 0.221632s Loss: 0.530471 lr:0.001000
+[HUGECTR][19:15:26][INFO][RANK0]: Evaluation, AUC: 0.791757
+[HUGECTR][19:15:26][INFO][RANK0]: Eval Time for 160 iters: 0.066089s
+[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1500 Time(100 iters): 0.316840s Loss: 0.539018 lr:0.001000
+[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1600 Time(100 iters): 0.221609s Loss: 0.507900 lr:0.001000
+[HUGECTR][19:15:26][INFO][RANK0]: Evaluation, AUC: 0.793827
+[HUGECTR][19:15:26][INFO][RANK0]: Eval Time for 160 iters: 0.036891s
+[HUGECTR][19:15:26][INFO][RANK0]: Iter: 1700 Time(100 iters): 0.259825s Loss: 0.545857 lr:0.001000
+[HUGECTR][19:15:27][INFO][RANK0]: Iter: 1800 Time(100 iters): 0.221886s Loss: 0.523603 lr:0.001000
+[HUGECTR][19:15:27][INFO][RANK0]: Evaluation, AUC: 0.796364
+[HUGECTR][19:15:27][INFO][RANK0]: Eval Time for 160 iters: 0.036460s
+[HUGECTR][19:15:27][INFO][RANK0]: Iter: 1900 Time(100 iters): 0.259438s Loss: 0.522114 lr:0.001000
+[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Dump hash table from GPU0
+[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write hash table &lt;key,value&gt; pairs to file
+[HUGECTR][19:15:27][INFO][RANK0]: Done
+[HUGECTR][19:15:27][INFO][RANK0]: Dumping sparse weights to files, successful
+[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write optimzer state to file
+[HUGECTR][19:15:27][INFO][RANK0]: Done
+[HUGECTR][19:15:27][INFO][RANK0]: Rank0: Write optimzer state to file
+[HUGECTR][19:15:28][INFO][RANK0]: Done
+[HUGECTR][19:15:28][INFO][RANK0]: Dumping sparse optimzer states to files, successful
+[HUGECTR][19:15:28][INFO][RANK0]: Dumping dense weights to file, successful
+[HUGECTR][19:15:28][INFO][RANK0]: Dumping dense optimizer states to file, successful
+[HUGECTR][19:15:28][INFO][RANK0]: Dumping untrainable weights to file, successful
+[HUGECTR][19:15:28][INFO][RANK0]: Finish 2000 iterations with batchsize: 2048 in 5.77s.
+[HUGECTR][19:15:28][INFO][RANK0]: Save the model graph to /root/nvt-examples/movielens/data/model/movielens_hugectr/1/movielens.json successfully
+</pre></div>
+</div>
+</div>
+</div>
+<p>After training terminates, we can see that multiple <code class="docutils literal notranslate"><span class="pre">.model</span></code> files and folders are generated. We need to move them inside <code class="docutils literal notranslate"><span class="pre">1</span></code> folder under the <code class="docutils literal notranslate"><span class="pre">movielens_hugectr</span></code> folder.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>mv *.model <span class="o">{</span>MODEL_DIR<span class="o">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02-ETL-with-NVTabular.html" class="btn btn-neutral float-left" title="Getting Started MovieLens: ETL with NVTabular" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Training-with-TF.html" class="btn btn-neutral float-right" title="Getting Started MovieLens: Training with TensorFlow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.11.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="03-Training-with-HugeCTR.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

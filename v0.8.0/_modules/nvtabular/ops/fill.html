@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.fill &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -83,9 +90,9 @@
 <span class="c1"># limitations under the License.</span>
 <span class="c1">#</span>
 <span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">nvtabular.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">annotate</span>
-<span class="kn">from</span> <span class="nn">nvtabular.graph.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">annotate</span>
 
 <span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
 <span class="kn">from</span> <span class="nn">.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
@@ -135,32 +142,20 @@
 
         <span class="k">return</span> <span class="n">nvtabular_cpp</span><span class="o">.</span><span class="n">inference</span><span class="o">.</span><span class="n">FillTransform</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
-    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
-
-<div class="viewcode-block" id="FillMissing.compute_output_schema"><a class="viewcode-back" href="../../../api/ops/fillmissing.html#nvtabular.ops.FillMissing.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">col_selector</span><span class="p">:</span>
-            <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
-            <span class="n">tags_col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="n">col_selector</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
-            <span class="n">filtered_schema</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tags_col_selector</span><span class="p">)</span>
-            <span class="n">col_selector</span> <span class="o">+=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">filtered_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
-
-            <span class="c1"># zero tags because already filtered</span>
-            <span class="n">col_selector</span><span class="o">.</span><span class="n">_tags</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">output_schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-            <span class="n">column_schema</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">column_name</span><span class="p">]</span>
-            <span class="n">output_schema</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">transformed_schema</span><span class="p">(</span><span class="n">column_schema</span><span class="p">)])</span>
+<div class="viewcode-block" id="FillMissing.column_mapping"><a class="viewcode-back" href="../../../api/ops/fillmissing.html#nvtabular.ops.FillMissing.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
-                <span class="n">column_schema</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column_name</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">)</span>
-                <span class="n">output_schema</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">([</span><span class="n">column_schema</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">output_schema</span></div>
+                <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
 
-<div class="viewcode-block" id="FillMissing.output_column_names"><a class="viewcode-back" href="../../../api/ops/fillmissing.html#nvtabular.ops.FillMissing.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
-        <span class="n">output_cols</span> <span class="o">=</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[:]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
-            <span class="n">output_cols</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_filled&quot;</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">output_cols</span><span class="p">)</span></div></div>
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_filled&quot;</span><span class="p">):</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">col_schema</span>
+
+    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span></div>
 
 
 <div class="viewcode-block" id="FillMedian"><a class="viewcode-back" href="../../../api/ops/fillmedian.html#nvtabular.ops.FillMedian">[docs]</a><span class="k">class</span> <span class="nc">FillMedian</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
@@ -215,23 +210,18 @@
 <div class="viewcode-block" id="FillMedian.clear"><a class="viewcode-back" href="../../../api/ops/fillmedian.html#nvtabular.ops.FillMedian.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">medians</span> <span class="o">=</span> <span class="p">{}</span></div>
 
-<div class="viewcode-block" id="FillMedian.compute_output_schema"><a class="viewcode-back" href="../../../api/ops/fillmedian.html#nvtabular.ops.FillMedian.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">col_selector</span><span class="p">:</span>
-            <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
-        <span class="n">output_schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-            <span class="n">column_schema</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">column_name</span><span class="p">]</span>
-            <span class="n">output_schema</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">transformed_schema</span><span class="p">(</span><span class="n">column_schema</span><span class="p">)])</span>
+<div class="viewcode-block" id="FillMedian.column_mapping"><a class="viewcode-back" href="../../../api/ops/fillmedian.html#nvtabular.ops.FillMedian.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
-                <span class="n">column_schema</span> <span class="o">=</span> <span class="n">column_schema</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column_name</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">)</span>
-                <span class="n">output_schema</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">([</span><span class="n">column_schema</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">output_schema</span></div>
+                <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
 
-<div class="viewcode-block" id="FillMedian.output_column_names"><a class="viewcode-back" href="../../../api/ops/fillmedian.html#nvtabular.ops.FillMedian.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
-        <span class="n">output_cols</span> <span class="o">=</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[:]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
-            <span class="n">output_cols</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_filled&quot;</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">output_cols</span><span class="p">)</span></div></div>
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_filled&quot;</span><span class="p">):</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">col_schema</span></div>
 </pre></div>
 
            </div>
@@ -266,10 +256,10 @@
       <dt>Tags</dt>
       <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="fill.html">v0.8.0</a></dd>
       <dd><a href="../../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

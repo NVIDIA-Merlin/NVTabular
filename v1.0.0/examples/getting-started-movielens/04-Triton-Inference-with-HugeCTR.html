@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overview &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Overview" href="04-Triton-Inference-with-TF.html" />
+    <link rel="prev" title="Getting Started MovieLens: Training with PyTorch" href="03-Training-with-PyTorch.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Getting Started with MovieLens</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html#scaling-accelerated-training-with-hugectr">Scaling Accelerated training with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html#let-s-define-our-model">Let’s define our model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">Train with PyTorch</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#learning-objectives">Learning Objectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#launching-and-starting-the-triton-server">Launching and Starting the Triton Server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#loading-ensemble-model-with-triton-inference-serve">Loading Ensemble Model with Triton Inference Serve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#send-request-to-triton-is-to-transform-raw-dataset">Send request to Triton IS to transform raw dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html#end-2-end-inference-pipeline">END-2-END INFERENCE PIPELINE</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Getting Started with Movielens</a> &raquo;</li>
+      <li>Overview</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ===================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h1>
+<p>In this notebook, we will show how we do inference with our trained deep learning recommender model using Triton Inference Server. In this example, we deploy the NVTabular workflow and HugeCTR model with Triton Inference Server. We deploy them as an ensemble. For each request, Triton Inference Server will feed the input data through the NVTabular workflow and its output through the HugeCR model.</p>
+</div>
+<div class="section" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline"></a></h1>
+<p>We need to write configuration files with the stored model weights and model configuration.</p>
+<div class="cell tag_flake8-noqa-cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%writefile</span> /model/movielens_hugectr/config.pbtxt
+<span class="n">name</span><span class="p">:</span> <span class="s2">&quot;movielens_hugectr&quot;</span>
+<span class="n">backend</span><span class="p">:</span> <span class="s2">&quot;hugectr&quot;</span>
+<span class="n">max_batch_size</span><span class="p">:</span> <span class="mi">64</span>
+<span class="nb">input</span> <span class="p">[</span>
+   <span class="p">{</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;DES&quot;</span>
+    <span class="n">data_type</span><span class="p">:</span> <span class="n">TYPE_FP32</span>
+    <span class="n">dims</span><span class="p">:</span> <span class="p">[</span> <span class="o">-</span><span class="mi">1</span> <span class="p">]</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;CATCOLUMN&quot;</span>
+    <span class="n">data_type</span><span class="p">:</span> <span class="n">TYPE_INT64</span>
+    <span class="n">dims</span><span class="p">:</span> <span class="p">[</span> <span class="o">-</span><span class="mi">1</span> <span class="p">]</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;ROWINDEX&quot;</span>
+    <span class="n">data_type</span><span class="p">:</span> <span class="n">TYPE_INT32</span>
+    <span class="n">dims</span><span class="p">:</span> <span class="p">[</span> <span class="o">-</span><span class="mi">1</span> <span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+<span class="n">output</span> <span class="p">[</span>
+  <span class="p">{</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;OUTPUT0&quot;</span>
+    <span class="n">data_type</span><span class="p">:</span> <span class="n">TYPE_FP32</span>
+    <span class="n">dims</span><span class="p">:</span> <span class="p">[</span> <span class="o">-</span><span class="mi">1</span> <span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+<span class="n">instance_group</span> <span class="p">[</span>
+  <span class="p">{</span>
+    <span class="n">count</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="n">kind</span> <span class="p">:</span> <span class="n">KIND_GPU</span>
+    <span class="n">gpus</span><span class="p">:[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+
+<span class="n">parameters</span> <span class="p">[</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;config&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;/model/movielens_hugectr/1/movielens.json&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;gpucache&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;hit_rate_threshold&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;0.8&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;gpucacheper&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;0.5&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;label_dim&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;slots&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;cat_feature_num&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;4&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+ <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;des_feature_num&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;max_nnz&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;embedding_vector_size&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;16&quot;</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="p">{</span>
+  <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;embeddingkey_long_type&quot;</span>
+  <span class="n">value</span><span class="p">:</span> <span class="p">{</span> <span class="n">string_value</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span> <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting /model/movielens_hugectr/config.pbtxt
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell tag_flake8-noqa-cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%writefile</span> /model/ps.json
+<span class="p">{</span>
+    <span class="s2">&quot;supportlonglong&quot;</span><span class="p">:</span><span class="n">true</span><span class="p">,</span>
+    <span class="s2">&quot;models&quot;</span><span class="p">:[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;model&quot;</span><span class="p">:</span><span class="s2">&quot;movielens_hugectr&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sparse_files&quot;</span><span class="p">:[</span><span class="s2">&quot;/model/movielens_hugectr/0_sparse_1900.model&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;dense_file&quot;</span><span class="p">:</span><span class="s2">&quot;/model/movielens_hugectr/_dense_1900.model&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;network_file&quot;</span><span class="p">:</span><span class="s2">&quot;/model/movielens_hugectr/1/movielens.json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;num_of_worker_buffer_in_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;num_of_refresher_buffer_in_pool&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cache_refresh_percentage_per_iteration&quot;</span><span class="p">:</span> <span class="s2">&quot;0.2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deployed_device_list&quot;</span><span class="p">:[</span><span class="s2">&quot;0&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;max_batch_size&quot;</span><span class="p">:</span><span class="s2">&quot;64&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;default_value_for_each_table&quot;</span><span class="p">:[</span><span class="s2">&quot;0.0&quot;</span><span class="p">,</span><span class="s2">&quot;0.0&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;hit_rate_threshold&quot;</span><span class="p">:</span><span class="s2">&quot;0.9&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gpucacheper&quot;</span><span class="p">:</span><span class="s2">&quot;0.5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gpucache&quot;</span><span class="p">:</span><span class="s2">&quot;true&quot;</span>
+        <span class="p">}</span>
+    <span class="p">]</span>  
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting /model/ps.json
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s import required libraries.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">httpclient</span>
+<span class="kn">import</span> <span class="nn">cudf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="load-models-on-triton-server">
+<h2>Load Models on Triton Server<a class="headerlink" href="#load-models-on-triton-server" title="Permalink to this headline"></a></h2>
+<p>At this stage, you should launch the Triton Inference Server docker container with the following script:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus=all -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model nvcr.io/nvidia/merlin/merlin-inference:21.11
+</pre></div>
+</div>
+<p>After you started the container you can start triton server with the command below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tritonserver</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">=&lt;</span><span class="n">path_to_models</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">backend</span><span class="o">-</span><span class="n">config</span><span class="o">=</span><span class="n">hugectr</span><span class="p">,</span><span class="n">ps</span><span class="o">=&lt;</span><span class="n">path_to_models</span><span class="o">&gt;/</span><span class="n">ps</span><span class="o">.</span><span class="n">json</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">control</span><span class="o">-</span><span class="n">mode</span><span class="o">=</span><span class="n">explicit</span>
+</pre></div>
+</div>
+<p>Note: The model-repository path is <code class="docutils literal notranslate"><span class="pre">/model/</span></code>. The models haven’t been loaded, yet. We can request triton server to load the saved ensemble.  We initialize a triton client. The path for the json file is <code class="docutils literal notranslate"><span class="pre">/model/movielens_hugectr/1/movielens.json</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># disable warnings</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonhttpclient</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">triton_client</span> <span class="o">=</span> <span class="n">tritonhttpclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;client created.&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel creation failed: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>client created.
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/tritonhttpclient/__init__.py:31: DeprecationWarning: The package `tritonhttpclient` is deprecated and will be removed in a future version. Please use instead `tritonclient.http`
+  warnings.warn(
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">is_server_live</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>GET /v2/health/live, headers None
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-length&#39;: &#39;0&#39;, &#39;content-type&#39;: &#39;text/plain&#39;}&gt;
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>True
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">get_model_repository_index</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/index, headers None
+
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;46&#39;}&gt;
+bytearray(b&#39;[{&quot;name&quot;:&quot;data&quot;},{&quot;name&quot;:&quot;movielens_hugectr&quot;}]&#39;)
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;name&#39;: &#39;data&#39;}, {&#39;name&#39;: &#39;movielens_hugectr&#39;}]
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s load our model to Triton Server.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+
+<span class="n">triton_client</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens_hugectr&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/movielens_hugectr/load, headers None
+
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
+Loaded model &#39;movielens_hugectr&#39;
+CPU times: user 2.6 ms, sys: 2.57 ms, total: 5.17 ms
+Wall time: 3.62 s
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s send a request to Inference Server and print out the response. Since in our example above we do not have continuous columns, below our only inputs are categorical columns.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;/model/data/valid/part_0.parquet&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>userId</th>
+      <th>movieId</th>
+      <th>genres</th>
+      <th>rating</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>32187</td>
+      <td>520</td>
+      <td>[2, 6]</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>67974</td>
+      <td>8</td>
+      <td>[1, 14]</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>41311</td>
+      <td>1026</td>
+      <td>[1, 7]</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>5951</td>
+      <td>336</td>
+      <td>[2, 4]</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>16913</td>
+      <td>335</td>
+      <td>[3, 8, 11, 4]</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%writefile</span> ./wdl2predict.py
+<span class="kn">from</span> <span class="nn">tritonclient.utils</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">tritonclient.http</span> <span class="k">as</span> <span class="nn">httpclient</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">model_name</span> <span class="o">=</span> <span class="s1">&#39;movielens_hugectr&#39;</span>
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;genres&quot;</span><span class="p">]</span>
+<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span>
+<span class="n">emb_size_array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">162542</span><span class="p">,</span> <span class="mi">29434</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+<span class="n">shift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">emb_size_array</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;/model/data/valid/part_0.parquet&quot;</span><span class="p">)</span>
+<span class="n">test_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">rp_lst</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">cur</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">31</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">cur</span> <span class="o">+=</span> <span class="mi">2</span>
+        <span class="n">rp_lst</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cur</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cur</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">rp_lst</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cur</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">httpclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8000&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">test_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">shift</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">test_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">[</span><span class="n">e</span> <span class="o">+</span> <span class="n">shift</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">x</span><span class="p">])</span>
+    <span class="n">embedding_columns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">test_df</span><span class="p">[</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)))],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int64&#39;</span><span class="p">)</span>
+    <span class="n">dense_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float32&#39;</span><span class="p">)</span>
+    <span class="n">row_ptrs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">rp_lst</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int32&#39;</span><span class="p">)</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">httpclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">(</span><span class="s2">&quot;DES&quot;</span><span class="p">,</span> <span class="n">dense_features</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np_to_triton_dtype</span><span class="p">(</span><span class="n">dense_features</span><span class="o">.</span><span class="n">dtype</span><span class="p">)),</span>
+              <span class="n">httpclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">(</span><span class="s2">&quot;CATCOLUMN&quot;</span><span class="p">,</span> <span class="n">embedding_columns</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np_to_triton_dtype</span><span class="p">(</span><span class="n">embedding_columns</span><span class="o">.</span><span class="n">dtype</span><span class="p">)),</span>
+              <span class="n">httpclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">(</span><span class="s2">&quot;ROWINDEX&quot;</span><span class="p">,</span> <span class="n">row_ptrs</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np_to_triton_dtype</span><span class="p">(</span><span class="n">row_ptrs</span><span class="o">.</span><span class="n">dtype</span><span class="p">))]</span>
+
+    <span class="n">inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_data_from_numpy</span><span class="p">(</span><span class="n">dense_features</span><span class="p">)</span>
+    <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_data_from_numpy</span><span class="p">(</span><span class="n">embedding_columns</span><span class="p">)</span>
+    <span class="n">inputs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_data_from_numpy</span><span class="p">(</span><span class="n">row_ptrs</span><span class="p">)</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">httpclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;OUTPUT0&quot;</span><span class="p">)]</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get_response</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Prediction Result:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;OUTPUT0&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting ./wdl2predict.py
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>python3 ./wdl2predict.py
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/pandas/core/indexing.py:1851: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  self._setitem_single_column(loc, val, pi)
+/usr/local/lib/python3.8/dist-packages/pandas/core/indexing.py:1773: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  self._setitem_single_column(ilocs[0], value, pi)
+Traceback (most recent call last):
+  File &quot;./wdl2predict.py&quot;, line 50, in &lt;module&gt;
+    response = client.infer(model_name,
+  File &quot;/usr/local/lib/python3.8/dist-packages/tritonclient/http/__init__.py&quot;, line 1256, in infer
+    _raise_if_error(response)
+  File &quot;/usr/local/lib/python3.8/dist-packages/tritonclient/http/__init__.py&quot;, line 64, in _raise_if_error
+    raise error
+tritonclient.utils.InferenceServerException: The CATCOLUMN input sample size in request is not match with configuration. The input sample size to be an integer multiple of the configuration.
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="03-Training-with-PyTorch.html" class="btn btn-neutral float-left" title="Getting Started MovieLens: Training with PyTorch" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="04-Triton-Inference-with-TF.html" class="btn btn-neutral float-right" title="Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.0.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="04-Triton-Inference-with-HugeCTR.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

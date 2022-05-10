@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NVTabular demo on Outbrain Data &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Scaling to Large Datasets with Criteo" href="../scaling-criteo/index.html" />
+    <link rel="prev" title="Getting Started Outbrain: ETL with NVTabular" href="02-ETL-with-NVTabular.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Advanced Ops with Outbrain</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Getting Started Outbrain: Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">Getting Started Outbrain: ETL with NVTabular</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">NVTabular demo on Outbrain Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Advanced Ops with Outbrain</a> &raquo;</li>
+      <li>NVTabular demo on Outbrain Data</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-outbrain-data">
+<h1>NVTabular demo on Outbrain Data<a class="headerlink" href="#nvtabular-demo-on-outbrain-data" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>In this notebook we train TF Wide &amp; Deep Learning framework using <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Kaggle Outbrain dataset</a>. In that competition, ‘Kagglers’ were challenged to predict on which ads and other forms of sponsored content its global users would click.</p>
+<p><a class="reference external" href="https://ai.googleblog.com/2016/06/wide-deep-learning-better-together-with.html">Wide &amp; Deep Learning</a> refers to a class of networks that use the output of two parts working in parallel - wide model and deep model - to make predictions using categorical and continuous inputs. The wide model is a generalized linear model of features together with their transforms. The deep model in this notebook is a series of three hidden MLP layers of [1024, 512, 256] neurons each beginning with a dense embedding of features.</p>
+<p><strong>Learning objectives</strong><br><br>
+This notebook explains, how to use the NVTabular dataloader to accelerate TensorFlow training.</p>
+<ul class="simple">
+<li><p>Use NVTabular dataloader with TensorFlow Keras model</p></li>
+<li><p>Training Wide&amp;Deep model with NVTabular dataloader in TensorFlow</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
+<span class="c1"># IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise</span>
+<span class="c1"># TF will have claimed all free GPU memory</span>
+<span class="c1"># os.environ[&#39;TF_MEMORY_ALLOCATION&#39;] = &quot;0.8&quot; # fraction of free memory</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span><span class="p">,</span> <span class="n">KerasSequenceValidater</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.tensorflow</span> <span class="kn">import</span> <span class="n">layers</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
+
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>First, we set where the parquet datasets were saved once processed (OUTPUT_BUCKET_FOLDER).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>EMBEDDING_TABLE_SHAPES defines the size of the embedding tables that our model will use to map categorical outputs from NVTabular into numeric dense inputs.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">get_embedding_sizes</span>
+
+<span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">column</span><span class="p">:</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">min</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<span class="p">}</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;ad_id&#39;: (418480, 16),
+ &#39;advertiser_id&#39;: (4054, 16),
+ &#39;campaign_id&#39;: (31390, 16),
+ &#39;document_id&#39;: (693497, 16),
+ &#39;document_id_promo&#39;: (143991, 16),
+ &#39;geo_location&#39;: (2885, 16),
+ &#39;geo_location_country&#39;: (231, 16),
+ &#39;geo_location_state&#39;: (2485, 16),
+ &#39;platform&#39;: (4, 16),
+ &#39;publisher_id&#39;: (482, 16),
+ &#39;publisher_id_promo&#39;: (861, 16),
+ &#39;source_id&#39;: (4739, 16),
+ &#39;source_id_promo&#39;: (6818, 16)}
+</pre></div>
+</div>
+</div>
+</div>
+<p>We select define categorical and numerical features that are processed and generated via the NVTabular workflow to train our W&amp;D TF model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;geo_location&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;geo_location_country&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;geo_location_state&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ad_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;platform&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id_promo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;campaign_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;advertiser_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publisher_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_id_promo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publisher_id_promo&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;document_id_document_id_promo_sim_categories&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id_document_id_promo_sim_topics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id_document_id_promo_sim_entities&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publish_time_since_published&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publish_time_promo_since_published&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_ad_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_document_id_promo_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_campaign_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_advertiser_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_source_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_publisher_id_clicked&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="training-a-tf-w-d-model">
+<h2>Training a TF W&amp;D Model<a class="headerlink" href="#training-a-tf-w-d-model" title="Permalink to this headline"></a></h2>
+<p>We create tensorflow feature columns corresponding to each feature of the model input. If you’re using NVTabular with TensorFlow feature_columns, you should only be using <code class="docutils literal notranslate"><span class="pre">tf.feature_column.categorical_column_with_identity</span></code> for categorical features, since any other transformation (categorification and/or hashing) should be handled in NVTabular on the GPU. This feature column is passed to the wide portion of the model. If a categorical column corresponds to an embedding table, it is wrapped with an embedding_column feature_column, if it does not correspond to an embedding table, it is wrapped as an indicator column. The wrapped column is passed to the deep portion of the model. Continuous columns are passed to both the wide and deep portions of the model after being encapsulated as a <code class="docutils literal notranslate"><span class="pre">numeric_column</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_feature_columns</span><span class="p">():</span>
+    <span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">column_name</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span>
+        <span class="p">):</span>  <span class="c1"># Changing hashing to identity + adding modulo to dataloader</span>
+            <span class="n">categorical_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span>
+                <span class="n">column_name</span><span class="p">,</span> <span class="n">num_buckets</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">column_name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected categorical column found </span><span class="si">{</span><span class="n">column_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">:</span>
+            <span class="n">wrapped_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span>
+                <span class="n">categorical_column</span><span class="p">,</span>
+                <span class="n">dimension</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">column_name</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">combiner</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">wrapped_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">indicator_column</span><span class="p">(</span><span class="n">categorical_column</span><span class="p">)</span>
+
+        <span class="n">wide_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">categorical_column</span><span class="p">)</span>
+        <span class="n">deep_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wrapped_column</span><span class="p">)</span>
+
+    <span class="n">numerics</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">NUMERIC_COLUMNS</span>
+    <span class="p">]</span>
+
+    <span class="n">wide_columns</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">numerics</span><span class="p">)</span>
+    <span class="n">deep_columns</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">numerics</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Next, we define the layer shape and dropout probability for the deep portion of the model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">deep_hidden_units</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">]</span>
+<span class="n">deep_dropout</span> <span class="o">=</span> <span class="mf">0.1</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>An input is created for each feature column, with a datatype of either tf.float32 for continuous values, or tf.int32 for categorical values. To implement the wide model, for categorical inputs, we embed them to a dimension of one, and sum them with the results of applying a dense layer with output dimension one, effectively weighting and summing each of the inputs. For the deep model, we embed our categorical columns according to the feature columns we defined earlier, and concatenate the newly dense features with our dense continuous features, which we pass to our deep model, which by default is a 5 layer MLP with internal dimension of 1024 neurons for each layer.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="n">get_feature_columns</span><span class="p">()</span>
+
+<span class="n">wide_weighted_outputs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># a list of (batch_size, 1) contributors to the linear weighted sum</span>
+<span class="n">numeric_dense_inputs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># NumericColumn inputs; to be concatenated and then fed to a dense layer</span>
+<span class="n">wide_columns_dict</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># key : column</span>
+<span class="n">deep_columns_dict</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># key : column</span>
+<span class="n">features</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># tf.keras.Input placeholders for each feature to be used</span>
+
+<span class="c1"># construct input placeholders for wide features</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">wide_columns</span><span class="p">:</span>
+    <span class="n">features</span><span class="p">[</span><span class="n">col</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+        <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">col</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">key</span> <span class="ow">in</span> <span class="n">NUMERIC_COLUMNS</span> <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
+        <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">wide_columns_dict</span><span class="p">[</span><span class="n">col</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">deep_columns</span><span class="p">:</span>
+    <span class="n">is_embedding_column</span> <span class="o">=</span> <span class="s2">&quot;key&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">categorical_column</span><span class="o">.</span><span class="n">key</span> <span class="k">if</span> <span class="n">is_embedding_column</span> <span class="k">else</span> <span class="n">col</span><span class="o">.</span><span class="n">key</span>
+
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+        <span class="n">features</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">key</span> <span class="ow">in</span> <span class="n">NUMERIC_COLUMNS</span> <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
+            <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">deep_columns_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
+
+<span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">wide_columns_dict</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">:</span>
+        <span class="n">wide_weighted_outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Flatten</span><span class="p">()(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Embedding</span><span class="p">(</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">input_length</span><span class="o">=</span><span class="mi">1</span><span class="p">)(</span>
+                    <span class="n">features</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">numeric_dense_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">features</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+<span class="n">categorical_output_contrib</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">wide_weighted_outputs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;categorical_output&quot;</span><span class="p">)</span>
+<span class="n">numeric_dense_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">numeric_dense_inputs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;numeric_dense&quot;</span><span class="p">)</span>
+<span class="n">deep_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">deep_columns_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+<span class="n">dnn</span> <span class="o">=</span> <span class="n">layers</span><span class="o">.</span><span class="n">DenseFeatures</span><span class="p">(</span><span class="n">deep_columns</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;deep_embedded&quot;</span><span class="p">)(</span><span class="n">features</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">unit_size</span> <span class="ow">in</span> <span class="n">deep_hidden_units</span><span class="p">:</span>
+    <span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">unit_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+    <span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">rate</span><span class="o">=</span><span class="n">deep_dropout</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+    <span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">momentum</span><span class="o">=</span><span class="mf">0.999</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+<span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="mi">1</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+<span class="n">dnn_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">dnn</span><span class="p">)</span>
+<span class="n">linear_output</span> <span class="o">=</span> <span class="n">categorical_output_contrib</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">)(</span><span class="n">numeric_dense_tensor</span><span class="p">)</span>
+
+<span class="n">linear_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">linear_output</span><span class="p">)</span>
+
+<span class="n">wide_and_deep_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">WideDeepModel</span><span class="p">(</span>
+    <span class="n">linear_model</span><span class="p">,</span> <span class="n">dnn_model</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We define the datasets that will be used to ingest data into our model. In this case, the NVTabular dataloaders take a set of parquet files generated by NVTabular as input, and are capable of accelerated throughput. The <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/9aa70caa1dfb5d2fd694cad535def1e470d37b29/nvtabular/loader/tensorflow.py#L89">KerasSequenceLoader</a> manages shuffling by loading in chunks of data from different parts of the full dataset, concatenating them and then shuffling, then iterating through this super-chunk sequentially in batches. The number of “parts” of the dataset that get sample, or “partitions”, is controlled by the <i>parts_per_chunk</i> parameter, while the size of each one of these parts is controlled by the <i>buffer_size</i> parameter, which refers to a fraction of available GPU memory. Using more chunks leads to better randomness, especially at the epoch level where physically disparate samples can be brought into the same batch, but can impact throughput if you use too many.</p>
+<p>The validation process gets slightly complicated by the fact that <i>model.fit</i> doesn’t accept Keras Sequence objects as validation data. To support this, we also define a <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/9aa70caa1dfb5d2fd694cad535def1e470d37b29/nvtabular/loader/tensorflow.py#L351">KerasSequenceValidater</a>, a lightweight Keras callback to handle validation.</p>
+<p>Now that our data is preprocessed and saved out, we can leverage datasets to read through the preprocessed parquet files in an online fashion to train neural networks.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/*.parquet&quot;</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">TRAIN_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">131072</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clicked&quot;</span><span class="p">],</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>  <span class="c1"># how many batches to load at once</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">valid_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">VALID_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">131072</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clicked&quot;</span><span class="p">],</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">validation_callback</span> <span class="o">=</span> <span class="n">KerasSequenceValidater</span><span class="p">(</span><span class="n">valid_dataset_tf</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The wide portion of the model is optimized using the <i>Follow The Regularized Leader (FTRL)</i> algorithm, while the deep portion of the model is optimized using <i>Adam</i> optimizer.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Ftrl</span><span class="p">(</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">deep_optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Finally, we compile our model with our dual optimizers and binary cross-entropy loss, and train our model for 10 epochs.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_and_deep_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="p">[</span><span class="n">wide_optimizer</span><span class="p">,</span> <span class="n">deep_optimizer</span><span class="p">],</span>
+    <span class="n">loss</span><span class="o">=</span><span class="s2">&quot;binary_crossentropy&quot;</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">BinaryAccuracy</span><span class="p">(),</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">()],</span>
+    <span class="n">experimental_run_tf_function</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">history</span> <span class="o">=</span> <span class="n">wide_and_deep_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset_tf</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">validation_callback</span><span class="p">],</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Epoch 1/5
+456/456 [==============================] - 93s 196ms/step - loss: 0.8359 - binary_accuracy: 0.7808 - auc: 0.6394
+Epoch 2/5
+456/456 [==============================] - 85s 187ms/step - loss: 0.4289 - binary_accuracy: 0.8145 - auc: 0.7449
+Epoch 3/5
+456/456 [==============================] - 86s 188ms/step - loss: 0.4244 - binary_accuracy: 0.8165 - auc: 0.7519
+Epoch 4/5
+456/456 [==============================] - 84s 184ms/step - loss: 0.4190 - binary_accuracy: 0.8187 - auc: 0.7608
+Epoch 5/5
+456/456 [==============================] - 86s 189ms/step - loss: 0.4130 - binary_accuracy: 0.8219 - auc: 0.7694
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02-ETL-with-NVTabular.html" class="btn btn-neutral float-left" title="Getting Started Outbrain: ETL with NVTabular" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../scaling-criteo/index.html" class="btn btn-neutral float-right" title="Scaling to Large Datasets with Criteo" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.8.0/index.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="03-Training-with-TF.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-GPU with MovieLens: ETL and Training &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Multi-GPU Scaling in NVTabular with Dask" href="../multi-gpu-toy-example/multi-gpu_dask.html" />
+    <link rel="prev" title="Multi-GPU with MovieLens: ETL and Training" href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/inference-HugeCTR/index.html">Inference with HugeCTR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Multi-GPU Example Notebooks</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html">Multi-GPU with MovieLens: ETL and Training</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Multi-GPU with MovieLens: ETL and Training</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi-gpu-toy-example/multi-gpu_dask.html">Multi-GPU Scaling in NVTabular with Dask</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Multi-GPU Example Notebooks</a> &raquo;</li>
+      <li>Multi-GPU with MovieLens: ETL and Training</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="multi-gpu-with-movielens-etl-and-training">
+<h1>Multi-GPU with MovieLens: ETL and Training<a class="headerlink" href="#multi-gpu-with-movielens-etl-and-training" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVIDIA Merlin is a open source framework to accelerate and scale end-to-end recommender system pipelines on GPU. In this notebook, we use NVTabular, Merlin’s ETL component, to scale feature engineering and pre-processing to multiple GPUs and then perform data-parallel distributed training of a neural network on multiple GPUs with PyTorch, <a class="reference external" href="https://horovod.readthedocs.io/en/stable/">Horovod</a>, and <a class="reference external" href="https://developer.nvidia.com/nccl">NCCL</a>.</p>
+<p>The pre-requisites for this notebook are to be familiar with NVTabular and its API:</p>
+<ul class="simple">
+<li><p>You can read more about NVTabular, its API and specialized dataloaders in <a class="reference internal" href="../getting-started-movielens/index.html"><span class="xref myst">Getting Started with Movielens notebooks</span></a>.</p></li>
+<li><p>You can read more about scaling NVTabular ETL in <a class="reference internal" href="../scaling-criteo/index.html"><span class="xref myst">Scaling Criteo notebooks</span></a>.</p></li>
+</ul>
+<p><strong>In this notebook, we will focus only on the new information related to multi-GPU training, so please check out the other notebooks first (if you haven’t already.)</strong></p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we learn how to scale ETL and deep learning taining to multiple GPUs</p>
+<ul class="simple">
+<li><p>Learn to use larger than GPU/host memory datasets for ETL and training</p></li>
+<li><p>Use multi-GPU or multi node for ETL with NVTabular</p></li>
+<li><p>Use NVTabular dataloader to accelerate PyTorch pipelines</p></li>
+<li><p>Scale PyTorch training with Horovod</p></li>
+</ul>
+</div>
+<div class="section" id="dataset">
+<h3>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we use the <a class="reference external" href="https://grouplens.org/datasets/movielens/25m/">MovieLens25M</a> dataset. It is popular for recommender systems and is used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well.</p>
+<p>Note: We are using the MovieLens 25M dataset in this example for simplicity, although the dataset is not large enough to require multi-GPU training. However, the functionality demonstrated in this notebook can be easily extended to scale recommender pipelines for larger datasets in the same way.</p>
+</div>
+<div class="section" id="tools">
+<h3>Tools<a class="headerlink" href="#tools" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://horovod.readthedocs.io/en/stable/">Horovod</a> is a distributed deep learning framework that provides tools for multi-GPU optimization.</p></li>
+<li><p>The <a class="reference external" href="https://developer.nvidia.com/nccl">NVIDIA Collective Communication Library (NCCL)</a> provides the underlying GPU-based implementations of the <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/operations.html#allgather">allgather</a> and <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/operations.html#allreduce">allreduce</a> cross-GPU communication operations.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="download-and-convert">
+<h2>Download and Convert<a class="headerlink" href="#download-and-convert" title="Permalink to this headline"></a></h2>
+<p>First, we will download and convert the dataset to Parquet. This section is based on <a class="reference internal" href="../getting-started-movielens/01-Download-Convert.html"><span class="doc std std-doc">01-Download-Convert.ipynb</span></a>.</p>
+<div class="section" id="download">
+<h3>Download<a class="headerlink" href="#download" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+
+<span class="kn">import</span> <span class="nn">cudf</span>  <span class="c1"># cuDF is an implementation of Pandas-like Dataframe on GPU</span>
+
+<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+
+<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;~/nvt-examples/multigpu-movielens/data/&quot;</span>
+<span class="p">)</span>
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+<span class="n">zip_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m.zip&quot;</span><span class="p">)</span>
+<span class="n">download_file</span><span class="p">(</span>
+    <span class="s2">&quot;http://files.grouplens.org/datasets/movielens/ml-25m.zip&quot;</span><span class="p">,</span> <span class="n">zip_path</span><span class="p">,</span> <span class="n">redownload</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>downloading ml-25m.zip: 262MB [00:09, 28.3MB/s]                            
+unzipping files: 100%|██████████| 8/8 [00:04&lt;00:00,  1.91files/s]
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="convert">
+<h3>Convert<a class="headerlink" href="#convert" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;movies.csv&quot;</span><span class="p">))</span>
+<span class="n">movies</span><span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">movies</span><span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+<span class="n">movies</span> <span class="o">=</span> <span class="n">movies</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">movies</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="split-into-train-and-validation-datasets">
+<h3>Split into train and validation datasets<a class="headerlink" href="#split-into-train-and-validation-datasets" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ratings</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;ratings.csv&quot;</span><span class="p">))</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">ratings</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># shuffle the dataset</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">ratings</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ratings</span><span class="p">),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># split the train_df as training and validation data sets.</span>
+<span class="n">num_valid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ratings</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">)</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">ratings</span><span class="p">[:</span><span class="o">-</span><span class="n">num_valid</span><span class="p">]</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">ratings</span><span class="p">[</span><span class="o">-</span><span class="n">num_valid</span><span class="p">:]</span>
+
+<span class="n">train</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))</span>
+<span class="n">valid</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="etl-with-nvtabular">
+<h2>ETL with NVTabular<a class="headerlink" href="#etl-with-nvtabular" title="Permalink to this headline"></a></h2>
+<p>We finished downloading and converting the dataset. We will preprocess and engineer features with NVTabular on multiple GPUs. You can read more</p>
+<ul class="simple">
+<li><p>about NVTabular’s features and API in <a class="reference internal" href="../getting-started-movielens/02-ETL-with-NVTabular.html"><span class="doc std std-doc">getting-started-movielens/02-ETL-with-NVTabular.ipynb</span></a>.</p></li>
+<li><p>scaling NVTabular ETL to multiple GPUs <a class="reference internal" href="../scaling-criteo/02-ETL-with-NVTabular.html"><span class="doc std std-doc">scaling-criteo/02-ETL-with-NVTabular.ipynb</span></a>.</p></li>
+</ul>
+<div class="section" id="deploy-a-distributed-dask-cluster">
+<h3>Deploy a Distributed-Dask Cluster<a class="headerlink" href="#deploy-a-distributed-dask-cluster" title="Permalink to this headline"></a></h3>
+<p>This section is based on <a class="reference internal" href="../scaling-criteo/02-ETL-with-NVTabular.html"><span class="doc std std-doc">scaling-criteo/02-ETL-with-NVTabular.ipynb</span></a> and <a class="reference internal" href="../multi-gpu-toy-example/multi-gpu_dask.html"><span class="doc std std-doc">multi-gpu-toy-example/multi-gpu_dask.ipynb</span></a></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard Libraries</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="c1"># External Dependencies</span>
+<span class="kn">import</span> <span class="nn">cudf</span>
+<span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">import</span> <span class="nn">rmm</span>
+
+<span class="c1"># NVTabular</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">nvtabular.io</span> <span class="kn">import</span> <span class="n">Shuffle</span>
+<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define some information about where to get our data</span>
+<span class="n">input_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;converted&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+<span class="n">dask_workdir</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask&quot;</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">)</span>
+<span class="n">output_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask&quot;</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">)</span>
+<span class="n">stats_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask&quot;</span><span class="p">,</span> <span class="s2">&quot;stats&quot;</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean worker space for Dask</span>
+<span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
+<span class="n">dask_workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean stats space for Dask</span>
+<span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">stats_path</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">stats_path</span><span class="p">)</span>
+<span class="n">stats_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Make sure we have a clean output path</span>
+<span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">output_path</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+<span class="n">output_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Get device memory capacity</span>
+<span class="n">capacity</span> <span class="o">=</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy a Single-Machine Multi-GPU Cluster</span>
+<span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;tcp&quot;</span>  <span class="c1"># &quot;tcp&quot; or &quot;ucx&quot;</span>
+<span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;0,1&quot;</span>  <span class="c1"># Delect devices to place workers</span>
+<span class="n">device_spill_frac</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># Spill GPU-Worker memory to host at this limit.</span>
+<span class="c1"># Reduce if spilling fails to prevent</span>
+<span class="c1"># device memory errors.</span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># (Optional) Specify existing scheduler port</span>
+<span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span>
+        <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
+        <span class="n">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="n">visible_devices</span><span class="p">,</span>
+        <span class="n">local_directory</span><span class="o">=</span><span class="n">dask_workdir</span><span class="p">,</span>
+        <span class="n">device_memory_limit</span><span class="o">=</span><span class="n">capacity</span> <span class="o">*</span> <span class="n">device_spill_frac</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="c1"># Create the distributed client</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="n">client</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><table style="border: 2px solid white;">
+<tr>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Client</h3>
+<ul style="text-align: left; list-style: none; margin: 0; padding: 0;">
+  <li><b>Scheduler: </b>tcp://127.0.0.1:39225</li>
+  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>
+</ul>
+</td>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Cluster</h3>
+<ul style="text-align: left; list-style:none; margin: 0; padding: 0;">
+  <li><b>Workers: </b>2</li>
+  <li><b>Cores: </b>2</li>
+  <li><b>Memory: </b>125.84 GiB</li>
+</ul>
+</td>
+</tr>
+</table></div></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize RMM pool on ALL workers</span>
+<span class="k">def</span> <span class="nf">_rmm_pool</span><span class="p">():</span>
+    <span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span>
+        <span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">initial_pool_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Use default size</span>
+    <span class="p">)</span>
+
+
+<span class="n">client</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_rmm_pool</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;tcp://127.0.0.1:39189&#39;: None, &#39;tcp://127.0.0.1:41297&#39;: None}
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="defining-our-preprocessing-pipeline">
+<h3>Defining our Preprocessing Pipeline<a class="headerlink" href="#defining-our-preprocessing-pipeline" title="Permalink to this headline"></a></h3>
+<p>This subsection is based on <a class="reference internal" href="../getting-started-movielens/02-ETL-with-NVTabular.html"><span class="doc std std-doc">getting-started-movielens/02-ETL-with-NVTabular.ipynb</span></a>. The only difference is that we initialize the NVTabular workflow using the LocalCUDACluster client with <code class="docutils literal notranslate"><span class="pre">nvt.Workflow(output,</span> <span class="pre">client=client)</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
+<span class="n">joined</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">JoinExternal</span><span class="p">(</span><span class="n">movies</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;movieId&quot;</span><span class="p">])</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">joined</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnSelector</span><span class="p">([</span><span class="s2">&quot;rating&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">LambdaOp</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="p">(</span><span class="n">col</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">ratings</span>
+<span class="c1"># USE client in NVTabular workflow</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
+<span class="o">!</span>rm -rf <span class="nv">$BASE_DIR</span>/train
+<span class="o">!</span>rm -rf <span class="nv">$BASE_DIR</span>/valid
+<span class="n">train_iter</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))],</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;100MB&quot;</span><span class="p">)</span>
+<span class="n">valid_iter</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))],</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;100MB&quot;</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_iter</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<span class="n">shuffle</span> <span class="o">=</span> <span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span>  <span class="c1"># Shuffle algorithm</span>
+<span class="n">out_files_per_proc</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># Number of output files per worker</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_iter</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">),</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+    <span class="n">out_files_per_proc</span><span class="o">=</span><span class="n">out_files_per_proc</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_iter</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">),</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+    <span class="n">out_files_per_proc</span><span class="o">=</span><span class="n">out_files_per_proc</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">client</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+<span class="n">cluster</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/opt/conda/lib/python3.8/site-packages/distributed/worker.py:3560: UserWarning: Large object of size 1.90 MiB detected in task graph: 
+  (&quot;(&#39;read-parquet-da3b70ae6b307343d9879321b01eda75&#39; ... 79321b01eda75&#39;)
+Consider scattering large objects ahead of time
+with client.scatter to reduce scheduler burden and 
+keep data on workers
+
+    future = client.submit(func, big_data)    # bad
+
+    big_future = client.scatter(big_data)     # good
+    future = client.submit(func, big_future)  # good
+  warnings.warn(
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="training-with-pytorch-on-multigpus">
+<h2>Training with PyTorch on multiGPUs<a class="headerlink" href="#training-with-pytorch-on-multigpus" title="Permalink to this headline"></a></h2>
+<p>In this section, we will train a PyTorch model with multi-GPU support. In the NVTabular v0.5 release, we added multi-GPU support for NVTabular dataloaders. We will modify the <a class="reference internal" href="../getting-started-movielens/03-Training-with-PyTorch.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-PyTorch.ipynb</span></a> to use multiple GPUs. Please review that notebook, if you have questions about the general functionality of the NVTabular dataloaders or the neural network architecture.</p>
+<div class="section" id="nvtabular-dataloader-for-pytorch">
+<h3>NVTabular dataloader for PyTorch<a class="headerlink" href="#nvtabular-dataloader-for-pytorch" title="Permalink to this headline"></a></h3>
+<p>We’ve identified that the dataloader is one bottleneck in deep learning recommender systems when training pipelines with PyTorch. The normal PyTorch dataloaders cannot prepare the next training batches fast enough and therefore, the GPU is not fully utilized.</p>
+<p>We developed a highly customized tabular dataloader for accelerating existing pipelines in PyTorch. In our experiments, we see a speed-up by 9x of the same training workflow with NVTabular dataloader. NVTabular dataloader’s features are:</p>
+<ul class="simple">
+<li><p>removing bottleneck of item-by-item dataloading</p></li>
+<li><p>enabling larger than memory dataset by streaming from disk</p></li>
+<li><p>reading data directly into GPU memory and remove CPU-GPU communication</p></li>
+<li><p>preparing batch asynchronously in GPU to avoid CPU-GPU communication</p></li>
+<li><p>supporting commonly used .parquet format</p></li>
+<li><p>easy integration into existing PyTorch pipelines by using similar API</p></li>
+<li><p><strong>supporting multi-GPU training with Horovod</strong></p></li>
+</ul>
+<p>You can find more information on the dataloaders in our <a class="reference external" href="https://medium.com/nvidia-merlin/training-deep-learning-based-recommender-systems-9x-faster-with-PyTorch-cc5a2572ea49">blogpost</a>.</p>
+</div>
+<div class="section" id="using-horovod-with-pytorch-and-nvtabular">
+<h3>Using Horovod with PyTorch and NVTabular<a class="headerlink" href="#using-horovod-with-pytorch-and-nvtabular" title="Permalink to this headline"></a></h3>
+<p>The training script below is based on <a class="reference internal" href="../getting-started-movielens/03-Training-with-PyTorch.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-PyTorch.ipynb</span></a>, with a few important changes:</p>
+<ul class="simple">
+<li><p>We provide several additional parameters to the <code class="docutils literal notranslate"><span class="pre">TorchAsyncItr</span></code> class, including the total number of workers <code class="docutils literal notranslate"><span class="pre">hvd.size()</span></code>, the current worker’s id number <code class="docutils literal notranslate"><span class="pre">hvd.rank()</span></code>, and a function for generating random seeds <code class="docutils literal notranslate"><span class="pre">seed_fn()</span></code>.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
+        <span class="o">...</span>
+        <span class="n">global_size</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span>
+        <span class="n">global_rank</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">(),</span>
+        <span class="n">seed_fn</span><span class="o">=</span><span class="n">seed_fn</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>The seed function uses Horovod to collectively generate a random seed that’s shared by all workers so that they can each shuffle the dataset in a consistent way and select partitions to work on without overlap. The seed function is called by the dataloader during the shuffling process at the beginning of each epoch:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">seed_fn</span><span class="p">():</span>
+        <span class="n">max_rand</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">int</span><span class="p">)</span><span class="o">.</span><span class="n">max</span> <span class="o">//</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+        <span class="c1"># Generate a seed fragment</span>
+        <span class="n">seed_fragment</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_rand</span><span class="p">)</span>
+
+        <span class="c1"># Aggregate seed fragments from all Horovod workers</span>
+        <span class="n">seed_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">seed_fragment</span><span class="p">)</span>
+        <span class="n">reduced_seed</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="n">seed_tensor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shuffle_seed&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">mpi_ops</span><span class="o">.</span><span class="n">Sum</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">reduced_seed</span> <span class="o">%</span> <span class="n">max_rand</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We wrap the PyTorch optimizer with Horovod’s <code class="docutils literal notranslate"><span class="pre">DistributedOptimizer</span></code> class and scale the learning rate by the number of workers:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">lr_scaler</span><span class="p">)</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedOptimizer</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">named_parameters</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">())</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We broadcast the model and optimizer parameters to all workers with Horovod:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_parameters</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_optimizer_state</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The rest of the script is the same as the MovieLens example in <a class="reference internal" href="../getting-started-movielens/03-Training-with-PyTorch.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-PyTorch.ipynb</span></a>. In order to run it with Horovod, we first need to write it to a file.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%writefile</span> &#39;./torch_trainer.py&#39;
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+<span class="kn">import</span> <span class="nn">cupy</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.models</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.utils</span> <span class="kn">import</span> <span class="n">process_epoch</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">DLDataLoader</span><span class="p">,</span> <span class="n">TorchAsyncItr</span>
+
+<span class="c1"># Horovod must be the last import to avoid conflicts</span>
+<span class="kn">import</span> <span class="nn">horovod.torch</span> <span class="k">as</span> <span class="nn">hvd</span>  <span class="c1"># noqa: E402, isort:skip</span>
+
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Train a multi-gpu model with Torch and Horovod&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--dir_in&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input directory&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--batch_size&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Batch size&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--cats&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Categorical columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--cats_mh&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Categorical multihot columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--conts&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Continuous columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--labels&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Label columns&quot;</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--epochs&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Training epochs&quot;</span><span class="p">)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+<span class="n">hvd</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="n">gpu_to_use</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">local_rank</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="n">gpu_to_use</span><span class="p">)</span>
+
+
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dir_in</span> <span class="ow">or</span> <span class="s2">&quot;./data/&quot;</span><span class="p">)</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">batch_size</span> <span class="ow">or</span> <span class="mi">16384</span><span class="p">)</span>  <span class="c1"># Batch Size</span>
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cats</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;userId&quot;</span><span class="p">]</span>  <span class="c1"># Single-hot</span>
+<span class="n">CATEGORICAL_MH_COLUMNS</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cats_mh</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span>  <span class="c1"># Multi-hot</span>
+<span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">conts</span> <span class="ow">or</span> <span class="p">[]</span>
+
+<span class="c1"># Output from ETL-with-NVTabular</span>
+<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
+
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow/&quot;</span><span class="p">))</span>
+
+<span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
+
+
+<span class="c1"># TensorItrDataset returns a single batch of x_cat, x_cont, y.</span>
+<span class="k">def</span> <span class="nf">collate_fn</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span>
+
+
+<span class="c1"># Seed with system randomness (or a static seed)</span>
+<span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">seed_fn</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate consistent dataloader shuffle seeds across workers</span>
+
+<span class="sd">    Reseeds each worker&#39;s dataloader each epoch to get fresh a shuffle</span>
+<span class="sd">    that&#39;s consistent across workers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">max_rand</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">int</span><span class="p">)</span><span class="o">.</span><span class="n">max</span> <span class="o">//</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+    <span class="c1"># Generate a seed fragment</span>
+    <span class="n">seed_fragment</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_rand</span><span class="p">)</span>
+
+    <span class="c1"># Aggregate seed fragments from all Horovod workers</span>
+    <span class="n">seed_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">seed_fragment</span><span class="p">)</span>
+    <span class="n">reduced_seed</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="n">seed_tensor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shuffle_seed&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">mpi_ops</span><span class="o">.</span><span class="n">Sum</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">reduced_seed</span> <span class="o">%</span> <span class="n">max_rand</span>
+
+
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">),</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">,</span>
+    <span class="n">conts</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rating&quot;</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">gpu_to_use</span><span class="p">,</span>
+    <span class="n">global_size</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span>
+    <span class="n">global_rank</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">(),</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">seed_fn</span><span class="o">=</span><span class="n">seed_fn</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">train_loader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span>
+    <span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span>
+<span class="p">)</span>
+
+
+<span class="n">EMBEDDING_TABLE_SHAPES_TUPLE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">{</span>
+        <span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
+        <span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span>
+    <span class="p">},</span>
+    <span class="p">{</span><span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]]},</span>
+<span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span>
+    <span class="n">embedding_table_shapes</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES_TUPLE</span><span class="p">,</span>
+    <span class="n">num_continuous</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">emb_dropout</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">layer_hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">],</span>
+    <span class="n">layer_dropout_rates</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+<span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+
+<span class="n">lr_scaler</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">lr_scaler</span><span class="p">)</span>
+
+<span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_parameters</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_optimizer_state</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedOptimizer</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">named_parameters</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">())</span>
+
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">epochs</span><span class="p">):</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">train_loss</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">process_epoch</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span>
+                                          <span class="n">model</span><span class="p">,</span>
+                                          <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                          <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">)</span>
+    <span class="n">hvd</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gpu_to_use</span><span class="p">)</span>
+    <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_parameters</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">. Train loss: </span><span class="si">{</span><span class="n">train_loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="n">hvd</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gpu_to_use</span><span class="p">)</span>
+    <span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+    <span class="n">total_rows</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">num_rows_processed</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;run_time: </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">total_rows</span><span class="si">}</span><span class="s2"> - &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;epochs: </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2"> - dl_thru: </span><span class="si">{</span><span class="n">total_rows</span> <span class="o">/</span> <span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="n">hvd</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">gpu_to_use</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">hvd</span><span class="o">.</span><span class="n">local_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training complete&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting ./torch_trainer.py
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>horovodrun -np <span class="m">2</span> python torch_trainer.py --dir_in <span class="nv">$BASE_DIR</span> --batch_size <span class="m">16384</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[1,0]&lt;stdout&gt;:Training epoch 0
+[1,1]&lt;stdout&gt;:Training epoch 0
+[1,1]&lt;stdout&gt;:Total batches: 610
+[1,0]&lt;stdout&gt;:Total batches: 610
+[1,0]&lt;stdout&gt;:Epoch 00. Train loss: 0.1983.
+[1,1]&lt;stdout&gt;:Epoch 00. Train loss: 0.1982.
+[1,1]&lt;stdout&gt;:run_time: 82.45111298561096 - rows: 1222 - epochs: 0 - dl_thru: 14.820903633080835
+[1,0]&lt;stdout&gt;:run_time: 82.4517252445221 - rows: 1222 - epochs: 0 - dl_thru: 14.820793578011722
+[1,0]&lt;stdout&gt;:Training complete
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html" class="btn btn-neutral float-left" title="Multi-GPU with MovieLens: ETL and Training" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../multi-gpu-toy-example/multi-gpu_dask.html" class="btn btn-neutral float-right" title="Multi-GPU Scaling in NVTabular with Dask" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v0.8.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-PyTorch.html">v0.8.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

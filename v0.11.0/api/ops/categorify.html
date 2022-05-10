@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Categorify &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -35,11 +41,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../workflow/workflow.html">Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../workflow/workflow_node.html">WorkflowNode</a></li>
@@ -70,9 +77,9 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html">Torch Dataloader</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html#torch-layers">Torch Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../torch_dataloader.html#module-nvtabular.framework_utils.torch.layers.embeddings">Torch Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html">TensorFlow Dataloader</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html#tensorflow-layers">TensorFlow Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tensorflow_dataloader.html#module-nvtabular.framework_utils.tensorflow.layers.embedding">TensorFlow Layers</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
@@ -103,32 +110,228 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="section" id="categorify">
+  <div class="section" id="categorify">
 <h1>Categorify<a class="headerlink" href="#categorify" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="nvtabular.ops.Categorify">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">Categorify</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freq_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">na_sentinel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'host'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encode_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'joint'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_sorted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_buckets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vocabs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">single_table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cardinality_memory_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="stat_operator.html#nvtabular.ops.stat_operator.StatOperator" title="nvtabular.ops.stat_operator.StatOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator</span></code></a></p>
+<p>Most of the data set will contain categorical features,
+and these variables are typically stored as text values.
+Machine Learning algorithms don’t support these text values.
+Categorify operation can be added to the workflow to
+transform categorical features into unique integer values.</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define pipeline</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span><span class="n">freq_threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># Initialize the workflow and execute it</span>
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span><span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s1">&#39;./test/&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Example for frequency hashing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cudf</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+
+<span class="c1"># Create toy dataset</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;User_A&#39;</span><span class="p">,</span> <span class="s1">&#39;User_B&#39;</span><span class="p">,</span> <span class="s1">&#39;User_C&#39;</span><span class="p">,</span> <span class="s1">&#39;User_C&#39;</span><span class="p">,</span> <span class="s1">&#39;User_A&#39;</span><span class="p">,</span> <span class="s1">&#39;User_B&#39;</span><span class="p">,</span> <span class="s1">&#39;User_A&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;productID&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">,</span> <span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">,</span> <span class="mi">103</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="p">})</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Define pipeline</span>
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;author&#39;</span><span class="p">,</span> <span class="s1">&#39;productID&#39;</span><span class="p">]</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span>
+    <span class="n">freq_threshold</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;author&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;productID&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
+    <span class="n">num_buckets</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;author&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;productID&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">})</span>
+
+
+<span class="c1"># Initialize the workflow and execute it</span>
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span><span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">ddf</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+
+<span class="c1"># Print results</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Example with multi-hot:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cudf</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+
+<span class="c1"># Create toy dataset</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s1">&#39;userID&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10001</span><span class="p">,</span> <span class="mi">10002</span><span class="p">,</span> <span class="mi">10003</span><span class="p">],</span>
+    <span class="s1">&#39;productID&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">30003</span><span class="p">,</span> <span class="mi">30005</span><span class="p">,</span> <span class="mi">40005</span><span class="p">],</span>
+    <span class="s1">&#39;categories&#39;</span><span class="p">:</span> <span class="p">[[</span><span class="s1">&#39;Cat A&#39;</span><span class="p">,</span> <span class="s1">&#39;Cat B&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;Cat C&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;Cat A&#39;</span><span class="p">,</span> <span class="s1">&#39;Cat C&#39;</span><span class="p">,</span> <span class="s1">&#39;Cat D&#39;</span><span class="p">]],</span>
+    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+<span class="p">})</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Define pipeline</span>
+<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;userID&#39;</span><span class="p">,</span> <span class="s1">&#39;productID&#39;</span><span class="p">,</span> <span class="s1">&#39;categories&#39;</span><span class="p">]</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
+
+<span class="c1"># Initialize the workflow and execute it</span>
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span><span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">ddf</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+
+<span class="c1"># Print results</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>freq_threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><em>dictionary:{column: freq_limit_value}</em><em>, </em><em>default 0</em>) – Categories with a count/frequency below this threshold will be
+omitted from the encoding and corresponding data will be mapped
+to the “null” category. Can be represented as both an integer or
+a dictionary with column names as keys and frequency limit as
+value. If dictionary is used, all columns targeted must be included
+in the dictionary.</p></li>
+<li><p><strong>encode_type</strong> (<em>{&quot;joint&quot;</em><em>, </em><em>&quot;combo&quot;}</em><em>, </em><em>default &quot;joint&quot;</em>) – If “joint”, the columns within any multi-column group will be
+jointly encoded. If “combo”, the combination of values will be
+encoded as a new column. Note that replacement is not allowed for
+“combo”, because the same column name can be included in
+multiple groups.</p></li>
+<li><p><strong>tree_width</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>optional</em>) – Tree width of the hash-based groupby reduction for each categorical
+column. High-cardinality columns may require a large <cite>tree_width</cite>,
+while low-cardinality columns can likely use <cite>tree_width=1</cite>.
+If passing a dict, each key and value should correspond to the column
+name and width, respectively. The default value is 8 for all columns.</p></li>
+<li><p><strong>out_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>optional</em>) – Root directory where groupby statistics will be written out in
+parquet format.</p></li>
+<li><p><strong>on_host</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to convert cudf data to pandas between tasks in the hash-based
+groupby reduction. The extra host &lt;-&gt; device data movement can reduce
+performance.  However, using <cite>on_host=True</cite> typically improves stability
+(by avoiding device-level memory pressure).</p></li>
+<li><p><strong>na_sentinel</strong> (<em>default 0</em>) – Label to use for null-category mapping</p></li>
+<li><p><strong>cat_cache</strong> (<em>{&quot;device&quot;</em><em>, </em><em>&quot;host&quot;</em><em>, </em><em>&quot;disk&quot;}</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – Location to cache the list of unique categories for
+each categorical column. If passing a dict, each key and value
+should correspond to the column name and location, respectively.
+Default is “host” for all columns.</p></li>
+<li><p><strong>dtype</strong> – If specified, categorical labels will be cast to this dtype
+after encoding is performed.</p></li>
+<li><p><strong>name_sep</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>default &quot;_&quot;</em>) – String separator to use between concatenated column names
+for multi-column groups.</p></li>
+<li><p><strong>search_sorted</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>default False.</em>) – Set it True to apply searchsorted algorithm in encoding.</p></li>
+<li><p><strong>num_buckets</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, or </em><em>dictionary:{column: num_hash_buckets}</em>) – Column-wise modulo to apply after hash function. Note that this
+means that the corresponding value will be the categorical cardinality
+of the transformed categorical feature. If given as an int, that value
+will be used as the number of “hash buckets” for every feature. If a dictionary is passed,
+it will be used to specify explicit mappings from a column name to a number of buckets.
+In this case, only the columns specified in the keys of <cite>num_buckets</cite>
+will be transformed.</p></li>
+<li><p><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><em>dictionary:{column: max_size_value}</em><em>, </em><em>default 0</em>) – This parameter allows you to set the maximum size for an embedding table for each column.
+For example, if max_size is set to 1000 only the first 999 most frequent values for each
+column will be be encoded, and the rest will be mapped to a single value (0). To map the
+rest to a number of buckets,  you can set the num_buckets parameter &gt; 1. In that case, topK
+value will be <cite>max_size - num_buckets -1</cite>.  Setting the max_size param means that
+freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
+smaller than the max_size value.</p></li>
+<li><p><strong>start_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>default 0</em>) – The start index where Categorify will begin to translate dataframe entries
+into integer values, including an initial out-of-vocabulary encoding value.
+For instance, if our original translated dataframe entries appear
+as [[1], [1, 4], [3, 2], [2]], with an out-of-vocabulary value of 0, then with a
+start_index of 16, Categorify will reserve 16 as the out-of-vocabulary encoding value,
+and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
+This parameter is useful to reserve an initial segment of non-negative translated integers
+for special user-defined values.</p></li>
+<li><p><strong>cardinality_memory_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>default None</em>) – Upper limit on the “allowed” memory usage of the internal DataFrame and Table objects
+used to store unique categories. By default, this limit is 12.5% of the total memory.
+Note that this argument is meant as a guide for internal optimizations and UserWarnings
+within NVTabular, and does not guarantee that the memory limit will be satisfied.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dask.dataframe.core.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.fit" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate statistics for this operator, and return a dask future
+to these statistics, which will be computed by the workflow.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.fit_finalize">
+<code class="sig-name descname"><span class="pre">fit_finalize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">categories</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.fit_finalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.fit_finalize" title="Permalink to this definition"></a></dt>
+<dd><p>Finalize statistics calculation - the workflow calls this function with
+the computed statistics from the ‘fit’ object’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.clear" title="Permalink to this definition"></a></dt>
+<dd><p>Clear the internal state of the operator’s stats.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.process_vocabs">
+<code class="sig-name descname"><span class="pre">process_vocabs</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocabs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.process_vocabs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.process_vocabs" title="Permalink to this definition"></a></dt>
+<dd><p>Process vocabs passed in by the user.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.set_storage_path">
+<code class="sig-name descname"><span class="pre">set_storage_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.set_storage_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.set_storage_path" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.output_tags">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_tags</span></code><a class="headerlink" href="#nvtabular.ops.Categorify.output_tags" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.output_dtype">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_dtype</span></code><a class="headerlink" href="#nvtabular.ops.Categorify.output_dtype" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.compute_selector">
+<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.schema.schema.Schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.dag.selector.ColumnSelector</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.compute_selector" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.get_embedding_sizes">
+<code class="sig-name descname"><span class="pre">get_embedding_sizes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.get_embedding_sizes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.get_embedding_sizes" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.Categorify.inference_initialize">
+<code class="sig-name descname"><span class="pre">inference_initialize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inference_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/ops/categorify.html#Categorify.inference_initialize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Categorify.inference_initialize" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -167,14 +370,14 @@
       <dt>Tags</dt>
       <dd><a href="../../../v0.10.0/api/ops/categorify.html">v0.10.0</a></dd>
       <dd><a href="categorify.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.7.1/api/ops/categorify.html">v0.7.1</a></dd>
       <dd><a href="../../../v0.8.0/api/ops/categorify.html">v0.8.0</a></dd>
       <dd><a href="../../../v0.9.0/api/ops/categorify.html">v0.9.0</a></dd>
       <dd><a href="../../../v1.0.0/api/ops/categorify.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../../../main/api/ops/categorify.html">main</a></dd>
+      <dd><a href="../../../main/index.html">main</a></dd>
     </dl>
   </div>
 </div><script>

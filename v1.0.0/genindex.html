@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Index &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -33,11 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/index.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
 </ul>
@@ -174,11 +181,9 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/ops/columnsimilarity.html#nvtabular.ops.column_similarity.ColumnSimilarity">ColumnSimilarity (class in nvtabular.ops.column_similarity)</a>
 </li>
-      <li><a href="api/ops/drop_low_cardinality.html#nvtabular.ops.DropLowCardinality.compute_output_schema">compute_output_schema() (nvtabular.ops.DropLowCardinality method)</a>
+      <li><a href="api/ops/groupby.html#nvtabular.ops.Groupby.compute_output_schema">compute_output_schema() (nvtabular.ops.Groupby method)</a>
 
       <ul>
-        <li><a href="api/ops/groupby.html#nvtabular.ops.Groupby.compute_output_schema">(nvtabular.ops.Groupby method)</a>
-</li>
         <li><a href="api/ops/joinexternal.html#nvtabular.ops.JoinExternal.compute_output_schema">(nvtabular.ops.JoinExternal method)</a>
 </li>
         <li><a href="api/ops/reduce_dtype_size.html#nvtabular.ops.ReduceDtypeSize.compute_output_schema">(nvtabular.ops.ReduceDtypeSize method)</a>
@@ -196,6 +201,8 @@
 
       <ul>
         <li><a href="api/ops/columnsimilarity.html#nvtabular.ops.column_similarity.ColumnSimilarity.compute_selector">(nvtabular.ops.column_similarity.ColumnSimilarity method)</a>
+</li>
+        <li><a href="api/ops/drop_low_cardinality.html#nvtabular.ops.DropLowCardinality.compute_selector">(nvtabular.ops.DropLowCardinality method)</a>
 </li>
         <li><a href="api/ops/joinexternal.html#nvtabular.ops.JoinExternal.compute_selector">(nvtabular.ops.JoinExternal method)</a>
 </li>
@@ -768,10 +775,10 @@
       <dt>Tags</dt>
       <dd><a href="../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../v0.7.1/index.html">v0.7.1</a></dd>
       <dd><a href="../v0.8.0/index.html">v0.8.0</a></dd>
       <dd><a href="../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="genindex.html">v1.0.0</a></dd>
+      <dd><a href="../v1.1.0/index.html">v1.1.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
