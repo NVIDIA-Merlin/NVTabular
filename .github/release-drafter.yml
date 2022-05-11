@@ -1,0 +1,22 @@
+categories:
+- title: '⚠ Breaking Changes'
+  labels:
+  - 'breaking'
+- title: '🐜 Bug Fixes'
+  labels:
+  - 'bug'
+- title: '🚀 Features'
+  labels:
+  - 'feature'
+  - 'enhancement'
+- title: '🔧 Maintenance'
+  labels:
+  - build
+  - dependencies
+  - chore
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+exclude-labels:
+  - 'skip-changelog'
+template: |
+  ## What’s Changed
+  $CHANGES
