@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Documentation &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="nvtabular.workflow.workflow.Workflow" href="generated/nvtabular.workflow.workflow.Workflow.html" />
+    <link rel="prev" title="NVTabular demo on RecSys2020 Challenge" href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#workflow-constructors">Workflow Constructors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.workflow.workflow.Workflow.html">nvtabular.workflow.workflow.Workflow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.workflow.workflow.WorkflowNode.html">nvtabular.workflow.workflow.WorkflowNode</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#categorical-operators">Categorical Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Bucketize.html">nvtabular.ops.Bucketize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Categorify.html">nvtabular.ops.Categorify</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.DropLowCardinality.html">nvtabular.ops.DropLowCardinality</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.HashBucket.html">nvtabular.ops.HashBucket</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.HashedCross.html">nvtabular.ops.HashedCross</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.TargetEncoding.html">nvtabular.ops.TargetEncoding</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#continuous-operators">Continuous Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Clip.html">nvtabular.ops.Clip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.LogOp.html">nvtabular.ops.LogOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Normalize.html">nvtabular.ops.Normalize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.NormalizeMinMax.html">nvtabular.ops.NormalizeMinMax</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#missing-value-operators">Missing Value Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Dropna.html">nvtabular.ops.Dropna</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.FillMissing.html">nvtabular.ops.FillMissing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.FillMedian.html">nvtabular.ops.FillMedian</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#row-manipulation-operators">Row Manipulation Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.DifferenceLag.html">nvtabular.ops.DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Filter.html">nvtabular.ops.Filter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Groupby.html">nvtabular.ops.Groupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.JoinExternal.html">nvtabular.ops.JoinExternal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.JoinGroupby.html">nvtabular.ops.JoinGroupby</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#schema-operators">Schema Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.AddMetadata.html">nvtabular.ops.AddMetadata</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.AddProperties.html">nvtabular.ops.AddProperties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.AddTags.html">nvtabular.ops.AddTags</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Rename.html">nvtabular.ops.Rename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.ReduceDtypeSize.html">nvtabular.ops.ReduceDtypeSize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.TagAsItemFeatures.html">nvtabular.ops.TagAsItemFeatures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.TagAsItemID.html">nvtabular.ops.TagAsItemID</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.TagAsUserFeatures.html">nvtabular.ops.TagAsUserFeatures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.TagAsUserID.html">nvtabular.ops.TagAsUserID</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#list-operators">List Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.ListSlice.html">nvtabular.ops.ListSlice</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.ValueCount.html">nvtabular.ops.ValueCount</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#vector-operators">Vector Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.ColumnSimilarity.html">nvtabular.ops.ColumnSimilarity</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#user-defined-function-operators">User-Defined Function Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.LambdaOp.html">nvtabular.ops.LambdaOp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#operator-base-classes">Operator Base Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.Operator.html">nvtabular.ops.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/nvtabular.ops.StatOperator.html">nvtabular.ops.StatOperator</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>API Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="api-documentation">
+<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline"></a></h1>
+<div class="section" id="workflow-constructors">
+<h2>Workflow Constructors<a class="headerlink" href="#workflow-constructors" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Workflow</span></code></a>(output_node, client)</p></td>
+<td><p>The Workflow class applies a graph of operations onto a dataset, letting you transform datasets to do feature engineering and preprocessing operations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.workflow.workflow.WorkflowNode.html#nvtabular.workflow.workflow.WorkflowNode" title="nvtabular.workflow.workflow.WorkflowNode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WorkflowNode</span></code></a>([selector])</p></td>
+<td><p>WorkflowNode represents a Node in a NVTabular workflow graph</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="categorical-operators">
+<h2>Categorical Operators<a class="headerlink" href="#categorical-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.Bucketize.html#nvtabular.ops.Bucketize" title="nvtabular.ops.Bucketize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Bucketize</span></code></a>(boundaries)</p></td>
+<td><p>This operation transforms continuous features into categorical features with bins based on the provided bin boundaries.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.Categorify.html#nvtabular.ops.Categorify" title="nvtabular.ops.Categorify"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Categorify</span></code></a>([freq_threshold, out_path, …])</p></td>
+<td><p>Most of the data set will contain categorical features, and these variables are typically stored as text values.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.DropLowCardinality.html#nvtabular.ops.DropLowCardinality" title="nvtabular.ops.DropLowCardinality"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DropLowCardinality</span></code></a>([min_cardinality])</p></td>
+<td><p>DropLowCardinality drops low cardinality categorical columns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.HashBucket.html#nvtabular.ops.HashBucket" title="nvtabular.ops.HashBucket"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HashBucket</span></code></a>(num_buckets, Dict[str, int]])</p></td>
+<td><p>This op maps categorical columns to a contiguous integer range by first hashing the column, then reducing modulo the number of buckets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.HashedCross.html#nvtabular.ops.HashedCross" title="nvtabular.ops.HashedCross"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HashedCross</span></code></a>(num_buckets, Dict[str, int]])</p></td>
+<td><p>This ops creates hashed cross columns by first combining categorical features and hashing the combined feature, then reducing modulo the number of buckets.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding" title="nvtabular.ops.TargetEncoding"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TargetEncoding</span></code></a>(target[, target_mean, kfold, …])</p></td>
+<td><p>Target encoding is a common feature-engineering technique for categorical columns in tabular datasets.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="continuous-operators">
+<h2>Continuous Operators<a class="headerlink" href="#continuous-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.Clip.html#nvtabular.ops.Clip" title="nvtabular.ops.Clip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Clip</span></code></a>([min_value, max_value])</p></td>
+<td><p>This operation clips continuous values so that they are within a min/max bound. For instance by setting the min value to 0, you can replace all negative values with 0. This is helpful in cases where you want to log normalize values::.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.LogOp.html#nvtabular.ops.LogOp" title="nvtabular.ops.LogOp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LogOp</span></code></a>()</p></td>
+<td><p>This operator calculates the log of continuous columns.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize" title="nvtabular.ops.Normalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Normalize</span></code></a>()</p></td>
+<td><p>Standardizing the features around 0 with a standard deviation of 1 is a common technique to compare measurements that have different units.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax" title="nvtabular.ops.NormalizeMinMax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NormalizeMinMax</span></code></a>()</p></td>
+<td><p>This operator standardizes continuous features such that they are between 0 and 1.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="missing-value-operators">
+<h2>Missing Value Operators<a class="headerlink" href="#missing-value-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.Dropna.html#nvtabular.ops.Dropna" title="nvtabular.ops.Dropna"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Dropna</span></code></a>()</p></td>
+<td><p>This operation detects and filters out rows with missing values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing" title="nvtabular.ops.FillMissing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FillMissing</span></code></a>([fill_val, add_binary_cols])</p></td>
+<td><p>This operation replaces missing values with a constant pre-defined value</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian" title="nvtabular.ops.FillMedian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FillMedian</span></code></a>([add_binary_cols])</p></td>
+<td><p>This operation replaces missing values with the median value for the column.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="row-manipulation-operators">
+<h2>Row Manipulation Operators<a class="headerlink" href="#row-manipulation-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.DifferenceLag.html#nvtabular.ops.DifferenceLag" title="nvtabular.ops.DifferenceLag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DifferenceLag</span></code></a>(partition_cols[, shift])</p></td>
+<td><p>Calculates the difference between two consecutive rows of the dataset.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.Filter.html#nvtabular.ops.Filter" title="nvtabular.ops.Filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Filter</span></code></a>(f, Union[pandas.core.frame.DataFrame, …)</p></td>
+<td><p>Filters rows from the dataset.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby" title="nvtabular.ops.Groupby"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Groupby</span></code></a>([groupby_cols, sort_cols, aggs, …])</p></td>
+<td><p>Groupby Transformation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal" title="nvtabular.ops.JoinExternal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JoinExternal</span></code></a>(df_ext, on[, how, on_ext, …])</p></td>
+<td><p>Join each dataset partition to an external table.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.JoinGroupby.html#nvtabular.ops.JoinGroupby" title="nvtabular.ops.JoinGroupby"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JoinGroupby</span></code></a>([cont_cols, stats, tree_width, …])</p></td>
+<td><p>One of the ways to create new features is to calculate the basic statistics of the data that is grouped by categorical features.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="schema-operators">
+<h2>Schema Operators<a class="headerlink" href="#schema-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.AddMetadata.html#nvtabular.ops.AddMetadata" title="nvtabular.ops.AddMetadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AddMetadata</span></code></a>([tags, properties])</p></td>
+<td><p>This operator will add user defined tags and properties to a Schema.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.AddProperties.html#nvtabular.ops.AddProperties" title="nvtabular.ops.AddProperties"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AddProperties</span></code></a>([properties])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.AddTags.html#nvtabular.ops.AddTags" title="nvtabular.ops.AddTags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AddTags</span></code></a>([tags])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.Rename.html#nvtabular.ops.Rename" title="nvtabular.ops.Rename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Rename</span></code></a>([f, postfix, name])</p></td>
+<td><p>This operation renames columns by one of several methods:</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.ReduceDtypeSize.html#nvtabular.ops.ReduceDtypeSize" title="nvtabular.ops.ReduceDtypeSize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReduceDtypeSize</span></code></a>([float_dtype])</p></td>
+<td><p>ReduceDtypeSize changes the dtypes of numeric columns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.TagAsItemFeatures.html#nvtabular.ops.TagAsItemFeatures" title="nvtabular.ops.TagAsItemFeatures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagAsItemFeatures</span></code></a>([tags])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.TagAsItemID.html#nvtabular.ops.TagAsItemID" title="nvtabular.ops.TagAsItemID"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagAsItemID</span></code></a>([tags])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.TagAsUserFeatures.html#nvtabular.ops.TagAsUserFeatures" title="nvtabular.ops.TagAsUserFeatures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagAsUserFeatures</span></code></a>([tags])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.TagAsUserID.html#nvtabular.ops.TagAsUserID" title="nvtabular.ops.TagAsUserID"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagAsUserID</span></code></a>([tags])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="list-operators">
+<h2>List Operators<a class="headerlink" href="#list-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.ListSlice.html#nvtabular.ops.ListSlice" title="nvtabular.ops.ListSlice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ListSlice</span></code></a>(start[, end, pad, pad_value])</p></td>
+<td><p>Slices a list column</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.ValueCount.html#nvtabular.ops.ValueCount" title="nvtabular.ops.ValueCount"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ValueCount</span></code></a>()</p></td>
+<td><p>The operator calculates the min and max lengths of multihot columns.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="vector-operators">
+<h2>Vector Operators<a class="headerlink" href="#vector-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.ColumnSimilarity.html#nvtabular.ops.ColumnSimilarity" title="nvtabular.ops.ColumnSimilarity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ColumnSimilarity</span></code></a>(left_features[, …])</p></td>
+<td><p>Calculates the similarity between two columns using tf-idf, cosine or inner product as the distance metric.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="user-defined-function-operators">
+<h2>User-Defined Function Operators<a class="headerlink" href="#user-defined-function-operators" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.LambdaOp.html#nvtabular.ops.LambdaOp" title="nvtabular.ops.LambdaOp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LambdaOp</span></code></a>(f[, dependency, label, dtype, …])</p></td>
+<td><p>LambdaOp allows you to apply row level functions to an NVTabular workflow.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="operator-base-classes">
+<h2>Operator Base Classes<a class="headerlink" href="#operator-base-classes" title="Permalink to this headline"></a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator" title="nvtabular.ops.Operator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Operator</span></code></a>()</p></td>
+<td><p>Base class for all operator classes.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator" title="nvtabular.ops.StatOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StatOperator</span></code></a>()</p></td>
+<td><p>Base class for statistical operator classes.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples/winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" class="btn btn-neutral float-left" title="NVTabular demo on RecSys2020 Challenge" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="generated/nvtabular.workflow.workflow.Workflow.html" class="btn btn-neutral float-right" title="nvtabular.workflow.workflow.Workflow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../v1.1.0/api.html">v1.1.0</a></dd>
+      <dd><a href="api.html">v1.1.1</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../main/api.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -91,7 +91,7 @@
 <span id="workflow"></span><h1>Workflow<a class="headerlink" href="#module-nvtabular.workflow.workflow" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt id="nvtabular.workflow.workflow.Workflow">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+16.gdecfe7fd)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="workflow_node.html#nvtabular.workflow.node.WorkflowNode" title="nvtabular.workflow.node.WorkflowNode"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+18.g5551a1fc)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>The Workflow class applies a graph of operations onto a dataset, letting you transform
 datasets to do feature engineering and preprocessing operations. This class follows an API
@@ -262,7 +262,7 @@ call. Equivalent to calling <code class="docutils literal notranslate"><span cla
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The path to load the workflow from</p></li>
-<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+16.gdecfe7fd)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
+<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2022.5.0+18.g5551a1fc)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -324,10 +324,10 @@ call. Equivalent to calling <code class="docutils literal notranslate"><span cla
       <dt>Tags</dt>
       <dd><a href="workflow.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/api/workflow/workflow.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.8.0/api/workflow/workflow.html">v0.8.0</a></dd>
       <dd><a href="../../../v0.9.0/api/workflow/workflow.html">v0.9.0</a></dd>
       <dd><a href="../../../v1.0.0/api/workflow/workflow.html">v1.0.0</a></dd>
       <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../../v1.1.1/index.html">v1.1.1</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

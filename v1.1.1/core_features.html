@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core Features &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Accelerated Training" href="training/index.html" />
+    <link rel="prev" title="NVTabular" href="Introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Core Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#tensorflow-and-pytorch-interoperability">TensorFlow and PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hugectr-interoperability">HugeCTR Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-gpu-support">Multi-GPU Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-node-support">Multi-Node Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-hot-encoding-and-pre-existing-embeddings">Multi-Hot Encoding and Pre-Existing Embeddings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shuffling-datasets">Shuffling Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cloud-integration">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cpu-support">CPU Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Core Features</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="core-features">
+<h1>Core Features<a class="headerlink" href="#core-features" title="Permalink to this headline"></a></h1>
+<p>NVTabular supports the following core features:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#tensorflow-and-pytorch-interoperability"><span class="std std-doc">TensorFlow and PyTorch Interoperability</span></a></p></li>
+<li><p><a class="reference internal" href="#hugectr-interoperability"><span class="std std-doc">HugeCTR Interoperability</span></a></p></li>
+<li><p><a class="reference internal" href="#multi-gpu-support"><span class="std std-doc">Multi-GPU Support</span></a></p></li>
+<li><p><a class="reference internal" href="#multi-node-support"><span class="std std-doc">Multi-Node Support</span></a></p></li>
+<li><p><a class="reference internal" href="#multi-hot-encoding-and-pre-existing-embeddings"><span class="std std-doc">Multi-Hot Encoding and Pre-Existing Embeddings</span></a></p></li>
+<li><p><a class="reference internal" href="#shuffling-datasets"><span class="std std-doc">Shuffling Datasets</span></a></p></li>
+<li><p><a class="reference internal" href="#cloud-integration"><span class="std std-doc">Cloud Integration</span></a></p></li>
+<li><p><a class="reference internal" href="#cpu-support"><span class="std std-doc">CPU Support</span></a></p></li>
+</ul>
+<div class="section" id="tensorflow-and-pytorch-interoperability">
+<h2>TensorFlow and PyTorch Interoperability<a class="headerlink" href="#tensorflow-and-pytorch-interoperability" title="Permalink to this headline"></a></h2>
+<p>In addition to providing mechanisms for transforming the data to prepare it for deep learning models, we also have framework-specific dataloaders implemented to help optimize getting that data to the GPU. Under a traditional dataloading scheme, data is read item by item and collated into a batch. With PyTorch, multiple processes can create many batches at the same time. However, this still leads to many individual rows of tabular data being accessed independently, which impacts I/O, especially when this data is on the disk and not in the CPU memory. TensorFlow loads and shuffles TFRecords by adopting a windowed buffering scheme that loads data sequentially to a buffer, which it randomly samples batches and replenishes with the next sequential elements from the disk. Larger buffer sizes ensure more randomness, but can quickly bottleneck performance as TensorFlow tries to keep the buffer saturated. Smaller buffer sizes mean that datasets, which aren’t uniformly distributed on the disk, lead to biased sampling and potentially degraded convergence.</p>
+</div>
+<div class="section" id="hugectr-interoperability">
+<h2>HugeCTR Interoperability<a class="headerlink" href="#hugectr-interoperability" title="Permalink to this headline"></a></h2>
+<p>NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/blob/main/examples/scaling-criteo/03-Training-with-HugeCTR.ipynb">HugeCTR Example Notebook</a> for details about how this works.</p>
+</div>
+<div class="section" id="multi-gpu-support">
+<h2>Multi-GPU Support<a class="headerlink" href="#multi-gpu-support" title="Permalink to this headline"></a></h2>
+<p>NVTabular supports multi-GPU scaling with <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-CUDA</a> and <a class="reference external" href="https://distributed.dask.org/en/latest/">dask.distributed</a>. To enable distributed parallelism, the NVTabular <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> must be initialized with a <code class="docutils literal notranslate"><span class="pre">dask.distributed.Client</span></code> object as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+
+<span class="c1"># Deploy a new cluster</span>
+<span class="c1"># (or specify the port of an existing scheduler)</span>
+<span class="n">cluster</span> <span class="o">=</span> <span class="s2">&quot;tcp://MachineA:8786&quot;</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>Currently, there are many ways to deploy a “cluster” for Dask. This <a class="reference external" href="https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters">article</a> gives a summary of all the practical options. For a single machine with multiple GPUs, the <code class="docutils literal notranslate"><span class="pre">dask_cuda.LocalCUDACluster</span></code> API is typically the most convenient option.</p>
+<p>Since NVTabular already uses <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">Dask-CuDF</a> for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb">Multi-GPU</a> for a simple step-by-step example.</p>
+</div>
+<div class="section" id="multi-node-support">
+<h2>Multi-Node Support<a class="headerlink" href="#multi-node-support" title="Permalink to this headline"></a></h2>
+<p>NVTabular supports multi-node scaling with <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-CUDA</a> and <a class="reference external" href="https://distributed.dask.org/en/latest/">dask.distributed</a>. To enable distributed parallelism, start a cluster and connect to it to run the application by doing the following:</p>
+<ol class="simple">
+<li><p>Start the scheduler <code class="docutils literal notranslate"><span class="pre">dask-scheduler</span></code>.</p></li>
+<li><p>Start the workers <code class="docutils literal notranslate"><span class="pre">dask-cuda-worker</span> <span class="pre">schedulerIP:schedulerPort</span></code>.</p></li>
+<li><p>Run the NVTabular application where the NVTabular <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> has been initialized as described in the Multi-GPU Support section.</p></li>
+</ol>
+<p>For a detailed description of each existing method that is needed to start a cluster, please read this <a class="reference external" href="https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters">article</a>.</p>
+</div>
+<div class="section" id="multi-hot-encoding-and-pre-existing-embeddings">
+<h2>Multi-Hot Encoding and Pre-Existing Embeddings<a class="headerlink" href="#multi-hot-encoding-and-pre-existing-embeddings" title="Permalink to this headline"></a></h2>
+<p>NVTabular supports the:</p>
+<ul class="simple">
+<li><p>processing of datasets with multi-hot categorical columns.</p></li>
+<li><p>passing of continuous vector features like pre-trained embeddings, which includes basic preprocessing and feature engineering, as well as full support in the dataloaders for training models with both TensorFlow and PyTorch.</p></li>
+</ul>
+<p>Multi-hot lets you represent a set of categories as a single feature. For example, in a movie recommendation system, each movie might have a list of genres associated with it like comedy, drama, horror, or science fiction. Since movies can belong to more than one genre, we can’t use single-hot encoding like we are doing for scalar
+columns. Instead we train models with multi-hot embeddings for these features by having the deep learning model look up an embedding for each category in the list and then average all the embeddings for each row. Both multi-hot categoricals and vector continuous features are represented using list columns in our datasets. cuDF has recently added support for list columns, and we’re leveraging that support in NVTabular to power this feature.</p>
+<p>Our Categorify and HashBucket operators can map list columns down to small contiguous integers, which are suitable for use in an embedding lookup table. This is only possible if the dataset contains two rows like <code class="docutils literal notranslate"><span class="pre">[['comedy',</span> <span class="pre">'horror'],</span> <span class="pre">['comedy',</span> <span class="pre">'sciencefiction']]</span></code> so that NVTabular can transform the strings for each row into categorical IDs like <code class="docutils literal notranslate"><span class="pre">[[0,</span> <span class="pre">1],</span> <span class="pre">[0,</span> <span class="pre">2]]</span></code> to be used in our embedding layers.</p>
+<p>Our PyTorch and TensorFlow dataloaders have been extended to handle both categorical and continuous list columns. In TensorFlow, the KerasSequenceLoader class will transform each list column into two tensors representing the values and offsets into those values for each batch. These tensors can be converted into RaggedTensors for multi-hot columns, and for vector continuous columns where the offsets tensor can be safely ignored. We’ve provided a <code class="docutils literal notranslate"><span class="pre">nvtabular.framework_utils.tensorflow.layers.DenseFeatures</span></code> Keras layer that will automatically handle these conversions for both continuous and categorical columns. For PyTorch, there’s support for multi-hot columns to our <code class="docutils literal notranslate"><span class="pre">nvtabular.framework_utils.torch.models.Model</span></code> class, which internally is using the PyTorch <a class="reference external" href="https://pytorch.org/docs/stable/generated/torch.nn.EmbeddingBag.html">EmbeddingBag</a> layer to handle the multi-hot columns.</p>
+</div>
+<div class="section" id="shuffling-datasets">
+<h2>Shuffling Datasets<a class="headerlink" href="#shuffling-datasets" title="Permalink to this headline"></a></h2>
+<p>NVTabular makes it possible to shuffle during dataset creation. This creates a uniformly shuffled dataset that allows the dataloader to load large contiguous chunks of data, which are already randomized across the entire dataset. NVTabular also makes it possible to control the number of chunks that are combined into a batch, providing flexibility when trading off between performance and true randomization. This mechanism is critical when dealing with datasets that exceed CPU memory and individual epoch shuffling is desired during training. Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.</p>
+</div>
+<div class="section" id="cloud-integration">
+<h2>Cloud Integration<a class="headerlink" href="#cloud-integration" title="Permalink to this headline"></a></h2>
+<p>NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Cloud Platform (GCP), giving you the ability to build, train, and deploy models on the cloud using datasets. For additional information, see <a class="reference internal" href="resources/cloud_integration.html#amazon-web-services"><span class="std std-doc">Amazon Web Services</span></a> and <a class="reference internal" href="resources/cloud_integration.html#google-cloud-platform"><span class="std std-doc">Google Cloud Platform</span></a>.</p>
+</div>
+<div class="section" id="cpu-support">
+<h2>CPU Support<a class="headerlink" href="#cpu-support" title="Permalink to this headline"></a></h2>
+<p>NVTabular supports CPU using <a class="reference external" href="https://pandas.pydata.org/">pandas</a>, <a class="reference external" href="https://arrow.apache.org/docs/python/">pyarrow</a>, and <a class="reference external" href="https://examples.dask.org/dataframe.html">dask dataframe</a>. To enable CPU, the Dataset class must be initialized with the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> parameter as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Processing will now take place on the CPU for that particular dataset, including feature engineering and preprocessing as well as TensorFlow and PyTorch training using NVTabular’s dataloaders.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Introduction.html" class="btn btn-neutral float-left" title="NVTabular" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="training/index.html" class="btn btn-neutral float-right" title="Accelerated Training" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v0.10.0/core_features.html">v0.10.0</a></dd>
+      <dd><a href="../v0.11.0/core_features.html">v0.11.0</a></dd>
+      <dd><a href="../v0.9.0/core_features.html">v0.9.0</a></dd>
+      <dd><a href="../v1.0.0/core_features.html">v1.0.0</a></dd>
+      <dd><a href="../v1.1.0/core_features.html">v1.1.0</a></dd>
+      <dd><a href="core_features.html">v1.1.1</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../main/core_features.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

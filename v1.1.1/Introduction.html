@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NVTabular &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Core Features" href="core_features.html" />
+    <link rel="prev" title="Merlin NVTabular" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#benefits">Benefits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance">Performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installing-nvtabular-using-conda">Installing NVTabular Using Conda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-nvtabular-using-pip">Installing NVTabular Using Pip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-nvtabular-with-docker">Installing NVTabular with Docker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#notebook-examples-and-tutorials">Notebook Examples and Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#feedback-and-support">Feedback and Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>NVTabular</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="nvtabular">
+<h1><a class="reference external" href="https://github.com/NVIDIA/NVTabular">NVTabular</a><a class="headerlink" href="#nvtabular" title="Permalink to this headline"></a></h1>
+<p><a class="reference external" href="https://pypi.python.org/pypi/NVTabular/"><img alt="PyPI" src="https://img.shields.io/pypi/v/NVTabular?color=orange&amp;label=version" /></a>
+<a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/blob/main/LICENSE"><img alt="LICENSE" src="https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular" /></a>
+<a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html"><img alt="Documentation" src="https://img.shields.io/badge/documentation-blue.svg" /></a></p>
+<p><a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular">NVTabular</a> is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the <a class="reference external" href="https://github.com/rapidsai/cudf/tree/main/python/dask_cudf">RAPIDS Dask-cuDF</a> library.</p>
+<p>NVTabular is a component of <a class="reference external" href="https://developer.nvidia.com/nvidia-merlin">NVIDIA Merlin</a>, an open source framework for building and deploying recommender systems and works with the other Merlin components including <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">Merlin Models</a>, <a class="reference external" href="https://github.com/NVIDIA/HugeCTR">HugeCTR</a> and <a class="reference external" href="https://github.com/NVIDIA-Merlin/systems">Merlin Systems</a> to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s  <a class="reference external" href="https://github.com/NVIDIA/tensorrt-inference-server">Triton Inference Server</a>, the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.</p>
+<!-- <img src='https://developer.nvidia.com/blog/wp-content/uploads/2020/07/recommender-system-training-pipeline-1.png'/> -->
+<div class="section" id="benefits">
+<h2>Benefits<a class="headerlink" href="#benefits" title="Permalink to this headline"></a></h2>
+<p>When training DL recommender systems, data scientists and machine learning (ML) engineers have been faced with the following challenges:</p>
+<ul class="simple">
+<li><p><strong>Huge Datasets</strong>: Commercial recommenders are trained on huge datasets that may be several terabytes in scale.</p></li>
+<li><p><strong>Complex Data Feature Engineering and Preprocessing Pipelines</strong>: Datasets need to be preprocessed and transformed so that they can be used with DL models and frameworks. In addition, feature engineering creates an extensive set of new features from existing ones, requiring multiple iterations to arrive at an optimal solution.</p></li>
+<li><p><strong>Input Bottleneck</strong>: Data loading, if not well optimized, can be the slowest part of the training process, leading to under-utilization of high-throughput computing devices such as GPUs.</p></li>
+<li><p><strong>Extensive Repeated Experimentation</strong>: The entire data engineering, training, and evaluation process can be repetitious and time consuming, requiring significant computational resources.</p></li>
+</ul>
+<p>NVTabular alleviates these challenges and helps data scientists and ML engineers:</p>
+<ul class="simple">
+<li><p>process datasets that exceed GPU and CPU memory without having to worry about scale.</p></li>
+<li><p>focus on what to do with the data and not how to do it by using abstraction at the operation level.</p></li>
+<li><p>prepare datasets quickly and easily for experimentation so that more models can be trained.</p></li>
+<li><p>deploy models into production by providing faster dataset transformation</p></li>
+</ul>
+<p>Learn more in the NVTabular <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/core_features.html">core features documentation</a>.</p>
+</div>
+<div class="section" id="performance">
+<h2>Performance<a class="headerlink" href="#performance" title="Permalink to this headline"></a></h2>
+<p>When running NVTabular on the Criteo 1TB Click Logs Dataset using a single V100 32GB GPU, feature engineering and preprocessing was able to be completed in 13 minutes. Furthermore, when running NVTabular on a DGX-1 cluster with eight V100 GPUs, feature engineering and preprocessing was able to be completed within three minutes. Combined with <a class="reference external" href="http://www.github.com/NVIDIA/HugeCTR/">HugeCTR</a>, the dataset can be processed and a full model can be trained in only six minutes.</p>
+<p>The performance of the Criteo DRLM workflow also demonstrates the effectiveness of the NVTabular library. The original ETL script provided in Numpy took over five days to complete. Combined with CPU training, the total iteration time is over one week. By optimizing the ETL code in Spark and running on a DGX-1 equivalent cluster, the time to complete feature engineering and preprocessing was reduced to three hours. Meanwhile, training was completed in one hour.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h2>
+<p>NVTabular requires Python version 3.7+. Additionally, GPU support requires:</p>
+<ul class="simple">
+<li><p>CUDA version 11.0+</p></li>
+<li><p>NVIDIA Pascal GPU or later (Compute Capability &gt;=6.0)</p></li>
+<li><p>NVIDIA driver 450.80.02+</p></li>
+<li><p>Linux or WSL</p></li>
+</ul>
+<div class="section" id="installing-nvtabular-using-conda">
+<h3>Installing NVTabular Using Conda<a class="headerlink" href="#installing-nvtabular-using-conda" title="Permalink to this headline"></a></h3>
+<p>NVTabular can be installed with Anaconda from the <code class="docutils literal notranslate"><span class="pre">nvidia</span></code> channel by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">nvidia</span> <span class="o">-</span><span class="n">c</span> <span class="n">rapidsai</span> <span class="o">-</span><span class="n">c</span> <span class="n">numba</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">nvtabular</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.7</span> <span class="n">cudatoolkit</span><span class="o">=</span><span class="mf">11.2</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="installing-nvtabular-using-pip">
+<h3>Installing NVTabular Using Pip<a class="headerlink" href="#installing-nvtabular-using-pip" title="Permalink to this headline"></a></h3>
+<p>NVTabular can be installed with <code class="docutils literal notranslate"><span class="pre">pip</span></code> by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">nvtabular</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p>Installing NVTabular with Pip causes NVTabular to run on the CPU only and might require installing additional dependencies manually.
+When you run NVTabular in one of our Docker containers, the dependencies are already installed.</p>
+</div></blockquote>
+</div>
+<div class="section" id="installing-nvtabular-with-docker">
+<h3>Installing NVTabular with Docker<a class="headerlink" href="#installing-nvtabular-with-docker" title="Permalink to this headline"></a></h3>
+<p>NVTabular Docker containers are available in the <a class="reference external" href="https://catalog.ngc.nvidia.com/?filters=&amp;orderBy=scoreDESC&amp;query=merlin">NVIDIA Merlin container
+repository</a>. There are six different containers:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Container Name</th>
+<th>Container Location</th>
+<th>Functionality</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>merlin-tensorflow-inference</td>
+<td>https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-tensorflow-inference</td>
+<td>NVTabular, Tensorflow and Triton Inference</td>
+</tr>
+<tr>
+<td>merlin-pytorch-inference</td>
+<td>https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-pytorch-inference</td>
+<td>NVTabular, PyTorch, and Triton Inference</td>
+</tr>
+<tr>
+<td>merlin-inference</td>
+<td>https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-inference</td>
+<td>NVTabular, HugeCTR, and Triton Inference</td>
+</tr>
+<tr>
+<td>merlin-training</td>
+<td>https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-training</td>
+<td>NVTabular and HugeCTR</td>
+</tr>
+<tr>
+<td>merlin-tensorflow-training</td>
+<td>https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-tensorflow-training</td>
+<td>NVTabular, TensorFlow, and HugeCTR Tensorflow Embedding plugin</td>
+</tr>
+<tr>
+<td>merlin-pytorch-training</td>
+<td>https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-pytorch-training</td>
+<td>NVTabular and PyTorch</td>
+</tr>
+</tbody>
+</table>
+<p>To use these Docker containers, you’ll first need to install the <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">NVIDIA Container Toolkit</a> to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/docs/source/resources/support_matrix.rst">Support Matrix</a>.</p>
+</div>
+</div>
+<div class="section" id="notebook-examples-and-tutorials">
+<h2>Notebook Examples and Tutorials<a class="headerlink" href="#notebook-examples-and-tutorials" title="Permalink to this headline"></a></h2>
+<p>We provide a <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples">collection of examples, use cases, and tutorials</a> as Jupyter notebooks covering:</p>
+<ul class="simple">
+<li><p>Feature engineering and preprocessing with NVTabular</p></li>
+<li><p>Advanced workflows with NVTabular</p></li>
+<li><p>Scaling to multi-GPU and multi-node systems</p></li>
+<li><p>Integrating NVTabular with HugeCTR</p></li>
+<li><p>Deploying to inference with Triton</p></li>
+</ul>
+</div>
+<div class="section" id="feedback-and-support">
+<h2>Feedback and Support<a class="headerlink" href="#feedback-and-support" title="Permalink to this headline"></a></h2>
+<p>If you’d like to contribute to the library directly, see the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md">Contributing.md</a>. We’re particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this <a class="reference external" href="https://developer.nvidia.com/merlin-devzone-survey">survey</a>.</p>
+<p>If you’re interested in learning more about how NVTabular works, see
+<a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html">our NVTabular documentation</a>. We also have <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/api/index.html">API documentation</a> that outlines the specifics of the available calls within the library.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Merlin NVTabular" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core_features.html" class="btn btn-neutral float-right" title="Core Features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v0.10.0/Introduction.html">v0.10.0</a></dd>
+      <dd><a href="../v0.11.0/Introduction.html">v0.11.0</a></dd>
+      <dd><a href="../v0.9.0/Introduction.html">v0.9.0</a></dd>
+      <dd><a href="../v1.0.0/Introduction.html">v1.0.0</a></dd>
+      <dd><a href="../v1.1.0/Introduction.html">v1.1.0</a></dd>
+      <dd><a href="Introduction.html">v1.1.1</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../main/Introduction.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

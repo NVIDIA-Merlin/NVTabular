@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started MovieLens: Download and Convert &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Getting Started MovieLens: ETL with NVTabular" href="02-ETL-with-NVTabular.html" />
+    <link rel="prev" title="Getting Started with Movielens" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Getting Started with MovieLens</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">Train with PyTorch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Serve a HugeCTR Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Serve a TensorFlow Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Getting Started with Movielens</a> &raquo;</li>
+      <li>Getting Started MovieLens: Download and Convert</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-movielens-download-and-convert">
+<h1>Getting Started MovieLens: Download and Convert<a class="headerlink" href="#getting-started-movielens-download-and-convert" title="Permalink to this headline"></a></h1>
+<div class="section" id="movielens25m">
+<h2>MovieLens25M<a class="headerlink" href="#movielens25m" title="Permalink to this headline"></a></h2>
+<p>The <a class="reference external" href="https://grouplens.org/datasets/movielens/25m/">MovieLens25M</a> is a popular dataset for recommender systems and is used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well. For example, which genres a movie has. Although we may not improve state-of-the-art results with our neural network architecture in this example, we will use the metadata to show how to multi-hot encode the categorical features.</p>
+</div>
+<div class="section" id="download-the-dataset">
+<h2>Download the dataset<a class="headerlink" href="#download-the-dataset" title="Permalink to this headline"></a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We define our base input directory, containing the data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We will download and unzip the data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">download_file</span><span class="p">(</span>
+    <span class="s2">&quot;http://files.grouplens.org/datasets/movielens/ml-25m.zip&quot;</span><span class="p">,</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m.zip&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>downloading ml-25m.zip: 262MB [00:06, 42.1MB/s]                                                                                                                                            
+unzipping files: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 8/8 [00:04&lt;00:00,  1.74files/s]
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="convert-the-dataset">
+<h2>Convert the dataset<a class="headerlink" href="#convert-the-dataset" title="Permalink to this headline"></a></h2>
+<p>First, we take a look on the movie metadata.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m/movies.csv&quot;</span><span class="p">))</span>
+<span class="n">movies</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>movieId</th>
+      <th>title</th>
+      <th>genres</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>Toy Story (1995)</td>
+      <td>Adventure|Animation|Children|Comedy|Fantasy</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>Jumanji (1995)</td>
+      <td>Adventure|Children|Fantasy</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>Grumpier Old Men (1995)</td>
+      <td>Comedy|Romance</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>Waiting to Exhale (1995)</td>
+      <td>Comedy|Drama|Romance</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>Father of the Bride Part II (1995)</td>
+      <td>Comedy</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We can see, that genres are a multi-hot categorical features with different number of genres per movie. Currently, genres is a String and we want split the String into a list of Strings. In addition, we drop the title.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">movies</span><span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+<span class="n">movies</span> <span class="o">=</span> <span class="n">movies</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">movies</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>movieId</th>
+      <th>genres</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>[Adventure, Animation, Children, Comedy, Fantasy]</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>[Adventure, Children, Fantasy]</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>[Comedy, Romance]</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>[Comedy, Drama, Romance]</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>[Comedy]</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We save movies genres in parquet format, so that they can be used by NVTabular in the next notebook.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="splitting-into-train-and-validation-dataset">
+<h2>Splitting into train and validation dataset<a class="headerlink" href="#splitting-into-train-and-validation-dataset" title="Permalink to this headline"></a></h2>
+<p>We load the movie ratings.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ratings</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;ratings.csv&quot;</span><span class="p">))</span>
+<span class="n">ratings</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>userId</th>
+      <th>movieId</th>
+      <th>rating</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>296</td>
+      <td>5.0</td>
+      <td>1147880044</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>306</td>
+      <td>3.5</td>
+      <td>1147868817</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1</td>
+      <td>307</td>
+      <td>5.0</td>
+      <td>1147868828</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>1</td>
+      <td>665</td>
+      <td>5.0</td>
+      <td>1147878820</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1</td>
+      <td>899</td>
+      <td>3.5</td>
+      <td>1147868510</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We drop the timestamp column and split the ratings into training and test datasets. We use a simple random split.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ratings</span> <span class="o">=</span> <span class="n">ratings</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># shuffle the dataset</span>
+<span class="n">ratings</span> <span class="o">=</span> <span class="n">ratings</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ratings</span><span class="p">),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># split the train_df as training and validation data sets.</span>
+<span class="n">num_valid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ratings</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">)</span>
+
+<span class="n">train</span> <span class="o">=</span> <span class="n">ratings</span><span class="p">[:</span><span class="o">-</span><span class="n">num_valid</span><span class="p">]</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">ratings</span><span class="p">[</span><span class="o">-</span><span class="n">num_valid</span><span class="p">:]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We save the dataset to disk.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))</span>
+<span class="n">valid</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Getting Started with Movielens" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02-ETL-with-NVTabular.html" class="btn btn-neutral float-right" title="Getting Started MovieLens: ETL with NVTabular" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.1
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="01-Download-Convert.html">v1.1.1</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
