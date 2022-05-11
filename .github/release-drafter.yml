@@ -24,4 +24,5 @@ exclude-labels:
   - 'skip-changelog'
 template: |
   ## What’s Changed
+
   $CHANGES
