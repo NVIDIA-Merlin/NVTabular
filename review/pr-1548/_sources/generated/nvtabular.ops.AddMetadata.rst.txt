@@ -1,0 +1,43 @@
+﻿nvtabular.ops.AddMetadata
+=========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: AddMetadata
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AddMetadata.__init__
+      ~AddMetadata.column_mapping
+      ~AddMetadata.compute_column_schema
+      ~AddMetadata.compute_input_schema
+      ~AddMetadata.compute_output_schema
+      ~AddMetadata.compute_selector
+      ~AddMetadata.create_node
+      ~AddMetadata.inference_initialize
+      ~AddMetadata.output_column_names
+      ~AddMetadata.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AddMetadata.dependencies
+      ~AddMetadata.dynamic_dtypes
+      ~AddMetadata.label
+      ~AddMetadata.output_dtype
+      ~AddMetadata.output_properties
+      ~AddMetadata.output_tags
+      ~AddMetadata.supports
+   
+   
