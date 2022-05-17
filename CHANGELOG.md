@@ -1,3 +1,4 @@
+# Release notes are now being hosted in GitHub Releases https://github.com/NVIDIA-Merlin/NVTabular/releases
 
 # NVTabular v0.7.1 (2 November 2021)
 
