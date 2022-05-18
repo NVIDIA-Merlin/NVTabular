@@ -1,0 +1,48 @@
+﻿nvtabular.ops.JoinGroupby
+=========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: JoinGroupby
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~JoinGroupby.__init__
+      ~JoinGroupby.clear
+      ~JoinGroupby.column_mapping
+      ~JoinGroupby.compute_column_schema
+      ~JoinGroupby.compute_input_schema
+      ~JoinGroupby.compute_output_schema
+      ~JoinGroupby.compute_selector
+      ~JoinGroupby.create_node
+      ~JoinGroupby.fit
+      ~JoinGroupby.fit_finalize
+      ~JoinGroupby.inference_initialize
+      ~JoinGroupby.output_column_names
+      ~JoinGroupby.set_storage_path
+      ~JoinGroupby.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~JoinGroupby.cont_names
+      ~JoinGroupby.dependencies
+      ~JoinGroupby.dynamic_dtypes
+      ~JoinGroupby.label
+      ~JoinGroupby.output_dtype
+      ~JoinGroupby.output_properties
+      ~JoinGroupby.output_tags
+      ~JoinGroupby.supports
+   
+   
