@@ -34,10 +34,13 @@ class Groupby(Operator):
 
     Example usage::
 
+        groupby_cols = ['user_id', 'session_id']
+        dataset = dataset.shuffle_by_keys(keys=groupby_cols)
+
         groupby_features = [
             'user_id', 'session_id', 'month', 'prod_id',
         ] >> ops.Groupby(
-            groupby_cols=['user_id', 'session_id'],
+            groupby_cols=groupby_cols,
             sort_cols=['month'],
             aggs={
                 'prod_id': 'list',
@@ -46,10 +49,15 @@ class Groupby(Operator):
         )
         processor = nvtabular.Workflow(groupby_features)
 
+        workflow.fit(dataset)
+        dataset_transformed = workflow.transform(dataset)
+
     Parameters
     -----------
     groupby_cols : str or list of str
         The column names to be used as groupby keys.
+        WARNING: Ensure the dataset was partitioned by those
+        groupby keys (see above for an example).
     sort_cols : str or list of str
         Columns to be used to sort each partition before
         groupby aggregation is performed. If this argument
