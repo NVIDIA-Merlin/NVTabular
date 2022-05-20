@@ -57,7 +57,7 @@ class Groupby(Operator):
     groupby_cols : str or list of str
         The column names to be used as groupby keys.
         WARNING: Ensure the dataset was partitioned by those
-        groupby keys (see above an example).
+        groupby keys (see above for an example).
     sort_cols : str or list of str
         Columns to be used to sort each partition before
         groupby aggregation is performed. If this argument
