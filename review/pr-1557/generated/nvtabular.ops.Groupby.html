@@ -108,10 +108,13 @@ partitions. Please make sure that the target Dataset object
 is already shuffled by <code class="docutils literal notranslate"><span class="pre">groupby_cols</span></code>, otherwise the
 output may be incorrect. See: <code class="docutils literal notranslate"><span class="pre">Dataset.shuffle_by_keys</span></code>.</p>
 <p>Example usage:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">groupby_features</span> <span class="o">=</span> <span class="p">[</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">groupby_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">]</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">shuffle_by_keys</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="n">groupby_cols</span><span class="p">)</span>
+
+<span class="n">groupby_features</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;user_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">,</span> <span class="s1">&#39;month&#39;</span><span class="p">,</span> <span class="s1">&#39;prod_id&#39;</span><span class="p">,</span>
 <span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Groupby</span><span class="p">(</span>
-    <span class="n">groupby_cols</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span> <span class="s1">&#39;session_id&#39;</span><span class="p">],</span>
+    <span class="n">groupby_cols</span><span class="o">=</span><span class="n">groupby_cols</span><span class="p">,</span>
     <span class="n">sort_cols</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;month&#39;</span><span class="p">],</span>
     <span class="n">aggs</span><span class="o">=</span><span class="p">{</span>
         <span class="s1">&#39;prod_id&#39;</span><span class="p">:</span> <span class="s1">&#39;list&#39;</span><span class="p">,</span>
@@ -119,12 +122,17 @@ output may be incorrect. See: <code class="docutils literal notranslate"><span c
     <span class="p">},</span>
 <span class="p">)</span>
 <span class="n">processor</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">groupby_features</span><span class="p">)</span>
+
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">dataset_transformed</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>groupby_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – The column names to be used as groupby keys.</p></li>
+<li><p><strong>groupby_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – The column names to be used as groupby keys.
+WARNING: Ensure the dataset was partitioned by those
+groupby keys (see above for an example).</p></li>
 <li><p><strong>sort_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to be used to sort each partition before
 groupby aggregation is performed. If this argument
 is not specified, the results will not be sorted.</p></li>
