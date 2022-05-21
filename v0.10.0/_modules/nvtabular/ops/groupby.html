@@ -110,10 +110,13 @@
 
 <span class="sd">    Example usage::</span>
 
+<span class="sd">        groupby_cols = [&#39;user_id&#39;, &#39;session_id&#39;]</span>
+<span class="sd">        dataset = dataset.shuffle_by_keys(keys=groupby_cols)</span>
+
 <span class="sd">        groupby_features = [</span>
 <span class="sd">            &#39;user_id&#39;, &#39;session_id&#39;, &#39;month&#39;, &#39;prod_id&#39;,</span>
 <span class="sd">        ] &gt;&gt; ops.Groupby(</span>
-<span class="sd">            groupby_cols=[&#39;user_id&#39;, &#39;session_id&#39;],</span>
+<span class="sd">            groupby_cols=groupby_cols,</span>
 <span class="sd">            sort_cols=[&#39;month&#39;],</span>
 <span class="sd">            aggs={</span>
 <span class="sd">                &#39;prod_id&#39;: &#39;list&#39;,</span>
@@ -122,10 +125,15 @@
 <span class="sd">        )</span>
 <span class="sd">        processor = nvtabular.Workflow(groupby_features)</span>
 
+<span class="sd">        workflow.fit(dataset)</span>
+<span class="sd">        dataset_transformed = workflow.transform(dataset)</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    -----------</span>
 <span class="sd">    groupby_cols : str or list of str</span>
 <span class="sd">        The column names to be used as groupby keys.</span>
+<span class="sd">        WARNING: Ensure the dataset was partitioned by those</span>
+<span class="sd">        groupby keys (see above for an example).</span>
 <span class="sd">    sort_cols : str or list of str</span>
 <span class="sd">        Columns to be used to sort each partition before</span>
 <span class="sd">        groupby aggregation is performed. If this argument</span>
