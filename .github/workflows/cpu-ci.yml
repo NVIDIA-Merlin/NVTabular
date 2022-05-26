@@ -14,11 +14,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8, 3.9]
         os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v2
+      with:
+       fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -62,11 +64,27 @@ jobs:
     - name: Generate package for pypi
       run: |
         python setup.py sdist
-    - name: Upload artifacts to github
+    - name: Upload pypi artifacts to github
       uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist
+    - name: Generate package for conda
+      id: conda_build
+      run: |
+        conda update conda
+        conda install conda-build pybind11
+        conda build --python ${{ matrix.python-version }} . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
+        export CONDA_PACKAGE=$(conda build --python ${{ matrix.python-version }} . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages --output)
+        echo "conda_package : $CONDA_PACKAGE"
+        echo "::set-output name=conda_package::$CONDA_PACKAGE"
+
+    - name: Upload conda artifacts to github
+      uses: actions/upload-artifact@v2
+      with:
+        name: conda
+        path: ${{ steps.conda_build.outputs.conda_package }}
+
     # Build docs, treat warnings as errors
     - name: Building docs
       run: |
@@ -99,10 +117,11 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: dist
+          path: dist
       - name: Create GitHub Release
         uses: fnkr/github-action-ghr@v1.3
         env:
-          GHR_PATH: .
+          GHR_PATH: ./dist
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v2
         with:
@@ -113,4 +132,21 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade wheel pip setuptools twine
-          twine upload *
+          twine upload dist/*
+      - uses: actions/download-artifact@v2
+        with:
+          name: conda
+          path: conda
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+      - name: Install conda dependencies
+        shell: bash -l {0}
+        run: |
+          conda install -y anaconda-client conda-build
+      - name: Push to anaconda
+        shell: bash -l {0}
+        env:
+          ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        run: |
+          anaconda -t $ANACONDA_TOKEN upload -u nvidia conda/*.tar.bz2
