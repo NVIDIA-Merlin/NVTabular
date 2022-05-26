@@ -16,10 +16,10 @@ import json
 import os
 
 import pandas as pd
-import tritonclient.grpc as grpcclient  # noqa
-from tritonclient.utils import np_to_triton_dtype  # noqa
+import tritonclient.grpc as grpcclient
+from tritonclient.utils import np_to_triton_dtype
 
-from merlin.core.dispatch import is_list_dtype, is_string_dtype, make_df  # noqa
+from merlin.core.dispatch import is_list_dtype, is_string_dtype, make_df
 from nvtabular.inference.triton.ensemble import (  # noqa
     _convert_string2pytorch_dtype,
     export_hugectr_ensemble,

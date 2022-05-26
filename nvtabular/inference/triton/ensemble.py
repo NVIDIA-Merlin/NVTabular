@@ -20,10 +20,10 @@ from shutil import copyfile, copytree
 
 import numpy as np
 import tritonclient.grpc.model_config_pb2 as model_config
-from google.protobuf import text_format  # noqa
+from google.protobuf import text_format
 
-from merlin.core.dispatch import is_string_dtype  # noqa
-from merlin.schema import Tags  # noqa
+from merlin.core.dispatch import is_string_dtype
+from merlin.schema import Tags
 from nvtabular import ColumnSelector
 
 
