@@ -16,10 +16,6 @@ import json
 import os
 
 import pandas as pd
-
-# this needs to be before any modules that import protobuf
-os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-
 import tritonclient.grpc as grpcclient  # noqa
 from tritonclient.utils import np_to_triton_dtype  # noqa
 
