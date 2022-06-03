@@ -121,8 +121,8 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define a ColumnSelector that LamdaOp will apply to</span>
 <span class="c1"># then define a custom function, e.g. extract first 5 character from a string</span>
 <span class="n">lambda_feature</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="s2">&quot;col1&quot;</span><span class="p">])</span>
-<span class="n">new_lambda_feature</span> <span class="o">=</span> <span class="n">lambda_feature</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
-<span class="n">processor</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">new_lambda_feature</span> <span class="o">+</span> <span class="s1">&#39;label&#39;</span><span class="p">)</span>
+<span class="n">new_lambda_feature</span> <span class="o">=</span> <span class="n">lambda_feature</span> <span class="o">&gt;&gt;</span> <span class="n">LambdaOp</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">new_lambda_feature</span> <span class="o">+</span> <span class="s1">&#39;label&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Example usage 2:</p>
@@ -134,7 +134,7 @@
     <span class="n">col</span> <span class="o">=</span> <span class="n">col</span> <span class="o">/</span> <span class="n">gdf</span><span class="p">[</span><span class="s1">&#39;total_events&#39;</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">col</span>
 <span class="n">new_lambda_features</span> <span class="o">=</span> <span class="n">lambda_features</span> <span class="o">&gt;&gt;</span> <span class="n">LambdaOp</span><span class="p">(</span><span class="n">cond_prob</span><span class="p">,</span> <span class="n">dependency</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;total_events&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_cond&quot;</span><span class="p">)</span>
-<span class="n">processor</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">new_lambda_features</span> <span class="o">+</span> <span class="s1">&#39;label&#39;</span><span class="p">)</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">new_lambda_features</span> <span class="o">+</span> <span class="s1">&#39;label&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="field-list simple">

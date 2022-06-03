@@ -105,8 +105,8 @@
 <span class="sd">        # Define a ColumnSelector that LamdaOp will apply to</span>
 <span class="sd">        # then define a custom function, e.g. extract first 5 character from a string</span>
 <span class="sd">        lambda_feature = ColumnSelector([&quot;col1&quot;])</span>
-<span class="sd">        new_lambda_feature = lambda_feature &gt;&gt; (lambda col: col.str.slice(0, 5))</span>
-<span class="sd">        processor = nvtabular.Workflow(new_lambda_feature + &#39;label&#39;)</span>
+<span class="sd">        new_lambda_feature = lambda_feature &gt;&gt; LambdaOp(lambda col: col.str.slice(0, 5))</span>
+<span class="sd">        workflow = nvtabular.Workflow(new_lambda_feature + &#39;label&#39;)</span>
 
 <span class="sd">    Example usage 2::</span>
 
@@ -119,7 +119,7 @@
 <span class="sd">            return col</span>
 <span class="sd">        new_lambda_features = lambda_features &gt;&gt; LambdaOp(cond_prob, dependency=[&quot;total_events&quot;]) \</span>
 <span class="sd">&gt;&gt; Rename(postfix=&quot;_cond&quot;)</span>
-<span class="sd">        processor = nvtabular.Workflow(new_lambda_features + &#39;label&#39;)</span>
+<span class="sd">        workflow = nvtabular.Workflow(new_lambda_features + &#39;label&#39;)</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    -----------</span>
