@@ -19,17 +19,12 @@ import warnings
 from shutil import copyfile, copytree
 
 import numpy as np
+import tritonclient.grpc.model_config_pb2 as model_config
+from google.protobuf import text_format
 
+from merlin.core.dispatch import is_string_dtype
+from merlin.schema import Tags
 from nvtabular import ColumnSelector
-
-# this needs to be before any modules that import protobuf
-os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-
-from google.protobuf import text_format  # noqa
-
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from merlin.core.dispatch import is_string_dtype  # noqa
-from merlin.schema import Tags  # noqa
 
 
 def export_tensorflow_ensemble(
