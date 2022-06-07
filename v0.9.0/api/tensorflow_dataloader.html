@@ -142,26 +142,26 @@ statistics:</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>paths_or_dataset</strong> (<em>-</em>) – Either a string representing a file pattern (see <cite>tf.glob</cite> for
+<li><p><strong>paths_or_dataset</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>)</em>) – Either a string representing a file pattern (see <cite>tf.glob</cite> for
 pattern rules), a list of filenames to be iterated through, or
 a Dataset object, in which case <cite>buffer_size</cite>, <cite>engine</cite>, and
 <cite>reader_kwargs</cite> will be ignored</p></li>
-<li><p><strong>batch_size</strong> (<em>-</em>) – Number of samples to yield at each iteration</p></li>
-<li><p><strong>label_names</strong> (<em>-</em>) – Column name of the target variable in the dataframe specified by
+<li><p><strong>batch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of samples to yield at each iteration</p></li>
+<li><p><strong>label_names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>)</em>) – Column name of the target variable in the dataframe specified by
 <cite>paths_or_dataset</cite></p></li>
-<li><p><strong>feature_columns</strong> (<em>-</em>) – A list of TensorFlow feature columns representing the inputs
+<li><p><strong>feature_columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><em>tf.feature_column</em><em>) or </em><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a>) – A list of TensorFlow feature columns representing the inputs
 exposed to the model to be trained. Columns with parent columns
 will climb the parent tree, and the names of the columns in the
 unique set of terminal columns will be used as the column names.
 If left as None, must specify <cite>cat_names</cite> and <cite>cont_names</cite></p></li>
-<li><p><strong>cat_names</strong> (<em>-</em>) – List of categorical column names. Ignored if <cite>feature_columns</cite> is
+<li><p><strong>cat_names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>) or </em><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a>) – List of categorical column names. Ignored if <cite>feature_columns</cite> is
 specified</p></li>
-<li><p><strong>cont_names</strong> (<em>-</em>) – List of continuous column names. Ignored if <cite>feature_columns</cite> is
+<li><p><strong>cont_names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>) or </em><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a>) – List of continuous column names. Ignored if <cite>feature_columns</cite> is
 specified</p></li>
-<li><p><strong>engine</strong> (<em>-</em>) – String specifying the type of read engine to use. If left as <cite>None</cite>,
+<li><p><strong>engine</strong> (<em>{'csv'</em><em>, </em><em>'parquet'</em><em>, </em><em>None}</em><em>, </em><em>default None</em>) – String specifying the type of read engine to use. If left as <cite>None</cite>,
 will try to infer the engine type from the file extension.</p></li>
-<li><p><strong>shuffle</strong> (<em>-</em>) – Whether to shuffle chunks of batches before iterating through them.</p></li>
-<li><p><strong>buffer_size</strong> (<em>-</em>) – If <cite>0 &lt;  buffer_size &lt; 1</cite>, <cite>buffer_size</cite> will refer to the fraction of
+<li><p><strong>shuffle</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to shuffle chunks of batches before iterating through them.</p></li>
+<li><p><strong>buffer_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – If <cite>0 &lt;  buffer_size &lt; 1</cite>, <cite>buffer_size</cite> will refer to the fraction of
 total GPU memory to occupy with a buffered chunk. If <cite>1 &lt; buffer_size &lt;
 batch_size</cite>, the number of rows read for a buffered chunk will
 be equal to <cite>int(buffer_size*batch_size)</cite>. Otherwise, if <cite>buffer_size &gt;
@@ -169,15 +169,15 @@ batch_size</cite>, <cite>buffer_size</cite> rows will be read in each chunk (exc
 the last chunk in a dataset, which will, in general, be smaller).
 Larger chunk sizes will lead to more efficiency and randomness,
 but require more memory.</p></li>
-<li><p><strong>device</strong> (<em>-</em>) – Which GPU device to load from. Ignored for now</p></li>
-<li><p><strong>parts_per_chunk</strong> (<em>-</em>) – Number of dataset partitions with size dictated by <cite>buffer_size</cite>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a>) – Which GPU device to load from. Ignored for now</p></li>
+<li><p><strong>parts_per_chunk</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of dataset partitions with size dictated by <cite>buffer_size</cite>
 to load and concatenate asynchronously. More partitions leads to
 better epoch-level randomness but can negatively impact throughput</p></li>
-<li><p><strong>reader_kwargs</strong> (<em>-</em>) – extra kwargs to pass when instantiating the underlying
+<li><p><strong>reader_kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – extra kwargs to pass when instantiating the underlying
 <cite>nvtabular.Dataset</cite></p></li>
 <li><p><strong>sparse_list</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>(</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>) or </em><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a>) – list with column names of columns that should be represented as sparse tensors</p></li>
 <li><p><strong>sparse_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a>) – dictionary of key: column_name + value: integer representing max sequence length for column</p></li>
-<li><p><strong>sparse_dense</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – bool value to activate transforming sparse tensors to dense</p></li>
+<li><p><strong>sparse_as_dense</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – bool value to activate transforming sparse tensors to dense</p></li>
 </ul>
 </dd>
 </dl>
