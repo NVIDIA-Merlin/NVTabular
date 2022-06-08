@@ -17,10 +17,6 @@
 #!/bin/bash
 set -e
 
-# Get latest NVTabular version
-cd /nvtabular/
-git pull origin main
-
 # Run tests
 pytest -rsx /nvtabular/tests/unit
 
