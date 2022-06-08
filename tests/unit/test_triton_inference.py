@@ -27,8 +27,6 @@ TRITON_SERVER_PATH = find_executable("tritonserver")
 
 
 BACKEND = "python"
-if os.path.exists("/opt/tritonserver/backends/nvtabular/libtriton_nvtabular.so"):
-    BACKEND = "nvtabular"
 
 
 @contextlib.contextmanager

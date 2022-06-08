@@ -177,34 +177,34 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     Parameters
     -------------
-    - paths_or_dataset: str or list(str)
+    paths_or_dataset: str or list(str)
         Either a string representing a file pattern (see `tf.glob` for
         pattern rules), a list of filenames to be iterated through, or
         a Dataset object, in which case `buffer_size`, `engine`, and
         `reader_kwargs` will be ignored
-    - batch_size: int
+    batch_size: int
         Number of samples to yield at each iteration
-    - label_names: list(str)
+    label_names: list(str)
         Column name of the target variable in the dataframe specified by
         `paths_or_dataset`
-    - feature_columns: list(tf.feature_column) or None
+    feature_columns: list(tf.feature_column) or None
         A list of TensorFlow feature columns representing the inputs
         exposed to the model to be trained. Columns with parent columns
         will climb the parent tree, and the names of the columns in the
         unique set of terminal columns will be used as the column names.
         If left as None, must specify `cat_names` and `cont_names`
-    - cat_names: list(str) or None
+    cat_names: list(str) or None
         List of categorical column names. Ignored if `feature_columns` is
         specified
-    - cont_names: list(str) or None
+    cont_names: list(str) or None
         List of continuous column names. Ignored if `feature_columns` is
         specified
-    - engine: {'csv', 'parquet', None}, default None
+    engine: {'csv', 'parquet', None}, default None
         String specifying the type of read engine to use. If left as `None`,
         will try to infer the engine type from the file extension.
-    - shuffle: bool, default True
+    shuffle: bool, default True
         Whether to shuffle chunks of batches before iterating through them.
-    - buffer_size: float or int
+    buffer_size: float or int
         If `0 <  buffer_size < 1`, `buffer_size` will refer to the fraction of
         total GPU memory to occupy with a buffered chunk. If `1 < buffer_size <
         batch_size`, the number of rows read for a buffered chunk will
@@ -213,20 +213,20 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         the last chunk in a dataset, which will, in general, be smaller).
         Larger chunk sizes will lead to more efficiency and randomness,
         but require more memory.
-    - device: None
+    device: None
         Which GPU device to load from. Ignored for now
-    - parts_per_chunk: int
+    parts_per_chunk: int
         Number of dataset partitions with size dictated by `buffer_size`
         to load and concatenate asynchronously. More partitions leads to
         better epoch-level randomness but can negatively impact throughput
-    - reader_kwargs: dict
+    reader_kwargs: dict
         extra kwargs to pass when instantiating the underlying
         `nvtabular.Dataset`
     sparse_list : list(str) or None
         list with column names of columns that should be represented as sparse tensors
     sparse_max : dict
         dictionary of key: column_name + value: integer representing max sequence length for column
-    sparse_dense : bool
+    sparse_as_dense : bool
         bool value to activate transforming sparse tensors to dense
     """
 
