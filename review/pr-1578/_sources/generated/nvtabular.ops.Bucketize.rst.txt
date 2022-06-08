@@ -1,0 +1,43 @@
+﻿nvtabular.ops.Bucketize
+=======================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: Bucketize
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Bucketize.__init__
+      ~Bucketize.column_mapping
+      ~Bucketize.compute_column_schema
+      ~Bucketize.compute_input_schema
+      ~Bucketize.compute_output_schema
+      ~Bucketize.compute_selector
+      ~Bucketize.create_node
+      ~Bucketize.inference_initialize
+      ~Bucketize.output_column_names
+      ~Bucketize.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Bucketize.dependencies
+      ~Bucketize.dynamic_dtypes
+      ~Bucketize.label
+      ~Bucketize.output_dtype
+      ~Bucketize.output_properties
+      ~Bucketize.output_tags
+      ~Bucketize.supports
+   
+   
