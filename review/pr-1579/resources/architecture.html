@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Cloud Integration" href="cloud_integration.html" />
+    <link rel="prev" title="NVTabular Support Matrix" href="support_matrix.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Additional Resources</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="support_matrix.html">Support Matrix</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#operations">Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-higher-level-of-abstraction">A Higher Level of Abstraction</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="cloud_integration.html">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="links.html">Presentations and Blog Posts</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Additional Resources</a> &raquo;</li>
+      <li>Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Permalink to this headline"></a></h1>
+<p>The NVTabular engine uses the <a class="reference external" href="http://www.rapids.ai">RAPIDS</a> <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-cuDF library</a>, which provides the bulk of the functionality for accelerating dataframe operations on the GPU and scaling across multiple GPUs. NVTabular provides functionality commonly found in deep learning recommendation workflows, allowing you to focus on what you want to do with your data, and not how you need to do it. NVTabular also provides a template for our core compute mechanism, which is referred to as Operations (ops), allowing you to build your own custom ops from cuDF and other libraries.</p>
+<p>Once NVTabular is installed, the next step is to define the preprocessing and feature engineering pipeline by applying the ops that you need. For additional information about installing NVTabular, see <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html#installation">Installation</a>.</p>
+<div class="section" id="operations">
+<h2>Operations<a class="headerlink" href="#operations" title="Permalink to this headline"></a></h2>
+<p>Operations are a reflection of the way in which compute happens on the GPU across large datasets. There are two types of compute:</p>
+<ul class="simple">
+<li><p>the type that touches the entire dataset (or some large chunk of it)</p></li>
+<li><p>the type that operates on a single row</p></li>
+</ul>
+<p>Operations split the compute into two phases:</p>
+<ul class="simple">
+<li><p>Statistics Gathering is the first phase where operations that cross the row boundary can occur. An example of this would be in the Normalize op that relies on two statistics: mean and standard deviation. To normalize a row, we must first have these two values calculated using a Dask-cudf graph.</p></li>
+<li><p>Transform is the second phase that uses the statistics, which were created earlier, to modify the dataset and transform the data. NVTabular allows for the application of transforms, which doesn’t only take place during the modification of the dataset but also during dataloading. The same transforms can also be applied with Inference.</p></li>
+</ul>
+<p>NVTabular’s preprocessing and feature engineering workflows are directed graphs of operators, which are applied to user defined groups of columns. Defining this graph is decoupled from the Workflow class, and lets users easily define complicated graphs of operations on their own custom defined sets of columns. The NVTabular workflow uses an API similar to the one noted on <a class="reference external" href="https://scikit-learn.org/stable/data_transforms.html">scikit-learn</a> for dataset transformations. Statistics are calculated using a ‘fit’ method and applied with a ‘transform’ method. The NVTabular Dataset object can handle both the input and output for datasets using the ‘transform’ method of the workflow, taking an input dataset and returning it as output in the form of a transformed dataset.</p>
+<p>An operator can be applied to a ColumnGroup from an overloaded operator (&gt;&gt;), which returns a new ColumnGroup so that more operators can be applied to it as shown in the example below. A ColumnGroup is a list of column name strings. The operators work on every column in the ColumnGroup. In the example below, CONT_COLUMNS represents a group of columns for continuous features. We can apply multiple operators by chaining them to CONT_COLUMNS to obtain transformed continuous features.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CONT_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;col1 name&#39;</span><span class="p">,</span> <span class="s1">&#39;col2 name&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<span class="n">cont_features</span> <span class="o">=</span> <span class="n">CONT_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="o">&lt;</span><span class="n">op1</span><span class="o">&gt;</span> <span class="o">&gt;&gt;</span> <span class="o">&lt;</span><span class="n">op2</span><span class="o">&gt;</span> <span class="o">&gt;&gt;</span> <span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="a-higher-level-of-abstraction">
+<h2>A Higher Level of Abstraction<a class="headerlink" href="#a-higher-level-of-abstraction" title="Permalink to this headline"></a></h2>
+<p>The NVTabular code is targeted at the operator level and not the dataframe level, which provides a method for specifying the operation that you want to perform, as well as the columns or type of data that you want to perform it on. There are two types of operators:</p>
+<ul class="simple">
+<li><p>Base Operator: It transforms columns using a transform method that processes the cudf dataframe object and a list of columns and returns the transformed cudf dataframe object. It also declares the columns that are produced using the ‘output_columns_names’ method and additional column groups using the ‘dependencies’ method.</p></li>
+<li><p>StatOperator: A subclass that uses a ‘fit’ method to calculate statistics on a dataframe, a ‘finalize’ method to combine different statistics from various dask workers, and save/load methods to handle serialization.</p></li>
+</ul>
+<p>A flexible method is used for defining the operators in the workflow, which is treated as a directed acyclic graph of operators on a set of columns. Operators take in identical types of column sets and perform the operation across each column in which the output is transformed during the final operation into a long tensor for categorical variables or float tensor for continuous variables. Operators can be chained to allow for more complex feature engineering or preprocessing. Chaining operators to the ColumnGroup defines the graph, which is necessary to produce the output dataset. The chained operators replace the chained columns by transforming the columns while retaining the same column names.</p>
+<p>Here’s a holistic processing workflow example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">ops</span>
+
+<span class="c1"># define set of columns</span>
+<span class="n">cat_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;city&quot;</span><span class="p">],</span>
+<span class="n">cont_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">,</span> <span class="s2">&quot;time_of_day&quot;</span><span class="p">,</span> <span class="s2">&quot;item_num_views&quot;</span><span class="p">],</span>
+<span class="n">label_column</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
+
+<span class="c1"># by default, the op will be applied to all</span>
+<span class="c1"># columns of the each ColumnGroup</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">cat_columns</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
+<span class="n">cont_features</span> <span class="o">=</span> <span class="n">cont_columns</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+<span class="n">label_feature</span> <span class="o">=</span> <span class="n">label_column</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">LogOp</span><span class="p">()</span>
+
+<span class="c1"># A NVTabular workflow orchastrates the pipelines</span>
+<span class="c1"># We create the NVTabular workflow with the output ColumnGroups</span>
+<span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="s2">&quot;/path/to/data.parquet&quot;</span><span class="p">)</span>
+<span class="c1"># Calculate statistics on the training set</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+
+<span class="c1"># record stats, transform the dataset, and export</span>
+<span class="c1"># the transformed data to a parquet file</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/path/to/export/dir&quot;</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can easily convert this workflow definition into a graph, and visualize the full workflow by concatenating the output ColumnGroups.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span><span class="o">+</span><span class="n">cont_features</span><span class="o">+</span><span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+</pre></div>
+</div>
+<p><img alt="NVTabular Workflow Graph" src="../_images/nvt_workflow_graph.png" /></p>
+<p>The Rename operator can be used to change the names of columns. This operator provides several different options for renaming columns such as applying a user defined function to get new column names, as well as appending a suffix to each column. You can see the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/new_api/examples/wnd_outbrain">Outbrain</a> example for usage of the Rename operator.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="support_matrix.html" class="btn btn-neutral float-left" title="NVTabular Support Matrix" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cloud_integration.html" class="btn btn-neutral float-right" title="Cloud Integration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
