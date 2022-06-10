@@ -1,0 +1,45 @@
+﻿nvtabular.workflow.workflow.WorkflowNode
+========================================
+
+.. currentmodule:: nvtabular.workflow.workflow
+
+.. autoclass:: WorkflowNode
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~WorkflowNode.__init__
+      ~WorkflowNode.add_child
+      ~WorkflowNode.add_dependency
+      ~WorkflowNode.add_parent
+      ~WorkflowNode.compute_schemas
+      ~WorkflowNode.construct_from
+      ~WorkflowNode.remove_child
+      ~WorkflowNode.remove_inputs
+      ~WorkflowNode.validate_schemas
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WorkflowNode.column_mapping
+      ~WorkflowNode.dependency_columns
+      ~WorkflowNode.exportable
+      ~WorkflowNode.graph
+      ~WorkflowNode.grouped_parents_with_dependencies
+      ~WorkflowNode.input_columns
+      ~WorkflowNode.label
+      ~WorkflowNode.output_columns
+      ~WorkflowNode.parents_with_dependencies
+      ~WorkflowNode.selector
+   
+   
