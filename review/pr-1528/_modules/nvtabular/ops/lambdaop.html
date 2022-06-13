@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.lambdaop &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +39,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -89,7 +96,7 @@
 <span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
 
 
-<div class="viewcode-block" id="LambdaOp"><a class="viewcode-back" href="../../../api/ops/lambdaop.html#nvtabular.ops.LambdaOp">[docs]</a><span class="k">class</span> <span class="nc">LambdaOp</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<div class="viewcode-block" id="LambdaOp"><a class="viewcode-back" href="../../../generated/nvtabular.ops.LambdaOp.html#nvtabular.ops.LambdaOp">[docs]</a><span class="k">class</span> <span class="nc">LambdaOp</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    LambdaOp allows you to apply row level functions to an NVTabular workflow.</span>
 
@@ -98,8 +105,8 @@
 <span class="sd">        # Define a ColumnSelector that LamdaOp will apply to</span>
 <span class="sd">        # then define a custom function, e.g. extract first 5 character from a string</span>
 <span class="sd">        lambda_feature = ColumnSelector([&quot;col1&quot;])</span>
-<span class="sd">        new_lambda_feature = lambda_feature &gt;&gt; (lambda col: col.str.slice(0, 5))</span>
-<span class="sd">        processor = nvtabular.Workflow(new_lambda_feature + &#39;label&#39;)</span>
+<span class="sd">        new_lambda_feature = lambda_feature &gt;&gt; LambdaOp(lambda col: col.str.slice(0, 5))</span>
+<span class="sd">        workflow = nvtabular.Workflow(new_lambda_feature + &#39;label&#39;)</span>
 
 <span class="sd">    Example usage 2::</span>
 
@@ -112,7 +119,7 @@
 <span class="sd">            return col</span>
 <span class="sd">        new_lambda_features = lambda_features &gt;&gt; LambdaOp(cond_prob, dependency=[&quot;total_events&quot;]) \</span>
 <span class="sd">&gt;&gt; Rename(postfix=&quot;_cond&quot;)</span>
-<span class="sd">        processor = nvtabular.Workflow(new_lambda_features + &#39;label&#39;)</span>
+<span class="sd">        workflow = nvtabular.Workflow(new_lambda_features + &#39;label&#39;)</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    -----------</span>
@@ -123,7 +130,7 @@
 <span class="sd">        Whether to provide a dependency column or not.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">dependency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="LambdaOp.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.LambdaOp.html#nvtabular.ops.LambdaOp.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">dependency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;f cannot be None. LambdaOp op applies f to dataframe&quot;</span><span class="p">)</span>
@@ -136,9 +143,9 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span> <span class="o">=</span> <span class="n">dtype</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span> <span class="o">=</span> <span class="n">tags</span> <span class="ow">or</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span></div>
 
-<div class="viewcode-block" id="LambdaOp.transform"><a class="viewcode-back" href="../../../api/ops/lambdaop.html#nvtabular.ops.LambdaOp.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;DFLambda_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="LambdaOp.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.LambdaOp.html#nvtabular.ops.LambdaOp.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;DFLambda_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="n">new_df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
@@ -177,7 +184,7 @@
         <span class="c1"># Failed to figure out the source</span>
         <span class="k">return</span> <span class="s2">&quot;LambdaOp&quot;</span>
 
-<div class="viewcode-block" id="LambdaOp.column_mapping"><a class="viewcode-back" href="../../../api/ops/lambdaop.html#nvtabular.ops.LambdaOp.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<div class="viewcode-block" id="LambdaOp.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.LambdaOp.html#nvtabular.ops.LambdaOp.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">filtered_selector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_deps</span><span class="p">(</span><span class="n">col_selector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">filtered_selector</span><span class="p">)</span></div>
 

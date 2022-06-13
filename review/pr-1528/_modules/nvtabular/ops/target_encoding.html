@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.target_encoding &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +39,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -102,7 +109,7 @@
 <span class="kn">from</span> <span class="nn">.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 
 
-<div class="viewcode-block" id="TargetEncoding"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding">[docs]</a><span class="k">class</span> <span class="nc">TargetEncoding</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
+<div class="viewcode-block" id="TargetEncoding"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding">[docs]</a><span class="k">class</span> <span class="nc">TargetEncoding</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Target encoding is a common feature-engineering technique for</span>
 <span class="sd">    categorical columns in tabular datasets. For each categorical group,</span>
@@ -193,7 +200,7 @@
 <span class="sd">        Whether to drop the &quot;__fold__&quot; column created. This is really only useful for unittests.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<div class="viewcode-block" id="TargetEncoding.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">target</span><span class="p">,</span>
         <span class="n">target_mean</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -229,9 +236,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_folds</span> <span class="o">=</span> <span class="n">drop_folds</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fold_name</span> <span class="o">=</span> <span class="s2">&quot;__fold__&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># TODO: just update target_mean?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># TODO: just update target_mean?</span></div>
 
-<div class="viewcode-block" id="TargetEncoding.fit"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+<div class="viewcode-block" id="TargetEncoding.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
         <span class="n">moments</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_mean</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -275,7 +282,7 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">Delayed</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">dsk</span><span class="p">),</span> <span class="n">moments</span></div>
 
-<div class="viewcode-block" id="TargetEncoding.fit_finalize"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
+<div class="viewcode-block" id="TargetEncoding.fit_finalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">dask_stats</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">dask_stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
@@ -285,7 +292,7 @@
     <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependency</span>
 
-<div class="viewcode-block" id="TargetEncoding.compute_selector"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
+<div class="viewcode-block" id="TargetEncoding.compute_selector"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
         <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
@@ -295,7 +302,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">parents_selector</span><span class="p">,</span> <span class="s2">&quot;computing input selector&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">parents_selector</span></div>
 
-<div class="viewcode-block" id="TargetEncoding.column_mapping"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<div class="viewcode-block" id="TargetEncoding.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span><span class="p">:</span>
@@ -348,11 +355,11 @@
             <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_properties</span><span class="p">(</span><span class="n">input_schema</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">col_schema</span>
 
-<div class="viewcode-block" id="TargetEncoding.set_storage_path"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="TargetEncoding.set_storage_path"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_copy_storage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">new_path</span></div>
 
-<div class="viewcode-block" id="TargetEncoding.clear"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TargetEncoding.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span></div>
 
@@ -445,7 +452,7 @@
 
         <span class="k">return</span> <span class="n">tran_df</span>
 
-<div class="viewcode-block" id="TargetEncoding.transform"><a class="viewcode-back" href="../../../api/ops/targetencoding.html#nvtabular.ops.TargetEncoding.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
+<div class="viewcode-block" id="TargetEncoding.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="c1"># Add temporary column for sorting</span>
         <span class="n">tmp</span> <span class="o">=</span> <span class="s2">&quot;__tmp__&quot;</span>
         <span class="n">df</span><span class="p">[</span><span class="n">tmp</span><span class="p">]</span> <span class="o">=</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>

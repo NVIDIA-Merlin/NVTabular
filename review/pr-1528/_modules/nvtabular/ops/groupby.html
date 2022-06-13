@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>nvtabular.ops.groupby &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,7 +14,11 @@
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +39,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -90,7 +97,7 @@
 <span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
 
 
-<div class="viewcode-block" id="Groupby"><a class="viewcode-back" href="../../../api/ops/groupby.html#nvtabular.ops.Groupby">[docs]</a><span class="k">class</span> <span class="nc">Groupby</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<div class="viewcode-block" id="Groupby"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby">[docs]</a><span class="k">class</span> <span class="nc">Groupby</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Groupby Transformation</span>
 
 <span class="sd">    Locally transform each partition of a Dataset with one or</span>
@@ -103,10 +110,13 @@
 
 <span class="sd">    Example usage::</span>
 
+<span class="sd">        groupby_cols = [&#39;user_id&#39;, &#39;session_id&#39;]</span>
+<span class="sd">        dataset = dataset.shuffle_by_keys(keys=groupby_cols)</span>
+
 <span class="sd">        groupby_features = [</span>
 <span class="sd">            &#39;user_id&#39;, &#39;session_id&#39;, &#39;month&#39;, &#39;prod_id&#39;,</span>
 <span class="sd">        ] &gt;&gt; ops.Groupby(</span>
-<span class="sd">            groupby_cols=[&#39;user_id&#39;, &#39;session_id&#39;],</span>
+<span class="sd">            groupby_cols=groupby_cols,</span>
 <span class="sd">            sort_cols=[&#39;month&#39;],</span>
 <span class="sd">            aggs={</span>
 <span class="sd">                &#39;prod_id&#39;: &#39;list&#39;,</span>
@@ -115,10 +125,15 @@
 <span class="sd">        )</span>
 <span class="sd">        processor = nvtabular.Workflow(groupby_features)</span>
 
+<span class="sd">        workflow.fit(dataset)</span>
+<span class="sd">        dataset_transformed = workflow.transform(dataset)</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    -----------</span>
 <span class="sd">    groupby_cols : str or list of str</span>
 <span class="sd">        The column names to be used as groupby keys.</span>
+<span class="sd">        WARNING: Ensure the dataset was partitioned by those</span>
+<span class="sd">        groupby keys (see above for an example).</span>
 <span class="sd">    sort_cols : str or list of str</span>
 <span class="sd">        Columns to be used to sort each partition before</span>
 <span class="sd">        groupby aggregation is performed. If this argument</span>
@@ -132,7 +147,7 @@
 <span class="sd">        String separator to use for new column names.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+<div class="viewcode-block" id="Groupby.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aggs</span><span class="o">=</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span> <span class="o">=</span> <span class="n">groupby_cols</span>
@@ -168,9 +183,9 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">list_aggs</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span> <span class="o">=</span> <span class="n">name_sep</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Groupby.transform"><a class="viewcode-back" href="../../../api/ops/groupby.html#nvtabular.ops.Groupby.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Groupby_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="Groupby.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Groupby_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
         <span class="c1"># Sort if necessary</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sort_cols</span><span class="p">:</span>
@@ -203,7 +218,7 @@
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
 
-<div class="viewcode-block" id="Groupby.compute_output_schema"><a class="viewcode-back" href="../../../api/ops/groupby.html#nvtabular.ops.Groupby.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span>
+<div class="viewcode-block" id="Groupby.compute_output_schema"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">prev_output_schema</span><span class="p">:</span> <span class="n">Schema</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">col_selector</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;target&quot;</span><span class="p">):</span>
@@ -212,7 +227,7 @@
             <span class="p">)</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">compute_output_schema</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">prev_output_schema</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Groupby.column_mapping"><a class="viewcode-back" href="../../../api/ops/groupby.html#nvtabular.ops.Groupby.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<div class="viewcode-block" id="Groupby.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
         <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">groupby_col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby_cols</span><span class="p">:</span>

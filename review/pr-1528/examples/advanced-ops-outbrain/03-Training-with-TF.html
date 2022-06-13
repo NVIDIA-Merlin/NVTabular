@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular demo on Outbrain Data &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -12,9 +14,11 @@
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -37,28 +41,30 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Examples</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with Movielens</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Advanced Ops with Outbrain</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
-<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Training with TensorFlow</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#Overview">Overview</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#Training-a-TF-W&amp;D-Model">Training a TF W&amp;D Model</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Getting Started Outbrain: Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">Getting Started Outbrain: ETL with NVTabular</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">NVTabular demo on Outbrain Data</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Tabular Data with Rossmann</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
 </ul>
 
@@ -76,7 +82,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Examples</a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
           <li><a href="index.html">Advanced Ops with Outbrain</a> &raquo;</li>
       <li>NVTabular demo on Outbrain Data</li>
       <li class="wy-breadcrumbs-aside">
@@ -87,281 +93,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  
-<style>
-/* CSS for nbsphinx extension */
-
-/* remove conflicting styling from Sphinx themes */
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt *,
-div.nbinput.container div.input_area pre,
-div.nboutput.container div.output_area pre,
-div.nbinput.container div.input_area .highlight,
-div.nboutput.container div.output_area .highlight {
-    border: none;
-    padding: 0;
-    margin: 0;
-    box-shadow: none;
-}
-
-div.nbinput.container > div[class*=highlight],
-div.nboutput.container > div[class*=highlight] {
-    margin: 0;
-}
-
-div.nbinput.container div.prompt *,
-div.nboutput.container div.prompt * {
-    background: none;
-}
-
-div.nboutput.container div.output_area .highlight,
-div.nboutput.container div.output_area pre {
-    background: unset;
-}
-
-div.nboutput.container div.output_area div.highlight {
-    color: unset;  /* override Pygments text color */
-}
-
-/* avoid gaps between output lines */
-div.nboutput.container div[class*=highlight] pre {
-    line-height: normal;
-}
-
-/* input/output containers */
-div.nbinput.container,
-div.nboutput.container {
-    display: -webkit-flex;
-    display: flex;
-    align-items: flex-start;
-    margin: 0;
-    width: 100%;
-}
-@media (max-width: 540px) {
-    div.nbinput.container,
-    div.nboutput.container {
-        flex-direction: column;
-    }
-}
-
-/* input container */
-div.nbinput.container {
-    padding-top: 5px;
-}
-
-/* last container */
-div.nblast.container {
-    padding-bottom: 5px;
-}
-
-/* input prompt */
-div.nbinput.container div.prompt pre {
-    color: #307FC1;
-}
-
-/* output prompt */
-div.nboutput.container div.prompt pre {
-    color: #BF5B3D;
-}
-
-/* all prompts */
-div.nbinput.container div.prompt,
-div.nboutput.container div.prompt {
-    width: 4.5ex;
-    padding-top: 5px;
-    position: relative;
-    user-select: none;
-}
-
-div.nbinput.container div.prompt > div,
-div.nboutput.container div.prompt > div {
-    position: absolute;
-    right: 0;
-    margin-right: 0.3ex;
-}
-
-@media (max-width: 540px) {
-    div.nbinput.container div.prompt,
-    div.nboutput.container div.prompt {
-        width: unset;
-        text-align: left;
-        padding: 0.4em;
-    }
-    div.nboutput.container div.prompt.empty {
-        padding: 0;
-    }
-
-    div.nbinput.container div.prompt > div,
-    div.nboutput.container div.prompt > div {
-        position: unset;
-    }
-}
-
-/* disable scrollbars on prompts */
-div.nbinput.container div.prompt pre,
-div.nboutput.container div.prompt pre {
-    overflow: hidden;
-}
-
-/* input/output area */
-div.nbinput.container div.input_area,
-div.nboutput.container div.output_area {
-    -webkit-flex: 1;
-    flex: 1;
-    overflow: auto;
-}
-@media (max-width: 540px) {
-    div.nbinput.container div.input_area,
-    div.nboutput.container div.output_area {
-        width: 100%;
-    }
-}
-
-/* input area */
-div.nbinput.container div.input_area {
-    border: 1px solid #e0e0e0;
-    border-radius: 2px;
-    /*background: #f5f5f5;*/
-}
-
-/* override MathJax center alignment in output cells */
-div.nboutput.container div[class*=MathJax] {
-    text-align: left !important;
-}
-
-/* override sphinx.ext.imgmath center alignment in output cells */
-div.nboutput.container div.math p {
-    text-align: left;
-}
-
-/* standard error */
-div.nboutput.container div.output_area.stderr {
-    background: #fdd;
-}
-
-/* ANSI colors */
-.ansi-black-fg { color: #3E424D; }
-.ansi-black-bg { background-color: #3E424D; }
-.ansi-black-intense-fg { color: #282C36; }
-.ansi-black-intense-bg { background-color: #282C36; }
-.ansi-red-fg { color: #E75C58; }
-.ansi-red-bg { background-color: #E75C58; }
-.ansi-red-intense-fg { color: #B22B31; }
-.ansi-red-intense-bg { background-color: #B22B31; }
-.ansi-green-fg { color: #00A250; }
-.ansi-green-bg { background-color: #00A250; }
-.ansi-green-intense-fg { color: #007427; }
-.ansi-green-intense-bg { background-color: #007427; }
-.ansi-yellow-fg { color: #DDB62B; }
-.ansi-yellow-bg { background-color: #DDB62B; }
-.ansi-yellow-intense-fg { color: #B27D12; }
-.ansi-yellow-intense-bg { background-color: #B27D12; }
-.ansi-blue-fg { color: #208FFB; }
-.ansi-blue-bg { background-color: #208FFB; }
-.ansi-blue-intense-fg { color: #0065CA; }
-.ansi-blue-intense-bg { background-color: #0065CA; }
-.ansi-magenta-fg { color: #D160C4; }
-.ansi-magenta-bg { background-color: #D160C4; }
-.ansi-magenta-intense-fg { color: #A03196; }
-.ansi-magenta-intense-bg { background-color: #A03196; }
-.ansi-cyan-fg { color: #60C6C8; }
-.ansi-cyan-bg { background-color: #60C6C8; }
-.ansi-cyan-intense-fg { color: #258F8F; }
-.ansi-cyan-intense-bg { background-color: #258F8F; }
-.ansi-white-fg { color: #C5C1B4; }
-.ansi-white-bg { background-color: #C5C1B4; }
-.ansi-white-intense-fg { color: #A1A6B2; }
-.ansi-white-intense-bg { background-color: #A1A6B2; }
-
-.ansi-default-inverse-fg { color: #FFFFFF; }
-.ansi-default-inverse-bg { background-color: #000000; }
-
-.ansi-bold { font-weight: bold; }
-.ansi-underline { text-decoration: underline; }
-
-
-div.nbinput.container div.input_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight] > pre,
-div.nboutput.container div.output_area div[class*=highlight].math,
-div.nboutput.container div.output_area.rendered_html,
-div.nboutput.container div.output_area > div.output_javascript,
-div.nboutput.container div.output_area:not(.rendered_html) > img{
-    padding: 5px;
-    margin: 0;
-}
-
-/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
-div.nbinput.container div.input_area > div[class^='highlight'],
-div.nboutput.container div.output_area > div[class^='highlight']{
-    overflow-y: hidden;
-}
-
-/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
-.prompt .copybtn {
-    display: none;
-}
-
-/* Some additional styling taken form the Jupyter notebook CSS */
-div.rendered_html table {
-  border: none;
-  border-collapse: collapse;
-  border-spacing: 0;
-  color: black;
-  font-size: 12px;
-  table-layout: fixed;
-}
-div.rendered_html thead {
-  border-bottom: 1px solid black;
-  vertical-align: bottom;
-}
-div.rendered_html tr,
-div.rendered_html th,
-div.rendered_html td {
-  text-align: right;
-  vertical-align: middle;
-  padding: 0.5em 0.5em;
-  line-height: normal;
-  white-space: normal;
-  max-width: none;
-  border: none;
-}
-div.rendered_html th {
-  font-weight: bold;
-}
-div.rendered_html tbody tr:nth-child(odd) {
-  background: #f5f5f5;
-}
-div.rendered_html tbody tr:hover {
-  background: rgba(66, 165, 245, 0.2);
-}
-
-/* CSS overrides for sphinx_rtd_theme */
-
-/* 24px margin */
-.nbinput.nblast.container,
-.nboutput.nblast.container {
-    margin-bottom: 19px;  /* padding has already 5px */
-}
-
-/* ... except between code cells! */
-.nblast.container + .nbinput.container {
-    margin-top: -19px;
-}
-
-.admonition > p:before {
-    margin-right: 4px;  /* make room for the exclamation icon */
-}
-
-/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
-.math {
-    text-align: unset;
-}
-</style>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
 <span class="c1"># you may not use this file except in compliance with the License.</span>
@@ -378,23 +112,22 @@ div.rendered_html tbody tr:hover {
 </pre></div>
 </div>
 </div>
-<div class="section" id="NVTabular-demo-on-Outbrain-Data">
-<h1>NVTabular demo on Outbrain Data<a class="headerlink" href="#NVTabular-demo-on-Outbrain-Data" title="Permalink to this headline"></a></h1>
-<div class="section" id="Overview">
-<h2>Overview<a class="headerlink" href="#Overview" title="Permalink to this headline"></a></h2>
+</div>
+<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-outbrain-data">
+<h1>NVTabular demo on Outbrain Data<a class="headerlink" href="#nvtabular-demo-on-outbrain-data" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
 <p>In this notebook we train TF Wide &amp; Deep Learning framework using <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Kaggle Outbrain dataset</a>. In that competition, ‘Kagglers’ were challenged to predict on which ads and other forms of sponsored content its global users would click.</p>
-<p><a class="reference external" href="https://ai.googleblog.com/2016/06/wide-deep-learning-better-together-with.html">Wide &amp; Deep Learning</a> refers to a class of networks that use the output of two parts working in parallel - wide model and deep model - to make predictions using categorical and continuous inputs. The wide model is a generalized linear model of features together with their transforms. The deep model in this notebook is a series of three hidden MLP layers of [1024, 512, 256] neurons each beginning with a dense
-embedding of features.</p>
-<p><strong>Learning objectives</strong> This notebook explains, how to use the NVTabular dataloader to accelerate TensorFlow training.</p>
+<p><a class="reference external" href="https://ai.googleblog.com/2016/06/wide-deep-learning-better-together-with.html">Wide &amp; Deep Learning</a> refers to a class of networks that use the output of two parts working in parallel - wide model and deep model - to make predictions using categorical and continuous inputs. The wide model is a generalized linear model of features together with their transforms. The deep model in this notebook is a series of three hidden MLP layers of [1024, 512, 256] neurons each beginning with a dense embedding of features.</p>
+<p><strong>Learning objectives</strong><br><br>
+This notebook explains, how to use the NVTabular dataloader to accelerate TensorFlow training.</p>
 <ul class="simple">
 <li><p>Use NVTabular dataloader with TensorFlow Keras model</p></li>
 <li><p>Training Wide&amp;Deep model with NVTabular dataloader in TensorFlow</p></li>
 </ul>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
 <span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
@@ -407,40 +140,36 @@ embedding of features.</p>
 </pre></div>
 </div>
 </div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
 
 <span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
 </pre></div>
 </div>
 </div>
+</div>
 <p>First, we set where the parquet datasets were saved once processed (OUTPUT_BUCKET_FOLDER).</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
-</pre></div>
 </div>
 </div>
 <p>In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
-</pre></div>
 </div>
 </div>
 <p>EMBEDDING_TABLE_SHAPES defines the size of the embedding tables that our model will use to map categorical outputs from NVTabular into numeric dense inputs.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">get_embedding_sizes</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">get_embedding_sizes</span>
 
 <span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="p">{</span>
     <span class="n">column</span><span class="p">:</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">min</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -449,13 +178,8 @@ embedding of features.</p>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-{&#39;ad_id&#39;: (418480, 16),
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;ad_id&#39;: (418480, 16),
  &#39;advertiser_id&#39;: (4054, 16),
  &#39;campaign_id&#39;: (31390, 16),
  &#39;document_id&#39;: (693497, 16),
@@ -468,14 +192,14 @@ embedding of features.</p>
  &#39;publisher_id_promo&#39;: (861, 16),
  &#39;source_id&#39;: (4739, 16),
  &#39;source_id_promo&#39;: (6818, 16)}
-</pre></div></div>
-</div>
-<p>We select define categorical and numerical features that are processed and generated via the NVTabular workflow to train our W&amp;D TF model.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+</div>
+</div>
+<p>We select define categorical and numerical features that are processed and generated via the NVTabular workflow to train our W&amp;D TF model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;geo_location&quot;</span><span class="p">,</span>
     <span class="s2">&quot;geo_location_country&quot;</span><span class="p">,</span>
     <span class="s2">&quot;geo_location_state&quot;</span><span class="p">,</span>
@@ -493,11 +217,10 @@ embedding of features.</p>
 </pre></div>
 </div>
 </div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;document_id_document_id_promo_sim_categories&quot;</span><span class="p">,</span>
     <span class="s2">&quot;document_id_document_id_promo_sim_topics&quot;</span><span class="p">,</span>
     <span class="s2">&quot;document_id_document_id_promo_sim_entities&quot;</span><span class="p">,</span>
@@ -514,15 +237,13 @@ embedding of features.</p>
 </div>
 </div>
 </div>
-<div class="section" id="Training-a-TF-W&amp;D-Model">
-<h2>Training a TF W&amp;D Model<a class="headerlink" href="#Training-a-TF-W&D-Model" title="Permalink to this headline"></a></h2>
-<p>We create tensorflow feature columns corresponding to each feature of the model input. If you’re using NVTabular with TensorFlow feature_columns, you should only be using <code class="docutils literal notranslate"><span class="pre">tf.feature_column.categorical_column_with_identity</span></code> for categorical features, since any other transformation (categorification and/or hashing) should be handled in NVTabular on the GPU. This feature column is passed to the wide portion of the model. If a categorical column corresponds to an embedding table, it is wrapped
-with an embedding_column feature_column, if it does not correspond to an embedding table, it is wrapped as an indicator column. The wrapped column is passed to the deep portion of the model. Continuous columns are passed to both the wide and deep portions of the model after being encapsulated as a <code class="docutils literal notranslate"><span class="pre">numeric_column</span></code>.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_feature_columns</span><span class="p">():</span>
+<div class="section" id="training-a-tf-w-d-model">
+<h2>Training a TF W&amp;D Model<a class="headerlink" href="#training-a-tf-w-d-model" title="Permalink to this headline"></a></h2>
+<p>We create tensorflow feature columns corresponding to each feature of the model input. If you’re using NVTabular with TensorFlow feature_columns, you should only be using <code class="docutils literal notranslate"><span class="pre">tf.feature_column.categorical_column_with_identity</span></code> for categorical features, since any other transformation (categorification and/or hashing) should be handled in NVTabular on the GPU. This feature column is passed to the wide portion of the model. If a categorical column corresponds to an embedding table, it is wrapped with an embedding_column feature_column, if it does not correspond to an embedding table, it is wrapped as an indicator column. The wrapped column is passed to the deep portion of the model. Continuous columns are passed to both the wide and deep portions of the model after being encapsulated as a <code class="docutils literal notranslate"><span class="pre">numeric_column</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_feature_columns</span><span class="p">():</span>
     <span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
@@ -559,23 +280,20 @@ with an embedding_column feature_column, if it does not correspond to an embeddi
 </pre></div>
 </div>
 </div>
-<p>Next, we define the layer shape and dropout probability for the deep portion of the model.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">deep_hidden_units</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">]</span>
+<p>Next, we define the layer shape and dropout probability for the deep portion of the model.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">deep_hidden_units</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">]</span>
 <span class="n">deep_dropout</span> <span class="o">=</span> <span class="mf">0.1</span>
 </pre></div>
 </div>
 </div>
-<p>An input is created for each feature column, with a datatype of either tf.float32 for continuous values, or tf.int32 for categorical values. To implement the wide model, for categorical inputs, we embed them to a dimension of one, and sum them with the results of applying a dense layer with output dimension one, effectively weighting and summing each of the inputs. For the deep model, we embed our categorical columns according to the feature columns we defined earlier, and concatenate the newly
-dense features with our dense continuous features, which we pass to our deep model, which by default is a 5 layer MLP with internal dimension of 1024 neurons for each layer.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="n">get_feature_columns</span><span class="p">()</span>
+<p>An input is created for each feature column, with a datatype of either tf.float32 for continuous values, or tf.int32 for categorical values. To implement the wide model, for categorical inputs, we embed them to a dimension of one, and sum them with the results of applying a dense layer with output dimension one, effectively weighting and summing each of the inputs. For the deep model, we embed our categorical columns according to the feature columns we defined earlier, and concatenate the newly dense features with our dense continuous features, which we pass to our deep model, which by default is a 5 layer MLP with internal dimension of 1024 neurons for each layer.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="n">get_feature_columns</span><span class="p">()</span>
 
 <span class="n">wide_weighted_outputs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># a list of (batch_size, 1) contributors to the linear weighted sum</span>
 <span class="n">numeric_dense_inputs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># NumericColumn inputs; to be concatenated and then fed to a dense layer</span>
@@ -640,25 +358,21 @@ dense features with our dense continuous features, which we pass to our deep mod
 </pre></div>
 </div>
 </div>
-<p>We define the datasets that will be used to ingest data into our model. In this case, the NVTabular dataloaders take a set of parquet files generated by NVTabular as input, and are capable of accelerated throughput. The <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/9aa70caa1dfb5d2fd694cad535def1e470d37b29/nvtabular/loader/tensorflow.py#L89">KerasSequenceLoader</a> manages shuffling by loading in chunks of data from different parts of the full dataset, concatenating them and then shuffling, then
-iterating through this super-chunk sequentially in batches. The number of “parts” of the dataset that get sample, or “partitions”, is controlled by the parts_per_chunk parameter, while the size of each one of these parts is controlled by the buffer_size parameter, which refers to a fraction of available GPU memory. Using more chunks leads to better randomness, especially at the epoch level where physically disparate samples can be brought into the same batch, but can impact throughput if you use
-too many.</p>
-<p>The validation process gets slightly complicated by the fact that model.fit doesn’t accept Keras Sequence objects as validation data. To support this, we also define a <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/9aa70caa1dfb5d2fd694cad535def1e470d37b29/nvtabular/loader/tensorflow.py#L351">KerasSequenceValidater</a>, a lightweight Keras callback to handle validation.</p>
-<p>Now that our data is preprocessed and saved out, we can leverage datasets to read through the preprocessed parquet files in an online fashion to train neural networks.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">)))</span>
+<p>We define the datasets that will be used to ingest data into our model. In this case, the NVTabular dataloaders take a set of parquet files generated by NVTabular as input, and are capable of accelerated throughput. The <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/9aa70caa1dfb5d2fd694cad535def1e470d37b29/nvtabular/loader/tensorflow.py#L89">KerasSequenceLoader</a> manages shuffling by loading in chunks of data from different parts of the full dataset, concatenating them and then shuffling, then iterating through this super-chunk sequentially in batches. The number of “parts” of the dataset that get sample, or “partitions”, is controlled by the <i>parts_per_chunk</i> parameter, while the size of each one of these parts is controlled by the <i>buffer_size</i> parameter, which refers to a fraction of available GPU memory. Using more chunks leads to better randomness, especially at the epoch level where physically disparate samples can be brought into the same batch, but can impact throughput if you use too many.</p>
+<p>The validation process gets slightly complicated by the fact that <i>model.fit</i> doesn’t accept Keras Sequence objects as validation data. To support this, we also define a <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/9aa70caa1dfb5d2fd694cad535def1e470d37b29/nvtabular/loader/tensorflow.py#L351">KerasSequenceValidater</a>, a lightweight Keras callback to handle validation.</p>
+<p>Now that our data is preprocessed and saved out, we can leverage datasets to read through the preprocessed parquet files in an online fashion to train neural networks.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">)))</span>
 <span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/*.parquet&quot;</span><span class="p">)))</span>
 </pre></div>
 </div>
 </div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
     <span class="n">TRAIN_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
     <span class="n">batch_size</span><span class="o">=</span><span class="mi">131072</span><span class="p">,</span>
     <span class="n">label_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clicked&quot;</span><span class="p">],</span>
@@ -685,12 +399,11 @@ too many.</p>
 </pre></div>
 </div>
 </div>
-<p>The wide portion of the model is optimized using the Follow The Regularized Leader (FTRL) algorithm, while the deep portion of the model is optimized using Adam optimizer.</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Ftrl</span><span class="p">(</span>
+<p>The wide portion of the model is optimized using the <i>Follow The Regularized Leader (FTRL)</i> algorithm, while the deep portion of the model is optimized using <i>Adam</i> optimizer.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Ftrl</span><span class="p">(</span>
     <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -698,12 +411,11 @@ too many.</p>
 </pre></div>
 </div>
 </div>
-<p>Finally, we compile our model with our dual optimizers and binary cross-entropy loss, and train our model for 10 epochs.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
-</pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_and_deep_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+<p>Finally, we compile our model with our dual optimizers and binary cross-entropy loss, and train our model for 10 epochs.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_and_deep_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
     <span class="n">optimizer</span><span class="o">=</span><span class="p">[</span><span class="n">wide_optimizer</span><span class="p">,</span> <span class="n">deep_optimizer</span><span class="p">],</span>
     <span class="n">loss</span><span class="o">=</span><span class="s2">&quot;binary_crossentropy&quot;</span><span class="p">,</span>
     <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">BinaryAccuracy</span><span class="p">(),</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">()],</span>
@@ -713,12 +425,8 @@ too many.</p>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Epoch 1/5
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Epoch 1/5
 456/456 [==============================] - 93s 196ms/step - loss: 0.8359 - binary_accuracy: 0.7808 - auc: 0.6394
 Epoch 2/5
 456/456 [==============================] - 85s 187ms/step - loss: 0.4289 - binary_accuracy: 0.8145 - auc: 0.7449
@@ -728,7 +436,9 @@ Epoch 4/5
 456/456 [==============================] - 84s 184ms/step - loss: 0.4190 - binary_accuracy: 0.8187 - auc: 0.7608
 Epoch 5/5
 456/456 [==============================] - 86s 189ms/step - loss: 0.4130 - binary_accuracy: 0.8219 - auc: 0.7694
-</pre></div></div>
+</pre></div>
+</div>
+</div>
 </div>
 </div>
 </div>
