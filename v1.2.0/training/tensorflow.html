@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accelerated Training with TensorFlow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Accelerated Training with PyTorch" href="pytorch.html" />
+    <link rel="prev" title="Accelerated Training" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Accelerated Training</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">TensorFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pytorch.html">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hugectr.html">HugeCTR</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Accelerated Training</a> &raquo;</li>
+      <li>Accelerated Training with TensorFlow</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="accelerated-training-with-tensorflow">
+<h1>Accelerated Training with TensorFlow<a class="headerlink" href="#accelerated-training-with-tensorflow" title="Permalink to this headline"></a></h1>
+<p>When training pipelines with TensorFlow, the dataloader cannot prepare
+sequential batches fast enough, so the GPU is not fully utilized. To
+combat this issue, we’ve developed a highly customized tabular
+dataloader, <code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code>, to accelerate existing pipelines in
+TensorFlow. In our experiments, we were able to achieve a speed-up 9
+times as fast as the same training workflow that contains a NVTabular
+dataloader. The NVTabular dataloader is capable of:</p>
+<ul class="simple">
+<li><p>removing bottlenecks from dataloading by processing large chunks of
+data at a time instead of item by item</p></li>
+<li><p>processing datasets that don’t fit within the GPU or CPU memory by
+streaming from the disk</p></li>
+<li><p>reading data directly into the GPU memory and removing CPU-GPU
+communication</p></li>
+<li><p>preparing batch asynchronously into the GPU to avoid CPU-GPU
+communication</p></li>
+<li><p>supporting commonly used formats such as parquet</p></li>
+<li><p>integrating easily into existing TensorFlow training pipelines by
+using a similar API as the native TensorFlow dataloader since it
+works with tf.keras models</p></li>
+</ul>
+<p>When <code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code> accelerates training with TensorFlow, the
+following happens:</p>
+<ol class="arabic simple">
+<li><p>The required libraries are imported. The dataloader loads and
+prepares batches directly in the GPU and requires some of the GPU
+memory. Before initializing TensorFlow, the amount of memory that is
+allocated to TensorFlow needs to be controlled as well as the
+remaining memory allocation that is allocated to the dataloader. The
+environment variable ‘TF_MEMORY_ALLOCATION’ can be used to control
+the TensorFlow memory allocation.</p></li>
+</ol>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="c1"># Control how much memory to give TensorFlow with this environment variable</span>
+<span class="c1"># IMPORTANT: Do this before you initialize the TensorFlow runtime, otherwise</span>
+<span class="c1"># it&#39;s too late and TensorFlow will claim all free GPU memory</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;TF_MEMORY_ALLOCATION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;8192&quot;</span> <span class="c1"># explicit MB</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;TF_MEMORY_ALLOCATION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.5&quot;</span> <span class="c1"># fraction of free memory</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span><span class="p">,</span>
+<span class="n">KerasSequenceValidater</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="2">
+<li><p>The data schema is defined with <code class="docutils literal notranslate"><span class="pre">tf.feature_columns</span></code>, the
+categorical input features (<code class="docutils literal notranslate"><span class="pre">CATEGORICAL_COLUMNS</span></code>) are fed through
+an embedding layer, and the continuous input (<code class="docutils literal notranslate"><span class="pre">CONTINUOUS_COLUMNS</span></code>)
+features are defined with <code class="docutils literal notranslate"><span class="pre">numeric_column</span></code>. The
+<code class="docutils literal notranslate"><span class="pre">EMBEDDING_TABLE_SHAPES</span></code> is a dictionary that contains cardinality
+and emb_size tuples for each categorical feature.</p></li>
+</ol>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">make_categorical_embedding_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dictionary_size</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span>
+       <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dictionary_size</span><span class="p">),</span>
+           <span class="n">embedding_dim</span>
+    <span class="p">)</span>
+
+<span class="c1"># instantiate the columns</span>
+<span class="n">categorical_columns</span> <span class="o">=</span> <span class="p">[</span>
+   <span class="n">make_categorical_embedding_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="o">*</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">name</span><span class="p">])</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span>
+<span class="p">]</span>
+<span class="n">continuous_columns</span> <span class="o">=</span> <span class="p">[</span>
+   <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">CONTINUOUS_COLUMNS</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="3">
+<li><p>The NVTabular dataloader is initialized. The NVTabular dataloader
+supports a list of filenames and glob pattern as input, which it will
+load and iterate over. <code class="docutils literal notranslate"><span class="pre">feature_columns</span></code> defines the data
+structure, which uses the <code class="docutils literal notranslate"><span class="pre">tf.feature_column</span></code> structure that was
+previously defined. The<code class="docutils literal notranslate"><span class="pre">batch_size</span></code>, <code class="docutils literal notranslate"><span class="pre">label_names</span></code> (target
+columns), <code class="docutils literal notranslate"><span class="pre">shuffle</span></code>, and <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> are defined.</p></li>
+</ol>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;./train/*.parquet&quot;</span><span class="p">)</span>
+<span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+   <span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="c1"># you could also use a glob pattern</span>
+   <span class="n">feature_columns</span><span class="o">=</span><span class="n">categorical_columns</span> <span class="o">+</span> <span class="n">continuous_columns</span><span class="p">,</span>
+   <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+   <span class="n">label_names</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+   <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+   <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span>  <span class="c1"># amount of data, as a fraction of GPU memory, to load at one time</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="4">
+<li><p>The TensorFlow Keras model ( <code class="docutils literal notranslate"><span class="pre">tf.keras.Model</span></code>) is defined if a
+neural network architecture is created in which <code class="docutils literal notranslate"><span class="pre">inputs</span></code> are the
+input tensors and <code class="docutils literal notranslate"><span class="pre">output</span></code> is the output tensors.</p></li>
+</ol>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">output</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;sgd&#39;</span><span class="p">,</span> <span class="s1">&#39;binary_crossentropy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic simple" start="5">
+<li><p>The model is trained with <code class="docutils literal notranslate"><span class="pre">model.fit</span></code> using the NVTabular
+dataloader.</p></li>
+</ol>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset_tf</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p><strong>Note</strong>: If using the NVTabular dataloader for the validation dataset,
+a callback can be used for it.</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">valid_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">validation_callback</span> <span class="o">=</span> <span class="n">KerasSequenceValidater</span><span class="p">(</span><span class="n">valid_dataset_tf</span><span class="p">)</span>
+<span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset_tf</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">validation_callback</span><span class="p">],</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>You can find additional examples in our repository such as
+<a class="reference external" href="../examples/getting-started-movielens/">MovieLens</a> and
+<a class="reference external" href="../examples/advanced-ops-outbrain/">Outbrain</a>.</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Accelerated Training" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pytorch.html" class="btn btn-neutral float-right" title="Accelerated Training with PyTorch" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v0.10.0/training/tensorflow.html">v0.10.0</a></dd>
+      <dd><a href="../../v0.11.0/training/tensorflow.html">v0.11.0</a></dd>
+      <dd><a href="../../v1.0.0/training/tensorflow.html">v1.0.0</a></dd>
+      <dd><a href="../../v1.1.0/training/tensorflow.html">v1.1.0</a></dd>
+      <dd><a href="../../v1.1.1/training/tensorflow.html">v1.1.1</a></dd>
+      <dd><a href="tensorflow.html">v1.2.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/training/tensorflow.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

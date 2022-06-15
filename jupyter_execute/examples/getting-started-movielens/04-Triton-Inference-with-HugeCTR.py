@@ -52,15 +52,17 @@ import cudf
 import numpy as np
 
 
-# ### Load Models on Triton Server
+# ### Load Models on Triton Inference Server
 
 # At this stage, you should launch the Triton Inference Server docker container with the following script:
 
 # ```
-# docker run -it --gpus=all -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model nvcr.io/nvidia/merlin/merlin-inference:21.11
+# docker run -it --gpus=all -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model nvcr.io/nvidia/merlin/merlin-hugectr:latest
 # ```
+# 
+# > For production use, refer to the [Merlin containers](https://catalog.ngc.nvidia.com/?filters=&orderBy=scoreDESC&query=merlin) from the NVIDIA GPU Cloud (NGC) catalog and specify a tag rather than `latest`.
 
-# After you started the container you can start triton server with the command below:
+# After you start the container, start Triton Inference Server with the following command:
 
 # ```
 # tritonserver --model-repository=<path_to_models> --backend-config=hugectr,ps=<path_to_models>/ps.json --model-control-mode=explicit

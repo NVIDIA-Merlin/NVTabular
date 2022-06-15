@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.ops.list_slice &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>nvtabular.ops.list_slice</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nvtabular.ops.list_slice</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">numba.cuda</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">cp</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">annotate</span><span class="p">,</span> <span class="n">build_cudf_list_column</span><span class="p">,</span> <span class="n">is_cpu_object</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Tags</span>
+
+<span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
+
+
+<div class="viewcode-block" id="ListSlice"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ListSlice.html#nvtabular.ops.ListSlice">[docs]</a><span class="k">class</span> <span class="nc">ListSlice</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Slices a list column</span>
+
+<span class="sd">    This operator provides the ability to slice list column by row. For example, to truncate a</span>
+<span class="sd">    list column to only include the first 10 elements per row::</span>
+
+<span class="sd">        truncated = column_names &gt;&gt; ops.ListSlice(10)</span>
+
+<span class="sd">    Take the first 10 items, ignoring the first element::</span>
+
+<span class="sd">        truncated = column_names &gt;&gt; ops.ListSlice(1, 11)</span>
+
+<span class="sd">    Take the last 10 items from each row::</span>
+
+<span class="sd">        truncated = column_names &gt;&gt; ops.ListSlice(-10)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    start: int</span>
+<span class="sd">        The starting value to slice from if end isn&#39;t given, otherwise the end value to slice to</span>
+<span class="sd">    end: int, optional</span>
+<span class="sd">        The end value to slice to</span>
+<span class="sd">    pad: bool, default False</span>
+<span class="sd">        Whether to pad out rows to have the same number of elements. If not set rows may not all</span>
+<span class="sd">        have the same number of entries.</span>
+<span class="sd">    pad_value: float</span>
+<span class="sd">        When pad=True, this is the value used to pad missing entries</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ListSlice.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ListSlice.html#nvtabular.ops.ListSlice.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pad_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">end</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pad</span> <span class="o">=</span> <span class="n">pad</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pad_value</span> <span class="o">=</span> <span class="n">pad_value</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span></div>
+
+<div class="viewcode-block" id="ListSlice.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ListSlice.html#nvtabular.ops.ListSlice.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;ListSlice_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
+        <span class="n">on_cpu</span> <span class="o">=</span> <span class="n">is_cpu_object</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="c1"># handle CPU via normal python slicing (not very efficient)</span>
+            <span class="k">if</span> <span class="n">on_cpu</span><span class="p">:</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]]</span>
+
+                <span class="c1"># pad out to so each row has self.max_elements if asked</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span><span class="p">:</span>
+                            <span class="n">v</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_value</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+
+                <span class="n">ret</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># figure out the size of each row from the list offsets</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">_column</span>
+                <span class="n">offsets</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">values</span>
+                <span class="n">elements</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">values</span>
+
+                <span class="n">threads</span> <span class="o">=</span> <span class="mi">32</span>
+                <span class="n">blocks</span> <span class="o">=</span> <span class="p">(</span><span class="n">offsets</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="n">threads</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">threads</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="p">:</span>
+                    <span class="n">new_offsets</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">offsets</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">offsets</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># figure out the size of each row after slicing start/end</span>
+                    <span class="n">new_offsets</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">offsets</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">offsets</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+                    <span class="c1"># calculate new row offsets after slicing</span>
+                    <span class="n">_calculate_row_sizes</span><span class="p">[</span><span class="n">blocks</span><span class="p">,</span> <span class="n">threads</span><span class="p">](</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">new_offsets</span>
+                    <span class="p">)</span>
+                    <span class="n">new_offsets</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">new_offsets</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">offsets</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+                <span class="c1"># create a new array for the sliced elements</span>
+                <span class="n">new_elements</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+                    <span class="n">new_offsets</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="n">fill_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pad_value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">elements</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_elements</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                    <span class="n">_slice_rows</span><span class="p">[</span><span class="n">blocks</span><span class="p">,</span> <span class="n">threads</span><span class="p">](</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">elements</span><span class="p">,</span> <span class="n">new_offsets</span><span class="p">,</span> <span class="n">new_elements</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># build up a list column with the sliced values</span>
+                <span class="n">ret</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">build_cudf_list_column</span><span class="p">(</span><span class="n">new_elements</span><span class="p">,</span> <span class="n">new_offsets</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_ragged</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">LIST</span><span class="p">]</span>
+
+    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span></div>
+
+
+<span class="nd">@numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span> <span class="nf">_calculate_row_sizes</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">row_sizes</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;given a slice (start/end) and existing offsets indicating row lengths, this</span>
+<span class="sd">    calculates the size for each new row after slicing&quot;&quot;&quot;</span>
+    <span class="n">rowid</span> <span class="o">=</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rowid</span> <span class="o">&lt;</span> <span class="n">offsets</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">original_row_size</span> <span class="o">=</span> <span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span><span class="p">]</span>
+
+        <span class="c1"># handle negative slicing appropriately</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">original_row_size</span> <span class="o">+</span> <span class="n">start</span>
+        <span class="k">if</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">original_row_size</span> <span class="o">+</span> <span class="n">end</span>
+
+        <span class="c1"># clamp start/end to be in (0, original_row_size)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start</span><span class="p">),</span> <span class="n">original_row_size</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="p">),</span> <span class="n">original_row_size</span><span class="p">)</span>
+
+        <span class="n">row_sizes</span><span class="p">[</span><span class="n">rowid</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+
+
+<span class="nd">@numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span> <span class="nf">_slice_rows</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">elements</span><span class="p">,</span> <span class="n">new_offsets</span><span class="p">,</span> <span class="n">new_elements</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;slices rows of a list column. requires the &#39;new_offsets&#39; to</span>
+<span class="sd">    be previously calculated (meaning that we don&#39;t need the &#39;end&#39; slice index</span>
+<span class="sd">    since that&#39;s baked into the new_offsets&quot;&quot;&quot;</span>
+    <span class="n">rowid</span> <span class="o">=</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rowid</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">new_offsets</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span><span class="p">]</span> <span class="o">+</span> <span class="n">start</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">start</span>
+            <span class="k">if</span> <span class="n">offset</span> <span class="o">&lt;</span> <span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span><span class="p">]:</span>
+                <span class="n">offset</span> <span class="o">=</span> <span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span><span class="p">]</span>
+
+        <span class="n">new_start</span> <span class="o">=</span> <span class="n">new_offsets</span><span class="p">[</span><span class="n">rowid</span><span class="p">]</span>
+        <span class="n">new_end</span> <span class="o">=</span> <span class="n">new_offsets</span><span class="p">[</span><span class="n">rowid</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># if we are padding (more new offsets than old offsets) - don&#39;t keep on iterating past</span>
+        <span class="c1"># the end</span>
+        <span class="n">offset_delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">new_end</span> <span class="o">-</span> <span class="n">new_start</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">offsets</span><span class="p">[</span><span class="n">rowid</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">offset_delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">new_end</span> <span class="o">-=</span> <span class="n">offset_delta</span>
+        <span class="k">elif</span> <span class="n">offset_delta</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">new_end</span> <span class="o">+=</span> <span class="n">end</span>
+
+        <span class="k">for</span> <span class="n">new_offset</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">new_start</span><span class="p">,</span> <span class="n">new_end</span><span class="p">):</span>
+            <span class="n">new_elements</span><span class="p">[</span><span class="n">new_offset</span><span class="p">]</span> <span class="o">=</span> <span class="n">elements</span><span class="p">[</span><span class="n">offset</span><span class="p">]</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="list_slice.html">v1.2.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

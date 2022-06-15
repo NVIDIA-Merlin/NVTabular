@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.ops.JoinGroupby &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="nvtabular.ops.AddMetadata" href="nvtabular.ops.AddMetadata.html" />
+    <link rel="prev" title="nvtabular.ops.JoinExternal" href="nvtabular.ops.JoinExternal.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api.html#workflow-constructors">Workflow Constructors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#categorical-operators">Categorical Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#continuous-operators">Continuous Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#missing-value-operators">Missing Value Operators</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../api.html#row-manipulation-operators">Row Manipulation Operators</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.DifferenceLag.html">nvtabular.ops.DifferenceLag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.Filter.html">nvtabular.ops.Filter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.Groupby.html">nvtabular.ops.Groupby</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.JoinExternal.html">nvtabular.ops.JoinExternal</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">nvtabular.ops.JoinGroupby</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#schema-operators">Schema Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#list-operators">List Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#vector-operators">Vector Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#user-defined-function-operators">User-Defined Function Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#operator-base-classes">Operator Base Classes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html">API Documentation</a> &raquo;</li>
+      <li>nvtabular.ops.JoinGroupby</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="nvtabular-ops-joingroupby">
+<h1>nvtabular.ops.JoinGroupby<a class="headerlink" href="#nvtabular-ops-joingroupby" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="nvtabular.ops.JoinGroupby">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">JoinGroupby</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cont_cols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('count')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'host'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator</span></code></p>
+<p>One of the ways to create new features is to calculate
+the basic statistics of the data that is grouped by categorical
+features. This operator groups the data by the given categorical
+feature(s) and calculates the desired statistics of requested continuous
+features (along with the count of rows in each group). The aggregated
+statistics are merged with the data (by joining on the desired
+categorical columns).</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use JoinGroupby to define a NVTabular workflow</span>
+<span class="n">groupby_features</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;cat1&#39;</span><span class="p">,</span> <span class="s1">&#39;cat2&#39;</span><span class="p">,</span> <span class="s1">&#39;cat3&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">JoinGroupby</span><span class="p">(</span>
+    <span class="n">out_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">),</span> <span class="n">stats</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span><span class="s1">&#39;count&#39;</span><span class="p">],</span> <span class="n">cont_cols</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;num1&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="n">processor</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">groupby_features</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cont_cols</strong> (<em>list of str</em><em> or </em><a class="reference internal" href="nvtabular.workflow.workflow.WorkflowNode.html#nvtabular.workflow.workflow.WorkflowNode" title="nvtabular.workflow.workflow.WorkflowNode"><em>WorkflowNode</em></a>) – The continuous columns to calculate statistics for
+(for each unique group in each column in <cite>columns</cite>).</p></li>
+<li><p><strong>stats</strong> (<em>list of str</em><em>, </em><em>default</em><em> [</em><em>]</em>) – List of statistics to calculate for each unique group. Note
+that “count” corresponds to the group itself, while all
+other statistics correspond to a specific continuous column.
+Supported statistics include [“count”, “sum”, “mean”, “std”, “var”].</p></li>
+<li><p><strong>tree_width</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>optional</em>) – Tree width of the hash-based groupby reduction for each categorical
+column. High-cardinality columns may require a large <cite>tree_width</cite>,
+while low-cardinality columns can likely use <cite>tree_width=1</cite>.
+If passing a dict, each key and value should correspond to the column
+name and width, respectively. The default value is 8 for all columns.</p></li>
+<li><p><strong>cat_cache</strong> (<em>ToDo Describe</em>) – TEXT</p></li>
+<li><p><strong>out_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>optional</em>) – Root directory where groupby statistics will be written out in
+parquet format.</p></li>
+<li><p><strong>on_host</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to convert cudf data to pandas between tasks in the hash-based
+groupby reduction. The extra host &lt;-&gt; device data movement can reduce
+performance.  However, using <cite>on_host=True</cite> typically improves stability
+(by avoiding device-level memory pressure).</p></li>
+<li><p><strong>name_sep</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>, </em><em>default &quot;_&quot;</em>) – String separator to use between concatenated column names
+for multi-column groups.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.__init__">
+<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cont_cols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('count')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'host'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.__init__" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.__init__" title="nvtabular.ops.JoinGroupby.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([cont_cols, stats, tree_width, …])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.clear" title="nvtabular.ops.JoinGroupby.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.column_mapping" title="nvtabular.ops.JoinGroupby.column_mapping"><code class="xref py py-obj docutils literal notranslate"><span class="pre">column_mapping</span></code></a>(col_selector)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_column_schema</span></code>(col_name, input_schema)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_input_schema</span></code>(root_schema, …)</p></td>
+<td><p>Given the schemas coming from upstream sources and a column selector for the input columns, returns a set of schemas for the input columns this operator will use :param root_schema: Base schema of the dataset before running any operators.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_output_schema</span></code>(input_schema, col_selector)</p></td>
+<td><p>Given a set of schemas and a column selector for the input columns, returns a set of schemas for the transformed columns this operator will produce :param input_schema: The schemas of the columns to apply this operator to :type input_schema: Schema :param col_selector: The column selector to apply to the input schema :type col_selector: ColumnSelector</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.compute_selector" title="nvtabular.ops.JoinGroupby.compute_selector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code></a>(input_schema, selector, …)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_node</span></code>(selector)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.fit" title="nvtabular.ops.JoinGroupby.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(col_selector, ddf)</p></td>
+<td><p>Calculate statistics for this operator, and return a dask future to these statistics, which will be computed by the workflow.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.fit_finalize" title="nvtabular.ops.JoinGroupby.fit_finalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_finalize</span></code></a>(dask_stats)</p></td>
+<td><p>Finalize statistics calculation - the workflow calls this function with the computed statistics from the ‘fit’ object’</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">inference_initialize</span></code>(col_selector, model_config)</p></td>
+<td><p>Configures this operator for use in inference.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
+<td><p>Given a set of columns names returns the names of the transformed columns this operator will produce :param columns: The columns to apply this operator to :type columns: list of str, or list of list of str</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.set_storage_path" title="nvtabular.ops.JoinGroupby.set_storage_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code></a>(new_path[, copy])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.transform" title="nvtabular.ops.JoinGroupby.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
+<td><p>Transform the dataframe by applying this operator to the set of input columns</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.cont_names" title="nvtabular.ops.JoinGroupby.cont_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cont_names</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.JoinGroupby.dependencies" title="nvtabular.ops.JoinGroupby.dependencies"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dependencies</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_dtypes</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports</span></code></p></td>
+<td><p>Returns what kind of data representation this operator supports</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.cont_names">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">cont_names</span></code><a class="headerlink" href="#nvtabular.ops.JoinGroupby.cont_names" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dask.dataframe.core.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.fit" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate statistics for this operator, and return a dask future
+to these statistics, which will be computed by the workflow.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.fit_finalize">
+<code class="sig-name descname"><span class="pre">fit_finalize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dask_stats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.fit_finalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.fit_finalize" title="Permalink to this definition"></a></dt>
+<dd><p>Finalize statistics calculation - the workflow calls this function with
+the computed statistics from the ‘fit’ object’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.transform" title="Permalink to this definition"></a></dt>
+<dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.dependencies">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dependencies</span></code><a class="headerlink" href="#nvtabular.ops.JoinGroupby.dependencies" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.compute_selector">
+<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.schema.schema.Schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.dag.selector.ColumnSelector</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.compute_selector" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.column_mapping">
+<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.column_mapping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.set_storage_path">
+<code class="sig-name descname"><span class="pre">set_storage_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.set_storage_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.set_storage_path" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.JoinGroupby.clear">
+<code class="sig-name descname"><span class="pre">clear</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/join_groupby.html#JoinGroupby.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.JoinGroupby.clear" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="nvtabular.ops.JoinExternal.html" class="btn btn-neutral float-left" title="nvtabular.ops.JoinExternal" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="nvtabular.ops.AddMetadata.html" class="btn btn-neutral float-right" title="nvtabular.ops.AddMetadata" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="nvtabular.ops.JoinGroupby.html">v1.2.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -128,13 +128,13 @@
 <li><p>to deploy the end-to-end pipeline to generate prediction results for new data from trained TF model</p></li>
 </ul>
 </div>
-<div class="section" id="launching-and-starting-the-triton-server">
-<h2>Launching and Starting the Triton Server<a class="headerlink" href="#launching-and-starting-the-triton-server" title="Permalink to this headline"></a></h2>
-<p>Before we get started, you should launch the Triton Inference Server docker container with the following script. This script will mount your local <code class="docutils literal notranslate"><span class="pre">model-repository</span></code> folder that includes your saved models from the previous notebook (<code class="docutils literal notranslate"><span class="pre">03a-Training-with-TF.ipynb</span></code>) to <code class="docutils literal notranslate"><span class="pre">/model</span></code> directory in the <code class="docutils literal notranslate"><span class="pre">merlin-inference</span></code> docker container.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus device=0 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-tensorflow-inference:22.04
+<div class="section" id="starting-triton-inference-server">
+<h2>Starting Triton Inference Server<a class="headerlink" href="#starting-triton-inference-server" title="Permalink to this headline"></a></h2>
+<p>Before we get started, start Triton Inference Server in the Docker container with the following command. The command includes the <code class="docutils literal notranslate"><span class="pre">-v</span></code> argument to mount your local <code class="docutils literal notranslate"><span class="pre">model-repository</span></code> directory that includes your saved models from the previous notebook (<code class="docutils literal notranslate"><span class="pre">03a-Training-with-TF.ipynb</span></code>) to <code class="docutils literal notranslate"><span class="pre">/model</span></code> directory in the container.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus device=0 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-tensorflow:latest
 </pre></div>
 </div>
-<p>After you started the <code class="docutils literal notranslate"><span class="pre">merlin-inference</span></code> container, you can start triton server with the command below. You need to provide correct path for the <code class="docutils literal notranslate"><span class="pre">models</span></code> directory.</p>
+<p>After you start the container, you can start Triton Inference Server with the following command. You need to provide correct path for the <code class="docutils literal notranslate"><span class="pre">models</span></code> directory.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tritonserver</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">=</span><span class="n">path_to_models</span> <span class="o">--</span><span class="n">backend</span><span class="o">-</span><span class="n">config</span><span class="o">=</span><span class="n">tensorflow</span><span class="p">,</span><span class="n">version</span><span class="o">=</span><span class="mi">2</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">control</span><span class="o">-</span><span class="n">mode</span><span class="o">=</span><span class="n">explicit</span> 
 </pre></div>
 </div>
@@ -177,9 +177,9 @@
 </div>
 </div>
 </div>
-<div class="section" id="loading-ensemble-model-with-triton-inference-serve">
-<h2>Loading Ensemble Model with Triton Inference Serve<a class="headerlink" href="#loading-ensemble-model-with-triton-inference-serve" title="Permalink to this headline"></a></h2>
-<p>At this stage, you should have launched the Triton Inference Server docker container with the instructions above.</p>
+<div class="section" id="loading-ensemble-model-with-triton-inference-server">
+<h2>Loading Ensemble Model with Triton Inference Server<a class="headerlink" href="#loading-ensemble-model-with-triton-inference-server" title="Permalink to this headline"></a></h2>
+<p>At this stage, you should have started the Triton Inference Server in a container with the instructions above.</p>
 <p>Let’s connect to the Triton Inference Server. Use Triton’s ready endpoint to verify that the server and the models are ready for inference. Replace localhost with your host ip address.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -279,8 +279,8 @@ Wall time: 9.09 s
 </div>
 </div>
 </div>
-<div class="section" id="send-request-to-triton-is-to-transform-raw-dataset">
-<h2>Send request to Triton IS to transform raw dataset<a class="headerlink" href="#send-request-to-triton-is-to-transform-raw-dataset" title="Permalink to this headline"></a></h2>
+<div class="section" id="send-request-to-triton-inference-server-to-transform-raw-dataset">
+<h2>Send request to Triton Inference Server to transform raw dataset<a class="headerlink" href="#send-request-to-triton-inference-server-to-transform-raw-dataset" title="Permalink to this headline"></a></h2>
 <p>A minimal model repository for a TensorFlow SavedModel model is:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>  <span class="o">&lt;</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">-</span><span class="n">path</span><span class="o">&gt;/&lt;</span><span class="n">model</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;/</span>
       <span class="n">config</span><span class="o">.</span><span class="n">pbtxt</span>
@@ -596,10 +596,10 @@ Loaded model &#39;movielens_tf&#39;
       <dt>Tags</dt>
       <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
       <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
       <dd><a href="../../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="../../../v1.2.0/index.html">v1.2.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

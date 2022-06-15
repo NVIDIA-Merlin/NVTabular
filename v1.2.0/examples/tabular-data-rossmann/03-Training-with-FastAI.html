@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NVTabular demo on Rossmann data - FastAI &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="NVTabular demo on Rossmann data - TensorFlow" href="03-Training-with-TF.html" />
+    <link rel="prev" title="NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing" href="02-ETL-with-NVTabular.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Applying Techniques to Rossmann Stores Data</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Preprocessing the Rossmann Store Sales Dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">NVTabular demo on Rossmann data - FastAI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">NVTabular demo on Rossmann data - TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-PyTorch.html">NVTabular demo on Rossmann data - PyTorch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Applying the Techniques to other Tabular Problems with Rossmann</a> &raquo;</li>
+      <li>NVTabular demo on Rossmann data - FastAI</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-rossmann-data-fastai">
+<h1>NVTabular demo on Rossmann data - FastAI<a class="headerlink" href="#nvtabular-demo-on-rossmann-data-fastai" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.</p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>In the previous notebooks (<a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb">01-Download-Convert.ipynb</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/02-ETL-with-NVTabular.ipynb">02-ETL-with-NVTabular.ipynb</a>), we downloaded, preprocessed and created features for the dataset. Now, we are ready to train our deep learning model on the dataset. In this notebook, we use <strong>FastAI</strong> with the NVTabular data loader for PyTorch to accelereate the training pipeline. FastAI uses PyTorch as a backend and we can combine the NVTabular data loader for PyTorch with the FastAI library.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="loading-nvtabular-workflow">
+<h2>Loading NVTabular workflow<a class="headerlink" href="#loading-nvtabular-workflow" title="Permalink to this headline"></a></h2>
+<p>This time, we only need to define our data directories. We can load the data schema from the NVTabular workflow.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/data/&quot;</span><span class="p">))</span>
+<span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ross_pre/&quot;</span><span class="p">)</span>
+<span class="n">PREPROCESS_DIR_TRAIN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">)</span>
+<span class="n">PREPROCESS_DIR_VALID</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>What files are available to train on in our directories?</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>stats.json  train  valid
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR_TRAIN</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>0.1136d38916184bd39bf3d0cc6af8aecc.parquet  _metadata
+_file_list.txt				    _metadata.json
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR_VALID</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>0.bcd2404e802640f29b1427feaacbd24a.parquet  _metadata
+_file_list.txt				    _metadata.json
+</pre></div>
+</div>
+</div>
+</div>
+<p>We load the data schema and statistic information from <code class="docutils literal notranslate"><span class="pre">stats.json</span></code>. We created the file in the previous notebook <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">stats</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;stats.json&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;CATEGORICAL_COLUMNS&quot;</span><span class="p">]</span>
+<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;CONTINUOUS_COLUMNS&quot;</span><span class="p">]</span>
+<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;LABEL_COLUMNS&quot;</span><span class="p">]</span>
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form <code class="docutils literal notranslate"><span class="pre">(cardinality,</span> <span class="pre">embedding_size)</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;EMBEDDING_TABLE_SHAPES&quot;</span><span class="p">]</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;Assortment&#39;: [4, 16],
+ &#39;CompetitionMonthsOpen&#39;: [26, 16],
+ &#39;CompetitionOpenSinceYear&#39;: [24, 16],
+ &#39;Day&#39;: [32, 16],
+ &#39;DayOfWeek&#39;: [8, 16],
+ &#39;Events&#39;: [22, 16],
+ &#39;Month&#39;: [13, 16],
+ &#39;Promo2SinceYear&#39;: [9, 16],
+ &#39;Promo2Weeks&#39;: [27, 16],
+ &#39;PromoInterval&#39;: [4, 16],
+ &#39;Promo_bw&#39;: [7, 16],
+ &#39;Promo_fw&#39;: [7, 16],
+ &#39;SchoolHoliday_bw&#39;: [9, 16],
+ &#39;SchoolHoliday_fw&#39;: [9, 16],
+ &#39;State&#39;: [13, 16],
+ &#39;StateHoliday&#39;: [3, 16],
+ &#39;StateHoliday_bw&#39;: [4, 16],
+ &#39;StateHoliday_fw&#39;: [4, 16],
+ &#39;Store&#39;: [1116, 81],
+ &#39;StoreType&#39;: [5, 16],
+ &#39;Week&#39;: [53, 16],
+ &#39;Year&#39;: [4, 16]}
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="training-a-network">
+<h2>Training a Network<a class="headerlink" href="#training-a-network" title="Permalink to this headline"></a></h2>
+<p>Now that our data is preprocessed and saved out, we can leverage <code class="docutils literal notranslate"><span class="pre">dataset</span></code>s to read through the preprocessed parquet files in an online fashion to train neural networks.</p>
+<p>We’ll start by setting some universal hyperparameters for our model and optimizer. These settings will be shared across all of the frameworks that we explore below.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_DROPOUT_RATE</span> <span class="o">=</span> <span class="mf">0.04</span>
+<span class="n">DROPOUT_RATES</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">]</span>
+<span class="n">HIDDEN_DIMS</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">500</span><span class="p">]</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">65536</span>
+<span class="n">LEARNING_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">EPOCHS</span> <span class="o">=</span> <span class="mi">25</span>
+
+<span class="c1"># TODO: Calculate on the fly rather than recalling from previous analysis.</span>
+<span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">=</span> <span class="mf">38722.0</span>
+<span class="n">MAX_LOG_SALES_PREDICTION</span> <span class="o">=</span> <span class="mf">1.2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+
+<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="fast-ai-a-id-fast-ai-a">
+<h2><a class="reference external" href="http://fast.ai">fast.ai</a><a id="fast.ai"></a><a class="headerlink" href="#fast-ai-a-id-fast-ai-a" title="Permalink to this headline"></a></h2>
+<div class="section" id="fast-ai-preparing-datasets">
+<h3><a class="reference external" href="http://fast.ai">fast.ai</a>: Preparing Datasets<a class="headerlink" href="#fast-ai-preparing-datasets" title="Permalink to this headline"></a></h3>
+<p>AsyncTensorBatchDatasetItr maps a symbolic dataset object to <code class="docutils literal notranslate"><span class="pre">cat_features</span></code>, <code class="docutils literal notranslate"><span class="pre">cont_features</span></code>, <code class="docutils literal notranslate"><span class="pre">labels</span></code> PyTorch tenosrs by iterating through the dataset and concatenating the results.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">fastai</span>
+
+<span class="n">fastai</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&#39;2.2.5&#39;
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">TorchAsyncItr</span><span class="p">,</span> <span class="n">DLDataLoader</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.utils</span> <span class="kn">import</span> <span class="n">FastaiTransform</span>
+<span class="kn">from</span> <span class="nn">fastai.tabular.data</span> <span class="kn">import</span> <span class="n">TabularDataLoaders</span>
+<span class="kn">from</span> <span class="nn">fastai.tabular.model</span> <span class="kn">import</span> <span class="n">TabularModel</span>
+<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">Learner</span>
+<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">MSELossFlat</span>
+<span class="kn">from</span> <span class="nn">fastai.callback.progress</span> <span class="kn">import</span> <span class="n">ProgressCallback</span>
+
+
+<span class="k">def</span> <span class="nf">make_batched_dataloader</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+    <span class="n">ds_batch_sets</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+        <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+        <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">DLDataLoader</span><span class="p">(</span><span class="n">ds_batch_sets</span><span class="p">,</span>
+                        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">collate_fn</span><span class="o">=</span><span class="n">FastaiTransform</span><span class="p">(</span><span class="n">ds_batch_sets</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+                        <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">make_batched_dataloader</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="n">BATCH_SIZE</span><span class="p">)</span>
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">make_batched_dataloader</span><span class="p">(</span><span class="n">VALID_PATHS</span><span class="p">,</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="n">BATCH_SIZE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">databunch</span> <span class="o">=</span> <span class="n">TabularDataLoaders</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">valid_dataset</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="fast-ai-defining-a-model">
+<h3><a class="reference external" href="http://fast.ai">fast.ai</a>: Defining a Model<a class="headerlink" href="#fast-ai-defining-a-model" title="Permalink to this headline"></a></h3>
+<p>Next we’ll need to define the inputs that will feed our model and build an architecture on top of them. For now, we’ll just stick to a simple MLP model.</p>
+<p>Using FastAI’s <code class="docutils literal notranslate"><span class="pre">TabularModel</span></code>, we can build an MLP under the hood by defining its high-level characteristics.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pt_model</span> <span class="o">=</span> <span class="n">TabularModel</span><span class="p">(</span>
+    <span class="n">emb_szs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+    <span class="n">n_cont</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">),</span>
+    <span class="n">out_sz</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">layers</span><span class="o">=</span><span class="n">HIDDEN_DIMS</span><span class="p">,</span>
+    <span class="n">ps</span><span class="o">=</span><span class="n">DROPOUT_RATES</span><span class="p">,</span>
+    <span class="n">use_bn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">embed_p</span><span class="o">=</span><span class="n">EMBEDDING_DROPOUT_RATE</span><span class="p">,</span>
+    <span class="n">y_range</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">MAX_LOG_SALES_PREDICTION</span><span class="p">]),</span>
+<span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="fast-ai-training">
+<h3><a class="reference external" href="http://fast.ai">fast.ai</a>: Training<a class="headerlink" href="#fast-ai-training" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.torch_core</span> <span class="kn">import</span> <span class="n">flatten_check</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+
+<span class="k">def</span> <span class="nf">exp_rmspe</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">targ</span><span class="p">):</span>
+    <span class="s2">&quot;Exp RMSE between `pred` and `targ`.&quot;</span>
+    <span class="n">pred</span><span class="p">,</span> <span class="n">targ</span> <span class="o">=</span> <span class="n">flatten_check</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">targ</span><span class="p">)</span>
+    <span class="n">pred</span><span class="p">,</span> <span class="n">targ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">targ</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">pct_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">targ</span> <span class="o">-</span> <span class="n">pred</span><span class="p">)</span> <span class="o">/</span> <span class="n">targ</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pct_var</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+
+
+<span class="n">loss_func</span> <span class="o">=</span> <span class="n">MSELossFlat</span><span class="p">()</span>
+<span class="n">learner</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span>
+    <span class="n">databunch</span><span class="p">,</span> <span class="n">pt_model</span><span class="p">,</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">loss_func</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">exp_rmspe</span><span class="p">],</span> <span class="n">cbs</span><span class="o">=</span><span class="n">ProgressCallback</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+<span class="n">learner</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">EPOCHS</span><span class="p">,</span> <span class="n">LEARNING_RATE</span><span class="p">)</span>
+<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">total_rows</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows_processed</span> <span class="o">+</span> <span class="n">valid_dataset</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows_processed</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;run_time: </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">total_rows</span><span class="si">}</span><span class="s2"> - epochs: </span><span class="si">{</span><span class="n">EPOCHS</span><span class="si">}</span><span class="s2"> - dl_thru: </span><span class="si">{</span> <span class="p">(</span><span class="n">EPOCHS</span> <span class="o">*</span> <span class="n">total_rows</span><span class="p">)</span> <span class="o">/</span> <span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: left;">
+      <th>epoch</th>
+      <th>train_loss</th>
+      <th>valid_loss</th>
+      <th>exp_rmspe</th>
+      <th>time</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table></div><div class="output text_html"><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: left;">
+      <th>epoch</th>
+      <th>train_loss</th>
+      <th>valid_loss</th>
+      <th>exp_rmspe</th>
+      <th>time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>0.870130</td>
+      <td>1.443352</td>
+      <td>0.668771</td>
+      <td>00:02</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>0.451688</td>
+      <td>0.238232</td>
+      <td>0.396827</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>0.290309</td>
+      <td>0.147549</td>
+      <td>0.484601</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>0.204925</td>
+      <td>0.151387</td>
+      <td>0.537334</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>0.153039</td>
+      <td>0.105131</td>
+      <td>0.404711</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>0.118746</td>
+      <td>0.060419</td>
+      <td>0.265174</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>0.094846</td>
+      <td>0.037690</td>
+      <td>0.197737</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>0.077555</td>
+      <td>0.034608</td>
+      <td>0.192175</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>0.064673</td>
+      <td>0.032721</td>
+      <td>0.187379</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>0.054867</td>
+      <td>0.032081</td>
+      <td>0.185658</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>0.047228</td>
+      <td>0.031881</td>
+      <td>0.189285</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>0.041429</td>
+      <td>0.030871</td>
+      <td>0.177481</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>0.037166</td>
+      <td>0.031383</td>
+      <td>0.185052</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>0.033308</td>
+      <td>0.029781</td>
+      <td>0.180436</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>0.030054</td>
+      <td>0.028644</td>
+      <td>0.175005</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>0.028240</td>
+      <td>0.029979</td>
+      <td>0.181500</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>0.026032</td>
+      <td>0.026933</td>
+      <td>0.168009</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>0.024473</td>
+      <td>0.028919</td>
+      <td>0.177013</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td>0.022900</td>
+      <td>0.028642</td>
+      <td>0.163702</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td>0.021604</td>
+      <td>0.027488</td>
+      <td>0.162483</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>20</td>
+      <td>0.020489</td>
+      <td>0.026400</td>
+      <td>0.161136</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>21</td>
+      <td>0.019540</td>
+      <td>0.026042</td>
+      <td>0.166578</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>22</td>
+      <td>0.018842</td>
+      <td>0.028341</td>
+      <td>0.162945</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>23</td>
+      <td>0.018130</td>
+      <td>0.025699</td>
+      <td>0.159816</td>
+      <td>00:01</td>
+    </tr>
+    <tr>
+      <td>24</td>
+      <td>0.017510</td>
+      <td>0.024265</td>
+      <td>0.162697</td>
+      <td>00:01</td>
+    </tr>
+  </tbody>
+</table></div><div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>run_time: 49.69642353057861 - rows: 844338 - epochs: 25 - dl_thru: 424747.8691703398
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02-ETL-with-NVTabular.html" class="btn btn-neutral float-left" title="NVTabular demo on Rossmann data - Feature Engineering &amp; Preprocessing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Training-with-TF.html" class="btn btn-neutral float-right" title="NVTabular demo on Rossmann data - TensorFlow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="03-Training-with-FastAI.html">v1.2.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

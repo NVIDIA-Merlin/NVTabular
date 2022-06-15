@@ -258,13 +258,16 @@
 </div>
 </div>
 </div>
-<div class="section" id="load-models-on-triton-server">
-<h3>Load Models on Triton Server<a class="headerlink" href="#load-models-on-triton-server" title="Permalink to this headline"></a></h3>
+<div class="section" id="load-models-on-triton-inference-server">
+<h3>Load Models on Triton Inference Server<a class="headerlink" href="#load-models-on-triton-inference-server" title="Permalink to this headline"></a></h3>
 <p>At this stage, you should launch the Triton Inference Server docker container with the following script:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus=all -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model nvcr.io/nvidia/merlin/merlin-inference:21.11
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>docker run -it --gpus=all -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model nvcr.io/nvidia/merlin/merlin-hugectr:latest
 </pre></div>
 </div>
-<p>After you started the container you can start triton server with the command below:</p>
+<blockquote>
+<div><p>For production use, refer to the <a class="reference external" href="https://catalog.ngc.nvidia.com/?filters=&amp;orderBy=scoreDESC&amp;query=merlin">Merlin containers</a> from the NVIDIA GPU Cloud (NGC) catalog and specify a tag rather than <code class="docutils literal notranslate"><span class="pre">latest</span></code>.</p>
+</div></blockquote>
+<p>After you start the container, start Triton Inference Server with the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tritonserver</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">repository</span><span class="o">=&lt;</span><span class="n">path_to_models</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">backend</span><span class="o">-</span><span class="n">config</span><span class="o">=</span><span class="n">hugectr</span><span class="p">,</span><span class="n">ps</span><span class="o">=&lt;</span><span class="n">path_to_models</span><span class="o">&gt;/</span><span class="n">ps</span><span class="o">.</span><span class="n">json</span> <span class="o">--</span><span class="n">model</span><span class="o">-</span><span class="n">control</span><span class="o">-</span><span class="n">mode</span><span class="o">=</span><span class="n">explicit</span>
 </pre></div>
 </div>
@@ -565,10 +568,10 @@ tritonclient.utils.InferenceServerException: The CATCOLUMN input sample size in 
       <dt>Tags</dt>
       <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
       <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
       <dd><a href="../../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="../../../v1.2.0/index.html">v1.2.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started Outbrain: Download and Convert &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Getting Started Outbrain: ETL with NVTabular" href="02-ETL-with-NVTabular.html" />
+    <link rel="prev" title="Advanced Ops with Outbrain" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Advanced Ops with Outbrain</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Getting Started Outbrain: Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">Getting Started Outbrain: ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">NVTabular demo on Outbrain Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">NVTabular Example Notebooks</a> &raquo;</li>
+          <li><a href="index.html">Advanced Ops with Outbrain</a> &raquo;</li>
+      <li>Getting Started Outbrain: Download and Convert</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-outbrain-download-and-convert">
+<h1>Getting Started Outbrain: Download and Convert<a class="headerlink" href="#getting-started-outbrain-download-and-convert" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>Outbrain dataset was published in <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Kaggle Outbrain click prediction</a> competition, where the ‘Kagglers’ were challenged to predict on which ads and other forms of sponsored content its global users would click. One of  the top finishers’ preprocessing and feature engineering pipeline is taken into consideration here, and this pipeline was restructured using NVTabular and cuDF.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span><span class="p">,</span> <span class="n">random_uniform</span><span class="p">,</span> <span class="n">reinitialize</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="download-the-dataset">
+<h2>Download the dataset<a class="headerlink" href="#download-the-dataset" title="Permalink to this headline"></a></h2>
+<p>First, you need to <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction/data">download</a> the Kaggle Outbrain click prediction challenge and set DATA_BUCKET_FOLDER with the dataset path.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;~/nvt-examples/outbrain/data/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The OUTPUT_BUCKET_FOLDER is the folder where the preprocessed dataset will be saved.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="preparing-our-dataset">
+<h2>Preparing Our Dataset<a class="headerlink" href="#preparing-our-dataset" title="Permalink to this headline"></a></h2>
+<p>Here, we merge the component tables of our dataset into a single data frame, using <a class="reference external" href="https://github.com/rapidsai/cudf">cuDF</a>, which is a GPU DataFrame library for loading, joining, aggregating, filtering, and otherwise manipulating data. We do this because NVTabular applies a workflow to a single table. We also re-initialize managed memory. <code class="docutils literal notranslate"><span class="pre">rmm.reinitialize()</span></code> provides an easy way to initialize RMM (RAPIDS Memory Manager) with specific memory resource options across multiple devices. The reason we re-initialize managed memory here is to allow us to perform memory intensive merge operation. Note that dask-cudf can also be used here.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># use managed memory for device memory allocation</span>
+<span class="n">reinitialize</span><span class="p">(</span><span class="n">managed_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Alias for read_csv</span>
+<span class="n">read_csv</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span>
+
+<span class="c1"># Merge all the CSV files together</span>
+<span class="n">documents_meta</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_meta.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">])</span>
+<span class="n">merged</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;clicks_train.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;events.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">]),</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;display_id&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_event&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;promoted_content.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">]),</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;ad_id&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_promo&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">documents_meta</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">documents_meta</span><span class="p">,</span>
+        <span class="n">left_on</span><span class="o">=</span><span class="s2">&quot;document_id_promo&quot;</span><span class="p">,</span>
+        <span class="n">right_on</span><span class="o">=</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_promo&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="splitting-into-train-and-validation-datasets">
+<h2>Splitting into train and validation datasets<a class="headerlink" href="#splitting-into-train-and-validation-datasets" title="Permalink to this headline"></a></h2>
+<p>We use a time-stratified sample to create a validation set that is more recent, and save both our train and validation sets to parquet files to be read by NVTabular. Note that you should run the cell below only once, then save your <code class="docutils literal notranslate"><span class="pre">train</span></code> and <code class="docutils literal notranslate"><span class="pre">valid</span></code> data frames as parquet files. If you want to rerun this notebook you might end up with a different train-validation split each time because samples are drawn from a uniform distribution.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Do a stratified split of the merged dataset into a training/validation dataset</span>
+<span class="n">merged</span><span class="p">[</span><span class="s2">&quot;day_event&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span> <span class="o">/</span> <span class="mi">60</span> <span class="o">/</span> <span class="mi">60</span> <span class="o">/</span> <span class="mi">24</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">random_state</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">random_uniform</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">merged</span><span class="p">)))</span>
+<span class="n">valid_set</span><span class="p">,</span> <span class="n">train_set</span> <span class="o">=</span> <span class="n">merged</span><span class="o">.</span><span class="n">scatter_by_map</span><span class="p">(</span>
+    <span class="p">((</span><span class="n">merged</span><span class="o">.</span><span class="n">day_event</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">random_state</span> <span class="o">&gt;</span> <span class="mf">0.2</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_set</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>display_id</th>
+      <th>ad_id</th>
+      <th>clicked</th>
+      <th>uuid</th>
+      <th>document_id</th>
+      <th>timestamp</th>
+      <th>platform</th>
+      <th>geo_location</th>
+      <th>document_id_promo</th>
+      <th>campaign_id</th>
+      <th>advertiser_id</th>
+      <th>source_id</th>
+      <th>publisher_id</th>
+      <th>publish_time</th>
+      <th>source_id_promo</th>
+      <th>publisher_id_promo</th>
+      <th>publish_time_promo</th>
+      <th>day_event</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>9376</th>
+      <td>15071</td>
+      <td>50640</td>
+      <td>0</td>
+      <td>ef25dd3a359f77</td>
+      <td>91525</td>
+      <td>1053684</td>
+      <td>1.0</td>
+      <td>AU&gt;02</td>
+      <td>869942</td>
+      <td>6714</td>
+      <td>1913</td>
+      <td>8107.0</td>
+      <td>9.0</td>
+      <td>2012-02-13 00:00:00</td>
+      <td>8484.0</td>
+      <td>&lt;NA&gt;</td>
+      <td>2015-09-13 21:00:00</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>11904</th>
+      <td>1545</td>
+      <td>75959</td>
+      <td>0</td>
+      <td>7be3eb33be486c</td>
+      <td>1697627</td>
+      <td>107138</td>
+      <td>1.0</td>
+      <td>US&gt;MA&gt;521</td>
+      <td>1078193</td>
+      <td>959</td>
+      <td>8</td>
+      <td>8610.0</td>
+      <td>1142.0</td>
+      <td>&lt;NA&gt;</td>
+      <td>1493.0</td>
+      <td>305.0</td>
+      <td>2016-02-04 00:00:00</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>12512</th>
+      <td>3544</td>
+      <td>149756</td>
+      <td>0</td>
+      <td>33e08ba8e59293</td>
+      <td>1326664</td>
+      <td>243025</td>
+      <td>1.0</td>
+      <td>US&gt;TX&gt;623</td>
+      <td>1233590</td>
+      <td>19007</td>
+      <td>285</td>
+      <td>948.0</td>
+      <td>450.0</td>
+      <td>&lt;NA&gt;</td>
+      <td>10972.0</td>
+      <td>1147.0</td>
+      <td>2016-04-01 00:00:00</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>15072</th>
+      <td>229</td>
+      <td>150817</td>
+      <td>0</td>
+      <td>fc514cfac3fd61</td>
+      <td>1776403</td>
+      <td>16513</td>
+      <td>1.0</td>
+      <td>US&gt;AZ&gt;789</td>
+      <td>1362397</td>
+      <td>19188</td>
+      <td>2407</td>
+      <td>1095.0</td>
+      <td>1004.0</td>
+      <td>2016-06-13 16:00:00</td>
+      <td>8610.0</td>
+      <td>1142.0</td>
+      <td>2016-04-28 15:00:00</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>15584</th>
+      <td>1534</td>
+      <td>116696</td>
+      <td>0</td>
+      <td>da4d73f0a12bfa</td>
+      <td>1503347</td>
+      <td>106591</td>
+      <td>2.0</td>
+      <td>US&gt;CA&gt;866</td>
+      <td>1191113</td>
+      <td>15005</td>
+      <td>83</td>
+      <td>5792.0</td>
+      <td>704.0</td>
+      <td>2016-05-31 00:00:00</td>
+      <td>7357.0</td>
+      <td>&lt;NA&gt;</td>
+      <td>&lt;NA&gt;</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We save the dataset to disk.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train_gdf.parquet&quot;</span><span class="p">)</span>
+<span class="n">valid_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid_gdf.parquet&quot;</span><span class="p">)</span>
+<span class="n">train_set</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">train_filename</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">valid_set</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">valid_filename</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">merged</span> <span class="o">=</span> <span class="n">train_set</span> <span class="o">=</span> <span class="n">valid_set</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">reinitialize</span><span class="p">(</span><span class="n">managed_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Advanced Ops with Outbrain" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02-ETL-with-NVTabular.html" class="btn btn-neutral float-right" title="Getting Started Outbrain: ETL with NVTabular" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../../v0.10.0/index.html">v0.10.0</a></dd>
+      <dd><a href="../../../v0.11.0/index.html">v0.11.0</a></dd>
+      <dd><a href="../../../v1.0.0/index.html">v1.0.0</a></dd>
+      <dd><a href="../../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="01-Download-Convert.html">v1.2.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../../main/index.html">main</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

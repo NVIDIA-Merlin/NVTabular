@@ -33,16 +33,15 @@
 # - to transform new/streaming data with NVTabular library
 # - to deploy the end-to-end pipeline to generate prediction results for new data from trained TF model
 
-# ## Launching and Starting the Triton Server
+# ## Starting Triton Inference Server
 
-# Before we get started, you should launch the Triton Inference Server docker container with the following script. This script will mount your local `model-repository` folder that includes your saved models from the previous notebook (`03a-Training-with-TF.ipynb`) to `/model` directory in the `merlin-inference` docker container.
+# Before we get started, start Triton Inference Server in the Docker container with the following command. The command includes the `-v` argument to mount your local `model-repository` directory that includes your saved models from the previous notebook (`03a-Training-with-TF.ipynb`) to `/model` directory in the container.
 
 # ```
-# docker run -it --gpus device=0 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-tensorflow-inference:22.04
+# docker run -it --gpus device=0 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-tensorflow:latest
 # ```
-# 
 
-# After you started the `merlin-inference` container, you can start triton server with the command below. You need to provide correct path for the `models` directory.
+# After you start the container, you can start Triton Inference Server with the following command. You need to provide correct path for the `models` directory.
 # 
 # ```
 # tritonserver --model-repository=path_to_models --backend-config=tensorflow,version=2 --model-control-mode=explicit 
@@ -86,9 +85,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-# ## Loading Ensemble Model with Triton Inference Serve
+# ## Loading Ensemble Model with Triton Inference Server
 
-# At this stage, you should have launched the Triton Inference Server docker container with the instructions above.
+# At this stage, you should have started the Triton Inference Server in a container with the instructions above.
 
 # Let's connect to the Triton Inference Server. Use Triton’s ready endpoint to verify that the server and the models are ready for inference. Replace localhost with your host ip address.
 
@@ -142,7 +141,7 @@ triton_client.get_model_repository_index()
 get_ipython().run_cell_magic('time', '', '\ntriton_client.load_model(model_name="movielens")\n')
 
 
-# ## Send request to Triton IS to transform raw dataset
+# ## Send request to Triton Inference Server to transform raw dataset
 
 # A minimal model repository for a TensorFlow SavedModel model is:
 # ```

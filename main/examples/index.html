@@ -158,44 +158,48 @@ jupyter notebook
 </div>
 <div class="section" id="running-the-example-notebooks">
 <h2>Running the Example Notebooks<a class="headerlink" href="#running-the-example-notebooks" title="Permalink to this headline"></a></h2>
-<p>You can run the example notebooks by <a class="reference external" href="https://github.com/NVIDIA/NVTabular#installation">installing NVTabular</a> and other required libraries. Alternatively, Docker containers are available on <a class="reference external" href="http://ngc.nvidia.com/catalog/containers/">http://ngc.nvidia.com/catalog/containers/</a> with pre-installed versions. Depending on which example you want to run, you should use any one of these Docker containers:</p>
+<p>You can run the example notebooks by <a class="reference external" href="https://github.com/NVIDIA/NVTabular#installation">installing NVTabular</a> and other required libraries.
+Alternatively, Docker containers are available from the NVIDIA GPU Cloud (NGC) at <a class="reference external" href="http://ngc.nvidia.com/catalog/containers/">http://ngc.nvidia.com/catalog/containers/</a> with pre-installed versions.
+Depending on which example you want to run, you should use any one of these Docker containers:</p>
 <ul class="simple">
-<li><p>Merlin-Tensorflow-Training (contains NVTabular with TensorFlow)</p></li>
-<li><p>Merlin-Pytorch-Training (contains NVTabular with PyTorch)</p></li>
-<li><p>Merlin-Training (contains NVTabular with HugeCTR)</p></li>
-<li><p>Merlin-Tensorflow-Inference (contains NVTabular with TensorFlow and Triton Inference support)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">merlin-hugectr</span></code> (contains NVTabular with HugeCTR)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">merlin-tensorflow</span></code> (contains NVTabular with TensorFlow)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">merlin-pytorch</span></code> (contains NVTabular with PyTorch)</p></li>
 </ul>
+<p>Beginning with the 22.06 release, each container includes the software for training models and performing inference.</p>
 <p>To run the example notebooks using Docker containers, do the following:</p>
 <ol>
 <li><p>Pull the container by running the following command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8888</span><span class="p">:</span><span class="mi">8888</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8797</span><span class="p">:</span><span class="mi">8787</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8796</span><span class="p">:</span><span class="mi">8786</span> <span class="o">--</span><span class="n">ipc</span><span class="o">=</span><span class="n">host</span> <span class="o">&lt;</span><span class="n">docker</span> <span class="n">container</span><span class="o">&gt;</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker run --gpus all --rm -it -p <span class="m">8888</span>:8888 -p <span class="m">8797</span>:8787 -p <span class="m">8796</span>:8786 --ipc<span class="o">=</span>host &lt;docker container&gt; /bin/bash
 </pre></div>
 </div>
 <p><strong>NOTES</strong>:</p>
 <ul class="simple">
-<li><p>If you are running <code class="docutils literal notranslate"><span class="pre">Getting</span> <span class="pre">Started</span> <span class="pre">with</span> <span class="pre">MovieLens</span></code> , <code class="docutils literal notranslate"><span class="pre">Advanced</span> <span class="pre">Ops</span> <span class="pre">with</span> <span class="pre">Outbrain</span></code> or <code class="docutils literal notranslate"><span class="pre">Tabular</span> <span class="pre">Problems</span> <span class="pre">with</span> <span class="pre">Rossmann</span></code> example notebooks you need to add <code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">${PWD}:/root/</span></code> to the docker script above. Here <code class="docutils literal notranslate"><span class="pre">PWD</span></code> is a local directory in your system, and this very same directory should also be mounted to the <code class="docutils literal notranslate"><span class="pre">merlin-inference</span></code>container if you would like to run the inference example. Please follow the <code class="docutils literal notranslate"><span class="pre">start</span> <span class="pre">and</span> <span class="pre">launch</span> <span class="pre">triton</span> <span class="pre">server</span></code> instructions given in the inference notebooks.</p></li>
-<li><p>If you are running <code class="docutils literal notranslate"><span class="pre">Training-with-HugeCTR</span></code> notebooks, please add <code class="docutils literal notranslate"><span class="pre">--cap-add</span> <span class="pre">SYS_NICE</span></code> to <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">run</span></code> command to suppress the <code class="docutils literal notranslate"><span class="pre">set_mempolicy:</span> <span class="pre">Operation</span> <span class="pre">not</span> <span class="pre">permitted</span></code> warnings.</p></li>
+<li><p>If you are running Getting Started with MovieLens, Advanced Ops with Outbrain, or the Tabular Problems with Rossmann example notebooks, add a <code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">${PWD}:/root/</span></code> argument to the preceding Docker command.
+The <code class="docutils literal notranslate"><span class="pre">PWD</span></code> environment variable refers to a local directory on your computer, and you should specify this same directory and with the <code class="docutils literal notranslate"><span class="pre">-v</span></code> argument when you run a container to perform inference.
+Follow the instructions for starting Triton Inference Server that are provided in the inference notebooks.</p></li>
+<li><p>If you are running <code class="docutils literal notranslate"><span class="pre">Training-with-HugeCTR</span></code> notebooks, please add <code class="docutils literal notranslate"><span class="pre">--cap-add</span> <span class="pre">SYS_NICE</span></code> to the <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">run</span></code> command to suppress the <code class="docutils literal notranslate"><span class="pre">set_mempolicy:</span> <span class="pre">Operation</span> <span class="pre">not</span> <span class="pre">permitted</span></code> warnings.</p></li>
 </ul>
-</li>
-</ol>
-<p>The container will open a shell when the run command execution is completed. You will have to start JupyterLab on the Docker container. It should look similar to this:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">@</span><span class="mi">2</span><span class="n">efa5b50b909</span><span class="p">:</span>
+<p>The container opens a shell when the run command execution is completed.
+Your shell prompt should look similar to the following example:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>root@2efa5b50b909:
 </pre></div>
 </div>
-<ol>
-<li><p>If jupyter-lab is not installed, install jupyter-lab with <code class="docutils literal notranslate"><span class="pre">pip</span></code> by running the following command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">jupyterlab</span>
-</pre></div>
-</div>
-<p>For more information, see <a class="reference external" href="https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html">Installation Guide</a>.</p>
 </li>
 <li><p>Start the jupyter-lab server by running the following command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jupyter</span><span class="o">-</span><span class="n">lab</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">root</span> <span class="o">--</span><span class="n">ip</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span> <span class="o">--</span><span class="n">NotebookApp</span><span class="o">.</span><span class="n">token</span><span class="o">=</span><span class="s1">&#39;&lt;password&gt;&#39;</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>jupyter-lab --allow-root --ip<span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span>
+</pre></div>
+</div>
+<p>View the messages in your terminal to identify the URL for JupyterLab.
+The messages in your terminal show similar lines to the following example:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Or copy and paste one of these URLs:
+http://2efa5b50b909:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+or http://127.0.0.1:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
 </pre></div>
 </div>
 </li>
-<li><p>Open any browser to access the jupyter-lab server using <MachineIP>:8888.</p></li>
-<li><p>Once in the server, navigate to the <code class="docutils literal notranslate"><span class="pre">/nvtabular/</span></code> directory and try out the examples.</p></li>
+<li><p>Open a browser and use the <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> URL provided in the messages by JupyterLab.</p></li>
+<li><p>After you log in to JupyterLab, navigate to the <code class="docutils literal notranslate"><span class="pre">/nvtabular</span></code> directory to try out the example notebooks.</p></li>
 </ol>
 </div>
 <div class="toctree-wrapper compound">
@@ -238,10 +242,10 @@ jupyter notebook
       <dt>Tags</dt>
       <dd><a href="../../v0.10.0/index.html">v0.10.0</a></dd>
       <dd><a href="../../v0.11.0/index.html">v0.11.0</a></dd>
-      <dd><a href="../../v0.9.0/index.html">v0.9.0</a></dd>
       <dd><a href="../../v1.0.0/index.html">v1.0.0</a></dd>
       <dd><a href="../../v1.1.0/index.html">v1.1.0</a></dd>
       <dd><a href="../../v1.1.1/index.html">v1.1.1</a></dd>
+      <dd><a href="../../v1.2.0/index.html">v1.2.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
