@@ -85,7 +85,7 @@ class Workflow:
             set_client_deprecated(client, "Workflow")
         self.graph = Graph(output_node)
 
-    def transform(self, dataset: Dataset) -> Dataset:
+    def transform(self, dataset: Dataset, strict: bool = True) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
 
@@ -97,13 +97,16 @@ class Workflow:
         -----------
         dataset: Dataset
             Input dataset to transform
+        strict: bool
+            If True, will raise an error if operator outputs don't match their output schemas.
+            (Default: True)
 
         Returns
         -------
         Dataset
             Transformed Dataset with the workflow graph applied to it
         """
-        return self._transform_impl(dataset)
+        return self._transform_impl(dataset, strict)
 
     def fit_schema(self, input_schema: Schema):
         """Fits the schema onto the workflow, computing the Schema for each node in the Workflow Graph
@@ -228,6 +231,7 @@ class Workflow:
                         ddf,
                         workflow_node.parents_with_dependencies,
                         additional_columns=addl_input_cols,
+                        strict=False,
                         capture_dtypes=True,
                     )
                 )
@@ -258,12 +262,12 @@ class Workflow:
 
         # This captures the output dtypes of operators like LambdaOp where
         # the dtype can't be determined without running the transform
-        self._transform_impl(dataset, capture_dtypes=True).sample_dtypes()
+        self._transform_impl(dataset, strict=False, capture_dtypes=True).sample_dtypes()
         self.graph.construct_schema(dataset.schema, preserve_dtypes=True)
 
         return self
 
-    def fit_transform(self, dataset: Dataset) -> Dataset:
+    def fit_transform(self, dataset: Dataset, strict: bool = True) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
         call. Equivalent to calling ``workflow.fit(dataset)`` followed by
         ``workflow.transform(dataset)``
@@ -272,6 +276,9 @@ class Workflow:
         -----------
         dataset: Dataset
             Input dataset to calculate statistics on, and transform results
+        strict: bool
+            If True, will raise an error if operator outputs don't match their output schemas.
+            (Default: True)
 
         Returns
         -------
@@ -284,9 +291,9 @@ class Workflow:
         transform
         """
         self.fit(dataset)
-        return self.transform(dataset)
+        return self.transform(dataset, strict=strict)
 
-    def _transform_impl(self, dataset: Dataset, capture_dtypes=False):
+    def _transform_impl(self, dataset: Dataset, strict: bool = True, capture_dtypes: bool = False):
         self._clear_worker_cache()
 
         if not self.graph.output_schema:
@@ -295,7 +302,11 @@ class Workflow:
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
             _transform_ddf(
-                ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
+                ddf,
+                self.output_node,
+                self.output_dtypes,
+                strict=strict,
+                capture_dtypes=capture_dtypes,
             ),
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
@@ -422,7 +433,9 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, capture_dtypes=False):
+def _transform_ddf(
+    ddf, workflow_nodes, meta=None, additional_columns=None, strict=True, capture_dtypes=False
+):
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
@@ -454,6 +467,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, capt
         _transform_partition,
         workflow_nodes,
         additional_columns=additional_columns,
+        strict=strict,
         capture_dtypes=capture_dtypes,
         meta=meta,
         enforce_metadata=False,
@@ -469,7 +483,9 @@ def _get_unique(cols):
     return list({x: x for x in cols}.keys())
 
 
-def _transform_partition(root_df, workflow_nodes, additional_columns=None, capture_dtypes=False):
+def _transform_partition(
+    root_df, workflow_nodes, additional_columns=None, strict=True, capture_dtypes=False
+):
     """Transforms a single partition by appyling all operators in a WorkflowNode"""
     output = None
 
@@ -533,7 +549,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
 
                     if capture_dtypes:
                         node.output_schema.column_schemas[col_name] = output_df_schema
-                    elif len(output_df):
+                    elif strict and len(output_df):
                         if output_col_schema.dtype != output_df_schema.dtype:
                             raise TypeError(
                                 f"Dtype discrepancy detected for column {col_name}: "

@@ -667,3 +667,25 @@ def test_workflow_saved_schema(tmpdir):
     for node in postorder_iter_nodes(workflow2.output_node):
         assert node.input_schema is not None
         assert node.output_schema is not None
+
+
+def test_workflow_strict_mode_disabled():
+    df = make_df({"cat": ["a", "a", "b"], "timestamp": [1, 2, 1], "measurement": [0.1, 0.2, 0.5]})
+    df["measurement"] = df["measurement"].astype("float32")
+
+    grouped = ["measurement", "cat"] >> ops.Groupby("cat", aggs=["std"])
+    workflow = Workflow(grouped)
+
+    dataset = Dataset(df)
+    result = workflow.fit_transform(dataset, strict=True)
+
+    # Strict mode should catch the dtype discrepancy
+    # between the schema and the output (float32 vs float64)
+    with pytest.raises(TypeError):
+        result.compute()
+
+    # Disabling strict mode should allow the workflow to run
+    result_ddf = workflow.fit_transform(dataset, strict=False)
+    result = result_ddf.compute()
+
+    assert result
