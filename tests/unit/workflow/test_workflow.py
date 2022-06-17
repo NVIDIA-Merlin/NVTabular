@@ -676,7 +676,7 @@ def test_workflow_strict_mode_disabled():
     grouped = ["measurement", "cat"] >> ops.Groupby("cat", aggs=["std"])
     workflow = Workflow(grouped)
 
-    dataset = Dataset(df)
+    dataset = Dataset(df, cpu=True)
     result = workflow.fit_transform(dataset, strict=True)
 
     # Strict mode should catch the dtype discrepancy
