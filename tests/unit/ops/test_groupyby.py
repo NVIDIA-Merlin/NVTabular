@@ -161,7 +161,7 @@ def test_groupby_selector_cols():
     )
     workflow = Workflow(groupby).fit_schema(input_schema)
 
-    # If groupby_cols arenat included in the selector, they shouldn't be in the output
+    # If groupby_cols aren't included in the selector, they shouldn't be in the output
     assert "name" not in workflow.output_node.output_schema.column_names
 
 
