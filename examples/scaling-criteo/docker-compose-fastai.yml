@@ -11,7 +11,7 @@ volumes:
 services:
   lab:
     runtime: nvidia
-    image: nvcr.io/nvidia/merlin/merlin-pytorch-training:21.11
+    image: nvcr.io/nvidia/merlin/merlin-pytorch:22.06
     command: "/bin/bash -c 'pip install jupyterlab jupytext pydot && apt-get update && apt-get install -y tree && python -m ipykernel install --user --name=merlin && jupyter notebook --no-browser --allow-root --port=8888 --ip=0.0.0.0 --NotebookApp.token='demotoken' --NotebookApp.allow_origin='*' --notebook-dir=/'"
     volumes:
       - models:/models

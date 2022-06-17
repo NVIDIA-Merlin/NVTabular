@@ -41,10 +41,9 @@ ROSSMAN_DIR = "examples/tabular-data-rossmann"
 MOVIELENS_DIR = "examples/getting-started-movielens"
 
 allowed_hosts = [
-    "merlin-training",
-    "merlin-tensorflow-training",
-    "merlin-torch-training",
-    "merlin-inference",
+    "merlin-hugectr",
+    "merlin-tensorflow",
+    "merlin-pytorch",
 ]
 
 

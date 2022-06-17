@@ -60,46 +60,53 @@ Rossmann operates over 3,000 drug stores across seven European countries. Histor
 
 ## Running the Example Notebooks
 
-You can run the example notebooks by [installing NVTabular](https://github.com/NVIDIA/NVTabular#installation) and other required libraries. Alternatively, Docker containers are available on http://ngc.nvidia.com/catalog/containers/ with pre-installed versions. Depending on which example you want to run, you should use any one of these Docker containers:
+You can run the example notebooks by [installing NVTabular](https://github.com/NVIDIA/NVTabular#installation) and other required libraries.
+Alternatively, Docker containers are available from the NVIDIA GPU Cloud (NGC) at <http://ngc.nvidia.com/catalog/containers/> with pre-installed versions.
+Depending on which example you want to run, you should use any one of these Docker containers:
 
-- Merlin-Tensorflow-Training (contains NVTabular with TensorFlow)
-- Merlin-Pytorch-Training (contains NVTabular with PyTorch)
-- Merlin-Training (contains NVTabular with HugeCTR)
-- Merlin-Tensorflow-Inference (contains NVTabular with TensorFlow and Triton Inference support)
+- `merlin-hugectr` (contains NVTabular with HugeCTR)
+- `merlin-tensorflow` (contains NVTabular with TensorFlow)
+- `merlin-pytorch` (contains NVTabular with PyTorch)
+
+Beginning with the 22.06 release, each container includes the software for training models and performing inference.
 
 To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
 
-   ```
+   ```sh
    docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
    **NOTES**:
 
-   - If you are running `Getting Started with MovieLens` , `Advanced Ops with Outbrain` or `Tabular Problems with Rossmann` example notebooks you need to add `-v ${PWD}:/root/` to the docker script above. Here `PWD` is a local directory in your system, and this very same directory should also be mounted to the `merlin-inference`container if you would like to run the inference example. Please follow the `start and launch triton server` instructions given in the inference notebooks.
-   - If you are running `Training-with-HugeCTR` notebooks, please add `--cap-add SYS_NICE` to `docker run` command to suppress the `set_mempolicy: Operation not permitted` warnings.
+   - If you are running Getting Started with MovieLens, Advanced Ops with Outbrain, or the Tabular Problems with Rossmann example notebooks, add a `-v ${PWD}:/root/` argument to the preceding Docker command.
+   The `PWD` environment variable refers to a local directory on your computer, and you should specify this same directory and with the `-v` argument when you run a container to perform inference.
+   Follow the instructions for starting Triton Inference Server that are provided in the inference notebooks.
+   - If you are running `Training-with-HugeCTR` notebooks, please add `--cap-add SYS_NICE` to the `docker run` command to suppress the `set_mempolicy: Operation not permitted` warnings.
 
-The container will open a shell when the run command execution is completed. You will have to start JupyterLab on the Docker container. It should look similar to this:
+   The container opens a shell when the run command execution is completed.
+   Your shell prompt should look similar to the following example:
 
-```
-root@2efa5b50b909:
-```
-
-2. If jupyter-lab is not installed, install jupyter-lab with `pip` by running the following command:
-
-   ```
-   pip install jupyterlab
+   ```sh
+   root@2efa5b50b909:
    ```
 
-   For more information, see [Installation Guide](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html).
+1. Start the jupyter-lab server by running the following command:
 
-3. Start the jupyter-lab server by running the following command:
-
-   ```
-   jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
+   ```shell
+   jupyter-lab --allow-root --ip='0.0.0.0'
    ```
 
-4. Open any browser to access the jupyter-lab server using <MachineIP>:8888.
+   View the messages in your terminal to identify the URL for JupyterLab.
+   The messages in your terminal show similar lines to the following example:
 
-5. Once in the server, navigate to the `/nvtabular/` directory and try out the examples.
+   ```shell
+   Or copy and paste one of these URLs:
+   http://2efa5b50b909:8888/lab?token=9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+   or http://127.0.0.1:8888/lab?token=9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+   ```
+
+1. Open a browser and use the `127.0.0.1` URL provided in the messages by JupyterLab.
+
+1. After you log in to JupyterLab, navigate to the `/nvtabular` directory to try out the example notebooks.
