@@ -688,4 +688,4 @@ def test_workflow_strict_mode_disabled():
     result_ddf = workflow.fit_transform(dataset, strict=False)
     result = result_ddf.compute()
 
-    assert result
+    assert result is not None
