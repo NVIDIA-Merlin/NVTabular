@@ -1,0 +1,43 @@
+﻿nvtabular.ops.TagAsItemID
+=========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: TagAsItemID
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TagAsItemID.__init__
+      ~TagAsItemID.column_mapping
+      ~TagAsItemID.compute_column_schema
+      ~TagAsItemID.compute_input_schema
+      ~TagAsItemID.compute_output_schema
+      ~TagAsItemID.compute_selector
+      ~TagAsItemID.create_node
+      ~TagAsItemID.inference_initialize
+      ~TagAsItemID.output_column_names
+      ~TagAsItemID.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TagAsItemID.dependencies
+      ~TagAsItemID.dynamic_dtypes
+      ~TagAsItemID.label
+      ~TagAsItemID.output_dtype
+      ~TagAsItemID.output_properties
+      ~TagAsItemID.output_tags
+      ~TagAsItemID.supports
+   
+   
