@@ -211,6 +211,8 @@ def test_groupby_column_names_containing_aggregations(cpu):
     # Initial dataset
     size = 60
     names = ["Dave", "Zelda"]
+    # The column to be aggregated contains name of an aggregation -- count.
+    # This could lead to it being cast to incorrect dtype.
     df1 = make_df(
         {
             "name": np.random.choice(names, size=size),
