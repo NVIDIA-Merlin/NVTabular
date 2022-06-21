@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nvtabular.ops.join_external &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>nvtabular.ops.join_external</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nvtabular.ops.join_external</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cudf</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">cudf</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DataFrameType</span><span class="p">,</span>
+    <span class="n">ExtData</span><span class="p">,</span>
+    <span class="n">arange</span><span class="p">,</span>
+    <span class="n">convert_data</span><span class="p">,</span>
+    <span class="n">create_merlin_dataset</span><span class="p">,</span>
+    <span class="n">detect_format</span><span class="p">,</span>
+    <span class="n">to_host</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
+
+<span class="kn">from</span> <span class="nn">.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
+
+
+<div class="viewcode-block" id="JoinExternal"><a class="viewcode-back" href="../../../generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal">[docs]</a><span class="k">class</span> <span class="nc">JoinExternal</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Join each dataset partition to an external table. For performance</span>
+<span class="sd">    reasons, only &quot;left&quot; and &quot;inner&quot; join transformations are supported.</span>
+
+<span class="sd">    Example usage::</span>
+
+<span class="sd">        # Load dataset which should be joined to the main dataset</span>
+<span class="sd">        df_external = cudf.read_parquet(&#39;external.parquet&#39;)</span>
+
+<span class="sd">        # Use JoinExternal to define a NVTabular workflow</span>
+<span class="sd">        joined = ColumnSelector(columns_left) &gt;&gt; nvt.ops.JoinExternal(</span>
+<span class="sd">            df_ext,</span>
+<span class="sd">            on=[&#39;key1&#39;, &#39;key2&#39;],</span>
+<span class="sd">            on_ext=[&#39;key1_ext&#39;, &#39;key2_ext&#39;],</span>
+<span class="sd">            how=&#39;left&#39;,</span>
+<span class="sd">            columns_ext=[&#39;key1_ext&#39;, &#39;key2_ext&#39;, &#39;cat1&#39;, &#39;cat2&#39;, &#39;num1&#39;],</span>
+<span class="sd">            kind_ext=&#39;cudf&#39;,</span>
+<span class="sd">            cache=&#39;device&#39;</span>
+<span class="sd">        ) &gt;&gt; ...</span>
+<span class="sd">        processor = nvtabular.Workflow(joined)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    df_ext : DataFrame, pyarrow.Table, Dataset, dd.DataFrame, or file path(s)</span>
+<span class="sd">        The external table to join to each partition of the dataset. Note</span>
+<span class="sd">        that the join must be a partition-wise transformation. Therefore,</span>
+<span class="sd">        if ``df_ext`` is a multi-partition Dask collection, it will need to</span>
+<span class="sd">        be broadcasted to every partition.</span>
+<span class="sd">    on : str or list(str)</span>
+<span class="sd">        Column name(s) to merge on</span>
+<span class="sd">    how : {&quot;left&quot;, &quot;inner&quot;}; default &quot;left&quot;</span>
+<span class="sd">        Type of join operation to perform.</span>
+<span class="sd">    on_ext : str or list(str); Optional</span>
+<span class="sd">        Column name(s) on external table to join on. By default,</span>
+<span class="sd">        we assume ``on_ext`` is the same as ``on``.</span>
+<span class="sd">    columns_ext : list(str); Optional</span>
+<span class="sd">        Subset of columns to select from external table before join.</span>
+<span class="sd">    drop_duplicates_ext : bool; Default False</span>
+<span class="sd">        Drop duplicates from external table before join.</span>
+<span class="sd">    kind_ext : ExtData; Optional</span>
+<span class="sd">        Format of ``df_ext``.  If nothing is specified, the format</span>
+<span class="sd">        will be inferred.</span>
+<span class="sd">    cache : {&quot;device&quot;, &quot;host&quot;, &quot;disk&quot;}</span>
+<span class="sd">        Where to cache ``df_ext`` between transformations. Only used</span>
+<span class="sd">        if the data is originally stored on disk. The &quot;host&quot; option</span>
+<span class="sd">        is also supported when ``df_ext`` is a ``cudf.DataFrame``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="JoinExternal.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">df_ext</span><span class="p">,</span>
+        <span class="n">on</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">on_ext</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">columns_ext</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">drop_duplicates_ext</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">kind_ext</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">cache</span><span class="o">=</span><span class="s2">&quot;host&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">JoinExternal</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on</span> <span class="o">=</span> <span class="n">on</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_ext</span> <span class="o">=</span> <span class="n">create_merlin_dataset</span><span class="p">(</span><span class="n">df_ext</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on_ext</span> <span class="o">=</span> <span class="n">on_ext</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">how</span> <span class="o">=</span> <span class="n">how</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kind_ext</span> <span class="o">=</span> <span class="n">kind_ext</span> <span class="ow">or</span> <span class="n">detect_format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_ext</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns_ext</span> <span class="o">=</span> <span class="n">columns_ext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drop_duplicates_ext</span> <span class="o">=</span> <span class="n">drop_duplicates_ext</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ext_cache</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">cudf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">how</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;inner&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only left join is currently supported.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kind_ext</span><span class="p">,</span> <span class="n">ExtData</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;kind_ext option not recognized.&quot;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_ext</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Return cached result if present</span>
+            <span class="k">return</span> <span class="n">convert_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ext_cache</span><span class="p">,</span> <span class="n">cpu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">)</span>
+
+        <span class="c1"># Use Dataset.to_ddf</span>
+        <span class="n">_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_ext</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span><span class="p">:</span>
+            <span class="n">_dataset</span><span class="o">.</span><span class="n">to_cpu</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_dataset</span><span class="o">.</span><span class="n">to_gpu</span><span class="p">()</span>
+        <span class="n">_ext</span> <span class="o">=</span> <span class="n">_check_partition_count</span><span class="p">(</span><span class="n">_dataset</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">columns_ext</span><span class="p">))</span>
+
+        <span class="c1"># Take subset of columns if a list is specified</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns_ext</span><span class="p">:</span>
+            <span class="n">_ext</span> <span class="o">=</span> <span class="n">_ext</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">columns_ext</span><span class="p">]</span>
+
+        <span class="c1"># Drop duplicates if requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_duplicates_ext</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_ext</span><span class="p">,</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+                <span class="n">_ext</span> <span class="o">=</span> <span class="n">_ext</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">_ext</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Cache and return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">==</span> <span class="s2">&quot;host&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ext_cache</span> <span class="o">=</span> <span class="n">to_host</span><span class="p">(</span><span class="n">_ext</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">==</span> <span class="s2">&quot;device&quot;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind_ext</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ExtData</span><span class="o">.</span><span class="n">PARQUET</span><span class="p">,</span> <span class="n">ExtData</span><span class="o">.</span><span class="n">CSV</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ext_cache</span> <span class="o">=</span> <span class="n">_ext</span>
+        <span class="k">return</span> <span class="n">_ext</span>
+
+    <span class="k">def</span> <span class="nf">_merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">_ext</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_ext</span><span class="p">,</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="n">_ddf</span> <span class="o">=</span> <span class="n">dd</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_ddf</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">_ext</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_ext</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">how</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">_ext</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on_ext</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">how</span><span class="p">)</span>
+
+<div class="viewcode-block" id="JoinExternal.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="s2">&quot;__tmp__&quot;</span>  <span class="c1"># Temporary column for sorting</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">tmp</span><span class="p">]</span> <span class="o">=</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">like_df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
+        <span class="n">new_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span><span class="p">)</span>
+        <span class="n">new_df</span> <span class="o">=</span> <span class="n">new_df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+        <span class="n">new_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">tmp</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">tmp</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">new_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_df</span></div>
+
+    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
+
+<div class="viewcode-block" id="JoinExternal.compute_selector"><a class="viewcode-back" href="../../../generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">parents_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">dependencies_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">parents_selector</span><span class="p">,</span> <span class="s2">&quot;computing input selector&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parents_selector</span></div>
+
+<div class="viewcode-block" id="JoinExternal.compute_output_schema"><a class="viewcode-back" href="../../../generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">prev_output_schema</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># must load in the schema from the external dataset</span>
+        <span class="n">input_schema</span> <span class="o">=</span> <span class="n">input_schema</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_ext</span><span class="o">.</span><span class="n">schema</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">compute_output_schema</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">prev_output_schema</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="JoinExternal.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">ext_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns_ext</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns_ext</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ext</span><span class="o">.</span><span class="n">columns</span>
+
+        <span class="c1"># This maintains the order which set() does not</span>
+        <span class="n">combined_col_names</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">ext_columns</span><span class="p">))</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">combined_col_names</span><span class="p">:</span>
+            <span class="n">column_mapping</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">col_dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_ext</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">col_dtype</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">col_schema</span>
+
+    <span class="k">def</span> <span class="nf">_compute_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">col_schema</span></div>
+
+
+<span class="k">def</span> <span class="nf">_check_partition_count</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s2">&quot;npartitions&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Materialize single-partition collections</span>
+            <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Joining an external Dask collection with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">npartitions</span><span class="si">}</span><span class="s2"> partitions. This transformation &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;requires a broadcast merge, which can be problematic &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;when the external collection is too large.&quot;</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
