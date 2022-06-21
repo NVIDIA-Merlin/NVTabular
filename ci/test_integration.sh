@@ -39,13 +39,13 @@ pytest $config tests/integration/test_notebooks.py::test_movielens
 # Run tests for specific containers
 if [ "$container" == "merlin-hugectr" ]; then
   pytest $config tests/integration/test_nvt_hugectr.py::test_training
-  pytest $config tests/integration/test_notebooks.py::test_criteo
-  pytest $config tests/integration/test_nvt_hugectr.py::test_inference
+  # pytest $config tests/integration/test_notebooks.py::test_criteo
+  # pytest $config tests/integration/test_nvt_hugectr.py::test_inference
 elif [ "$container" == "merlin-tensorflow" ]; then
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
 fi
