@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+
 import numpy
 from dask.dataframe.utils import meta_nonempty
 
@@ -34,10 +36,13 @@ class Groupby(Operator):
 
     Example usage::
 
+        groupby_cols = ['user_id', 'session_id']
+        dataset = dataset.shuffle_by_keys(keys=groupby_cols)
+
         groupby_features = [
             'user_id', 'session_id', 'month', 'prod_id',
         ] >> ops.Groupby(
-            groupby_cols=['user_id', 'session_id'],
+            groupby_cols=groupby_cols,
             sort_cols=['month'],
             aggs={
                 'prod_id': 'list',
@@ -46,10 +51,15 @@ class Groupby(Operator):
         )
         processor = nvtabular.Workflow(groupby_features)
 
+        workflow.fit(dataset)
+        dataset_transformed = workflow.transform(dataset)
+
     Parameters
     -----------
     groupby_cols : str or list of str
         The column names to be used as groupby keys.
+        WARNING: Ensure the dataset was partitioned by those
+        groupby keys (see above for an example).
     sort_cols : str or list of str
         Columns to be used to sort each partition before
         groupby aggregation is performed. If this argument
@@ -176,7 +186,14 @@ class Groupby(Operator):
         dtype = col_schema.dtype
         is_list = col_schema.is_list
 
-        dtypes = {"count": numpy.int32, "mean": numpy.float32}
+        dtypes = {
+            "count": numpy.int32,
+            "nunique": numpy.int32,
+            "mean": numpy.float32,
+            "var": numpy.float32,
+            "std": numpy.float32,
+            "median": numpy.float32,
+        }
 
         is_lists = {"list": True}
 
@@ -227,9 +244,9 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascendi
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
 
     for col in df.columns:
-        if col.endswith(f"{name_sep}count"):
+        if re.search(f"{name_sep}(count|nunique)", col):
             df[col] = df[col].astype(numpy.int32)
-        elif col.endswith(f"{name_sep}mean"):
+        elif re.search(f"{name_sep}(mean|median|std|var)", col):
             df[col] = df[col].astype(numpy.float32)
 
     return df

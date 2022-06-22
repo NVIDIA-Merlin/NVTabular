@@ -14,13 +14,12 @@
 # limitations under the License.
 #
 import os
-import subprocess
 import sys
-from distutils.spawn import find_executable
 
 from pybind11.setup_helpers import Pybind11Extension
 from pybind11.setup_helpers import build_ext as build_pybind11
 from setuptools import find_namespace_packages, find_packages, setup
+from setuptools.command.develop import develop as _develop
 
 try:
     import versioneer
@@ -33,33 +32,12 @@ except ImportError:
     import versioneer
 
 
-class build_pybind_and_proto(build_pybind11):
+class develop(_develop):
     def run(self):
-        build_pybind11.run(self)
-        protoc = None
-        if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
-            protoc = os.environ["PROTOC"]
-        else:
-            protoc = find_executable("protoc")
-        if protoc is None:
-            sys.stderr.write("protoc not found")
-            sys.exit(1)
-
-        # need to set this environment variable otherwise we get an error like "
-        #  model_config.proto: A file with this name is already in the pool. " when
-        # importing the generated file
-        env = os.environ.copy()
-        env["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-
-        for source in ["nvtabular/inference/triton/model_config.proto"]:
-            output = source.replace(".proto", "_pb2.py")
-            pwd = os.path.dirname(output)
-            if not os.path.exists(output) or (os.path.getmtime(source) > os.path.getmtime(output)):
-                print("Generating", output, "from", source)
-                cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
-                subprocess.check_call(cmd, env=env)
-            else:
-                print("not regenerating", output, " - file exists and proto hasn't been updated")
+        # running setup.py develop doesn't seem to run 'build_py' force this to run
+        # so we get our proto files installed
+        self.run_command("build_py")
+        super().run()
 
 
 ext_modules = [
@@ -78,7 +56,8 @@ ext_modules = [
 
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = build_pybind_and_proto
+cmdclass["build_ext"] = build_pybind11
+cmdclass["develop"] = develop
 
 
 def parse_requirements(filename):

@@ -19,8 +19,7 @@ set -e
 
 # Call this script with:
 # 1. Name of container as first parameter
-#    [merlin-training,  merlin-tensorflow-training,  merlin-pytorch-training, 
-#     merlin-inference, merlin-tensorflow-inference, merlin-pytorch-inference]
+#    [merlin-hugectr,  merlin-tensorflow,  merlin-pytorch]
 #
 # 2. Devices to use:
 #    [0; 0,1; 0,1,..,n-1]
@@ -33,27 +32,20 @@ container=$1
 config="-rsx --devices $2"
 
 # Run tests for training containers
-regex="merlin(.)*-inference"
-if [[ ! "$container" =~ $regex ]]; then
-  #pytest $config tests/integration/test_notebooks.py::test_criteo
-  pytest $config tests/integration/test_notebooks.py::test_rossman
-  pytest $config tests/integration/test_notebooks.py::test_movielens
-fi
+#pytest $config tests/integration/test_notebooks.py::test_criteo
+pytest $config tests/integration/test_notebooks.py::test_rossman
+pytest $config tests/integration/test_notebooks.py::test_movielens
 
 # Run tests for specific containers
-if [ "$container" == "merlin-training" ]; then
+if [ "$container" == "merlin-hugectr" ]; then
   pytest $config tests/integration/test_nvt_hugectr.py::test_training
-elif [ "$container" == "merlin-tensorflow-training" ]; then
+  # pytest $config tests/integration/test_notebooks.py::test_criteo
+  # pytest $config tests/integration/test_nvt_hugectr.py::test_inference
+elif [ "$container" == "merlin-tensorflow" ]; then
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference
-elif [ "$container" == "merlin-tensorflow-inference" ]; then
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
-  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
-elif [ "$container" == "merlin-inference" ]; then
-  pytest $config tests/integration/test_notebooks.py::test_criteo
-  pytest $config tests/integration/test_nvt_hugectr.py::test_inference
-else
-  echo "No tests to run for this container"
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
+  # pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
 fi

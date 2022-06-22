@@ -65,7 +65,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         list with column names of columns that should be represented as sparse tensors
     sparse_max : {str: int}
         dictionary of key: column_name + value: integer representing max sequence length for column
-    sparse_dense : bool
+    sparse_as_dense : bool
         bool value to activate transforming sparse tensors to dense
     """
 
