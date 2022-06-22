@@ -120,8 +120,8 @@ def test_criteo(asv_db, bench_info, tmpdir, report):
 
 def test_rossman(asv_db, bench_info, tmpdir, devices, report):
     data_path = os.path.join(DATA_DIR, "rossman/data")
-    input_path = os.path.join(DATA_DIR, "rossman/input")
-    output_path = os.path.join(DATA_DIR, "rossman/output")
+    input_path = "rossman/input"
+    output_path = "rossman/output"
 
     # Run Download & Convert for all
     notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "01-Download-Convert.ipynb")
