@@ -1,0 +1,43 @@
+﻿nvtabular.ops.ListSlice
+=======================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: ListSlice
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ListSlice.__init__
+      ~ListSlice.column_mapping
+      ~ListSlice.compute_column_schema
+      ~ListSlice.compute_input_schema
+      ~ListSlice.compute_output_schema
+      ~ListSlice.compute_selector
+      ~ListSlice.create_node
+      ~ListSlice.inference_initialize
+      ~ListSlice.output_column_names
+      ~ListSlice.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ListSlice.dependencies
+      ~ListSlice.dynamic_dtypes
+      ~ListSlice.label
+      ~ListSlice.output_dtype
+      ~ListSlice.output_properties
+      ~ListSlice.output_tags
+      ~ListSlice.supports
+   
+   
