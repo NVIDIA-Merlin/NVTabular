@@ -48,8 +48,9 @@ class Normalize(StatOperator):
 
     Parameters
     -----------
-    out_dtype : str, default is float64
-        dtype of output columns.
+    out_dtype : str
+        Specifies the data type for the output columns. The default value is `numpy.float64` if
+        not set here
     """
 
     def __init__(self, out_dtype=None):
