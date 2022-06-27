@@ -110,3 +110,7 @@ To run the example notebooks using Docker containers, do the following:
 1. Open a browser and use the `127.0.0.1` URL provided in the messages by JupyterLab.
 
 1. After you log in to JupyterLab, navigate to the `/nvtabular` directory to try out the example notebooks.
+
+## Troubleshooting
+
+If you experience any trouble running the example notebooks, check the latest [troubleshooting](https://nvidia-merlin.github.io/NVTabular/main/resources/troubleshooting.html) documentation.
