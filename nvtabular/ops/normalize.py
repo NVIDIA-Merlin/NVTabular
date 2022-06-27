@@ -48,7 +48,7 @@ class Normalize(StatOperator):
 
     Parameters
     -----------
-    out_dtype : str, default is problem-specific
+    out_dtype : str, default is float64
         dtype of output columns.
     """
 
@@ -127,7 +127,7 @@ class NormalizeMinMax(StatOperator):
 
     Parameters
     -----------
-    out_dtype : str, default is problem-specific
+    out_dtype : str, default is float64
         dtype of output columns.
     """
 
