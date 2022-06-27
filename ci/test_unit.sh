@@ -18,6 +18,5 @@
 set -e
 
 # Run tests
-export PYTHONPATH=/nvtabular:$PYTHONPATH
 pytest -rsx /nvtabular/tests/unit
 
