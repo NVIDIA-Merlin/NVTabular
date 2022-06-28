@@ -97,7 +97,7 @@
 <h1>nvtabular.ops.Normalize<a class="headerlink" href="#nvtabular-ops-normalize" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt id="nvtabular.ops.Normalize">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">Normalize</span></code><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#Normalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Normalize" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">Normalize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#Normalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Normalize" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator</span></code></p>
 <p>Standardizing the features around 0 with a standard deviation
 of 1 is a common technique to compare measurements that have
@@ -110,9 +110,15 @@ to standardize the features.</p>
 <span class="n">processor</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cont_features</span><span class="p">)</span>
 </pre></div>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>out_dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Specifies the data type for the output columns. The default value is <cite>numpy.float64</cite> if
+not set here</p>
+</dd>
+</dl>
 <dl class="py method">
 <dt id="nvtabular.ops.Normalize.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#Normalize.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Normalize.__init__" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#Normalize.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Normalize.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -122,7 +128,7 @@ to standardize the features.</p>
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Normalize.__init__" title="nvtabular.ops.Normalize.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Normalize.__init__" title="nvtabular.ops.Normalize.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([out_dtype])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Normalize.clear" title="nvtabular.ops.Normalize.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>()</p></td>

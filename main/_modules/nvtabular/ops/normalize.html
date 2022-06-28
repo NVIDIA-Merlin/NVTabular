@@ -122,12 +122,18 @@
 <span class="sd">        cont_features = CONTINUOUS_COLUMNS &gt;&gt; ops.Normalize()</span>
 <span class="sd">        processor = nvtabular.Workflow(cont_features)</span>
 
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    out_dtype : str</span>
+<span class="sd">        Specifies the data type for the output columns. The default value is `numpy.float64` if</span>
+<span class="sd">        not set here</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="Normalize.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Normalize.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stds</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="o">=</span> <span class="n">out_dtype</span></div>
 
 <div class="viewcode-block" id="Normalize.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.fit">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;Normalize_fit&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
@@ -179,7 +185,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float64</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="ow">or</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float64</span>
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
     <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
@@ -196,12 +202,17 @@
 <span class="sd">        cont_features = CONTINUOUS_COLUMNS &gt;&gt; ops.NormalizeMinMax()</span>
 <span class="sd">        processor = nvtabular.Workflow(cont_features)</span>
 
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    out_dtype : str, default is float64</span>
+<span class="sd">        dtype of output columns.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="NormalizeMinMax.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="NormalizeMinMax.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mins</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="o">=</span> <span class="n">out_dtype</span></div>
 
 <div class="viewcode-block" id="NormalizeMinMax.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;NormalizeMinMax_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">):</span>
@@ -253,7 +264,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float64</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="ow">or</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float64</span>
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
     <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
