@@ -244,9 +244,9 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascendi
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
 
     for col in df.columns:
-        if re.search(f"{name_sep}(count|nunique)", col):
+        if re.search(f"{name_sep}(count|nunique)$", col):
             df[col] = df[col].astype(numpy.int32)
-        elif re.search(f"{name_sep}(mean|median|std|var)", col):
+        elif re.search(f"{name_sep}(mean|median|std|var)$", col):
             df[col] = df[col].astype(numpy.float32)
 
     return df

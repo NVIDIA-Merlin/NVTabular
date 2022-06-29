@@ -46,12 +46,18 @@ class Normalize(StatOperator):
         cont_features = CONTINUOUS_COLUMNS >> ops.Normalize()
         processor = nvtabular.Workflow(cont_features)
 
+    Parameters
+    -----------
+    out_dtype : str
+        Specifies the data type for the output columns. The default value is `numpy.float64` if
+        not set here
     """
 
-    def __init__(self):
+    def __init__(self, out_dtype=None):
         super().__init__()
         self.means = {}
         self.stds = {}
+        self.out_dtype = out_dtype
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
@@ -103,7 +109,7 @@ class Normalize(StatOperator):
 
     @property
     def output_dtype(self):
-        return numpy.float64
+        return self.out_dtype or numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -120,12 +126,17 @@ class NormalizeMinMax(StatOperator):
         cont_features = CONTINUOUS_COLUMNS >> ops.NormalizeMinMax()
         processor = nvtabular.Workflow(cont_features)
 
+    Parameters
+    -----------
+    out_dtype : str, default is float64
+        dtype of output columns.
     """
 
-    def __init__(self):
+    def __init__(self, out_dtype=None):
         super().__init__()
         self.mins = {}
         self.maxs = {}
+        self.out_dtype = out_dtype
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType):
@@ -177,7 +188,7 @@ class NormalizeMinMax(StatOperator):
 
     @property
     def output_dtype(self):
-        return numpy.float64
+        return self.out_dtype or numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
