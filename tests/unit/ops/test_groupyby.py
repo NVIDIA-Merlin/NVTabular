@@ -204,3 +204,32 @@ def test_groupby_casting_in_aggregations(cpu):
                 with_agg = new_gdf.loc[new_gdf.name == name, f"{col}-{agg}"]
                 with_agg = with_agg.item() if hasattr(with_agg, "item") else with_agg.loc[0][0]
                 assert np.allclose(without_agg, with_agg)
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_column_names_containing_aggregations(cpu):
+    # Initial dataset
+    size = 60
+    names = ["Dave", "Zelda"]
+    # The column to be aggregated contains name of an aggregation -- count.
+    # This could lead to it being cast to incorrect dtype.
+    df1 = make_df(
+        {
+            "name": np.random.choice(names, size=size),
+            "test_score_counting_to_10": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+
+    # Create a ddf, and be sure to shuffle by the groupby keys
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle("name")
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    # Define Groupby Workflow
+    groupby_features = ["name", "test_score_counting_to_10"] >> ops.Groupby(
+        groupby_cols="name", aggs={"test_score_counting_to_10": "mean"}
+    )
+    processor = nvt.Workflow(groupby_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    assert new_gdf is not None
