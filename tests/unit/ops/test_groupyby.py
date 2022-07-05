@@ -164,6 +164,7 @@ def test_groupby_selector_cols():
     # If groupby_cols aren't included in the selector, they shouldn't be in the output
     assert "name" not in workflow.output_node.output_schema.column_names
 
+
 @pytest.mark.parametrize("cpu", _CPU)
 def test_groupby_without_selector_in_groupby_cols(cpu):
     # Initial sales dataset
@@ -178,13 +179,12 @@ def test_groupby_without_selector_in_groupby_cols(cpu):
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(["day"])
     dataset = nvt.Dataset(ddf1, cpu=cpu)
 
-    groupby_features = ["product_id"] >> ops.Groupby(
-        groupby_cols=["day"], aggs="count"
-    )
+    groupby_features = ["product_id"] >> ops.Groupby(groupby_cols=["day"], aggs="count")
 
     processor = nvt.Workflow(groupby_features)
     processor.fit(dataset)
-    processor.transform(dataset).to_ddf().compute()
+    assert processor.transform(dataset).to_ddf().compute().columns.tolist() == ["product_id_count"]
+
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_groupby_casting_in_aggregations(cpu):
