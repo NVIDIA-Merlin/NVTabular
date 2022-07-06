@@ -29,7 +29,7 @@ import logging
 import pathlib
 
 import numpy as np
-import triton_python_backend_utils as tpb
+import triton_python_backend_utils as pb_utils
 
 import nvtabular
 from merlin.core.dispatch import is_list_dtype
@@ -86,8 +86,8 @@ class TritonPythonModel:
         )
 
     def _set_output_dtype(self, name):
-        conf = tpb.get_output_config_by_name(self.model_config, name)
-        self.output_dtypes[name] = tpb.triton_string_to_numpy(conf["data_type"])
+        conf = pb_utils.get_output_config_by_name(self.model_config, name)
+        self.output_dtypes[name] = pb_utils.triton_string_to_numpy(conf["data_type"])
 
     def execute(self, requests):
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -97,21 +97,25 @@ class TritonPythonModel:
         for request in requests:
             # transform the triton tensors to a dict of name:numpy tensor
             input_tensors = {
-                name: _convert_tensor(tpb.get_input_tensor_by_name(request, name))
+                name: _convert_tensor(pb_utils.get_input_tensor_by_name(request, name))
                 for name in self.input_dtypes
             }
 
             # multihots are represented as a tuple of (values, offsets)
             for name, dtype in self.input_multihots.items():
-                values = _convert_tensor(tpb.get_input_tensor_by_name(request, name + "__values"))
-                offsets = _convert_tensor(tpb.get_input_tensor_by_name(request, name + "__nnzs"))
+                values = _convert_tensor(
+                    pb_utils.get_input_tensor_by_name(request, name + "__values")
+                )
+                offsets = _convert_tensor(
+                    pb_utils.get_input_tensor_by_name(request, name + "__nnzs")
+                )
                 input_tensors[name] = (values, offsets)
 
             raw_tensor_tuples = self.runner.run_workflow(input_tensors)
 
-            result = [tpb.Tensor(name, data) for name, data in raw_tensor_tuples]
+            result = [pb_utils.Tensor(name, data) for name, data in raw_tensor_tuples]
 
-            responses.append(tpb.InferenceResponse(result))
+            responses.append(pb_utils.InferenceResponse(result))
 
         return responses
 
