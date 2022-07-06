@@ -26,8 +26,7 @@
 
 import json
 import logging
-import os
-from pathlib import Path
+import pathlib
 
 import cloudpickle
 import torch
@@ -45,27 +44,36 @@ class TritonPythonModel:
     """Generic TritonPythonModel for nvtabular workflows"""
 
     def initialize(self, args):
+        # Arg parsing
+        repository_path = pathlib.Path(args["model_repository"])
+        model_version = str(args["model_version"])
+
+        # Handle bug in Tritonserver 22.06
+        # model_repository argument became path to model.py
+        if str(repository_path).endswith(".py"):
+            repository_path = repository_path.parent.parent
+
+        model_path = repository_path / model_version / "model.pkl"
 
         # Load the pickled PyTorch model
-        model_path = os.path.join(args["model_repository"], str(args["model_version"]), "model.pkl")
-        self.model = cloudpickle.load(open(model_path, "rb"))  # pylint: disable=consider-using-with
+        self.model = cloudpickle.load(
+            open(str(model_path), "rb")  # pylint: disable=consider-using-with
+        )
 
         # Load the state dict of the PyTorch model
-        model_path = os.path.join(args["model_repository"], str(args["model_version"]), "model.pth")
-        self.model.load_state_dict(torch.load(model_path))
+        model_path = repository_path / model_version / "model.pth"
+        self.model.load_state_dict(torch.load(str(model_path)))
         self.model.eval()
 
         # Load model config file
         self.model_config = json.loads(args["model_config"])
 
         # Load extra info needed for the Transformer4Rec (if exists)
-        model_info_path = os.path.join(
-            args["model_repository"], str(args["model_version"]), "model_info.json"
-        )
+        model_info_path = repository_path / model_version / "model_info.json"
         self.model_info = None
-        model_info_file = Path(model_info_path)
+        model_info_file = pathlib.Path(model_info_path)
         if model_info_file.exists():
-            with open(model_info_path, encoding="utf-8") as json_file:
+            with open(str(model_info_path), encoding="utf-8") as json_file:
                 self.model_info = json.load(json_file)
 
         # Get the name of the dense and sparse inputs, and the outputs

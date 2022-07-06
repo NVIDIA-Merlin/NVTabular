@@ -48,7 +48,13 @@ class TritonPythonModel:
 
     def initialize(self, args):
         # Arg parsing
-        repository_path = pathlib.Path(args["model_repository"]).parent.parent
+        repository_path = pathlib.Path(args["model_repository"])
+
+        # Handle bug in Tritonserver 22.06
+        # model_repository argument became path to model.py
+        if str(repository_path).endswith(".py"):
+            repository_path = repository_path.parent.parent
+
         workflow_path = repository_path / str(args["model_version"]) / "workflow"
         model_device = args["model_instance_kind"]
 
