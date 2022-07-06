@@ -1,0 +1,47 @@
+﻿nvtabular.ops.ValueCount
+========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: ValueCount
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ValueCount.__init__
+      ~ValueCount.clear
+      ~ValueCount.column_mapping
+      ~ValueCount.compute_column_schema
+      ~ValueCount.compute_input_schema
+      ~ValueCount.compute_output_schema
+      ~ValueCount.compute_selector
+      ~ValueCount.create_node
+      ~ValueCount.fit
+      ~ValueCount.fit_finalize
+      ~ValueCount.inference_initialize
+      ~ValueCount.output_column_names
+      ~ValueCount.set_storage_path
+      ~ValueCount.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ValueCount.dependencies
+      ~ValueCount.dynamic_dtypes
+      ~ValueCount.label
+      ~ValueCount.output_dtype
+      ~ValueCount.output_properties
+      ~ValueCount.output_tags
+      ~ValueCount.supports
+   
+   
