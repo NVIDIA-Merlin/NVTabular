@@ -166,6 +166,27 @@ def test_groupby_selector_cols():
 
 
 @pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_without_selector_in_groupby_cols(cpu):
+    # Initial sales dataset
+    size = 60
+    df1 = make_df(
+        {
+            "product_id": np.random.randint(10, size=size),
+            "day": np.random.randint(7, size=size),
+            "price": np.random.rand(size),
+        }
+    )
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(["day"])
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    groupby_features = ["product_id"] >> ops.Groupby(groupby_cols=["day"], aggs="count")
+
+    processor = nvt.Workflow(groupby_features)
+    processor.fit(dataset)
+    assert processor.transform(dataset).to_ddf().compute().columns.tolist() == ["product_id_count"]
+
+
+@pytest.mark.parametrize("cpu", _CPU)
 def test_groupby_casting_in_aggregations(cpu):
     # Initial dataset
     size = 60

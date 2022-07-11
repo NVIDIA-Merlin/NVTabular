@@ -180,6 +180,10 @@ class Groupby(Operator):
 
         return column_mapping
 
+    @property
+    def dependencies(self):
+        return self.groupby_cols
+
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
