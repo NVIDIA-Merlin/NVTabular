@@ -1,0 +1,44 @@
+﻿nvtabular.ops.HashBucket
+========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: HashBucket
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~HashBucket.__init__
+      ~HashBucket.column_mapping
+      ~HashBucket.compute_column_schema
+      ~HashBucket.compute_input_schema
+      ~HashBucket.compute_output_schema
+      ~HashBucket.compute_selector
+      ~HashBucket.create_node
+      ~HashBucket.get_embedding_sizes
+      ~HashBucket.inference_initialize
+      ~HashBucket.output_column_names
+      ~HashBucket.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HashBucket.dependencies
+      ~HashBucket.dynamic_dtypes
+      ~HashBucket.label
+      ~HashBucket.output_dtype
+      ~HashBucket.output_properties
+      ~HashBucket.output_tags
+      ~HashBucket.supports
+   
+   
