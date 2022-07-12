@@ -20,7 +20,11 @@ import pandas as pd
 from dask.core import flatten
 
 from merlin.core.dispatch import concat_columns, is_list_dtype, list_val_dtype
-from merlin.core.utils import ensure_optimize_dataframe_graph, global_dask_client
+from merlin.core.utils import (
+    ensure_optimize_dataframe_graph,
+    global_dask_client,
+    set_client_deprecated,
+)
 from merlin.dag import ColumnSelector, Node
 from merlin.io.worker import clean_worker_cache
 
@@ -128,8 +132,16 @@ class MerlinPythonExecutor:
 
 
 class MerlinDaskExecutor:
-    def __init__(self):
+    def __init__(self, client=None):
         self._executor = MerlinPythonExecutor()
+
+        # Deprecate `client`
+        if client is not None:
+            set_client_deprecated(client, "Workflow")
+
+    def __getstate__(self):
+        # dask client objects aren't picklable - exclude from saved representation
+        return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def apply(self, ddf, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False):
         """

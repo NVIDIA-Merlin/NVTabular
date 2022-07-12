@@ -29,7 +29,6 @@ except ImportError:
     cudf = None
 import pandas as pd
 
-from merlin.core.utils import set_client_deprecated
 from merlin.dag import Graph
 from merlin.io import Dataset
 from merlin.schema import Schema
@@ -72,11 +71,8 @@ class Workflow:
     """
 
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
-        # Deprecate `client`
-        if client is not None:
-            set_client_deprecated(client, "Workflow")
         self.graph = Graph(output_node)
-        self.executor = MerlinDaskExecutor()
+        self.executor = MerlinDaskExecutor(client)
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -349,10 +345,6 @@ class Workflow:
             stat.op.set_storage_path(path, copy=False)
 
         return workflow
-
-    def __getstate__(self):
-        # dask client objects aren't picklable - exclude from saved representation
-        return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
         """Removes calculated statistics from each node in the workflow graph
