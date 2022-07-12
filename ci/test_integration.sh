@@ -24,9 +24,7 @@ set -e
 # 2. Devices to use:
 #    [0; 0,1; 0,1,..,n-1]
 
-# Get last NVTabular version
 cd /nvtabular/
-git pull origin main
 
 container=$1
 config="-rsx --devices $2"
