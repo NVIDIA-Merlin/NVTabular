@@ -31,11 +31,7 @@ import dask
 import pandas as pd
 
 import nvtabular
-from merlin.core.utils import (
-    ensure_optimize_dataframe_graph,
-    global_dask_client,
-    set_client_deprecated,
-)
+from merlin.core.utils import global_dask_client, set_client_deprecated
 from merlin.dag import Graph
 from merlin.io import Dataset
 from merlin.schema import Schema
@@ -221,13 +217,11 @@ class Workflow:
 
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = ensure_optimize_dataframe_graph(
-                    ddf=self.executor.apply(
-                        ddf,
-                        workflow_node.parents_with_dependencies,
-                        additional_columns=addl_input_cols,
-                        capture_dtypes=True,
-                    )
+                transformed_ddf = self.executor.apply(
+                    ddf,
+                    workflow_node.parents_with_dependencies,
+                    additional_columns=addl_input_cols,
+                    capture_dtypes=True,
                 )
 
                 op = workflow_node.op

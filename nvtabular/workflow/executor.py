@@ -19,7 +19,7 @@ import pandas as pd
 from dask.core import flatten
 
 from merlin.core.dispatch import concat_columns, is_list_dtype, list_val_dtype
-from merlin.core.utils import global_dask_client
+from merlin.core.utils import ensure_optimize_dataframe_graph, global_dask_client
 from merlin.dag import Node
 from merlin.io.worker import clean_worker_cache
 
@@ -165,13 +165,15 @@ class MerlinDaskExecutor:
             # don't require dtype information on the DDF this doesn't matter all that much
             output_dtypes = type(ddf._meta)({k: [] for k in columns})
 
-        return ddf.map_partitions(
-            self._executor.apply,
-            nodes,
-            additional_columns=additional_columns,
-            capture_dtypes=capture_dtypes,
-            meta=output_dtypes,
-            enforce_metadata=False,
+        return ensure_optimize_dataframe_graph(
+            ddf=ddf.map_partitions(
+                self._executor.apply,
+                nodes,
+                additional_columns=additional_columns,
+                capture_dtypes=capture_dtypes,
+                meta=output_dtypes,
+                enforce_metadata=False,
+            )
         )
 
     def _clear_worker_cache(self):
