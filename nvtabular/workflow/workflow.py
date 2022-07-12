@@ -38,7 +38,6 @@ from merlin.core.utils import (
 )
 from merlin.dag import Graph
 from merlin.io import Dataset
-from merlin.io.worker import clean_worker_cache
 from merlin.schema import Schema
 from nvtabular.ops import StatOperator
 from nvtabular.workflow.executor import MerlinDaskExecutor
@@ -83,6 +82,7 @@ class Workflow:
         if client is not None:
             set_client_deprecated(client, "Workflow")
         self.graph = Graph(output_node)
+        self.executor = MerlinDaskExecutor()
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -180,7 +180,6 @@ class Workflow:
         Workflow
             This Workflow with statistics calculated on it
         """
-        self._clear_worker_cache()
         self.clear_stats()
 
         if not self.graph.output_schema:
@@ -222,10 +221,8 @@ class Workflow:
 
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                executor = MerlinDaskExecutor()
-
                 transformed_ddf = ensure_optimize_dataframe_graph(
-                    ddf=executor.apply(
+                    ddf=self.executor.apply(
                         ddf,
                         workflow_node.parents_with_dependencies,
                         additional_columns=addl_input_cols,
@@ -288,17 +285,13 @@ class Workflow:
         return self.transform(dataset)
 
     def _transform_impl(self, dataset: Dataset, capture_dtypes=False):
-        self._clear_worker_cache()
-
         if not self.graph.output_schema:
             self.graph.construct_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
-        executor = MerlinDaskExecutor()
-
         return Dataset(
-            executor.apply(
+            self.executor.apply(
                 ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
             ),
             cpu=dataset.cpu,
@@ -416,14 +409,6 @@ class Workflow:
         """
         for stat in _get_stat_ops([self.output_node]):
             stat.op.clear()
-
-    def _clear_worker_cache(self):
-        # Clear worker caches to be "safe"
-        dask_client = global_dask_client()
-        if dask_client:
-            dask_client.run(clean_worker_cache)
-        else:
-            clean_worker_cache()
 
 
 def _get_stat_ops(nodes):

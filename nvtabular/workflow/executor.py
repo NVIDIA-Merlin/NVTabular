@@ -19,7 +19,9 @@ import pandas as pd
 from dask.core import flatten
 
 from merlin.core.dispatch import concat_columns, is_list_dtype, list_val_dtype
+from merlin.core.utils import global_dask_client
 from merlin.dag import Node
+from merlin.io.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
 
@@ -134,6 +136,8 @@ class MerlinDaskExecutor:
         from a collection of Nodes
         """
 
+        self._clear_worker_cache()
+
         # Check if we are only selecting columns (no transforms).
         # If so, we should perform column selection at the ddf level.
         # Otherwise, Dask will not push the column selection into the
@@ -169,6 +173,14 @@ class MerlinDaskExecutor:
             meta=output_dtypes,
             enforce_metadata=False,
         )
+
+    def _clear_worker_cache(self):
+        # Clear worker caches to be "safe"
+        dask_client = global_dask_client()
+        if dask_client:
+            dask_client.run(clean_worker_cache)
+        else:
+            clean_worker_cache()
 
 
 def get_unique(cols):
