@@ -29,7 +29,6 @@ except ImportError:
     cudf = None
 import dask
 import pandas as pd
-from dask.core import flatten
 
 import nvtabular
 from merlin.core.utils import (
@@ -42,7 +41,7 @@ from merlin.io import Dataset
 from merlin.io.worker import clean_worker_cache
 from merlin.schema import Schema
 from nvtabular.ops import StatOperator
-from nvtabular.workflow.executor import MerlinPythonExecutor, get_unique
+from nvtabular.workflow.executor import MerlinDaskExecutor
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
@@ -223,8 +222,10 @@ class Workflow:
 
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
+                executor = MerlinDaskExecutor()
+
                 transformed_ddf = ensure_optimize_dataframe_graph(
-                    ddf=_transform_ddf(
+                    ddf=executor.apply(
                         ddf,
                         workflow_node.parents_with_dependencies,
                         additional_columns=addl_input_cols,
@@ -293,8 +294,11 @@ class Workflow:
             self.graph.construct_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
+
+        executor = MerlinDaskExecutor()
+
         return Dataset(
-            _transform_ddf(
+            executor.apply(
                 ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
             ),
             cpu=dataset.cpu,
@@ -420,46 +424,6 @@ class Workflow:
             dask_client.run(clean_worker_cache)
         else:
             clean_worker_cache()
-
-
-def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, capture_dtypes=False):
-    # Check if we are only selecting columns (no transforms).
-    # If so, we should perform column selection at the ddf level.
-    # Otherwise, Dask will not push the column selection into the
-    # IO function.
-    if not workflow_nodes:
-        return ddf[get_unique(additional_columns)] if additional_columns else ddf
-
-    if isinstance(workflow_nodes, WorkflowNode):
-        workflow_nodes = [workflow_nodes]
-
-    columns = list(flatten(wfn.output_columns.names for wfn in workflow_nodes))
-    columns += additional_columns if additional_columns else []
-
-    if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):
-        dtypes = meta
-        meta = type(ddf._meta)({k: [] for k in columns})
-        for column, dtype in dtypes.items():
-            meta[column] = meta[column].astype(dtype)
-
-    elif not meta:
-        # TODO: constructing meta like this loses dtype information on the ddf
-        # and sets it all to 'float64'. We should propagate dtype information along
-        # with column names in the columngroup graph. This currently only
-        # happesn during intermediate 'fit' transforms, so as long as statoperators
-        # don't require dtype information on the DDF this doesn't matter all that much
-        meta = type(ddf._meta)({k: [] for k in columns})
-
-    executor = MerlinPythonExecutor()
-
-    return ddf.map_partitions(
-        executor.apply,
-        workflow_nodes,
-        additional_columns=additional_columns,
-        capture_dtypes=capture_dtypes,
-        meta=meta,
-        enforce_metadata=False,
-    )
 
 
 def _get_stat_ops(nodes):
