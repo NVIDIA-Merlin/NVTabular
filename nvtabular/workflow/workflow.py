@@ -181,8 +181,8 @@ class Workflow:
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
         stat_op_nodes = {
-            node: _get_stat_op_nodes(node.parents_with_dependencies)
-            for node in _get_stat_op_nodes([self.graph.output_node])
+            node: Graph.get_nodes_by_op_type(node.parents_with_dependencies, StatOperator)
+            for node in Graph.get_nodes_by_op_type([self.graph.output_node], StatOperator)
         }
 
         while stat_op_nodes:
@@ -266,7 +266,7 @@ class Workflow:
 
         # point all stat ops to store intermediate output (parquet etc) at the path
         # this lets us easily bundle
-        for stat in _get_stat_op_nodes([self.output_node]):
+        for stat in Graph.get_nodes_by_op_type([self.output_node], StatOperator):
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
@@ -341,7 +341,7 @@ class Workflow:
 
         # we might have been copied since saving, update all the stat ops
         # with the new path to their storage locations
-        for stat in _get_stat_op_nodes([workflow.output_node]):
+        for stat in Graph.get_nodes_by_op_type([workflow.output_node], StatOperator):
             stat.op.set_storage_path(path, copy=False)
 
         return workflow
@@ -353,9 +353,5 @@ class Workflow:
         --------
         nvtabular.ops.stat_operator.StatOperator.clear
         """
-        for stat in _get_stat_op_nodes([self.output_node]):
+        for stat in Graph.get_nodes_by_op_type([self.graph.output_node], StatOperator):
             stat.op.clear()
-
-
-def _get_stat_op_nodes(nodes):
-    return Graph.get_nodes_by_op_type(nodes, StatOperator)
