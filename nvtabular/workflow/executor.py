@@ -25,11 +25,14 @@ LOG = logging.getLogger("nvtabular")
 
 
 class MerlinPythonExecutor:
-    def apply(self, root_df, workflow_nodes, additional_columns=None, capture_dtypes=False):
-        """Transforms a single partition by appyling all operators in a WorkflowNode"""
+    def apply(self, df, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False):
+        """
+        Transforms a single dataframe (possibly a partition of a Dask Dataframe)
+        by applying the operators from a collection of Nodes
+        """
         output = None
 
-        for node in workflow_nodes:
+        for node in nodes:
             node_input_cols = get_unique(node.input_schema.column_names)
             node_output_cols = get_unique(node.output_schema.column_names)
             addl_input_cols = set(node.dependency_columns.names)
@@ -43,7 +46,7 @@ class MerlinPythonExecutor:
 
                 for parent in node.parents_with_dependencies:
                     parent_output_cols = get_unique(parent.output_schema.column_names)
-                    parent_df = self.apply(root_df, [parent], capture_dtypes=capture_dtypes)
+                    parent_df = self.apply(df, [parent], capture_dtypes=capture_dtypes)
                     if input_df is None or not len(input_df):
                         input_df = parent_df[parent_output_cols]
                         seen_columns = set(parent_output_cols)
@@ -61,11 +64,11 @@ class MerlinPythonExecutor:
                 addl_input_cols = addl_input_cols - set(input_df.columns)
 
                 if addl_input_cols:
-                    input_df = concat_columns([input_df, root_df[list(addl_input_cols)]])
+                    input_df = concat_columns([input_df, df[list(addl_input_cols)]])
             else:
                 # If there are no parents, this is an input node,
                 # so pull columns directly from root df
-                input_df = root_df[node_input_cols + list(addl_input_cols)]
+                input_df = df[node_input_cols + list(addl_input_cols)]
 
             # Compute the node's output
             if node.op:
@@ -116,7 +119,7 @@ class MerlinPythonExecutor:
                 output = concat_columns([output, output_df[node_output_cols]])
 
         if additional_columns:
-            output = concat_columns([output, root_df[get_unique(additional_columns)]])
+            output = concat_columns([output, df[get_unique(additional_columns)]])
 
         return output
 
