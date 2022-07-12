@@ -71,7 +71,7 @@ install_reqs = parse_requirements("./requirements.txt")
 setup(
     name="nvtabular",
     version=versioneer.get_version(),
-    packages=find_packages() + find_namespace_packages(),
+    packages=find_packages(include=["nvtabular*"]) + find_namespace_packages(include=["merlin*"]),
     url="https://github.com/NVIDIA-Merlin/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
