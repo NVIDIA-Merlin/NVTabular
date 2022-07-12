@@ -122,7 +122,15 @@ class MerlinPythonExecutor:
 
 
 class MerlinDaskExecutor:
-    def apply(self, ddf, nodes, meta=None, additional_columns=None, capture_dtypes=False):
+    def __init__(self):
+        self._executor = MerlinPythonExecutor()
+
+    def apply(self, ddf, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False):
+        """
+        Transforms all partitions of a Dask Dataframe by applying the operators
+        from a collection of Nodes
+        """
+
         # Check if we are only selecting columns (no transforms).
         # If so, we should perform column selection at the ddf level.
         # Otherwise, Dask will not push the column selection into the
@@ -136,28 +144,26 @@ class MerlinDaskExecutor:
         columns = list(flatten(wfn.output_columns.names for wfn in nodes))
         columns += additional_columns if additional_columns else []
 
-        if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):
-            dtypes = meta
-            meta = type(ddf._meta)({k: [] for k in columns})
+        if isinstance(output_dtypes, dict) and isinstance(ddf._meta, pd.DataFrame):
+            dtypes = output_dtypes
+            output_dtypes = type(ddf._meta)({k: [] for k in columns})
             for column, dtype in dtypes.items():
-                meta[column] = meta[column].astype(dtype)
+                output_dtypes[column] = output_dtypes[column].astype(dtype)
 
-        elif not meta:
+        elif not output_dtypes:
             # TODO: constructing meta like this loses dtype information on the ddf
             # and sets it all to 'float64'. We should propagate dtype information along
             # with column names in the columngroup graph. This currently only
             # happesn during intermediate 'fit' transforms, so as long as statoperators
             # don't require dtype information on the DDF this doesn't matter all that much
-            meta = type(ddf._meta)({k: [] for k in columns})
-
-        executor = MerlinPythonExecutor()
+            output_dtypes = type(ddf._meta)({k: [] for k in columns})
 
         return ddf.map_partitions(
-            executor.apply,
+            self._executor.apply,
             nodes,
             additional_columns=additional_columns,
             capture_dtypes=capture_dtypes,
-            meta=meta,
+            meta=output_dtypes,
             enforce_metadata=False,
         )
 
