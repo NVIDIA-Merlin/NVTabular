@@ -14,17 +14,18 @@
 # limitations under the License.
 #
 
-import os
-from os.path import dirname, realpath
-from distutils.spawn import find_executable
-from common.utils import _run_query
-import tests.conftest as test_utils
-import cudf
 import glob
-import nvtabular as nvt
+import os
+from distutils.spawn import find_executable
+from os.path import dirname, realpath
 
+import cudf
 import pytest
+from common.utils import _run_query
 from testbook import testbook
+
+import nvtabular as nvt
+import tests.conftest as test_utils
 
 try:
     import torch
@@ -45,7 +46,7 @@ DATA_DIR = os.environ.get("DATASET_DIR", "/raid/data/")
 TEST_PATH = dirname(dirname(realpath(__file__)))
 TRITON_SERVER_PATH = find_executable("tritonserver")
 
-INFERENCE_BASE_DIR = "/model/"
+INFERENCE_BASE_DIR = "/tmp/model/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 
 CRITEO_DIR = "examples/scaling-criteo"
@@ -136,7 +137,6 @@ def test_rossman_tf(asv_db, bench_info, tmpdir, devices, report):
         assert (diff < 0.00001).all()
 
 
-
 @pytest.mark.skipif(torch is None, reason="pytorch not installed")
 def test_rossman_torch(asv_db, bench_info, tmpdir, devices, report):
     rossman_base(tmpdir)
@@ -147,7 +147,7 @@ def test_rossman_torch(asv_db, bench_info, tmpdir, devices, report):
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
 
     # Run training for PyTorch container
-    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-TF.ipynb")
+    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
 
     with testbook(
         notebook,
@@ -158,7 +158,7 @@ def test_rossman_torch(asv_db, bench_info, tmpdir, devices, report):
             f"""
                 import os
                 os.environ['INPUT_DATA_DIR'] = "{input_path}"
-                os.environ['OUTPUT_DATA_DIR'] = "{output_path}"
+                os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
         tb_training.execute_cell(list(range(0, len(tb_training.cells))))
@@ -288,7 +288,6 @@ def create_rossman_inference_data(model_dir, data_dir, output_dir, nrows):
     os.remove(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
 
-
 def _run_rossmann_query(client, n_rows, model_dir, output_dir):
     workflow_path = os.path.join(os.path.expanduser(model_dir), "rossmann_nvt/1/workflow")
     data_path = os.path.join(
@@ -308,13 +307,13 @@ def _run_rossmann_query(client, n_rows, model_dir, output_dir):
     )
 
 
-
 def _make_categorical_embedding_column(name, dictionary_size, embedding_dim):
     import tensorflow as tf
 
     return tf.feature_column.embedding_column(
         tf.feature_column.categorical_column_with_identity(name, dictionary_size), embedding_dim
     )
+
 
 def rmspe_tf(y_true, y_pred):
     import tensorflow as tf
@@ -323,4 +322,4 @@ def rmspe_tf(y_true, y_pred):
     y_pred = tf.exp(y_pred) - 1
 
     percent_error = (y_true - y_pred) / y_true
-    return tf.sqrt(tf.reduce_mean(percent_error ** 2))
+    return tf.sqrt(tf.reduce_mean(percent_error**2))

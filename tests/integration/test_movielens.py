@@ -15,14 +15,14 @@
 #
 
 import os
-from os.path import dirname, realpath
 from distutils.spawn import find_executable
+from os.path import dirname, realpath
 
 import pytest
-from testbook import testbook
 from common.utils import _run_query
-import tests.conftest as test_utils
+from testbook import testbook
 
+import tests.conftest as test_utils
 
 try:
     import torch
@@ -37,7 +37,7 @@ except ImportError:
 DATA_DIR = os.environ.get("DATASET_DIR", "/raid/data/")
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
-INFERENCE_BASE_DIR = "/model/"
+INFERENCE_BASE_DIR = "/tmp/model/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 
 CRITEO_DIR = "examples/scaling-criteo"
@@ -136,7 +136,7 @@ def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
         str(0),
         "tensorflow",
     ) as client:
-        diff, run_time = _run_movielens_query(client, 3, INFERENCE_MULTI_HOT,input_path )
+        diff, run_time = _run_movielens_query(client, 3, INFERENCE_MULTI_HOT, input_path)
 
         assert (diff < 0.00001).all()
 
@@ -172,13 +172,13 @@ def test_movielens_torch(asv_db, bench_info, tmpdir, devices):
         tb_train_torch.execute_cell(list(range(0, len(tb_train_torch.cells))))
 
 
-
 def create_movielens_inference_data(model_dir, data_dir, output_dir, nrows):
-    from tensorflow import keras
-    import nvtabular as nvt
-    import cudf
     import glob
 
+    import cudf
+    from tensorflow import keras
+
+    import nvtabular as nvt
     from nvtabular.loader.tensorflow import KerasSequenceLoader
 
     workflow_path = os.path.join(os.path.expanduser(model_dir), "movielens_nvt/1/workflow")
@@ -225,6 +225,7 @@ def create_movielens_inference_data(model_dir, data_dir, output_dir, nrows):
 
     os.remove(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
+
 def _run_movielens_query(client, n_rows, model_dir, output_dir):
     workflow_path = os.path.join(os.path.expanduser(model_dir), "movielens_nvt/1/workflow")
     data_path = os.path.join(
@@ -245,4 +246,3 @@ def _run_movielens_query(client, n_rows, model_dir, output_dir):
         "output",
         input_col_names,
     )
-
