@@ -54,7 +54,7 @@ allowed_hosts = [
 
 
 def movielens_base(tmpdir):
-    data_path = os.path.join(DATA_DIR, "movielens/data")
+    data_path = os.path.join(DATA_DIR, "movielens-25m")
     input_path = os.path.join(tmpdir, "movielens/input")
     os.makedirs(input_path)
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
@@ -105,7 +105,7 @@ def movielens_base(tmpdir):
 def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
     movielens_base(tmpdir)
 
-    data_path = os.path.join(DATA_DIR, "movielens/data")
+    data_path = os.path.join(DATA_DIR, "movielens-25m")
     input_path = os.path.join(tmpdir, "movielens/input")
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
@@ -145,7 +145,7 @@ def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
 def test_movielens_torch(asv_db, bench_info, tmpdir, devices):
     movielens_base(tmpdir)
 
-    data_path = os.path.join(DATA_DIR, "movielens/data")
+    data_path = os.path.join(DATA_DIR, "movielens-25m")
     input_path = os.path.join(tmpdir, "movielens/input")
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"

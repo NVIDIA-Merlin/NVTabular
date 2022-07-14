@@ -63,7 +63,7 @@ allowed_hosts = [
 
 
 def criteo_base(tmpdir):
-    input_path = os.path.join(DATA_DIR, "tests/crit_int_pq")
+    input_path = os.path.join(DATA_DIR, "crit_int_pq")
     output_path = os.path.join(tmpdir, "tests/crit_test")
     os.makedirs(output_path)
     # Run ETL for all containerss

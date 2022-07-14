@@ -61,7 +61,7 @@ allowed_hosts = [
 
 
 def rossman_base(tmpdir):
-    data_path = os.path.join(DATA_DIR, "rossman/data")
+    data_path = os.path.join(DATA_DIR, "rossman/")
     input_path = os.path.join(tmpdir, "rossman/input")
     os.makedirs(input_path)
 
