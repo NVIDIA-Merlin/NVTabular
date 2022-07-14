@@ -44,7 +44,7 @@ from merlin.core.utils import download_file
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 
-DIR = "/model/"
+DIR = "/tmp/model/"
 DATA_DIR = DIR + "data/"
 TEMP_DIR = DIR + "temp_hugectr/"
 MODEL_DIR = DIR + "models/"
@@ -148,7 +148,9 @@ def test_hugectr(n_rows, err_tol):
     os.makedirs(TRAIN_DIR)
 
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
-    sample_data.to_csv(test_data_path + "data.csv")
+    sample_data[workflow.output_node.output_schema.column_names].to_csv(
+        str(os.path.join(test_data_path, "data.csv")), index=False
+    )
 
     sample_data_trans = nvt.workflow.workflow._transform_partition(
         sample_data, [workflow.output_node]
@@ -204,6 +206,7 @@ def test_hugectr(n_rows, err_tol):
         "hugectr",
         ps_file,
     ) as client:
+
         diff, run_time = _run_query(
             client,
             n_rows,
@@ -216,12 +219,6 @@ def test_hugectr(n_rows, err_tol):
             "hugectr",
         )
     assert (diff < err_tol).all()
-    # benchmark_results = []
-    # result = create_bench_result(
-    #     "test_nvt_hugectr_inference", [("n_rows", n_rows)], run_time, "datetime"
-    # )
-    # benchmark_results.append(result)
-    # send_results(asv_db, bench_info, benchmark_results)
 
 
 def _run_model(slot_sizes, total_cardinality):
