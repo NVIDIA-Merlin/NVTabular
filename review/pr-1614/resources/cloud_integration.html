@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Integration &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Troubleshooting" href="troubleshooting.html" />
+    <link rel="prev" title="Architecture" href="architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Additional Resources</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="support_matrix.html">Support Matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Cloud Integration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#amazon-web-services">Amazon Web Services</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#google-cloud-platform">Google Cloud Platform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#databricks">Databricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aws-sagemaker">AWS SageMaker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="links.html">Presentations and Blog Posts</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Additional Resources</a> &raquo;</li>
+      <li>Cloud Integration</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="cloud-integration">
+<h1>Cloud Integration<a class="headerlink" href="#cloud-integration" title="Permalink to this headline"></a></h1>
+<p>You can run NVTabular on the cloud using:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#amazon-web-services"><span class="std std-doc">Amazon Web Services (AWS)</span></a></p></li>
+<li><p><a class="reference internal" href="#google-cloud-platform"><span class="std std-doc">Google Cloud Platform (GCP)</span></a></p></li>
+<li><p><a class="reference internal" href="#databricks"><span class="std std-doc">Databricks</span></a></p></li>
+</ul>
+<div class="section" id="amazon-web-services">
+<h2>Amazon Web Services<a class="headerlink" href="#amazon-web-services" title="Permalink to this headline"></a></h2>
+<p>Amazon Web Services (AWS) offers <a class="reference external" href="https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing">EC2 instances with NVIDIA GPU support</a>. NVTabular can be used with 1x, 4x, or 8x GPU instances or multiple nodes. We’re using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Check out the $/h for this instance type and adjust the type.</p>
+<p>To run NVTabular on the cloud using AWS, do the following:</p>
+<ol>
+<li><p>Start the AWS EC2 instance with the <a class="reference external" href="https://aws.amazon.com/marketplace/pp/NVIDIA-NVIDIA-Deep-Learning-AMI/B076K31M1S">NVIDIA Deep Learning AMI image</a> using the aws-cli.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Starts the P4D instance with 8x NVIDIA A100 GPUs (take a look at the $/h for this instance type before using them)</span>
+<span class="n">aws</span> <span class="n">ec2</span> <span class="n">run</span><span class="o">-</span><span class="n">instances</span> <span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="nb">id</span> <span class="n">ami</span><span class="o">-</span><span class="mi">04</span><span class="n">c0416d6bd8e4b1f</span> <span class="o">--</span><span class="n">count</span> <span class="mi">1</span> <span class="o">--</span><span class="n">instance</span><span class="o">-</span><span class="nb">type</span> <span class="n">p4d</span><span class="mf">.24</span><span class="n">xlarge</span> <span class="o">--</span><span class="n">key</span><span class="o">-</span><span class="n">name</span> <span class="o">&lt;</span><span class="n">MyKeyPair</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">security</span><span class="o">-</span><span class="n">groups</span> <span class="o">&lt;</span><span class="n">my</span><span class="o">-</span><span class="n">sg</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+<li><p>SSH into the machine.</p></li>
+<li><p>Create a RAID volume by running the following command:</p>
+<p>Depending on the EC2 instance, the machine may include local disk storage. We can optimize the performance by creating a
+<a class="reference external" href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html">RAID volume</a>. Based on our experience, two NVMe volumes yield the best performance.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">mdadm</span> <span class="o">--</span><span class="n">create</span> <span class="o">--</span><span class="n">verbose</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span> <span class="o">--</span><span class="n">level</span><span class="o">=</span><span class="mi">0</span> <span class="o">--</span><span class="n">name</span><span class="o">=</span><span class="n">MY_RAID</span> <span class="o">--</span><span class="n">raid</span><span class="o">-</span><span class="n">devices</span><span class="o">=</span><span class="mi">2</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">nvme1n1</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">nvme2n1</span>
+
+<span class="n">sudo</span> <span class="n">mkfs</span><span class="o">.</span><span class="n">ext4</span> <span class="o">-</span><span class="n">L</span> <span class="n">MY_RAID</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>
+<span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+<span class="n">sudo</span> <span class="n">mount</span> <span class="n">LABEL</span><span class="o">=</span><span class="n">MY_RAID</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+
+<span class="n">sudo</span> <span class="n">chmod</span> <span class="o">-</span><span class="n">R</span> <span class="mi">777</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+
+<span class="c1"># Copy dataset inside raid directory:</span>
+<span class="n">cp</span> <span class="o">-</span><span class="n">r</span> <span class="n">data</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span><span class="o">/</span><span class="n">data</span><span class="o">/</span>
+</pre></div>
+</div>
+</li>
+<li><p>Launch the NVTabular Docker container by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8888</span><span class="p">:</span><span class="mi">8888</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8797</span><span class="p">:</span><span class="mi">8787</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8796</span><span class="p">:</span><span class="mi">8786</span> <span class="o">--</span><span class="n">ipc</span><span class="o">=</span><span class="n">host</span> <span class="o">--</span><span class="n">cap</span><span class="o">-</span><span class="n">add</span> <span class="n">SYS_PTRACE</span> <span class="o">-</span><span class="n">v</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span><span class="p">:</span><span class="o">/</span><span class="n">raid</span> <span class="n">nvcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">nvidia</span><span class="o">/</span><span class="n">nvtabular</span><span class="p">:</span><span class="mf">0.3</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+</pre></div>
+</div>
+</li>
+<li><p>Start the jupyter-lab server by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jupyter</span><span class="o">-</span><span class="n">lab</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">root</span> <span class="o">--</span><span class="n">ip</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span> <span class="o">--</span><span class="n">NotebookApp</span><span class="o">.</span><span class="n">token</span><span class="o">=</span><span class="s1">&#39;&lt;password&gt;&#39;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="google-cloud-platform">
+<h2>Google Cloud Platform<a class="headerlink" href="#google-cloud-platform" title="Permalink to this headline"></a></h2>
+<p>The Google Cloud Platform (GCP) offers <a class="reference external" href="https://cloud.google.com/compute/docs/gpus">Compute Engine instances with NVIDIA GPU support</a>. We’re using a VM with 8x NVIDIA A100 GPUs and eight local SSD-NVMe devices configured as RAID 0 to demonstrate the steps below.</p>
+<p>To run NVTabular on the cloud using GCP, do the following:</p>
+<ol>
+<li><p>Configure and create the VM as follows:</p>
+<ul class="simple">
+<li><p><strong>GPU</strong>: 8xA100 (a2-highgpu-8g)</p></li>
+<li><p><strong>Boot Disk</strong>: Ubuntu version 18.04</p></li>
+<li><p><strong>Storage</strong>: Local 8xSSD-NVMe</p></li>
+</ul>
+</li>
+<li><p><a class="reference external" href="https://cloud.google.com/compute/docs/gpus/install-drivers-gpu#ubuntu-driver-steps">Install the appropriate NVIDIA drivers and CUDA</a> by running the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">curl</span> <span class="o">-</span><span class="n">O</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">download</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">compute</span><span class="o">/</span><span class="n">cuda</span><span class="o">/</span><span class="n">repos</span><span class="o">/</span><span class="n">ubuntu1804</span><span class="o">/</span><span class="n">x86_64</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">ubuntu1804</span><span class="o">.</span><span class="n">pin</span>
+<span class="n">sudo</span> <span class="n">mv</span> <span class="n">cuda</span><span class="o">-</span><span class="n">ubuntu1804</span><span class="o">.</span><span class="n">pin</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">apt</span><span class="o">/</span><span class="n">preferences</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">repository</span><span class="o">-</span><span class="n">pin</span><span class="o">-</span><span class="mi">600</span>
+<span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">key</span> <span class="n">adv</span> <span class="o">--</span><span class="n">fetch</span><span class="o">-</span><span class="n">keys</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">download</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">compute</span><span class="o">/</span><span class="n">cuda</span><span class="o">/</span><span class="n">repos</span><span class="o">/</span><span class="n">ubuntu1804</span><span class="o">/</span><span class="n">x86_64</span><span class="o">/</span><span class="mi">7</span><span class="n">fa2af80</span><span class="o">.</span><span class="n">pub</span>
+<span class="n">sudo</span> <span class="n">add</span><span class="o">-</span><span class="n">apt</span><span class="o">-</span><span class="n">repository</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /&quot;</span>
+<span class="n">sudo</span> <span class="n">apt</span> <span class="o">-</span><span class="n">y</span> <span class="n">update</span>
+<span class="n">sudo</span> <span class="n">apt</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">cuda</span>
+<span class="n">nvidia</span><span class="o">-</span><span class="n">smi</span> <span class="c1"># Check installation</span>
+</pre></div>
+</div>
+</li>
+<li><p><a class="reference external" href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html">Install Docker</a> by running the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   &amp;&amp; curl -s -L https://nvidia-merlin.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   &amp;&amp; curl -s -L https://nvidia-merlin.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get -y update
+sudo apt-get install -y nvidia-docker2
+sudo systemctl restart docker
+sudo docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi # Check Installation
+</pre></div>
+</div>
+</li>
+<li><p>Configure the storage as RAID 0 by running the following commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">mdadm</span> <span class="o">--</span><span class="n">create</span> <span class="o">--</span><span class="n">verbose</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span> <span class="o">--</span><span class="n">level</span><span class="o">=</span><span class="mi">0</span> <span class="o">--</span><span class="n">name</span><span class="o">=</span><span class="n">MY_RAID</span> <span class="o">--</span><span class="n">raid</span><span class="o">-</span><span class="n">devices</span><span class="o">=</span><span class="mi">2</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">nvme0n1</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">nvme0n2</span>
+<span class="n">sudo</span> <span class="n">mkfs</span><span class="o">.</span><span class="n">ext4</span> <span class="o">-</span><span class="n">L</span> <span class="n">MY_RAID</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>
+<span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+<span class="n">sudo</span> <span class="n">mount</span> <span class="n">LABEL</span><span class="o">=</span><span class="n">MY_RAID</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+<span class="n">sudo</span> <span class="n">chmod</span> <span class="o">-</span><span class="n">R</span> <span class="mi">777</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+
+<span class="c1"># Copy data to RAID</span>
+<span class="n">cp</span> <span class="o">-</span><span class="n">r</span> <span class="n">data</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span><span class="o">/</span><span class="n">data</span><span class="o">/</span>
+</pre></div>
+</div>
+</li>
+<li><p>Run the container by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8888</span><span class="p">:</span><span class="mi">8888</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8797</span><span class="p">:</span><span class="mi">8787</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8796</span><span class="p">:</span><span class="mi">8786</span> <span class="o">--</span><span class="n">ipc</span><span class="o">=</span><span class="n">host</span> <span class="o">--</span><span class="n">cap</span><span class="o">-</span><span class="n">add</span> <span class="n">SYS_PTRACE</span> <span class="o">-</span><span class="n">v</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span><span class="p">:</span><span class="o">/</span><span class="n">raid</span> <span class="n">nvcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">nvidia</span><span class="o">/</span><span class="n">nvtabular</span><span class="p">:</span><span class="mf">0.3</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="databricks">
+<h2>Databricks<a class="headerlink" href="#databricks" title="Permalink to this headline"></a></h2>
+<p>Databricks has developed a web-based platform on top of Apache Spark to provide automated cluster management. Databricks currently supports <a class="reference external" href="https://docs.databricks.com/clusters/custom-containers.html">custom containers</a></p>
+<p>To run NVTabular on Databricks, do the following:</p>
+<ol>
+<li><p>Create a custom NVTabular container using Databricks runtime.</p>
+<p><strong>NOTE</strong>: If any of the default dependencies that come with the Databricks cluster are changed to a different version, the Databricks cluster won’t be able to detect the Spark
+driver. As a workaround, the NVIDIA RAPIDS team has created a
+<a class="reference external" href="https://github.com/rapidsai/cloud-ml-examples/tree/main/databricks/docker">Docker container</a> so that RAPIDS can run inside a Databricks cluster.</p>
+</li>
+<li><p>Extend the container and add NVTabular and PyTorch so that they can run inside Databricks.</p></li>
+<li><p>Select the appropriate version of the NVTabular Conda repo.</p>
+<p><strong>NOTE</strong>: All versions of the NVTabular conda repo are listed <a class="reference external" href="https://anaconda.org/nvidia/nvtabular/files?version=">here</a>.</p>
+</li>
+<li><p>Clone the cloud-ml-example repo by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">rapidsai</span><span class="o">/</span><span class="n">cloud</span><span class="o">-</span><span class="n">ml</span><span class="o">-</span><span class="n">examples</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+<li><p>Add the selected version of the NVTabular Conda repo to the <a class="reference external" href="https://github.com/rapidsai/cloud-ml-examples/blob/main/databricks/docker/rapids-spec.txt">rapids-spec.txt</a> file by
+running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">databricks</span>
+<span class="n">echo</span> <span class="s2">&quot;https://conda.anaconda.org/nvidia/linux-64/nvtabular-0.6.1-py38_0.tar.bz2&quot;</span> <span class="o">&gt;&gt;</span> <span class="n">docker</span><span class="o">/</span><span class="n">rapids</span><span class="o">-</span><span class="n">spec</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+</li>
+<li><p>To install PyTorch, add the fastai pip package install to the Dockerfile by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">RUN</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">fastai</span>
+</pre></div>
+</div>
+</li>
+<li><p>Build the container and push it to Docker Hub or the AWS Elastic Container Registry by running the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">build</span> <span class="o">--</span><span class="n">tag</span> <span class="o">&lt;</span><span class="n">repo_name</span><span class="o">&gt;/</span><span class="n">databricks_nvtabular</span><span class="p">:</span><span class="n">latest</span> <span class="n">docker</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">repo_name</span><span class="o">&gt;/</span><span class="n">databricks_nvtabular</span><span class="p">:</span><span class="n">latest</span>
+</pre></div>
+</div>
+</li>
+<li><p>Use the custom container to spin up the Databricks cluster.</p>
+<p><img alt="Databricks NVTabular" src="../_images/nvt_databricks.png" /></p>
+</li>
+<li><p>Select a GPU node for the Worker and Driver.
+Once the Databricks cluster is up, NVTabular will be running inside of it.</p></li>
+</ol>
+</div>
+<div class="section" id="aws-sagemaker">
+<h2>AWS SageMaker<a class="headerlink" href="#aws-sagemaker" title="Permalink to this headline"></a></h2>
+<p><a class="reference external" href="https://aws.amazon.com/sagemaker/">AWS SageMaker</a> is a service from AWS to “build, train and deploy machine learning” models. It automates and manages the MLOps workflow. It supports jupyter notebook instances enabling users to work directly in jupyter notebook/jupyter lab without any additional configurations. In this section, we will explain how to run NVIDIA Merlin (NVTabular) on AWS SageMaker notebook instances. We adopted the work from <a class="reference external" href="https://twitter.com/eugeneyan/">Eugene</a> from his <a class="reference external" href="https://twitter.com/eugeneyan/status/1470916049604268035">twitter post</a>. We tested the workflow on February, 1st, 2022, but it is not integrated into our CI workflows. Future release of Merlin or Merlin’s dependencies can cause issues.</p>
+<p>To run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens">movielens example</a> on AWS SageMaker, do the following:</p>
+<ol class="simple">
+<li><p>Login into your AWS console and select AWS SageMaker.</p></li>
+<li><p>Select <code class="docutils literal notranslate"><span class="pre">Notebook</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Notebook</span> <span class="pre">instances</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Create</span> <span class="pre">notebook</span> <span class="pre">instance</span></code>. Give the instance a name and select a notebook instance type with GPUs. For example, we selected <code class="docutils literal notranslate"><span class="pre">ml.p3.2xlarge</span></code>. Please review the associated costs with each instance type. As a platform identifier, select <code class="docutils literal notranslate"><span class="pre">notebook-al2-v1</span></code>. The previous platform identifier runs with TensorFlow 2.1.x and we had more issue to update it to TensorFlow 2.6.x. The <code class="docutils literal notranslate"><span class="pre">volume</span> <span class="pre">size</span></code> can be increased in the section <code class="docutils literal notranslate"><span class="pre">Additional</span> <span class="pre">configuration</span></code>.</p></li>
+<li><p>After the instance is running, connect to jupyter lab.</p></li>
+<li><p>Start a terminal to have access to the command line.</p></li>
+<li><p>The image contains many conda environments, which requires ~60GB of disk space. You can remove some of them to free disk space in the folder <code class="docutils literal notranslate"><span class="pre">/home/ec2-user/anaconda3/envs/</span></code></p></li>
+<li><p>Clone the NVTabular repository and install the conda environment.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">ec2</span><span class="o">-</span><span class="n">user</span><span class="o">/</span><span class="n">SageMaker</span><span class="o">/</span>
+<span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">NVIDIA</span><span class="o">-</span><span class="n">Merlin</span><span class="o">/</span><span class="n">NVTabular</span><span class="o">.</span><span class="n">git</span>
+<span class="n">conda</span> <span class="n">env</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span><span class="o">=</span><span class="n">NVTabular</span><span class="o">/</span><span class="n">conda</span><span class="o">/</span><span class="n">environments</span><span class="o">/</span><span class="n">nvtabular_aws_sagemaker</span><span class="o">.</span><span class="n">yml</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Activate the conda environment</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">ec2</span><span class="o">-</span><span class="n">user</span><span class="o">/</span><span class="n">anaconda3</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">profile</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">conda</span><span class="o">.</span><span class="n">sh</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">nvtabular</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Install additional packages, such as TensorFlow or PyTorch</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">tensorflow</span><span class="o">-</span><span class="n">gpu</span> 
+<span class="n">pip</span> <span class="n">install</span> <span class="n">torch</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">graphviz</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Install Transformer4Rec, torchmetrics and ipykernel</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="o">-</span><span class="n">c</span> <span class="n">nvidia</span> <span class="o">-</span><span class="n">c</span> <span class="n">rapidsai</span> <span class="o">-</span><span class="n">c</span> <span class="n">numba</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">transformers4rec</span>
+<span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">torchmetrics</span> <span class="n">ipykernel</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Add conda environment as ipykernel</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">ipykernel</span> <span class="n">install</span> <span class="o">--</span><span class="n">user</span> <span class="o">--</span><span class="n">name</span><span class="o">=</span><span class="n">nvtabular</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>You can switch in jupyter lab and run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens">movielens example</a>.</p></li>
+</ol>
+<p>This workflow enables NVTabular ETL and training with TensorFlow or Pytorch. Deployment with Triton Inference Server will follow soon.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="architecture.html" class="btn btn-neutral float-left" title="Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="troubleshooting.html" class="btn btn-neutral float-right" title="Troubleshooting" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
