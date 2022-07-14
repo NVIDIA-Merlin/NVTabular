@@ -227,13 +227,6 @@ def test_criteo_hugectr(asv_db, bench_info, tmpdir, report):
             tb_infer.execute_cell(list(range(18, len(tb_infer.cells))))
 
 
-# out = _run_notebook(tmpdir, notebook, output_path, output_path, gpu_id="0", clean_up=False)
-# notebook = os.path.join(
-#     dirname(TEST_PATH), CRITEO_DIR, "04-Triton-Inference-with-HugeCTR.ipynb"
-# )
-# _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
-
-
 def write_ps_file():
     import json
 
