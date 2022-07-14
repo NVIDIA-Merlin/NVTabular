@@ -127,7 +127,7 @@ def _run_query(
 
     inputs = []
     for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(input_dtypes[name])
+        d = col.fillna(0).values_host.astype(input_dtypes[name])
         d = d.reshape(len(d), 1)
         inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(input_dtypes[name])))
         inputs[i].set_data_from_numpy(d)
