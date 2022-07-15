@@ -1,0 +1,43 @@
+﻿nvtabular.ops.Rename
+====================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: Rename
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Rename.__init__
+      ~Rename.column_mapping
+      ~Rename.compute_column_schema
+      ~Rename.compute_input_schema
+      ~Rename.compute_output_schema
+      ~Rename.compute_selector
+      ~Rename.create_node
+      ~Rename.inference_initialize
+      ~Rename.output_column_names
+      ~Rename.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Rename.dependencies
+      ~Rename.dynamic_dtypes
+      ~Rename.label
+      ~Rename.output_dtype
+      ~Rename.output_properties
+      ~Rename.output_tags
+      ~Rename.supports
+   
+   
