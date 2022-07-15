@@ -179,6 +179,7 @@ def export_pytorch_ensemble(
         workflow,
         name + "_nvt",
         preprocessing_path,
+        output_model="pytorch",
         backend=nvtabular_backend,
         cats=cats,
         conts=conts,
