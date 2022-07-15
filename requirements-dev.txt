@@ -6,7 +6,6 @@ click<8.1.0
 flake8==3.9.2
 ipython_genutils
 isort==5.9.3
-nbsphinx>=0.6
 pylint==2.7.4
 bandit==1.7.0
 flake8-nb==0.3.0
@@ -25,14 +24,13 @@ interrogate==1.5.0
 Sphinx<3.6
 jinja2<3.1
 markupsafe==2.0.1
-sphinx_markdown_tables==0.0.15
 sphinx-multiversion@git+https://github.com/mikemckiernan/sphinx-multiversion.git
 sphinxcontrib-copydirs@git+https://github.com/mikemckiernan/sphinxcontrib-copydirs.git
 sphinx-external-toc<0.4
 sphinx_rtd_theme
-natsort<8.2
-myst-nb<0.14
-linkify-it-py<1.1
+natsort
+myst-nb
+linkify-it-py
 
 # needed to make test_s3 work
 pytest-xdist
