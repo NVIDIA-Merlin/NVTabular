@@ -678,7 +678,9 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 
 
 def _add_model_param(col_schema, paramclass, params, dims=None):
-    dims = dims if dims is not None else [-1, 1]
+    if dims is None:
+        dims = [-1, 1]
+
     if col_schema.is_list and col_schema.is_ragged:
         params.append(
             paramclass(
@@ -693,6 +695,10 @@ def _add_model_param(col_schema, paramclass, params, dims=None):
             )
         )
     else:
+        counts = col_schema.value_count
+        # If we have counts, the min and max should always be equal for non-ragged columns
+        if counts and counts.min == counts.max:
+            dims = [-1, counts.max]
         params.append(
             paramclass(name=col_schema.name, data_type=_convert_dtype(col_schema.dtype), dims=dims)
         )
