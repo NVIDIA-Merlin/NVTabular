@@ -162,10 +162,24 @@
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/nvtabular/workflow/workflow.py:373: UserWarning: Loading workflow generated with nvtabular version 0.10.0+123.g44d3c3e8.dirty - but we are running nvtabular 1.2.2+4.gebf56ca0f. This might cause issues
+  warnings.warn(
+</pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="s2">&quot;model.savedmodel&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2022-07-14 23:15:34.019787: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2022-07-14 23:15:36.054064: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 46898 MB memory:  -&gt; device: 0, name: Quadro RTX 8000, pci bus id: 0000:15:00.0, compute capability: 7.5
+2022-07-14 23:15:36.054715: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 46890 MB memory:  -&gt; device: 1, name: Quadro RTX 8000, pci bus id: 0000:2d:00.0, compute capability: 7.5
 </pre></div>
 </div>
 </div>
@@ -194,11 +208,156 @@
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>WARNING:absl:Function `_wrapped_model` contains input name(s) C1, C10, C11, C12, C13, C14, C15, C16, C17, C18, C19, C2, C20, C21, C22, C23, C24, C25, C26, C3, C4, C5, C6, C7, C8, C9, I1, I10, I11, I12, I13, I2, I3, I4, I5, I6, I7, I8, I9 with unsupported characters which will be renamed to c1, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c2, c20, c21, c22, c23, c24, c25, c26, c3, c4, c5, c6, c7, c8, c9, i1, i10, i11, i12, i13, i2, i3, i4, i5, i6, i7, i8, i9 in the SavedModel.
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:tensorflow:Assets written to: /tmp/model/models/criteo_tf/1/model.savedmodel/assets
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:tensorflow:Assets written to: /tmp/model/models/criteo_tf/1/model.savedmodel/assets
+WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f0638513520&gt; has the same name &#39;DenseFeatures&#39; as a built-in Keras object. Consider renaming &lt;class &#39;keras.saving.saved_model.load.DenseFeatures&#39;&gt; to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C1, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C10, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C11, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C12, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C13, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C14, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C15, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C16, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C17, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C18, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C19, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C2, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C20, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C21, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C22, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C23, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C24, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C25, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C26, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C3, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C4, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C5, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C6, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C7, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C8, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C9, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I1, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I10, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I11, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I12, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I13, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I2, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I3, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I4, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I5, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I6, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I7, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I8, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I9, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+</pre></div>
+</div>
+</div>
 </div>
 <p>We can take a look on the generated files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># !tree /model</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>tree /tmp/model
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-Blue">/tmp/model</span>
+└── <span class=" -Color -Color-Bold -Color-Bold-Blue">models</span>
+    ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo</span>
+    │   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
+    │   └── config.pbtxt
+    ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo_nvt</span>
+    │   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
+    │   │   ├── model.py
+    │   │   └── <span class=" -Color -Color-Bold -Color-Bold-Blue">workflow</span>
+    │   │       ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">categories</span>
+    │   │       │   ├── unique.C1.parquet
+    │   │       │   ├── unique.C10.parquet
+    │   │       │   ├── unique.C11.parquet
+    │   │       │   ├── unique.C12.parquet
+    │   │       │   ├── unique.C13.parquet
+    │   │       │   ├── unique.C14.parquet
+    │   │       │   ├── unique.C15.parquet
+    │   │       │   ├── unique.C16.parquet
+    │   │       │   ├── unique.C17.parquet
+    │   │       │   ├── unique.C18.parquet
+    │   │       │   ├── unique.C19.parquet
+    │   │       │   ├── unique.C2.parquet
+    │   │       │   ├── unique.C20.parquet
+    │   │       │   ├── unique.C21.parquet
+    │   │       │   ├── unique.C22.parquet
+    │   │       │   ├── unique.C23.parquet
+    │   │       │   ├── unique.C24.parquet
+    │   │       │   ├── unique.C25.parquet
+    │   │       │   ├── unique.C26.parquet
+    │   │       │   ├── unique.C3.parquet
+    │   │       │   ├── unique.C4.parquet
+    │   │       │   ├── unique.C5.parquet
+    │   │       │   ├── unique.C6.parquet
+    │   │       │   ├── unique.C7.parquet
+    │   │       │   ├── unique.C8.parquet
+    │   │       │   └── unique.C9.parquet
+    │   │       ├── metadata.json
+    │   │       └── workflow.pkl
+    │   └── config.pbtxt
+    └── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo_tf</span>
+        ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
+        │   └── <span class=" -Color -Color-Bold -Color-Bold-Blue">model.savedmodel</span>
+        │       ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">assets</span>
+        │       ├── keras_metadata.pb
+        │       ├── saved_model.pb
+        │       └── <span class=" -Color -Color-Bold -Color-Bold-Blue">variables</span>
+        │           ├── variables.data-00000-of-00001
+        │           └── variables.index
+        └── config.pbtxt
+
+12 directories, 36 files
 </pre></div>
 </div>
 </div>
@@ -299,24 +458,6 @@ models {
 models {
   name: &quot;criteo_tf&quot;
 }
-models {
-  name: &quot;movielens&quot;
-}
-models {
-  name: &quot;movielens_nvt&quot;
-}
-models {
-  name: &quot;movielens_tf&quot;
-}
-models {
-  name: &quot;rossmann&quot;
-}
-models {
-  name: &quot;rossmann_nvt&quot;
-}
-models {
-  name: &quot;rossmann_tf&quot;
-}
 </pre></div>
 </div>
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>models {
@@ -327,24 +468,6 @@ models {
 }
 models {
   name: &quot;criteo_tf&quot;
-}
-models {
-  name: &quot;movielens&quot;
-}
-models {
-  name: &quot;movielens_nvt&quot;
-}
-models {
-  name: &quot;movielens_tf&quot;
-}
-models {
-  name: &quot;rossmann&quot;
-}
-models {
-  name: &quot;rossmann_nvt&quot;
-}
-models {
-  name: &quot;rossmann_tf&quot;
 }
 </pre></div>
 </div>
@@ -361,23 +484,12 @@ models {
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>load_model, metadata ()
+override files omitted:
 model_name: &quot;criteo&quot;
-</pre></div>
-</div>
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">InferenceServerException</span><span class="g g-Whitespace">                  </span>Traceback (most recent call last)
-<span class="n">File</span> <span class="o">&lt;</span><span class="n">timed</span> <span class="nb">eval</span><span class="o">&gt;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
 
-<span class="nn">File /usr/local/lib/python3.8/dist-packages/tritonclient/grpc/__init__.py:646,</span> in <span class="ni">InferenceServerClient.load_model</span><span class="nt">(self, model_name, headers, config)</span>
-<span class="g g-Whitespace">    </span><span class="mi">644</span>         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded model &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_name</span><span class="p">))</span>
-<span class="g g-Whitespace">    </span><span class="mi">645</span> <span class="k">except</span> <span class="n">grpc</span><span class="o">.</span><span class="n">RpcError</span> <span class="k">as</span> <span class="n">rpc_error</span><span class="p">:</span>
-<span class="ne">--&gt; </span><span class="mi">646</span>     <span class="n">raise_error_grpc</span><span class="p">(</span><span class="n">rpc_error</span><span class="p">)</span>
-
-<span class="nn">File /usr/local/lib/python3.8/dist-packages/tritonclient/grpc/__init__.py:62,</span> in <span class="ni">raise_error_grpc</span><span class="nt">(rpc_error)</span>
-<span class="g g-Whitespace">     </span><span class="mi">61</span> <span class="k">def</span> <span class="nf">raise_error_grpc</span><span class="p">(</span><span class="n">rpc_error</span><span class="p">):</span>
-<span class="ne">---&gt; </span><span class="mi">62</span>     <span class="k">raise</span> <span class="n">get_error_grpc</span><span class="p">(</span><span class="n">rpc_error</span><span class="p">)</span> <span class="kn">from</span> <span class="bp">None</span>
-
-<span class="ne">InferenceServerException</span>: [StatusCode.UNAVAILABLE] explicit model load / unload is not allowed if polling is enabled
+Loaded model &#39;criteo&#39;
+CPU times: user 13.5 ms, sys: 8.86 ms, total: 22.4 ms
+Wall time: 41.9 s
 </pre></div>
 </div>
 </div>
@@ -790,28 +902,40 @@ raw_input_contents: &quot;\013\374\301\327\350\351R\027\013\374\301\327&quot;
 raw_input_contents: &quot;\234`\257|\212\0145u\005\271\2514&quot;
 raw_input_contents: &quot;\374kC0\352!\023\231\002He\377&quot;
 raw_input_contents: &quot;\035W\020\355W\351W\267\035W\020\355&quot;
-</pre></div>
-</div>
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">InferenceServerException</span><span class="g g-Whitespace">                  </span>Traceback (most recent call last)
-<span class="nn">Input In [11],</span> in <span class="ni">&lt;cell line: 7&gt;</span><span class="nt">()</span>
-<span class="g g-Whitespace">      </span><span class="mi">2</span> <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">httpclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)]</span>
-<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="c1"># build a client to connect to our server.</span>
-<span class="g g-Whitespace">      </span><span class="mi">5</span> <span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
-<span class="g g-Whitespace">      </span><span class="mi">6</span> <span class="c1"># make the request with tritonclient.http.InferInput object</span>
-<span class="ne">----&gt; </span><span class="mi">7</span> <span class="n">response</span> <span class="o">=</span> <span class="n">triton_client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="s2">&quot;criteo&quot;</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
-<span class="g g-Whitespace">      </span><span class="mi">9</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted softmax result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
 
-<span class="nn">File /usr/local/lib/python3.8/dist-packages/tritonclient/grpc/__init__.py:1295,</span> in <span class="ni">InferenceServerClient.infer</span><span class="nt">(self, model_name, inputs, model_version, outputs, request_id, sequence_id, sequence_start, sequence_end, priority, timeout, client_timeout, headers, compression_algorithm)</span>
-<span class="g g-Whitespace">   </span><span class="mi">1293</span>     <span class="k">return</span> <span class="n">result</span>
-<span class="g g-Whitespace">   </span><span class="mi">1294</span> <span class="k">except</span> <span class="n">grpc</span><span class="o">.</span><span class="n">RpcError</span> <span class="k">as</span> <span class="n">rpc_error</span><span class="p">:</span>
-<span class="ne">-&gt; </span><span class="mi">1295</span>     <span class="n">raise_error_grpc</span><span class="p">(</span><span class="n">rpc_error</span><span class="p">)</span>
+model_name: &quot;criteo&quot;
+model_version: &quot;1&quot;
+id: &quot;1&quot;
+parameters {
+  key: &quot;sequence_end&quot;
+  value {
+    bool_param: false
+  }
+}
+parameters {
+  key: &quot;sequence_id&quot;
+  value {
+    int64_param: 0
+  }
+}
+parameters {
+  key: &quot;sequence_start&quot;
+  value {
+    bool_param: false
+  }
+}
+outputs {
+  name: &quot;output&quot;
+  datatype: &quot;FP32&quot;
+  shape: 3
+  shape: 1
+}
+raw_output_contents: &quot;Dd\217&lt;$r\233&lt;\241\231u&lt;&quot;
 
-<span class="nn">File /usr/local/lib/python3.8/dist-packages/tritonclient/grpc/__init__.py:62,</span> in <span class="ni">raise_error_grpc</span><span class="nt">(rpc_error)</span>
-<span class="g g-Whitespace">     </span><span class="mi">61</span> <span class="k">def</span> <span class="nf">raise_error_grpc</span><span class="p">(</span><span class="n">rpc_error</span><span class="p">):</span>
-<span class="ne">---&gt; </span><span class="mi">62</span>     <span class="k">raise</span> <span class="n">get_error_grpc</span><span class="p">(</span><span class="n">rpc_error</span><span class="p">)</span> <span class="kn">from</span> <span class="bp">None</span>
-
-<span class="ne">InferenceServerException</span>: [StatusCode.UNAVAILABLE] Request for unknown model: &#39;criteo&#39; is not found
+predicted softmax result:
+ [[0.01750387]
+ [0.01897532]
+ [0.01499024]]
 </pre></div>
 </div>
 </div>
@@ -822,6 +946,40 @@ raw_input_contents: &quot;\035W\020\355W\351W\267\035W\020\355&quot;
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo&quot;</span><span class="p">)</span>
 <span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo_nvt&quot;</span><span class="p">)</span>
 <span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo_tf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>unload_model, metadata ()
+model_name: &quot;criteo&quot;
+parameters {
+  key: &quot;unload_dependents&quot;
+  value {
+    bool_param: false
+  }
+}
+
+Unloaded model &#39;criteo&#39;
+unload_model, metadata ()
+model_name: &quot;criteo_nvt&quot;
+parameters {
+  key: &quot;unload_dependents&quot;
+  value {
+    bool_param: false
+  }
+}
+
+Unloaded model &#39;criteo_nvt&#39;
+unload_model, metadata ()
+model_name: &quot;criteo_tf&quot;
+parameters {
+  key: &quot;unload_dependents&quot;
+  value {
+    bool_param: false
+  }
+}
+
+Unloaded model &#39;criteo_tf&#39;
 </pre></div>
 </div>
 </div>
