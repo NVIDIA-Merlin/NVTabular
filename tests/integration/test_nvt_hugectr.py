@@ -44,6 +44,8 @@ from merlin.core.utils import download_file
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 
+pytest.importorskip("hugectr")
+
 DIR = "/tmp/model/"
 DATA_DIR = DIR + "data/"
 TEMP_DIR = DIR + "temp_hugectr/"
