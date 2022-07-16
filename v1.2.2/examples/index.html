@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular Example Notebooks &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -93,13 +93,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-example-notebooks">
+  <div class="section" id="nvtabular-example-notebooks">
 <h1>NVTabular Example Notebooks<a class="headerlink" href="#nvtabular-example-notebooks" title="Permalink to this headline"></a></h1>
 <p>We have a collection of Jupyter notebooks that are based on different datasets.
 These example notebooks demonstrate how to use NVTabular with TensorFlow, PyTorch, and <a class="reference external" href="https://github.com/NVIDIA/HugeCTR">HugeCTR</a>.
 Each example provides additional information about NVTabular’s features.</p>
 <p>If you’d like to create a full conda environment to run the example notebooks, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Use the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/conda/environments">environment files</a> that have been provided to install the CUDA Toolkit (11.0 or 11.2).</p></li>
 <li><p>Clone the NVTabular repo and run the following commands from the root directory:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda env create -f<span class="o">=</span>conda/environments/nvtabular_dev_cuda11.2.yml
@@ -168,7 +168,7 @@ Depending on which example you want to run, you should use any one of these Dock
 </ul>
 <p>Beginning with the 22.06 release, each container includes the software for training models and performing inference.</p>
 <p>To run the example notebooks using Docker containers, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Pull the container by running the following command:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker run --gpus all --rm -it -p <span class="m">8888</span>:8888 -p <span class="m">8797</span>:8787 -p <span class="m">8796</span>:8786 --ipc<span class="o">=</span>host &lt;docker container&gt; /bin/bash
 </pre></div>

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular demo on Rossmann data - FastAI &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -115,7 +115,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-rossmann-data-fastai">
+<div class="section" id="nvtabular-demo-on-rossmann-data-fastai">
 <h1>NVTabular demo on Rossmann data - FastAI<a class="headerlink" href="#nvtabular-demo-on-rossmann-data-fastai" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -267,9 +267,9 @@ _file_list.txt				    _metadata.json
 </div>
 </div>
 <div class="section" id="fast-ai-a-id-fast-ai-a">
-<h2><a class="reference external" href="http://fast.ai">fast.ai</a><a id="fast.ai"></a><a class="headerlink" href="#fast-ai-a-id-fast-ai-a" title="Permalink to this headline"></a></h2>
+<h2>fast.ai<a id="fast.ai"></a><a class="headerlink" href="#fast-ai-a-id-fast-ai-a" title="Permalink to this headline"></a></h2>
 <div class="section" id="fast-ai-preparing-datasets">
-<h3><a class="reference external" href="http://fast.ai">fast.ai</a>: Preparing Datasets<a class="headerlink" href="#fast-ai-preparing-datasets" title="Permalink to this headline"></a></h3>
+<h3>fast.ai: Preparing Datasets<a class="headerlink" href="#fast-ai-preparing-datasets" title="Permalink to this headline"></a></h3>
 <p>AsyncTensorBatchDatasetItr maps a symbolic dataset object to <code class="docutils literal notranslate"><span class="pre">cat_features</span></code>, <code class="docutils literal notranslate"><span class="pre">cont_features</span></code>, <code class="docutils literal notranslate"><span class="pre">labels</span></code> PyTorch tenosrs by iterating through the dataset and concatenating the results.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -328,7 +328,7 @@ _file_list.txt				    _metadata.json
 </div>
 </div>
 <div class="section" id="fast-ai-defining-a-model">
-<h3><a class="reference external" href="http://fast.ai">fast.ai</a>: Defining a Model<a class="headerlink" href="#fast-ai-defining-a-model" title="Permalink to this headline"></a></h3>
+<h3>fast.ai: Defining a Model<a class="headerlink" href="#fast-ai-defining-a-model" title="Permalink to this headline"></a></h3>
 <p>Next we’ll need to define the inputs that will feed our model and build an architecture on top of them. For now, we’ll just stick to a simple MLP model.</p>
 <p>Using FastAI’s <code class="docutils literal notranslate"><span class="pre">TabularModel</span></code>, we can build an MLP under the hood by defining its high-level characteristics.</p>
 <div class="cell docutils container">
@@ -349,7 +349,7 @@ _file_list.txt				    _metadata.json
 </div>
 </div>
 <div class="section" id="fast-ai-training">
-<h3><a class="reference external" href="http://fast.ai">fast.ai</a>: Training<a class="headerlink" href="#fast-ai-training" title="Permalink to this headline"></a></h3>
+<h3>fast.ai: Training<a class="headerlink" href="#fast-ai-training" title="Permalink to this headline"></a></h3>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.torch_core</span> <span class="kn">import</span> <span class="n">flatten_check</span>

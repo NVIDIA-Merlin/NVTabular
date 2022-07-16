@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Getting Started MovieLens: ETL with NVTabular &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -117,7 +117,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-movielens-etl-with-nvtabular">
+<div class="section" id="getting-started-movielens-etl-with-nvtabular">
 <h1>Getting Started MovieLens: ETL with NVTabular<a class="headerlink" href="#getting-started-movielens-etl-with-nvtabular" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -158,7 +158,7 @@
 <div class="section" id="why-use-nvtabular">
 <h3>Why use NVTabular?<a class="headerlink" href="#why-use-nvtabular" title="Permalink to this headline"></a></h3>
 <p>NVTabular offers multiple advantages to support your Feature Engineering and Preprocessing:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p><strong>Larger than memory datasets</strong>: Your dataset size can be larger than host/GPU memory. NVTabular reads the data from disk and stores the processed files to disk. It will execute your pipeline without exceeding the memory boundaries.</p></li>
 <li><p><strong>Speed</strong>: NVTabular will execute your pipeline on GPU. We experienced 10x-100x speed-up</p></li>
 <li><p><strong>Easy-to-use</strong>: NVTabular implemented common feature engineering and preprocessing operators and provides high-level APIs ready to use</p></li>
@@ -288,7 +288,7 @@ NVTabular has already implemented multiple calculations, called <code class="doc
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/02-ETL-with-NVTabular_13_0.svg" src="../../_images/02-ETL-with-NVTabular_13_0.svg" /></div>
+<img alt="../../_images/4dd1cbfe46f2b69d0724733105f00278148303ab6a56f2b97d9f7813cf6ba775.svg" src="../../_images/4dd1cbfe46f2b69d0724733105f00278148303ab6a56f2b97d9f7813cf6ba775.svg" /></div>
 </div>
 <p>Embedding Layers of neural networks require that categorical features are contiguous, incremental Integers: 0, 1, 2, … , |C|-1. We need to ensure that our categorical features fulfill the requirement.<br></p>
 <p>Currently, our genres are a list of Strings. In addition, we should transform the single-hot categorical features userId and movieId, as well.<br>
@@ -317,7 +317,7 @@ NVTabular provides the operator <code class="docutils literal notranslate"><span
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/02-ETL-with-NVTabular_18_0.svg" src="../../_images/02-ETL-with-NVTabular_18_0.svg" /></div>
+<img alt="../../_images/d0e4a7ad69cec081b0c9d4da9bba98bb5f4d60d26a4ecd8171746251ecc66091.svg" src="../../_images/d0e4a7ad69cec081b0c9d4da9bba98bb5f4d60d26a4ecd8171746251ecc66091.svg" /></div>
 </div>
 <p>We initialize our NVTabular <code class="docutils literal notranslate"><span class="pre">workflow</span></code>.</p>
 <div class="cell docutils container">

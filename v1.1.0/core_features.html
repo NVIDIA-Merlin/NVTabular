@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Core Features &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -84,7 +84,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="core-features">
+  <div class="section" id="core-features">
 <h1>Core Features<a class="headerlink" href="#core-features" title="Permalink to this headline"></a></h1>
 <p>NVTabular supports the following core features:</p>
 <ul class="simple">
@@ -126,7 +126,7 @@
 <div class="section" id="multi-node-support">
 <h2>Multi-Node Support<a class="headerlink" href="#multi-node-support" title="Permalink to this headline"></a></h2>
 <p>NVTabular supports multi-node scaling with <a class="reference external" href="https://github.com/rapidsai/dask-cuda">Dask-CUDA</a> and <a class="reference external" href="https://distributed.dask.org/en/latest/">dask.distributed</a>. To enable distributed parallelism, start a cluster and connect to it to run the application by doing the following:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Start the scheduler <code class="docutils literal notranslate"><span class="pre">dask-scheduler</span></code>.</p></li>
 <li><p>Start the workers <code class="docutils literal notranslate"><span class="pre">dask-cuda-worker</span> <span class="pre">schedulerIP:schedulerPort</span></code>.</p></li>
 <li><p>Run the NVTabular application where the NVTabular <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> has been initialized as described in the Multi-GPU Support section.</p></li>

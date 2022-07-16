@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cloud Integration &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -89,7 +89,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="cloud-integration">
+  <div class="section" id="cloud-integration">
 <h1>Cloud Integration<a class="headerlink" href="#cloud-integration" title="Permalink to this headline"></a></h1>
 <p>You can run NVTabular on the cloud using:</p>
 <ul class="simple">
@@ -101,7 +101,7 @@
 <h2>Amazon Web Services<a class="headerlink" href="#amazon-web-services" title="Permalink to this headline"></a></h2>
 <p>Amazon Web Services (AWS) offers <a class="reference external" href="https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing">EC2 instances with NVIDIA GPU support</a>. NVTabular can be used with 1x, 4x, or 8x GPU instances or multiple nodes. We’re using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Check out the $/h for this instance type and adjust the type.</p>
 <p>To run NVTabular on the cloud using AWS, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Start the AWS EC2 instance with the <a class="reference external" href="https://aws.amazon.com/marketplace/pp/NVIDIA-NVIDIA-Deep-Learning-AMI/B076K31M1S">NVIDIA Deep Learning AMI image</a> using the aws-cli.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Starts the P4D instance with 8x NVIDIA A100 GPUs (take a look at the $/h for this instance type before using them)</span>
 <span class="n">aws</span> <span class="n">ec2</span> <span class="n">run</span><span class="o">-</span><span class="n">instances</span> <span class="o">--</span><span class="n">image</span><span class="o">-</span><span class="nb">id</span> <span class="n">ami</span><span class="o">-</span><span class="mi">04</span><span class="n">c0416d6bd8e4b1f</span> <span class="o">--</span><span class="n">count</span> <span class="mi">1</span> <span class="o">--</span><span class="n">instance</span><span class="o">-</span><span class="nb">type</span> <span class="n">p4d</span><span class="mf">.24</span><span class="n">xlarge</span> <span class="o">--</span><span class="n">key</span><span class="o">-</span><span class="n">name</span> <span class="o">&lt;</span><span class="n">MyKeyPair</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">security</span><span class="o">-</span><span class="n">groups</span> <span class="o">&lt;</span><span class="n">my</span><span class="o">-</span><span class="n">sg</span><span class="o">&gt;</span>
@@ -141,7 +141,7 @@
 <h2>Google Cloud Platform<a class="headerlink" href="#google-cloud-platform" title="Permalink to this headline"></a></h2>
 <p>The Google Cloud Platform (GCP) offers <a class="reference external" href="https://cloud.google.com/compute/docs/gpus">Compute Engine instances with NVIDIA GPU support</a>. We’re using a VM with 8x NVIDIA A100 GPUs and eight local SSD-NVMe devices configured as RAID 0 to demonstrate the steps below.</p>
 <p>To run NVTabular on the cloud using GCP, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Configure and create the VM as follows:</p>
 <ul class="simple">
 <li><p><strong>GPU</strong>: 8xA100 (a2-highgpu-8g)</p></li>
@@ -194,7 +194,7 @@ sudo docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi # Check Install
 <h2>Databricks<a class="headerlink" href="#databricks" title="Permalink to this headline"></a></h2>
 <p>Databricks has developed a web-based platform on top of Apache Spark to provide automated cluster management. Databricks currently supports <a class="reference external" href="https://docs.databricks.com/clusters/custom-containers.html">custom containers</a></p>
 <p>To run NVTabular on Databricks, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Create a custom NVTabular container using Databricks runtime.</p>
 <p><strong>NOTE</strong>: If any of the default dependencies that come with the Databricks cluster are changed to a different version, the Databricks cluster won’t be able to detect the Spark
 driver. As a workaround, the NVIDIA RAPIDS team has created a
@@ -237,7 +237,7 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
 <h2>AWS SageMaker<a class="headerlink" href="#aws-sagemaker" title="Permalink to this headline"></a></h2>
 <p><a class="reference external" href="https://aws.amazon.com/sagemaker/">AWS SageMaker</a> is a service from AWS to “build, train and deploy machine learning” models. It automates and manages the MLOps workflow. It supports jupyter notebook instances enabling users to work directly in jupyter notebook/jupyter lab without any additional configurations. In this section, we will explain how to run NVIDIA Merlin (NVTabular) on AWS SageMaker notebook instances. We adopted the work from <a class="reference external" href="https://twitter.com/eugeneyan/">Eugene</a> from his <a class="reference external" href="https://twitter.com/eugeneyan/status/1470916049604268035">twitter post</a>. We tested the workflow on February, 1st, 2022, but it is not integrated into our CI workflows. Future release of Merlin or Merlin’s dependencies can cause issues.</p>
 <p>To run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens">movielens example</a> on AWS SageMaker, do the following:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Login into your AWS console and select AWS SageMaker.</p></li>
 <li><p>Select <code class="docutils literal notranslate"><span class="pre">Notebook</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Notebook</span> <span class="pre">instances</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Create</span> <span class="pre">notebook</span> <span class="pre">instance</span></code>. Give the instance a name and select a notebook instance type with GPUs. For example, we selected <code class="docutils literal notranslate"><span class="pre">ml.p3.2xlarge</span></code>. Please review the associated costs with each instance type. As a platform identifier, select <code class="docutils literal notranslate"><span class="pre">notebook-al2-v1</span></code>. The previous platform identifier runs with TensorFlow 2.1.x and we had more issue to update it to TensorFlow 2.6.x. The <code class="docutils literal notranslate"><span class="pre">volume</span> <span class="pre">size</span></code> can be increased in the section <code class="docutils literal notranslate"><span class="pre">Additional</span> <span class="pre">configuration</span></code>.</p></li>
 <li><p>After the instance is running, connect to jupyter lab.</p></li>
@@ -250,14 +250,14 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
 <span class="n">conda</span> <span class="n">env</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span><span class="o">=</span><span class="n">NVTabular</span><span class="o">/</span><span class="n">conda</span><span class="o">/</span><span class="n">environments</span><span class="o">/</span><span class="n">nvtabular_aws_sagemaker</span><span class="o">.</span><span class="n">yml</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple" start="7">
 <li><p>Activate the conda environment</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">ec2</span><span class="o">-</span><span class="n">user</span><span class="o">/</span><span class="n">anaconda3</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">profile</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">conda</span><span class="o">.</span><span class="n">sh</span>
 <span class="n">conda</span> <span class="n">activate</span> <span class="n">nvtabular</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple" start="8">
 <li><p>Install additional packages, such as TensorFlow or PyTorch</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">tensorflow</span><span class="o">-</span><span class="n">gpu</span> 
@@ -265,20 +265,20 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
 <span class="n">pip</span> <span class="n">install</span> <span class="n">graphviz</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple" start="9">
 <li><p>Install Transformer4Rec, torchmetrics and ipykernel</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="o">-</span><span class="n">c</span> <span class="n">nvidia</span> <span class="o">-</span><span class="n">c</span> <span class="n">rapidsai</span> <span class="o">-</span><span class="n">c</span> <span class="n">numba</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">transformers4rec</span>
 <span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">torchmetrics</span> <span class="n">ipykernel</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple" start="10">
 <li><p>Add conda environment as ipykernel</p></li>
 </ol>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">ipykernel</span> <span class="n">install</span> <span class="o">--</span><span class="n">user</span> <span class="o">--</span><span class="n">name</span><span class="o">=</span><span class="n">nvtabular</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple" start="11">
 <li><p>You can switch in jupyter lab and run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens">movielens example</a>.</p></li>
 </ol>
 <p>This workflow enables NVTabular ETL and training with TensorFlow or Pytorch. Deployment with Triton Inference Server will follow soon.</p>

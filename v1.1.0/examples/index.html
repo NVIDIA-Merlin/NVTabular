@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular Example Notebooks &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -93,13 +93,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-example-notebooks">
+  <div class="section" id="nvtabular-example-notebooks">
 <h1>NVTabular Example Notebooks<a class="headerlink" href="#nvtabular-example-notebooks" title="Permalink to this headline"></a></h1>
 <p>We have a collection of Jupyter notebooks that are based on different datasets.
 These example notebooks demonstrate how to use NVTabular with TensorFlow, PyTorch, and <a class="reference external" href="https://github.com/NVIDIA/HugeCTR">HugeCTR</a>.
 Each example provides additional information about NVTabular’s features.</p>
 <p>If you’d like to create a full conda environment to run the example notebooks, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Use the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/conda/environments">environment files</a> that have been provided to install the CUDA Toolkit (11.0 or 11.2).</p></li>
 <li><p>Clone the NVTabular repo and run the following commands from the root directory:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda env create -f<span class="o">=</span>conda/environments/nvtabular_dev_cuda11.2.yml
@@ -166,7 +166,7 @@ jupyter notebook
 <li><p>Merlin-Tensorflow-Inference (contains NVTabular with TensorFlow and Triton Inference support)</p></li>
 </ul>
 <p>To run the example notebooks using Docker containers, do the following:</p>
-<ol>
+<ol class="arabic">
 <li><p>Pull the container by running the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8888</span><span class="p">:</span><span class="mi">8888</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8797</span><span class="p">:</span><span class="mi">8787</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8796</span><span class="p">:</span><span class="mi">8786</span> <span class="o">--</span><span class="n">ipc</span><span class="o">=</span><span class="n">host</span> <span class="o">&lt;</span><span class="n">docker</span> <span class="n">container</span><span class="o">&gt;</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
 </pre></div>
@@ -182,7 +182,7 @@ jupyter notebook
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">@</span><span class="mi">2</span><span class="n">efa5b50b909</span><span class="p">:</span>
 </pre></div>
 </div>
-<ol>
+<ol class="arabic" start="2">
 <li><p>If jupyter-lab is not installed, install jupyter-lab with <code class="docutils literal notranslate"><span class="pre">pip</span></code> by running the following command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">jupyterlab</span>
 </pre></div>

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Getting Started Outbrain: ETL with NVTabular &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -112,7 +112,7 @@
 </div>
 </div>
 </div>
-<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-outbrain-etl-with-nvtabular">
+<div class="section" id="getting-started-outbrain-etl-with-nvtabular">
 <h1>Getting Started Outbrain: ETL with NVTabular<a class="headerlink" href="#getting-started-outbrain-etl-with-nvtabular" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -309,7 +309,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/02-ETL-with-NVTabular_24_0.svg" src="../../_images/02-ETL-with-NVTabular_24_0.svg" /></div>
+<img alt="../../_images/e0ab3e17d3556a62cf52a40aafabf532fc98be0a9b2463c14a11dbd491e21ea6.svg" src="../../_images/e0ab3e17d3556a62cf52a40aafabf532fc98be0a9b2463c14a11dbd491e21ea6.svg" /></div>
 </div>
 <p>A user might sometimes be interested to continue reading about the same topics of the current page. Computing the similarity between the textual content of the current page and the pages linked to the displayed ads, can be a relevant feature for a model that predicts which ad the user would click next. A simple, yet effective way to compute the similarity between documents is generating the TF-IDF vectors for each of them, which captures their most relevant terms, and then computing the cosine similarity between those vectors.</p>
 <p>Below, we calculate <i>doc_event_doc_ad_sim_categories</i>, <i>topics</i>, and <i>entities</i> using the <code class="docutils literal notranslate"><span class="pre">ColumnSimilarity</span></code> op, which utilizes the sparse categories, topics, and entities matrices that were created above to calculate landing page similarity for categories, topics, and entities. We calculate Cosine similarity between event doc (landing page) and ad doc aspects vectors (TF-IDF). Creating these extra features help to improve model accuracy and predictability.</p>

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Multi-GPU with MovieLens: ETL and Training &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -113,7 +113,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="multi-gpu-with-movielens-etl-and-training">
+<div class="section" id="multi-gpu-with-movielens-etl-and-training">
 <h1>Multi-GPU with MovieLens: ETL and Training<a class="headerlink" href="#multi-gpu-with-movielens-etl-and-training" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -306,240 +306,240 @@ distributed.preloading - INFO - Import preload module: dask_cuda.initialize
 </pre></div>
 </div>
 <div class="output text_html">
-    <div>
-        <div style="
-            width: 24px;
-            height: 24px;
-            background-color: #e1e1e1;
-            border: 3px solid #9D9D9D;
-            border-radius: 5px;
-            position: absolute;"> </div>
-        <div style="margin-left: 48px;">
-            <h3 style="margin-bottom: 0px;">Client</h3>
-            <p style="color: #9D9D9D; margin-bottom: 0px;">Client-1186085c-5cc7-11ec-8176-54ab3a8c9e18</p>
-            <table style="width: 100%; text-align: left;">
-
-        <tr>
-            <td style="text-align: left;"><strong>Connection method:</strong> Cluster object</td>
-            <td style="text-align: left;"><strong>Cluster type:</strong> LocalCUDACluster</td>
-        </tr>
-
-        <tr>
-            <td style="text-align: left;">
-                <strong>Dashboard: </strong>
-                <a href="http://127.0.0.1:33621/status">http://127.0.0.1:33621/status</a>
-            </td>
-            <td style="text-align: left;"></td>
-        </tr>
-
-            </table>
-
-        <details>
-        <summary style="margin-bottom: 20px;"><h3 style="display: inline;">Cluster Info</h3></summary>
-
-    <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-mod-trusted jp-OutputArea-output">
-        <div style="
-            width: 24px;
-            height: 24px;
-            background-color: #e1e1e1;
-            border: 3px solid #9D9D9D;
-            border-radius: 5px;
-            position: absolute;"> </div>
-        <div style="margin-left: 48px;">
-            <h3 style="margin-bottom: 0px; margin-top: 0px;">LocalCUDACluster</h3>
-            <p style="color: #9D9D9D; margin-bottom: 0px;">d5de4e96</p>
-            <table style="width: 100%; text-align: left;">
-
-    <tr>
-        <td style="text-align: left;"><strong>Status:</strong> running</td>
-        <td style="text-align: left;"><strong>Using processes:</strong> True</td>
-    </tr>
-
-    <tr>
-        <td style="text-align: left;">
-            <strong>Dashboard:</strong> <a href="http://127.0.0.1:33621/status">http://127.0.0.1:33621/status</a>
-        </td>
-        <td style="text-align: left;"><strong>Workers:</strong> 2</td>
-    </tr>
-    <tr>
-        <td style="text-align: left;">
-            <strong>Total threads:</strong>
-            2
-        </td>
-        <td style="text-align: left;">
-            <strong>Total memory:</strong>
-            0.98 TiB
-        </td>
-    </tr>
-
-            </table>
-            <details>
-            <summary style="margin-bottom: 20px;"><h3 style="display: inline;">Scheduler Info</h3></summary>
-
-<div style="">
-
-    <div>
-        <div style="
-            width: 24px;
-            height: 24px;
-            background-color: #FFF7E5;
-            border: 3px solid #FF6132;
-            border-radius: 5px;
-            position: absolute;"> </div>
-        <div style="margin-left: 48px;">
-            <h3 style="margin-bottom: 0px;">Scheduler</h3>
-            <p style="color: #9D9D9D; margin-bottom: 0px;">Scheduler-2389d797-80ae-4c6d-a865-b6d3ca73515f</p>
-            <table style="width: 100%; text-align: left;">
-                <tr>
-                    <td style="text-align: left;"><strong>Comm:</strong> tcp://127.0.0.1:43283</td>
-                    <td style="text-align: left;"><strong>Workers:</strong> 2</td>
-                </tr>
-                <tr>
-                    <td style="text-align: left;">
-                        <strong>Dashboard:</strong> <a href="http://127.0.0.1:33621/status">http://127.0.0.1:33621/status</a>
-                    </td>
-                    <td style="text-align: left;">
-                        <strong>Total threads:</strong>
-                        2
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: left;">
-                        <strong>Started:</strong>
-                        Just now
-                    </td>
-                    <td style="text-align: left;">
-                        <strong>Total memory:</strong>
-                        0.98 TiB
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
-
-    <details style="margin-left: 48px;">
-    <summary style="margin-bottom: 20px;"><h3 style="display: inline;">Workers</h3></summary>
-
-    <div style="margin-bottom: 20px;">
-        <div style="width: 24px;
+            <div>
+                <div style="
+                    width: 24px;
                     height: 24px;
-                    background-color: #DBF5FF;
-                    border: 3px solid #4CC9FF;
+                    background-color: #e1e1e1;
+                    border: 3px solid #9D9D9D;
                     border-radius: 5px;
                     position: absolute;"> </div>
-        <div style="margin-left: 48px;">
-        <details>
-            <summary>
-                <h4 style="margin-bottom: 0px; display: inline;">Worker: 0</h4>
-            </summary>
-            <table style="width: 100%; text-align: left;">
+                <div style="margin-left: 48px;">
+                    <h3 style="margin-bottom: 0px;">Client</h3>
+                    <p style="color: #9D9D9D; margin-bottom: 0px;">Client-1186085c-5cc7-11ec-8176-54ab3a8c9e18</p>
+                    <table style="width: 100%; text-align: left;">
+                    
                 <tr>
-                    <td style="text-align: left;"><strong>Comm: </strong> tcp://127.0.0.1:36269</td>
-                    <td style="text-align: left;"><strong>Total threads: </strong> 1</td>
+                    <td style="text-align: left;"><strong>Connection method:</strong> Cluster object</td>
+                    <td style="text-align: left;"><strong>Cluster type:</strong> LocalCUDACluster</td>
                 </tr>
+                
                 <tr>
                     <td style="text-align: left;">
                         <strong>Dashboard: </strong>
-                        <a href="http://127.0.0.1:42147/status">http://127.0.0.1:42147/status</a>
+                        <a href="http://127.0.0.1:33621/status">http://127.0.0.1:33621/status</a>
                     </td>
-                    <td style="text-align: left;">
-                        <strong>Memory: </strong>
-                        503.90 GiB
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: left;"><strong>Nanny: </strong> tcp://127.0.0.1:34769</td>
                     <td style="text-align: left;"></td>
                 </tr>
-                <tr>
-                    <td colspan="2" style="text-align: left;">
-                        <strong>Local directory: </strong>
-                        /root/nvt-examples/multigpu-movielens/data/test_dask/workdir/dask-worker-space/worker-rpm3vlgv
-                    </td>
-                </tr>
-
-        <tr>
-            <td style="text-align: left;">
-                <strong>GPU: </strong>Tesla V100-SXM2-32GB
-            </td>
-            <td style="text-align: left;">
-                <strong>GPU memory: </strong>
-                31.75 GiB
-            </td>
-        </tr>
-
-
-            </table>
-        </details>
-        </div>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-        <div style="width: 24px;
+                
+                    </table>
+                    
+                <details>
+                <summary style="margin-bottom: 20px;"><h3 style="display: inline;">Cluster Info</h3></summary>
+                
+            <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-mod-trusted jp-OutputArea-output">
+                <div style="
+                    width: 24px;
                     height: 24px;
-                    background-color: #DBF5FF;
-                    border: 3px solid #4CC9FF;
+                    background-color: #e1e1e1;
+                    border: 3px solid #9D9D9D;
                     border-radius: 5px;
                     position: absolute;"> </div>
-        <div style="margin-left: 48px;">
-        <details>
-            <summary>
-                <h4 style="margin-bottom: 0px; display: inline;">Worker: 1</h4>
-            </summary>
-            <table style="width: 100%; text-align: left;">
-                <tr>
-                    <td style="text-align: left;"><strong>Comm: </strong> tcp://127.0.0.1:34485</td>
-                    <td style="text-align: left;"><strong>Total threads: </strong> 1</td>
-                </tr>
+                <div style="margin-left: 48px;">
+                    <h3 style="margin-bottom: 0px; margin-top: 0px;">LocalCUDACluster</h3>
+                    <p style="color: #9D9D9D; margin-bottom: 0px;">d5de4e96</p>
+                    <table style="width: 100%; text-align: left;">
+                    
+            <tr>
+                <td style="text-align: left;"><strong>Status:</strong> running</td>
+                <td style="text-align: left;"><strong>Using processes:</strong> True</td>
+            </tr>
+        
+            <tr>
+                <td style="text-align: left;">
+                    <strong>Dashboard:</strong> <a href="http://127.0.0.1:33621/status">http://127.0.0.1:33621/status</a>
+                </td>
+                <td style="text-align: left;"><strong>Workers:</strong> 2</td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">
+                    <strong>Total threads:</strong>
+                    2
+                </td>
+                <td style="text-align: left;">
+                    <strong>Total memory:</strong>
+                    0.98 TiB
+                </td>
+            </tr>
+        
+                    </table>
+                    <details>
+                    <summary style="margin-bottom: 20px;"><h3 style="display: inline;">Scheduler Info</h3></summary>
+                    
+        <div style="">
+            
+            <div>
+                <div style="
+                    width: 24px;
+                    height: 24px;
+                    background-color: #FFF7E5;
+                    border: 3px solid #FF6132;
+                    border-radius: 5px;
+                    position: absolute;"> </div>
+                <div style="margin-left: 48px;">
+                    <h3 style="margin-bottom: 0px;">Scheduler</h3>
+                    <p style="color: #9D9D9D; margin-bottom: 0px;">Scheduler-2389d797-80ae-4c6d-a865-b6d3ca73515f</p>
+                    <table style="width: 100%; text-align: left;">
+                        <tr>
+                            <td style="text-align: left;"><strong>Comm:</strong> tcp://127.0.0.1:43283</td>
+                            <td style="text-align: left;"><strong>Workers:</strong> 2</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">
+                                <strong>Dashboard:</strong> <a href="http://127.0.0.1:33621/status">http://127.0.0.1:33621/status</a>
+                            </td>
+                            <td style="text-align: left;">
+                                <strong>Total threads:</strong>
+                                2
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">
+                                <strong>Started:</strong>
+                                Just now
+                            </td>
+                            <td style="text-align: left;">
+                                <strong>Total memory:</strong>
+                                0.98 TiB
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        
+            <details style="margin-left: 48px;">
+            <summary style="margin-bottom: 20px;"><h3 style="display: inline;">Workers</h3></summary>
+            
+            <div style="margin-bottom: 20px;">
+                <div style="width: 24px;
+                            height: 24px;
+                            background-color: #DBF5FF;
+                            border: 3px solid #4CC9FF;
+                            border-radius: 5px;
+                            position: absolute;"> </div>
+                <div style="margin-left: 48px;">
+                <details>
+                    <summary>
+                        <h4 style="margin-bottom: 0px; display: inline;">Worker: 0</h4>
+                    </summary>
+                    <table style="width: 100%; text-align: left;">
+                        <tr>
+                            <td style="text-align: left;"><strong>Comm: </strong> tcp://127.0.0.1:36269</td>
+                            <td style="text-align: left;"><strong>Total threads: </strong> 1</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">
+                                <strong>Dashboard: </strong>
+                                <a href="http://127.0.0.1:42147/status">http://127.0.0.1:42147/status</a>
+                            </td>
+                            <td style="text-align: left;">
+                                <strong>Memory: </strong>
+                                503.90 GiB
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;"><strong>Nanny: </strong> tcp://127.0.0.1:34769</td>
+                            <td style="text-align: left;"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="text-align: left;">
+                                <strong>Local directory: </strong>
+                                /root/nvt-examples/multigpu-movielens/data/test_dask/workdir/dask-worker-space/worker-rpm3vlgv
+                            </td>
+                        </tr>
+                        
                 <tr>
                     <td style="text-align: left;">
-                        <strong>Dashboard: </strong>
-                        <a href="http://127.0.0.1:42123/status">http://127.0.0.1:42123/status</a>
+                        <strong>GPU: </strong>Tesla V100-SXM2-32GB
                     </td>
                     <td style="text-align: left;">
-                        <strong>Memory: </strong>
-                        503.90 GiB
+                        <strong>GPU memory: </strong>
+                        31.75 GiB
                     </td>
                 </tr>
+                
+                        
+                    </table>
+                </details>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <div style="width: 24px;
+                            height: 24px;
+                            background-color: #DBF5FF;
+                            border: 3px solid #4CC9FF;
+                            border-radius: 5px;
+                            position: absolute;"> </div>
+                <div style="margin-left: 48px;">
+                <details>
+                    <summary>
+                        <h4 style="margin-bottom: 0px; display: inline;">Worker: 1</h4>
+                    </summary>
+                    <table style="width: 100%; text-align: left;">
+                        <tr>
+                            <td style="text-align: left;"><strong>Comm: </strong> tcp://127.0.0.1:34485</td>
+                            <td style="text-align: left;"><strong>Total threads: </strong> 1</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">
+                                <strong>Dashboard: </strong>
+                                <a href="http://127.0.0.1:42123/status">http://127.0.0.1:42123/status</a>
+                            </td>
+                            <td style="text-align: left;">
+                                <strong>Memory: </strong>
+                                503.90 GiB
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;"><strong>Nanny: </strong> tcp://127.0.0.1:46881</td>
+                            <td style="text-align: left;"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="text-align: left;">
+                                <strong>Local directory: </strong>
+                                /root/nvt-examples/multigpu-movielens/data/test_dask/workdir/dask-worker-space/worker-0lecf42d
+                            </td>
+                        </tr>
+                        
                 <tr>
-                    <td style="text-align: left;"><strong>Nanny: </strong> tcp://127.0.0.1:46881</td>
-                    <td style="text-align: left;"></td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="text-align: left;">
-                        <strong>Local directory: </strong>
-                        /root/nvt-examples/multigpu-movielens/data/test_dask/workdir/dask-worker-space/worker-0lecf42d
+                    <td style="text-align: left;">
+                        <strong>GPU: </strong>Tesla V100-SXM2-32GB
+                    </td>
+                    <td style="text-align: left;">
+                        <strong>GPU memory: </strong>
+                        31.75 GiB
                     </td>
                 </tr>
-
-        <tr>
-            <td style="text-align: left;">
-                <strong>GPU: </strong>Tesla V100-SXM2-32GB
-            </td>
-            <td style="text-align: left;">
-                <strong>GPU memory: </strong>
-                31.75 GiB
-            </td>
-        </tr>
-
-
-            </table>
-        </details>
-        </div>
-    </div>
-
-    </details>
-</div>
-
+                
+                        
+                    </table>
+                </details>
+                </div>
+            </div>
+            
             </details>
         </div>
-    </div>
-
-        </details>
-
-        </div>
-    </div>
-</div></div>
+        
+                    </details>
+                </div>
+            </div>
+        
+                </details>
+                
+                </div>
+            </div>
+        </div></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
