@@ -59,7 +59,7 @@ LABEL_COLUMNS = ["rating"]
 TEST_N_ROWS = 64
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
-TRITON_DEVICE_ID = "1"
+TRITON_DEVICE_ID = "0"
 
 
 @pytest.mark.parametrize("n_rows", [64])

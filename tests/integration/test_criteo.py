@@ -71,7 +71,7 @@ def criteo_base(tmpdir):
     with testbook(
         notebook,
         execute=False,
-        timeout=450,
+        timeout=3600,
     ) as tb_dl_convert:
         tb_dl_convert.inject(
             f"""
@@ -92,7 +92,7 @@ def test_criteo_fastai(asv_db, bench_info, tmpdir, report):
     with testbook(
         notebook,
         execute=False,
-        timeout=450,
+        timeout=3600,
     ) as tb_train_torch:
         tb_train_torch.inject(
             f"""
@@ -116,7 +116,7 @@ def test_criteo_tf(asv_db, bench_info, tmpdir, report):
     with testbook(
         notebook,
         execute=False,
-        timeout=450,
+        timeout=3600,
     ) as tb_train_torch:
         tb_train_torch.inject(
             f"""
@@ -173,7 +173,7 @@ def test_criteo_hugectr(asv_db, bench_info, tmpdir, report):
     with testbook(
         notebook,
         execute=False,
-        timeout=450,
+        timeout=3600,
     ) as tb_train:
         tb_train.inject(
             f"""
