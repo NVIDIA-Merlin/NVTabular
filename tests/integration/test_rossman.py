@@ -92,7 +92,7 @@ def rossman_base(tmpdir):
         tb_nvt.inject(
             f"""
                 import os
-                os.environ['INPUT_DATA_DIR'] = "{data_path}"
+                os.environ['INPUT_DATA_DIR'] = "{input_path}"
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
