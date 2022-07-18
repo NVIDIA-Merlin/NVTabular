@@ -80,7 +80,8 @@ def movielens_base(tmpdir):
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
-        tb_dl_convert.execute_cell(list(range(0, len(tb_dl_convert.cells))))
+        tb_dl_convert.execute_cell(list(range(0, 7)))
+        tb_dl_convert.execute_cell(list(range(8, len(tb_dl_convert.cells))))
 
     # _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
