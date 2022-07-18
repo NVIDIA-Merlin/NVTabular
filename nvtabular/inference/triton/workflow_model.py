@@ -103,16 +103,16 @@ class TritonPythonModel:
         for request in requests:
             # transform the triton tensors to a dict of name:numpy tensor
             input_tensors = {
-                name: _convert_tensor(pb_utils.get_input_tensor_by_name(request, name))
+                name: self._convert_tensor(pb_utils.get_input_tensor_by_name(request, name))
                 for name in self.input_dtypes
             }
 
             # multihots are represented as a tuple of (values, offsets)
             for name, dtype in self.input_multihots.items():
-                values = _convert_tensor(
+                values = self._convert_tensor(
                     pb_utils.get_input_tensor_by_name(request, name + "__values")
                 )
-                offsets = _convert_tensor(
+                offsets = self._convert_tensor(
                     pb_utils.get_input_tensor_by_name(request, name + "__nnzs")
                 )
                 input_tensors[name] = (values, offsets)
@@ -124,6 +124,12 @@ class TritonPythonModel:
             responses.append(pb_utils.InferenceResponse(result))
 
         return responses
+
+    def _convert_tensor(self, t):
+        out = _convert_tensor(t)
+        if len(out.shape) == 2:
+            out = out[:, 0]
+        return out
 
 
 def _parse_input_dtypes(dtypes):
