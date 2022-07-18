@@ -92,7 +92,7 @@ def rossman_base(tmpdir):
         tb_nvt.inject(
             f"""
                 import os
-                os.environ['INPUT_DATA_DIR'] = "{data_path}"
+                os.environ['INPUT_DATA_DIR'] = "{input_path}"
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
@@ -322,4 +322,4 @@ def rmspe_tf(y_true, y_pred):
     y_pred = tf.exp(y_pred) - 1
 
     percent_error = (y_true - y_pred) / y_true
-    return tf.sqrt(tf.reduce_mean(percent_error ** 2))
+    return tf.sqrt(tf.reduce_mean(percent_error**2))
