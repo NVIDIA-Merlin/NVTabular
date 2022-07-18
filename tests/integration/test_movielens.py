@@ -80,7 +80,8 @@ def movielens_base(tmpdir):
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
-        tb_dl_convert.execute_cell(list(range(0, len(tb_dl_convert.cells))))
+        tb_dl_convert.execute_cell(list(range(0, 7)))
+        tb_dl_convert.execute_cell(list(range(8, len(tb_dl_convert.cells))))
 
     # _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
@@ -94,7 +95,7 @@ def movielens_base(tmpdir):
         tb_nvt.inject(
             f"""
                 import os
-                os.environ['INPUT_DATA_DIR'] = "{data_path}"
+                os.environ['INPUT_DATA_DIR'] = "{input_path}"
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
@@ -105,7 +106,6 @@ def movielens_base(tmpdir):
 def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
     movielens_base(tmpdir)
 
-    data_path = os.path.join(DATA_DIR, "movielens-25m")
     input_path = os.path.join(tmpdir, "movielens/input")
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
@@ -123,7 +123,7 @@ def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
         tb_train_tf.inject(
             f"""
                 import os
-                os.environ['INPUT_DATA_DIR'] = "{data_path}"
+                os.environ['INPUT_DATA_DIR'] = "{input_path}"
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
@@ -145,7 +145,6 @@ def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
 def test_movielens_torch(asv_db, bench_info, tmpdir, devices):
     movielens_base(tmpdir)
 
-    data_path = os.path.join(DATA_DIR, "movielens-25m")
     input_path = os.path.join(tmpdir, "movielens/input")
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
@@ -165,7 +164,7 @@ def test_movielens_torch(asv_db, bench_info, tmpdir, devices):
         tb_train_torch.inject(
             f"""
                 import os
-                os.environ['INPUT_DATA_DIR'] = "{data_path}"
+                os.environ['INPUT_DATA_DIR'] = "{input_path}"
                 os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
             """
         )
