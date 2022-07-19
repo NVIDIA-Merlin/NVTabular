@@ -124,7 +124,7 @@ def test_rossman_tf(asv_db, bench_info, tmpdir, devices, report):
             """
         )
         tb_training.execute_cell(list(range(0, len(tb_training.cells))))
-    create_rossman_inference_data(INFERENCE_MULTI_HOT, DATA_DIR, output_path, 100)
+    create_rossman_inference_data(INFERENCE_MULTI_HOT, DATA_DIR, input_path, output_path, 100)
     with test_utils.run_triton_server(
         INFERENCE_MULTI_HOT,
         "rossmann",
@@ -191,7 +191,7 @@ def test_rossman_fastai(asv_db, bench_info, tmpdir, devices, report):
         tb_training.execute_cell(list(range(0, len(tb_training.cells))))
 
 
-def create_rossman_inference_data(model_dir, data_dir, output_dir, nrows):
+def create_rossman_inference_data(model_dir, data_dir, input_dir, output_dir, nrows):
     import tensorflow as tf
     from tensorflow import keras
 
@@ -199,7 +199,7 @@ def create_rossman_inference_data(model_dir, data_dir, output_dir, nrows):
 
     workflow_path = os.path.join(os.path.expanduser(model_dir), "rossmann_nvt/1/workflow")
     model_path = os.path.join(os.path.expanduser(model_dir), "rossmann_tf/1/model.savedmodel")
-    data_path = os.path.join(os.path.expanduser(data_dir), "rossman/input/valid.csv")
+    data_path = os.path.join(os.path.expanduser(input_dir), "valid.csv")
     output_dir = os.path.join(os.path.expanduser(output_dir), "rossman/")
     os.makedirs(output_dir)
     workflow_output_test_file_name = "test_inference_rossmann_data.csv"
