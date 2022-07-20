@@ -44,7 +44,6 @@ extensions = [
     "sphinx_external_toc",
     "sphinx_multiversion",
     "sphinx_rtd_theme",
-    "sphinx_markdown_tables",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.coverage",
@@ -66,7 +65,7 @@ myst_enable_extensions = [
 ]
 myst_linkify_fuzzy_links = False
 myst_heading_anchors = 3
-jupyter_execute_notebooks = "off"
+nb_execution_mode = "off"
 
 # The API documents are RST and include `.. toctree::` directives.
 suppress_warnings = ["etoc.toctree", "myst.header", "misc.highlighting_failure"]
