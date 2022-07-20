@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Getting Started MovieLens: Download and Convert &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -118,7 +118,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-movielens-download-and-convert">
+<div class="section" id="getting-started-movielens-download-and-convert">
 <h1>Getting Started MovieLens: Download and Convert<a class="headerlink" href="#getting-started-movielens-download-and-convert" title="Permalink to this headline"></a></h1>
 <div class="section" id="movielens25m">
 <h2>MovieLens25M<a class="headerlink" href="#movielens25m" title="Permalink to this headline"></a></h2>
@@ -145,6 +145,9 @@
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">OUTPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -173,7 +176,7 @@ unzipping files: 100%|███████████████████�
 <p>First, we take a look on the movie metadata.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m/movies.csv&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;movies.csv&quot;</span><span class="p">))</span>
 <span class="n">movies</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -302,7 +305,7 @@ unzipping files: 100%|███████████████████�
 <p>We save movies genres in parquet format, so that they can be used by NVTabular in the next notebook.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;movies_converted.parquet&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -313,7 +316,7 @@ unzipping files: 100%|███████████████████�
 <p>We load the movie ratings.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ratings</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ml-25m&quot;</span><span class="p">,</span> <span class="s2">&quot;ratings.csv&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ratings</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ratings.csv&quot;</span><span class="p">))</span>
 <span class="n">ratings</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -403,8 +406,8 @@ unzipping files: 100%|███████████████████�
 <p>We save the dataset to disk.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))</span>
-<span class="n">valid</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.parquet&quot;</span><span class="p">))</span>
+<span class="n">valid</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>

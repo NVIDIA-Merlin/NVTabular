@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NVTabular demo on RecSys2020 Challenge &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -116,7 +116,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="nvtabular-demo-on-recsys2020-challenge">
+<div class="section" id="nvtabular-demo-on-recsys2020-challenge">
 <h1>NVTabular demo on RecSys2020 Challenge<a class="headerlink" href="#nvtabular-demo-on-recsys2020-challenge" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -132,7 +132,7 @@
 <div class="section" id="learning-objectives">
 <h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
 <p>This notebook covers the end-2-end pipeline, from loading the original .tsv file to training the models, with NVTabular, <a class="reference external" href="https://github.com/rapidsai/cudf">cuDF</a>, <a class="reference external" href="https://dask.org/">dask</a> and <a class="reference external" href="https://xgboost.readthedocs.io/">XGBoost</a>. We demonstrate multi-GPU support for NVTabular and new <code class="docutils literal notranslate"><span class="pre">nvt.ops</span></code>, implemented based on the success of our RecSys2020 solution.</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p><strong>NVTabular</strong> to preprocess the original .tsv file.</p></li>
 <li><p><strong>dask_cudf</strong> to split the preprocessed data into a training and validation set.</p></li>
 <li><p><strong>NVTabular</strong> to create additional features with only <strong>~70 lines of code</strong>.</p></li>
@@ -222,7 +222,7 @@
 <div class="section" id="preparing-our-dataset">
 <h2>Preparing our dataset<a class="headerlink" href="#preparing-our-dataset" title="Permalink to this headline"></a></h2>
 <p>The original data format had multiple inefficiencies, resulting in requiring more disk space and memory:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>The file format is <code class="docutils literal notranslate"><span class="pre">.tsv</span></code>, an uncompressed, text-based format. The <code class="docutils literal notranslate"><span class="pre">parquet</span></code> file format stores tabular data in a compressed, column-oriented format. This saves a significant amount of disk space which results in fewer i/o operations and faster execution.</p></li>
 <li><p>Some categorical features, such as tweet_id, user_id are hashed to String values (e.g. <code class="docutils literal notranslate"><span class="pre">cfcd208495d565ef66e7dff9f98764da</span></code>). These long Strings require significant amount of disk space/memory. We can encode the Categories as Integer values using <code class="docutils literal notranslate"><span class="pre">Categorify</span></code>. Representing the String <code class="docutils literal notranslate"><span class="pre">cfcd208495d565ef66e7dff9f98764da</span></code> as an Integer <code class="docutils literal notranslate"><span class="pre">0</span></code> can save up 90% in memory. Although other categorical features are no long hashes, they are still Strings (e.g. tweet_type) and we will represent them as Integers, as well.</p></li>
 <li><p>In our experiments, the text_tokens were not a significant feature and we will drop the column before we split the data.</p></li>
@@ -265,7 +265,7 @@
 </div>
 </div>
 <p>We define two helper function, we apply in our NVTabular workflow:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>splitmedia2 splits the entries in media by <code class="docutils literal notranslate"><span class="pre">\t</span></code> and keeps only the first two values (if available),</p></li>
 <li><p>count_token counts the number of token in a column (e.g. how many hashtags are in a tweet),</p></li>
 </ol>
@@ -352,7 +352,7 @@ Before we can apply <code class="docutils literal notranslate"><span class="pre"
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_28_0.svg" src="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_28_0.svg" /></div>
+<img alt="../../_images/37cd9c366c929d0ee424188610d851784ed3edc2bceb37993110ca1c15b7a10f.svg" src="../../_images/37cd9c366c929d0ee424188610d851784ed3edc2bceb37993110ca1c15b7a10f.svg" /></div>
 </div>
 <p>Our calculation workflow looks correct. But we want to keep columns, which are not used in our pipeline (for <code class="docutils literal notranslate"><span class="pre">a_follower_count</span></code> or <code class="docutils literal notranslate"><span class="pre">b_follows_a</span></code>. Therefore, we include all columns in features, which are not part of our pipeline (except of <code class="docutils literal notranslate"><span class="pre">text_tokens</span></code>).</p>
 <div class="cell docutils container">
@@ -594,7 +594,7 @@ We extract seconds from datetime</p>
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_59_0.svg" src="../../_images/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost_59_0.svg" /></div>
+<img alt="../../_images/c0d0af4a634a0b78d0e548c7de340b73d09434a328604b45aeb505faec3c4ab6.svg" src="../../_images/c0d0af4a634a0b78d0e548c7de340b73d09434a328604b45aeb505faec3c4ab6.svg" /></div>
 </div>
 <p>We want to keep all columns of the input dataset. Therefore, we extract all column names from the first input parquet file.</p>
 <div class="cell docutils container">
@@ -867,7 +867,7 @@ Using 51 features
 </div>
 </div>
 <p>We train our XGBoost models. The challenge requires to predict 4 targets, does a user</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>like a tweet</p></li>
 <li><p>reply a tweet</p></li>
 <li><p>comment a tweet</p></li>

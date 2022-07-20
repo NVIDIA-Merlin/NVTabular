@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Getting Started MovieLens: Training with HugeCTR &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -118,7 +118,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="getting-started-movielens-training-with-hugectr">
+<div class="section" id="getting-started-movielens-training-with-hugectr">
 <h1>Getting Started MovieLens: Training with HugeCTR<a class="headerlink" href="#getting-started-movielens-training-with-hugectr" title="Permalink to this headline"></a></h1>
 <p>In this notebook, we want to provide an overview what HugeCTR framework is, its features and benefits. We will use HugeCTR to train a basic neural network architecture.</p>
 <p><b>Learning Objectives</b>:</p>
@@ -131,7 +131,7 @@
 <h2>Why using HugeCTR?<a class="headerlink" href="#why-using-hugectr" title="Permalink to this headline"></a></h2>
 <p>HugeCTR is a GPU-accelerated recommender framework designed to distribute training across multiple GPUs and nodes and estimate Click-Through Rates (CTRs).<br></p>
 <p>HugeCTR offers multiple advantages to train deep learning recommender systems:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p><strong>Speed</strong>: HugeCTR is a highly efficient framework written C++. We experienced up to 10x speed up. HugeCTR on a NVIDIA DGX A100 system proved to be the fastest commercially available solution for training the architecture Deep Learning Recommender Model (DLRM) developed by Facebook.</p></li>
 <li><p><strong>Scale</strong>: HugeCTR supports model parallel scaling. It distributes the large embedding tables over multiple GPUs or multiple nodes.</p></li>
 <li><p><strong>Easy-to-use</strong>: Easy-to-use Python API similar to Keras. Examples for popular deep learning recommender systems architectures (Wide&amp;Deep, DLRM, DCN, DeepFM) are available.</p></li>
