@@ -119,6 +119,9 @@ class TritonPythonModel:
                 # Convert the input data to dict to pass it into the PyTorch model
                 input_dict = {}
                 for name, dtype in self.inputs.items():
+                    # Convert to fixed dtypes if requested
+                    if self.model_info["use_fix_dtypes"]:
+                        dtype = _convert_dtype(dtype)
                     input_dict[name] = torch.tensor(
                         _convert_tensor(pb_utils.get_input_tensor_by_name(request, name)),
                         dtype=dtype,
@@ -126,9 +129,6 @@ class TritonPythonModel:
 
                 # Sparse inputs have a special format
                 for name, dtype in self.sparse_inputs.items():
-                    # Convert to fixed dtypes if requested
-                    if self.model_info["use_fix_dtypes"]:
-                        dtype = _convert_dtype(dtype)
 
                     # Get __values and __nnzs
                     input_val = _convert_tensor(
@@ -168,10 +168,12 @@ class TritonPythonModel:
                         "output of the forward function should have a bucket named as predictions"
                     )
 
+                pred_numpy = pred.cpu().detach().numpy()
+
                 # There is one output in the config file
                 # since the PyTorch models generate a tensor as an output
                 output_info = self.model_config["output"][0]
-                output_tensor = pb_utils.Tensor(output_info["name"], pred.cpu().detach().numpy())
+                output_tensor = pb_utils.Tensor(output_info["name"], pred_numpy)
                 responses.append(pb_utils.InferenceResponse([output_tensor]))
 
         return responses
