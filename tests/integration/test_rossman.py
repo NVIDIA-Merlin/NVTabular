@@ -134,7 +134,7 @@ def test_rossman_tf(asv_db, bench_info, tmpdir, devices, report):
     ) as client:
         diff, run_time = _run_rossmann_query(client, 3, INFERENCE_MULTI_HOT, output_path)
 
-        assert (diff < 0.00001).all()
+        assert (diff < 0.001).all()
 
 
 @pytest.mark.skipif(torch is None, reason="pytorch not installed")
@@ -322,4 +322,4 @@ def rmspe_tf(y_true, y_pred):
     y_pred = tf.exp(y_pred) - 1
 
     percent_error = (y_true - y_pred) / y_true
-    return tf.sqrt(tf.reduce_mean(percent_error ** 2))
+    return tf.sqrt(tf.reduce_mean(percent_error**2))
