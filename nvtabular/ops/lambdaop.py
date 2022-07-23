@@ -99,11 +99,17 @@ class LambdaOp(Operator):
         if name != "<lambda>":
             return name
         else:
-            # otherwise get the lambda source code from the inspect module if possible
-            source = getsourcelines(self.f)[0][0]
-            lambdas = [op.strip() for op in source.split(">>") if "lambda " in op]
-            if len(lambdas) == 1 and lambdas[0].count("lambda") == 1:
-                return lambdas[0]
+            try:
+                # otherwise get the lambda source code from the inspect module if possible
+                source = getsourcelines(self.f)[0][0]
+                lambdas = [op.strip() for op in source.split(">>") if "lambda " in op]
+                if len(lambdas) == 1 and lambdas[0].count("lambda") == 1:
+                    return lambdas[0]
+            except Exception:  # pylint: disable=broad-except
+                # we can fail to load the source in distributed environments. Since the
+                # label is mainly used for diagnostics, don't worry about the error here and
+                # fallback to the default labelling
+                pass
 
         # Failed to figure out the source
         return "LambdaOp"
