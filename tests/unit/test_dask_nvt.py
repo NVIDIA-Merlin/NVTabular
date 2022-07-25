@@ -282,6 +282,26 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     )
 
 
+@pytest.mark.parametrize("engine", ["parquet", "csv"])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_lambda_op(client, tmpdir, datasets, engine, cpu):
+    set_dask_client(client=client)
+
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    dataset = Dataset(paths)
+
+    features = (
+        ["name-string"]
+        >> ops.Categorify()
+        >> ops.LambdaOp(lambda x: x.astype("int16"), dtype="int16")
+    )
+    workflow = Workflow(features)
+    workflow.fit(dataset)
+
+    transformed = workflow.transform(dataset).compute(scheduler="synchronous")
+    assert transformed["name-string"].dtype == "int16"
+
+
 @pytest.mark.parametrize("cpu", [None, True])
 def test_filtered_partition(tmpdir, cpu):
     # Toy DataFrame example
