@@ -175,11 +175,17 @@
         <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;&lt;lambda&gt;&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">name</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># otherwise get the lambda source code from the inspect module if possible</span>
-            <span class="n">source</span> <span class="o">=</span> <span class="n">getsourcelines</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">lambdas</span> <span class="o">=</span> <span class="p">[</span><span class="n">op</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;lambda &quot;</span> <span class="ow">in</span> <span class="n">op</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lambdas</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">lambdas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">lambdas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># otherwise get the lambda source code from the inspect module if possible</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="n">getsourcelines</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">lambdas</span> <span class="o">=</span> <span class="p">[</span><span class="n">op</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;lambda &quot;</span> <span class="ow">in</span> <span class="n">op</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lambdas</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">lambdas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">lambdas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pylint: disable=broad-except</span>
+                <span class="c1"># we can fail to load the source in distributed environments. Since the</span>
+                <span class="c1"># label is mainly used for diagnostics, don&#39;t worry about the error here and</span>
+                <span class="c1"># fallback to the default labelling</span>
+                <span class="k">pass</span>
 
         <span class="c1"># Failed to figure out the source</span>
         <span class="k">return</span> <span class="s2">&quot;LambdaOp&quot;</span>
