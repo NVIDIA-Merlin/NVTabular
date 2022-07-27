@@ -254,3 +254,37 @@ def test_groupby_column_names_containing_aggregations(cpu):
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     assert new_gdf is not None
+
+
+def test_groupby_column_names_when_grouping_and_outputting_same_column():
+    import datetime
+
+    purchases = cudf.DataFrame(
+        data={
+            "customer_id": np.random.randint(0, 10, 1000),
+            "purchase_date": [
+                datetime.date(2022, np.random.randint(1, 13), np.random.randint(1, 29))
+                for i in range(1000)
+            ],
+            "quantity": np.random.randint(1, 50, 1000),
+        }
+    )
+
+    ds = nvt.Dataset(purchases)
+
+    last_purchase_quantity = (
+        ["quantity", "purchase_date"]
+        >> nvt.ops.Groupby(
+            groupby_cols="customer_id", sort_cols="purchase_date", aggs={"quantity": "last"}
+        )
+        >> nvt.ops.Normalize()
+    )
+
+    customer_id = ["customer_id", "purchase_date"] >> nvt.ops.Groupby(
+        groupby_cols="customer_id", sort_cols="purchase_date", aggs={"customer_id": "last"}
+    )
+
+    wf = nvt.Workflow(last_purchase_quantity + customer_id)
+    result = wf.fit_transform(ds).compute()
+
+    assert list(result.columns) == ["quantity_last", "customer_id"]

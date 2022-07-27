@@ -234,7 +234,8 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascendi
     df = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
 
     df.columns = [
-        name_sep.join([n for n in name if n != ""]) for name in df.columns.to_flat_index()
+        name_sep.join([n for n in name if n != ""]) if not isinstance(name, str) else name
+        for name in df.columns.to_flat_index()
     ]
 
     # Handle custom aggs (e.g. "first" and "last")
