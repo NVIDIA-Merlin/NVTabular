@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import datetime
+
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -257,10 +259,8 @@ def test_groupby_column_names_containing_aggregations(cpu):
 
 
 def test_groupby_column_names_when_grouping_and_outputting_same_column():
-    import datetime
-
-    purchases = cudf.DataFrame(
-        data={
+    purchases = make_df(
+        {
             "customer_id": np.random.randint(0, 10, 1000),
             "purchase_date": [
                 datetime.date(2022, np.random.randint(1, 13), np.random.randint(1, 29))
