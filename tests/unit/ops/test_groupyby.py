@@ -209,7 +209,7 @@ def test_groupby_casting_in_aggregations(cpu):
     dataset = nvt.Dataset(ddf1, cpu=cpu)
 
     # Define Groupby Workflow
-    aggs_to_test = ["mean", "std", "var", "median", "nunique"]
+    aggs_to_test = ["mean", "std", "var", "median", "nunique", "sum"]
     groupby_features = ColumnSelector(["name", "x", "y", "z"]) >> ops.Groupby(
         groupby_cols="name",
         aggs={"x": aggs_to_test, "y": aggs_to_test, "z": aggs_to_test},
