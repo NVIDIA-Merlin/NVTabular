@@ -134,7 +134,7 @@ def test_rossman_tf(asv_db, bench_info, tmpdir, devices, report):
     ) as client:
         diff, run_time = _run_rossmann_query(client, 3, INFERENCE_MULTI_HOT, output_path)
 
-        assert (diff < 0.00001).all()
+        assert (diff < 0.001).all()
 
 
 @pytest.mark.skipif(torch is None, reason="pytorch not installed")
