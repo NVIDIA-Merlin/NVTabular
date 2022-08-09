@@ -163,3 +163,94 @@ def test_groupby_selector_cols():
 
     # If groupby_cols aren't included in the selector, they shouldn't be in the output
     assert "name" not in workflow.output_node.output_schema.column_names
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_without_selector_in_groupby_cols(cpu):
+    # Initial sales dataset
+    size = 60
+    df1 = make_df(
+        {
+            "product_id": np.random.randint(10, size=size),
+            "day": np.random.randint(7, size=size),
+            "price": np.random.rand(size),
+        }
+    )
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(["day"])
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    groupby_features = ["product_id"] >> ops.Groupby(groupby_cols=["day"], aggs="count")
+
+    processor = nvt.Workflow(groupby_features)
+    processor.fit(dataset)
+    assert processor.transform(dataset).to_ddf().compute().columns.tolist() == ["product_id_count"]
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_casting_in_aggregations(cpu):
+    # Initial dataset
+    size = 60
+    names = ["Dave", "Zelda"]
+    df1 = make_df(
+        {
+            "name": np.random.choice(names, size=size),
+            "x": np.random.randint(0, 2, size=size).astype(np.int8),
+            "y": np.linspace(0.0, 10.0, num=size),
+            "z": np.linspace(0.0, 10.0, num=size).astype(np.float32),
+            "shuffle": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+    df1 = df1.sort_values("shuffle").drop(columns="shuffle").reset_index(drop=True)
+
+    # Create a ddf, and be sure to shuffle by the groupby keys
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle("name")
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    # Define Groupby Workflow
+    aggs_to_test = ["mean", "std", "var", "median", "nunique", "sum"]
+    groupby_features = ColumnSelector(["name", "x", "y", "z"]) >> ops.Groupby(
+        groupby_cols="name",
+        aggs={"x": aggs_to_test, "y": aggs_to_test, "z": aggs_to_test},
+        name_sep="-",
+    )
+    processor = nvt.Workflow(groupby_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    df1.set_index("name", inplace=True)
+    for agg in aggs_to_test:
+        for col in list("xyz"):
+            for name in names:
+                without_agg = getattr(df1.loc[name][col], agg)()
+                with_agg = new_gdf.loc[new_gdf.name == name, f"{col}-{agg}"]
+                with_agg = with_agg.item() if hasattr(with_agg, "item") else with_agg.loc[0][0]
+                assert np.allclose(without_agg, with_agg)
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_column_names_containing_aggregations(cpu):
+    # Initial dataset
+    size = 60
+    names = ["Dave", "Zelda"]
+    # The column to be aggregated contains name of an aggregation -- count.
+    # This could lead to it being cast to incorrect dtype.
+    df1 = make_df(
+        {
+            "name": np.random.choice(names, size=size),
+            "test_score_counting_to_10": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+
+    # Create a ddf, and be sure to shuffle by the groupby keys
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle("name")
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    # Define Groupby Workflow
+    groupby_features = ["name", "test_score_counting_to_10"] >> ops.Groupby(
+        groupby_cols="name", aggs={"test_score_counting_to_10": "mean"}
+    )
+    processor = nvt.Workflow(groupby_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    assert new_gdf is not None

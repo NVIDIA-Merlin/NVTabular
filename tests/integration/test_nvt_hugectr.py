@@ -31,12 +31,10 @@ try:
 except ImportError:
     hugectr = None
 
-import warnings
 from distutils.spawn import find_executable
 
 import numpy as np
 import pandas as pd
-from common.parsers.benchmark_parsers import create_bench_result
 from common.utils import _run_query
 from sklearn.model_selection import train_test_split
 
@@ -46,25 +44,29 @@ from merlin.core.utils import download_file
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 
-DIR = "/model/"
+pytest.importorskip("hugectr")
+
+DIR = "/tmp/model/"
 DATA_DIR = DIR + "data/"
 TEMP_DIR = DIR + "temp_hugectr/"
 MODEL_DIR = DIR + "models/"
-TRAIN_DIR = MODEL_DIR + "test_model/1/"
+TRAIN_DIR = MODEL_DIR + "hugectr/1/"
 NETWORK_FILE = TRAIN_DIR + "model.json"
 DENSE_FILE = TRAIN_DIR + "_dense_1900.model"
 SPARSE_FILES = TRAIN_DIR + "0_sparse_1900.model"
-MODEL_NAME = "test_model"
+MODEL_NAME = "hugectr"
 
 CATEGORICAL_COLUMNS = ["userId", "movieId", "new_cat1"]
 LABEL_COLUMNS = ["rating"]
 TEST_N_ROWS = 64
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
-TRITON_DEVICE_ID = "1"
+TRITON_DEVICE_ID = "0"
 
 
-def test_training():
+@pytest.mark.parametrize("n_rows", [64])
+@pytest.mark.parametrize("err_tol", [0.00001])
+def test_hugectr(n_rows, err_tol):
     # Download & Convert data
     download_file(
         "http://files.grouplens.org/datasets/movielens/ml-25m.zip",
@@ -148,7 +150,9 @@ def test_training():
     os.makedirs(TRAIN_DIR)
 
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
-    sample_data.to_csv(test_data_path + "data.csv")
+    sample_data[workflow.output_node.output_schema.column_names].to_csv(
+        str(os.path.join(test_data_path, "data.csv")), index=False
+    )
 
     sample_data_trans = nvt.workflow.workflow._transform_partition(
         sample_data, [workflow.output_node]
@@ -167,7 +171,7 @@ def test_training():
     for files in file_names:
         shutil.move(files, TEMP_DIR)
 
-    hugectr_params = dict()
+    hugectr_params = {}
     hugectr_params["config"] = NETWORK_FILE
     hugectr_params["slots"] = len(slot_sizes)
     hugectr_params["max_nnz"] = len(slot_sizes)
@@ -188,15 +192,9 @@ def test_training():
     shutil.rmtree(TEMP_DIR)
     _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], MODEL_NAME)
 
-
-@pytest.mark.parametrize("n_rows", [64, 58, 11, 1])
-@pytest.mark.parametrize("err_tol", [0.00001])
-def test_inference(n_rows, err_tol):
-    warnings.simplefilter("ignore")
-
-    data_path = DATA_DIR + "test/data.csv"
-    output_path = DATA_DIR + "test/output.csv"
-    ps_file = TRAIN_DIR + "ps.json"
+    data_path = test_data_path + "data.csv"
+    output_path = test_data_path + "output.csv"
+    ps_file = MODEL_DIR + "ps.json"
 
     workflow_path = MODEL_DIR + MODEL_NAME + "_nvt/1/workflow"
 
@@ -210,6 +208,7 @@ def test_inference(n_rows, err_tol):
         "hugectr",
         ps_file,
     ) as client:
+
         diff, run_time = _run_query(
             client,
             n_rows,
@@ -222,12 +221,6 @@ def test_inference(n_rows, err_tol):
             "hugectr",
         )
     assert (diff < err_tol).all()
-    benchmark_results = []
-    result = create_bench_result(
-        "test_nvt_hugectr_inference", [("n_rows", n_rows)], run_time, "datetime"
-    )
-    benchmark_results.append(result)
-    # send_results(asv_db, bench_info, benchmark_results)
 
 
 def _run_model(slot_sizes, total_cardinality):
@@ -389,11 +382,18 @@ def _write_ps_hugectr(output_file, model_name, sparse_files, dense_file, network
                     "sparse_files": [sparse_files],
                     "dense_file": dense_file,
                     "network_file": network_file,
+                    "max_batch_size": 64,
+                    "hit_rate_threshold": 0.9,
+                    "gpucacheper": 0.5,
+                    "deployed_device_list": [0],
+                    "default_value_for_each_table": [0.0, 0.0],
+                    "maxnum_catfeature_query_per_table_per_sample": [2, 26],
+                    "embedding_vecsize_per_table": [1, 15],
                 }
             ],
         }
     )
 
     config = json.loads(config)
-    with open(output_file, "w") as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(config, f)

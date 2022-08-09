@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+
 import numpy
 from dask.dataframe.utils import meta_nonempty
 
@@ -178,13 +180,25 @@ class Groupby(Operator):
 
         return column_mapping
 
+    @property
+    def dependencies(self):
+        return self.groupby_cols
+
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
         dtype = col_schema.dtype
         is_list = col_schema.is_list
 
-        dtypes = {"count": numpy.int32, "mean": numpy.float32}
+        dtypes = {
+            "count": numpy.int32,
+            "nunique": numpy.int32,
+            "mean": numpy.float32,
+            "var": numpy.float32,
+            "std": numpy.float32,
+            "median": numpy.float32,
+            "sum": numpy.float32,
+        }
 
         is_lists = {"list": True}
 
@@ -235,9 +249,9 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascendi
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
 
     for col in df.columns:
-        if col.endswith(f"{name_sep}count"):
+        if re.search(f"{name_sep}(count|nunique)$", col):
             df[col] = df[col].astype(numpy.int32)
-        elif col.endswith(f"{name_sep}mean"):
+        elif re.search(f"{name_sep}(mean|median|std|var|sum)$", col):
             df[col] = df[col].astype(numpy.float32)
 
     return df

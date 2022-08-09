@@ -26,18 +26,11 @@
 
 import json
 import logging
-import os
-from pathlib import Path
-from typing import List
+import pathlib
 
 import cloudpickle
 import torch
-from triton_python_backend_utils import (
-    InferenceRequest,
-    InferenceResponse,
-    Tensor,
-    get_input_tensor_by_name,
-)
+import triton_python_backend_utils as pb_utils
 
 from nvtabular.inference.triton import _convert_string2pytorch_dtype, _convert_tensor
 
@@ -51,33 +44,42 @@ class TritonPythonModel:
     """Generic TritonPythonModel for nvtabular workflows"""
 
     def initialize(self, args):
+        # Arg parsing
+        repository_path = pathlib.Path(args["model_repository"])
+        model_version = str(args["model_version"])
+
+        # Handle bug in Tritonserver 22.06
+        # model_repository argument became path to model.py
+        if str(repository_path).endswith(".py"):
+            repository_path = repository_path.parent.parent
+
+        model_path = repository_path / model_version / "model.pkl"
 
         # Load the pickled PyTorch model
-        model_path = os.path.join(args["model_repository"], str(args["model_version"]), "model.pkl")
-        self.model = cloudpickle.load(open(model_path, "rb"))
+        self.model = cloudpickle.load(
+            open(str(model_path), "rb")  # pylint: disable=consider-using-with
+        )
 
         # Load the state dict of the PyTorch model
-        model_path = os.path.join(args["model_repository"], str(args["model_version"]), "model.pth")
-        self.model.load_state_dict(torch.load(model_path))
+        model_path = repository_path / model_version / "model.pth"
+        self.model.load_state_dict(torch.load(str(model_path)))
         self.model.eval()
 
         # Load model config file
         self.model_config = json.loads(args["model_config"])
 
         # Load extra info needed for the Transformer4Rec (if exists)
-        model_info_path = os.path.join(
-            args["model_repository"], str(args["model_version"]), "model_info.json"
-        )
+        model_info_path = repository_path / model_version / "model_info.json"
         self.model_info = None
-        model_info_file = Path(model_info_path)
+        model_info_file = pathlib.Path(model_info_path)
         if model_info_file.exists():
-            with open(model_info_path) as json_file:
+            with open(str(model_info_path), encoding="utf-8") as json_file:
                 self.model_info = json.load(json_file)
 
         # Get the name of the dense and sparse inputs, and the outputs
-        self.inputs = dict()
-        self.sparse_inputs = dict()
-        self.outputs = dict()
+        self.inputs = {}
+        self.sparse_inputs = {}
+        self.outputs = {}
         len_svm = len(sparse_value_marker)
         len_snm = len(sparse_nnzs_marker)
 
@@ -104,7 +106,7 @@ class TritonPythonModel:
         for val in self.model_config["output"]:
             self.outputs[val["name"]] = _convert_string2pytorch_dtype(val["data_type"])
 
-    def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
+    def execute(self, requests):
         """Predicts the input batches by running through a PyTorch predict function."""
 
         # To be able to execute the queries, the PyTorch model must accept a dict input
@@ -115,24 +117,25 @@ class TritonPythonModel:
             responses = []
             for request in requests:
                 # Convert the input data to dict to pass it into the PyTorch model
-                input_dict = dict()
+                input_dict = {}
                 for name, dtype in self.inputs.items():
+                    # Convert to fixed dtypes if requested
+                    if self.model_info["use_fix_dtypes"]:
+                        dtype = _convert_dtype(dtype)
                     input_dict[name] = torch.tensor(
-                        _convert_tensor(get_input_tensor_by_name(request, name)), dtype=dtype
+                        _convert_tensor(pb_utils.get_input_tensor_by_name(request, name)),
+                        dtype=dtype,
                     ).cuda()
 
                 # Sparse inputs have a special format
                 for name, dtype in self.sparse_inputs.items():
-                    # Convert to fixed dtypes if requested
-                    if self.model_info["use_fix_dtypes"]:
-                        dtype = _convert_dtype(dtype)
 
                     # Get __values and __nnzs
                     input_val = _convert_tensor(
-                        get_input_tensor_by_name(request, name + sparse_value_marker)
+                        pb_utils.get_input_tensor_by_name(request, name + sparse_value_marker)
                     )
                     input_nnzs = _convert_tensor(
-                        get_input_tensor_by_name(request, name + sparse_nnzs_marker)
+                        pb_utils.get_input_tensor_by_name(request, name + sparse_nnzs_marker)
                     )
                     input_nnzs = torch.tensor(input_nnzs, dtype=torch.int64)
                     input_values = torch.tensor(input_val, dtype=dtype)
@@ -165,11 +168,13 @@ class TritonPythonModel:
                         "output of the forward function should have a bucket named as predictions"
                     )
 
+                pred_numpy = pred.cpu().detach().numpy()
+
                 # There is one output in the config file
                 # since the PyTorch models generate a tensor as an output
                 output_info = self.model_config["output"][0]
-                output_tensor = Tensor(output_info["name"], pred.cpu().detach().numpy())
-                responses.append(InferenceResponse([output_tensor]))
+                output_tensor = pb_utils.Tensor(output_info["name"], pred_numpy)
+                responses.append(pb_utils.InferenceResponse([output_tensor]))
 
         return responses
 
