@@ -163,6 +163,10 @@ def test_criteo_tf(asv_db, bench_info, tmpdir, report):
             tb_infer.execute_cell(list(range(19, len(tb_infer.cells))))
 
 
+@pytest.skip(
+    "Runtime error: file_stream.is_open() failed: /tmp/model/criteo/1/criteo.json, "
+    "see https://github.com/NVIDIA-Merlin/NVTabular/issues/1643"
+)
 @pytest.mark.skipif(hugectr is None, reason="hugectr not installed")
 def test_criteo_hugectr(asv_db, bench_info, tmpdir, report):
     criteo_base(tmpdir)
