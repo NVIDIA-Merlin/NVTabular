@@ -1,0 +1,43 @@
+﻿nvtabular.ops.TagAsItemFeatures
+===============================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: TagAsItemFeatures
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TagAsItemFeatures.__init__
+      ~TagAsItemFeatures.column_mapping
+      ~TagAsItemFeatures.compute_column_schema
+      ~TagAsItemFeatures.compute_input_schema
+      ~TagAsItemFeatures.compute_output_schema
+      ~TagAsItemFeatures.compute_selector
+      ~TagAsItemFeatures.create_node
+      ~TagAsItemFeatures.inference_initialize
+      ~TagAsItemFeatures.output_column_names
+      ~TagAsItemFeatures.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TagAsItemFeatures.dependencies
+      ~TagAsItemFeatures.dynamic_dtypes
+      ~TagAsItemFeatures.label
+      ~TagAsItemFeatures.output_dtype
+      ~TagAsItemFeatures.output_properties
+      ~TagAsItemFeatures.output_tags
+      ~TagAsItemFeatures.supports
+   
+   
