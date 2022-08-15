@@ -249,7 +249,7 @@ def bench_info():
     bInfo = BenchmarkInfo(
         machineName=socket.gethostname(),
         cudaVer=cuda_version,
-        osType="%s" % (uname.system),
+        osType=f"{uname.system}",
         pythonVer=platform.python_version(),
         commitHash=commitHash,
         commitTime=commitTime,
@@ -307,7 +307,7 @@ def run_triton_server(
         try:
             with grpcclient.InferenceServerClient("localhost:8001") as client:
                 # wait until server is ready
-                for _ in range(60):
+                for _ in range(120):
                     if process.poll() is not None:
                         retcode = process.returncode
                         raise RuntimeError(f"Tritonserver failed to start (ret={retcode})")

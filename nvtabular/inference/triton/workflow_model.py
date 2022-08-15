@@ -26,18 +26,10 @@
 
 import json
 import logging
-import os
-from typing import List
+import pathlib
 
 import numpy as np
-from triton_python_backend_utils import (
-    InferenceRequest,
-    InferenceResponse,
-    Tensor,
-    get_input_tensor_by_name,
-    get_output_config_by_name,
-    triton_string_to_numpy,
-)
+import triton_python_backend_utils as pb_utils
 
 import nvtabular
 from merlin.core.dispatch import is_list_dtype
@@ -50,15 +42,24 @@ LOG = logging.getLogger("nvtabular")
 
 
 class TritonPythonModel:
+    """
+    Triton model used for running NVT Workflows
+    """
+
     def initialize(self, args):
         # Arg parsing
-        workflow_path = os.path.join(
-            args["model_repository"], str(args["model_version"]), "workflow"
-        )
+        repository_path = pathlib.Path(args["model_repository"])
+
+        # Handle bug in Tritonserver 22.06
+        # model_repository argument became path to model.py
+        if str(repository_path).endswith(".py"):
+            repository_path = repository_path.parent.parent
+
+        workflow_path = repository_path / str(args["model_version"]) / "workflow"
         model_device = args["model_instance_kind"]
 
         # Workflow instantiation
-        self.workflow = nvtabular.Workflow.load(workflow_path)
+        self.workflow = nvtabular.Workflow.load(str(workflow_path))
 
         # Config loading and parsing
         self.model_config = json.loads(args["model_config"])
@@ -68,7 +69,7 @@ class TritonPythonModel:
         input_dtypes = self.workflow.input_dtypes.items()
         self.input_dtypes, self.input_multihots = _parse_input_dtypes(input_dtypes)
 
-        self.output_dtypes = dict()
+        self.output_dtypes = {}
         if model_framework == "hugectr":
             self.output_dtypes = {"DES": np.float32, "CATCOLUMN": np.int64, "ROWINDEX": np.int32}
         else:
@@ -91,10 +92,10 @@ class TritonPythonModel:
         )
 
     def _set_output_dtype(self, name):
-        conf = get_output_config_by_name(self.model_config, name)
-        self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
+        conf = pb_utils.get_output_config_by_name(self.model_config, name)
+        self.output_dtypes[name] = pb_utils.triton_string_to_numpy(conf["data_type"])
 
-    def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
+    def execute(self, requests):
         """Transforms the input batches by running through a NVTabular workflow.transform
         function.
         """
@@ -102,23 +103,33 @@ class TritonPythonModel:
         for request in requests:
             # transform the triton tensors to a dict of name:numpy tensor
             input_tensors = {
-                name: _convert_tensor(get_input_tensor_by_name(request, name))
+                name: self._convert_tensor(pb_utils.get_input_tensor_by_name(request, name))
                 for name in self.input_dtypes
             }
 
             # multihots are represented as a tuple of (values, offsets)
             for name, dtype in self.input_multihots.items():
-                values = _convert_tensor(get_input_tensor_by_name(request, name + "__values"))
-                offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
+                values = self._convert_tensor(
+                    pb_utils.get_input_tensor_by_name(request, name + "__values")
+                )
+                offsets = self._convert_tensor(
+                    pb_utils.get_input_tensor_by_name(request, name + "__nnzs")
+                )
                 input_tensors[name] = (values, offsets)
 
             raw_tensor_tuples = self.runner.run_workflow(input_tensors)
 
-            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
+            result = [pb_utils.Tensor(name, data) for name, data in raw_tensor_tuples]
 
-            responses.append(InferenceResponse(result))
+            responses.append(pb_utils.InferenceResponse(result))
 
         return responses
+
+    def _convert_tensor(self, t):
+        out = _convert_tensor(t)
+        if len(out.shape) == 2:
+            out = out[:, 0]
+        return out
 
 
 def _parse_input_dtypes(dtypes):

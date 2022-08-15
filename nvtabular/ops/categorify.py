@@ -522,7 +522,7 @@ class Categorify(StatOperator):
             else self.max_size,
             "start_index": self.start_index,
             "cat_path": target_category_path,
-            "domain": {"min": 0, "max": cardinality, "name": category_name},
+            "domain": {"min": 0, "max": cardinality - 1, "name": category_name},
             "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
         }
 

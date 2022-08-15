@@ -180,6 +180,10 @@ class Groupby(Operator):
 
         return column_mapping
 
+    @property
+    def dependencies(self):
+        return self.groupby_cols
+
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
@@ -193,6 +197,7 @@ class Groupby(Operator):
             "var": numpy.float32,
             "std": numpy.float32,
             "median": numpy.float32,
+            "sum": numpy.float32,
         }
 
         is_lists = {"list": True}
@@ -246,7 +251,7 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascendi
     for col in df.columns:
         if re.search(f"{name_sep}(count|nunique)$", col):
             df[col] = df[col].astype(numpy.int32)
-        elif re.search(f"{name_sep}(mean|median|std|var)$", col):
+        elif re.search(f"{name_sep}(mean|median|std|var|sum)$", col):
             df[col] = df[col].astype(numpy.float32)
 
     return df
