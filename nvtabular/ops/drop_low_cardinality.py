@@ -84,7 +84,7 @@ class DropLowCardinality(Operator):
         for col in input_schema:
             if Tags.CATEGORICAL in col.tags:
                 domain = col.int_domain
-                if not domain or domain.max > self.min_cardinality:
+                if not domain or domain.max >= self.min_cardinality:
                     cols_to_keep.append(col.name)
 
         return ColumnSelector(cols_to_keep)
