@@ -653,7 +653,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
 
 
 def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
-    return n_cat, min(max(minimum_size, round(1.6 * n_cat ** 0.56)), maximum_size)
+    return n_cat, min(max(minimum_size, round(1.6 * n_cat**0.56)), maximum_size)
 
 
 def _make_name(*args, sep="_"):
@@ -879,7 +879,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
             x2 = gb[
                 _make_name(*(col_selector.names + [cont_col, "pow2", "sum"]), sep=options.name_sep)
             ]
-            result = x2 - x ** 2 / n
+            result = x2 - x**2 / n
             div = n - ddof
             div[div < 1] = 1
             result /= div
@@ -1058,14 +1058,12 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                 max_emb_size = options.max_size
                 if isinstance(options.max_size, dict):
                     raise NotImplementedError(
-                        "Cannot specify max_size as a dictionary "
-                        "for 'combo' encoding."
+                        "Cannot specify max_size as a dictionary for 'combo' encoding."
                     )
                 if options.num_buckets:
                     if isinstance(options.num_buckets, dict):
                         raise NotImplementedError(
-                            "Cannot specify num_buckets as a dictionary "
-                            "for 'combo' encoding."
+                            "Cannot specify num_buckets as a dictionary for 'combo' encoding."
                         )
                     nlargest = max_emb_size - options.num_buckets - 1
                 else:
@@ -1077,15 +1075,14 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                 if nlargest < len(df):
                     # sort based on count (name_size_multi column)
                     df = df.nlargest(n=nlargest, columns=name_size_multi)
-    
+
             # Deal with nulls
             has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
             if hasattr(has_nans, "iloc"):
                 has_nans = has_nans[0]
             if not has_nans:
                 null_data = {
-                    col: nullable_series([None], df, df[col].dtype)
-                    for col in col_selector.names
+                    col: nullable_series([None], df, df[col].dtype) for col in col_selector.names
                 }
                 null_data[name_size_multi] = [0]
                 null_df = type(df)(null_data)
@@ -1119,7 +1116,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
                     if nlargest < len(df) and name_size in df:
                         # remove NAs from column, we have na count from above.
-                        df = df.dropna()  # TODO: This feels dangerous
+                        df = df.dropna()  # TODO: This seems dangerous - Check this
                         # sort based on count (name_size column)
                         df = df.nlargest(n=nlargest, columns=name_size)
                         new_cols[col] = _concat(
@@ -1151,7 +1148,9 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     # ensure None aka "unknown" stays at index 0
                     if name_size in df:
                         df_0 = df.iloc[0:1]
-                        df_1 = df.iloc[1:].sort_values(name_size, ascending=False, ignore_index=True)
+                        df_1 = df.iloc[1:].sort_values(
+                            name_size, ascending=False, ignore_index=True
+                        )
                         df = _concat([df_0, df_1])
                     new_cols[col] = df[col].copy(deep=False)
 
