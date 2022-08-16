@@ -160,7 +160,7 @@
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">input_schema</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
                 <span class="n">domain</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">int_domain</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">domain</span> <span class="ow">or</span> <span class="n">domain</span><span class="o">.</span><span class="n">max</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_cardinality</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">domain</span> <span class="ow">or</span> <span class="n">domain</span><span class="o">.</span><span class="n">max</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_cardinality</span><span class="p">:</span>
                     <span class="n">cols_to_keep</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">cols_to_keep</span><span class="p">)</span></div></div>
