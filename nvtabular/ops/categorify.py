@@ -879,7 +879,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
             x2 = gb[
                 _make_name(*(col_selector.names + [cont_col, "pow2", "sum"]), sep=options.name_sep)
             ]
-            result = x2 - x**2 / n
+            result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 1] = 1
             result /= div
