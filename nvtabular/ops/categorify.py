@@ -653,7 +653,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
 
 
 def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
-    return n_cat, min(max(minimum_size, round(1.6 * n_cat**0.56)), maximum_size)
+    return n_cat, min(max(minimum_size, round(1.6 * n_cat ** 0.56)), maximum_size)
 
 
 def _make_name(*args, sep="_"):
