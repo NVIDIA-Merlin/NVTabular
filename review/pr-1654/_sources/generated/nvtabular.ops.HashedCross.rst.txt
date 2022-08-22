@@ -1,0 +1,43 @@
+﻿nvtabular.ops.HashedCross
+=========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: HashedCross
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~HashedCross.__init__
+      ~HashedCross.column_mapping
+      ~HashedCross.compute_column_schema
+      ~HashedCross.compute_input_schema
+      ~HashedCross.compute_output_schema
+      ~HashedCross.compute_selector
+      ~HashedCross.create_node
+      ~HashedCross.inference_initialize
+      ~HashedCross.output_column_names
+      ~HashedCross.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HashedCross.dependencies
+      ~HashedCross.dynamic_dtypes
+      ~HashedCross.label
+      ~HashedCross.output_dtype
+      ~HashedCross.output_properties
+      ~HashedCross.output_tags
+      ~HashedCross.supports
+   
+   
