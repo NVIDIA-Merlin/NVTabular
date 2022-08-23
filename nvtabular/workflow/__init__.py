@@ -15,5 +15,5 @@
 #
 
 # flake8: noqa
-from .node import WorkflowNode
-from .workflow import Workflow
+from nvtabular.workflow.node import WorkflowNode
+from nvtabular.workflow.workflow import Workflow

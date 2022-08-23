@@ -322,4 +322,4 @@ def rmspe_tf(y_true, y_pred):
     y_pred = tf.exp(y_pred) - 1
 
     percent_error = (y_true - y_pred) / y_true
-    return tf.sqrt(tf.reduce_mean(percent_error ** 2))
+    return tf.sqrt(tf.reduce_mean(percent_error**2))

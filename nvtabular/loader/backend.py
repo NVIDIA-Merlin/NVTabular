@@ -618,13 +618,12 @@ class DataLoader:
                 lists[names[0]] = tensor
             X.update(lists)
 
-        for column_name in X:
-            if column_name in self.sparse_names:
-                if column_name not in self.sparse_max:
-                    raise ValueError(
-                        f"Did not convert {column_name} to sparse due to missing sparse_max entry"
-                    )
-                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
+        for column_name in self.sparse_names:
+            if column_name not in self.sparse_max:
+                raise ValueError(
+                    f"Did not convert {column_name} to sparse due to missing sparse_max entry"
+                )
+            X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
 
         # TODO: use dict for labels as well?
         # would require output layers to match naming

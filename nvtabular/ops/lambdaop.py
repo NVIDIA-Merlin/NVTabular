@@ -16,8 +16,7 @@
 from inspect import getsourcelines, signature
 
 from merlin.core.dispatch import DataFrameType, annotate
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class LambdaOp(Operator):

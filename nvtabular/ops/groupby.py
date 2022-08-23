@@ -19,8 +19,7 @@ from dask.dataframe.utils import meta_nonempty
 
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class Groupby(Operator):

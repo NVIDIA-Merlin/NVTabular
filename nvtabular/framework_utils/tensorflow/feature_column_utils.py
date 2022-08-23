@@ -163,7 +163,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
 
             if isinstance(cat_column, _CATEGORIFY_COLUMNS[1]):
                 # TODO: how do we handle the case where it's too big to load?
-                with open(cat_column.vocab_file, "r") as f:
+                with open(cat_column.vocab_file, "r", encoding="utf8") as f:
                     vocab = f.read().split("\n")
             else:
                 vocab = cat_column.vocabulary_list
