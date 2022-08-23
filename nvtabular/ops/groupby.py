@@ -299,8 +299,8 @@ def _first(x):
     if hasattr(x, "list"):
         # cuDF-specific behavior
         offsets = x.list._column.offsets.values
-        elements = x.list._column.elements.values
-        return elements[offsets[:-1]]
+        elements = x.list.leaves
+        return elements[offsets[:-1]]._column
     else:
         # cpu/pandas
         return x.apply(lambda y: y[0])
@@ -312,8 +312,8 @@ def _last(x):
     if hasattr(x, "list"):
         # cuDF-specific behavior
         offsets = x.list._column.offsets.values
-        elements = x.list._column.elements.values
-        return elements[offsets[1:] - 1]
+        elements = x.list.leaves
+        return elements[offsets[1:] - 1]._column
     else:
         # cpu/pandas
         return x.apply(lambda y: y[-1])
