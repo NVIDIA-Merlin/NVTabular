@@ -222,7 +222,7 @@ class Categorify(StatOperator):
         #
         #   (2) Multi-column "Joint" encoding (there are multi-column groups
         #       in `columns` and `encode_type="joint"`).  Still a
-        #       1-to-1 transofrmation of categorical columns.  However,
+        #       1-to-1 transformation of categorical columns.  However,
         #       we concatenate column groups to determine uniques (rather
         #       than getting uniques of each categorical column separately).
         #
@@ -522,7 +522,7 @@ class Categorify(StatOperator):
             else self.max_size,
             "start_index": self.start_index,
             "cat_path": target_category_path,
-            "domain": {"min": 0, "max": cardinality, "name": category_name},
+            "domain": {"min": 0, "max": cardinality - 1, "name": category_name},
             "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
         }
 

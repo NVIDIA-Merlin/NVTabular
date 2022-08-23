@@ -176,7 +176,7 @@ def run_op_full(properties, tags, op_routine):
         embeddings_info = schema1.properties["domain"]
         # should always exist, represents unknown
         assert embeddings_info["min"] == 0
-        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
+        assert embeddings_info["max"] == new_gdf[column_name].max()
 
 
 @pytest.mark.parametrize("properties", [{"p1": "1"}])
@@ -218,10 +218,10 @@ def test_ops_list_vc(properties, tags, op_routine):
         # should always exist, represents unknown
         assert embeddings_info["min"] == 0
         if HAS_GPU:
-            assert embeddings_info["max"] == new_gdf[column_name]._column.elements.max() + 1
+            assert embeddings_info["max"] == new_gdf[column_name]._column.elements.max()
         else:
             list_vals = dispatch.pull_apart_list(new_gdf[column_name])[0]
-            assert embeddings_info["max"] == list_vals.max() + 1
+            assert embeddings_info["max"] == list_vals.max()
         assert "value_count" in schema1.properties
         val_c = schema1.properties["value_count"]
         assert val_c["min"] == op_routine[-1].stats[column_name]["value_count"]["min"]

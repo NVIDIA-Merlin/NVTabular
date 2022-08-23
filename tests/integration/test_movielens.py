@@ -128,7 +128,7 @@ def test_movielens_tf(asv_db, bench_info, tmpdir, devices):
             """
         )
         tb_train_tf.execute_cell(list(range(0, len(tb_train_tf.cells))))
-    create_movielens_inference_data(INFERENCE_MULTI_HOT, DATA_DIR, input_path, 100)
+    create_movielens_inference_data(INFERENCE_MULTI_HOT, input_path, 100)
     with test_utils.run_triton_server(
         INFERENCE_MULTI_HOT,
         "movielens",
@@ -171,7 +171,7 @@ def test_movielens_torch(asv_db, bench_info, tmpdir, devices):
         tb_train_torch.execute_cell(list(range(0, len(tb_train_torch.cells))))
 
 
-def create_movielens_inference_data(model_dir, data_dir, output_dir, nrows):
+def create_movielens_inference_data(model_dir, output_dir, nrows):
     import glob
 
     import cudf
@@ -182,7 +182,7 @@ def create_movielens_inference_data(model_dir, data_dir, output_dir, nrows):
 
     workflow_path = os.path.join(os.path.expanduser(model_dir), "movielens_nvt/1/workflow")
     model_path = os.path.join(os.path.expanduser(model_dir), "movielens_tf/1/model.savedmodel")
-    data_path = os.path.join(os.path.expanduser(data_dir), "movielens/data/valid.parquet")
+    data_path = os.path.join(os.path.expanduser(output_dir), "valid.parquet")
     output_dir = os.path.join(os.path.expanduser(output_dir), "movielens/")
     os.makedirs(output_dir)
     workflow_output_test_file_name = "test_inference_movielens_data.csv"

@@ -179,6 +179,8 @@ def export_pytorch_ensemble(
         workflow,
         name + "_nvt",
         preprocessing_path,
+        output_model="pytorch",
+        sparse_max=sparse_max,
         backend=nvtabular_backend,
         cats=cats,
         conts=conts,
@@ -429,28 +431,13 @@ def _generate_nvtabular_config(
         config.output.append(
             model_config.ModelOutput(name="ROWINDEX", data_type=model_config.TYPE_INT32, dims=[-1])
         )
-    elif output_model == "pytorch":
-        for col_name, col_schema in workflow.input_schema.column_schemas.items():
-            _add_model_param(col_schema, model_config.ModelInput, config.input)
-
-        for col_name, col_schema in workflow.output_schema.column_schemas.items():
-            _add_model_param(
-                col_schema,
-                model_config.ModelOutput,
-                config.output,
-                [-1, 1],
-            )
     else:
         for col_name, col_schema in workflow.input_schema.column_schemas.items():
             _add_model_param(col_schema, model_config.ModelInput, config.input)
 
         for col_name, col_schema in workflow.output_schema.column_schemas.items():
-            if sparse_max and col_name in sparse_max.keys():
-                # this assumes max_sequence_length is equal for all output columns
-                dim = sparse_max[col_name]
-                _add_model_param(col_schema, model_config.ModelOutput, config.output, [-1, dim])
-            else:
-                _add_model_param(col_schema, model_config.ModelOutput, config.output)
+            dim = sparse_max[col_name] if sparse_max and col_name in sparse_max.keys() else 1
+            _add_model_param(col_schema, model_config.ModelOutput, config.output, [-1, dim])
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
@@ -560,7 +547,8 @@ def export_pytorch_model(
     config = model_config.ModelConfig(name=name, backend=backend)
 
     for col_name, col_schema in workflow.output_schema.column_schemas.items():
-        _add_model_param(col_schema, model_config.ModelInput, config.input)
+        dim = sparse_max[col_name] if sparse_max and col_name in sparse_max.keys() else 1
+        _add_model_param(col_schema, model_config.ModelInput, config.input, [-1, dim])
 
     *_, last_layer = model.parameters()
     dims = last_layer.shape[0]
