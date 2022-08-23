@@ -256,7 +256,7 @@
 </div>
 <div class="section" id="initializing-memory-pools">
 <h4>Initializing Memory Pools<a class="headerlink" href="#initializing-memory-pools" title="Permalink to this headline"></a></h4>
-<p>Since allocating memory is often a performance bottleneck, it is usually a good idea to initialize a memory pool on each of our workers. When using a distributed cluster, we must use the <code class="docutils literal notranslate"><span class="pre">client.run</span></code> utility to make sure a function is exectuted on all available workers.</p>
+<p>Since allocating memory is often a performance bottleneck, it is usually a good idea to initialize a memory pool on each of our workers. When using a distributed cluster, we must use the <code class="docutils literal notranslate"><span class="pre">client.run</span></code> utility to make sure a function is executed on all available workers.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize RMM pool on ALL workers</span>
