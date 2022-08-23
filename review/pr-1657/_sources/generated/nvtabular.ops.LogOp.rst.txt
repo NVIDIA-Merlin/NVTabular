@@ -1,0 +1,43 @@
+﻿nvtabular.ops.LogOp
+===================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: LogOp
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LogOp.__init__
+      ~LogOp.column_mapping
+      ~LogOp.compute_column_schema
+      ~LogOp.compute_input_schema
+      ~LogOp.compute_output_schema
+      ~LogOp.compute_selector
+      ~LogOp.create_node
+      ~LogOp.inference_initialize
+      ~LogOp.output_column_names
+      ~LogOp.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LogOp.dependencies
+      ~LogOp.dynamic_dtypes
+      ~LogOp.label
+      ~LogOp.output_dtype
+      ~LogOp.output_properties
+      ~LogOp.output_tags
+      ~LogOp.supports
+   
+   
