@@ -15,8 +15,7 @@
 #
 from merlin.core.dispatch import DataFrameType
 from merlin.schema import Schema, Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class DropLowCardinality(Operator):

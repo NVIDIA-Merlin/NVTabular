@@ -33,8 +33,7 @@ from merlin.core.dispatch import (
     to_host,
 )
 from merlin.schema import Schema
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class JoinExternal(Operator):

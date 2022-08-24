@@ -21,9 +21,8 @@ from merlin import io
 from merlin.core import dispatch, utils  # noqa
 from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
-
-from . import workflow  # noqa
-from . import _version
+from nvtabular import workflow  # noqa
+from nvtabular import _version
 
 # suppress some warnings with cudf warning about column ordering with dlpack
 # and numba warning about deprecated environment variables

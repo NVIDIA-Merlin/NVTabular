@@ -231,7 +231,7 @@ class DenseFeatures(tf.keras.layers.Layer):
         input_shape = list(input_shapes.values())[0]
         if self.aggregation == "concat":
             output_dim = len(self.numeric_features) + sum(
-                [shape[-1] for shape in self.embedding_shapes.values()]
+                shape[-1] for shape in self.embedding_shapes.values()
             )
             return (input_shape[0], output_dim)
         else:

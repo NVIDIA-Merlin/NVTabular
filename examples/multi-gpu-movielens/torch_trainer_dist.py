@@ -6,7 +6,7 @@ from time import time
 import cupy
 import torch
 import torch.distributed as dist
-import torch.nn as nn
+from torch import nn
 
 import nvtabular as nvt
 from nvtabular.framework_utils.torch.models import Model

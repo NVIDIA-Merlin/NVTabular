@@ -98,7 +98,7 @@ def _finalize_moments(inp, ddof=1):
         x2 = x2.to_pandas()
 
     # Use sum-squared approach to get variance
-    var = x2 - x ** 2 / n
+    var = x2 - x**2 / n
     div = n - ddof
     div[div < 1] = 1  # Avoid division by 0
     var /= div
