@@ -1,0 +1,47 @@
+﻿nvtabular.ops.ReduceDtypeSize
+=============================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: ReduceDtypeSize
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ReduceDtypeSize.__init__
+      ~ReduceDtypeSize.clear
+      ~ReduceDtypeSize.column_mapping
+      ~ReduceDtypeSize.compute_column_schema
+      ~ReduceDtypeSize.compute_input_schema
+      ~ReduceDtypeSize.compute_output_schema
+      ~ReduceDtypeSize.compute_selector
+      ~ReduceDtypeSize.create_node
+      ~ReduceDtypeSize.fit
+      ~ReduceDtypeSize.fit_finalize
+      ~ReduceDtypeSize.inference_initialize
+      ~ReduceDtypeSize.output_column_names
+      ~ReduceDtypeSize.set_storage_path
+      ~ReduceDtypeSize.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ReduceDtypeSize.dependencies
+      ~ReduceDtypeSize.dynamic_dtypes
+      ~ReduceDtypeSize.label
+      ~ReduceDtypeSize.output_dtype
+      ~ReduceDtypeSize.output_properties
+      ~ReduceDtypeSize.output_tags
+      ~ReduceDtypeSize.supports
+   
+   
