@@ -193,7 +193,7 @@ def create_movielens_inference_data(model_dir, output_dir, nrows):
 
     sample_data = cudf.read_parquet(data_path, nrows=nrows)
     sample_data.to_csv(os.path.join(output_dir, workflow_output_test_file_name))
-    sample_data_trans = nvt.workflow.workflow._transform_partition(
+    sample_data_trans = nvt.workflow.executor.MerlinPythonExecutor().transform(
         sample_data, [workflow.output_node]
     )
     sample_data_trans.to_parquet(os.path.join(output_dir, workflow_output_test_trans_file_name))
