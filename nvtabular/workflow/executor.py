@@ -32,7 +32,9 @@ LOG = logging.getLogger("nvtabular")
 
 
 class MerlinPythonExecutor:
-    def apply(self, df, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False):
+    def transform(
+        self, df, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False
+    ):
         """
         Transforms a single dataframe (possibly a partition of a Dask Dataframe)
         by applying the operators from a collection of Nodes
@@ -53,7 +55,7 @@ class MerlinPythonExecutor:
 
                 for parent in node.parents_with_dependencies:
                     parent_output_cols = get_unique(parent.output_schema.column_names)
-                    parent_df = self.apply(df, [parent], capture_dtypes=capture_dtypes)
+                    parent_df = self.transform(df, [parent], capture_dtypes=capture_dtypes)
                     if input_df is None or not len(input_df):
                         input_df = parent_df[parent_output_cols]
                         seen_columns = set(parent_output_cols)
@@ -143,7 +145,9 @@ class MerlinDaskExecutor:
         # dask client objects aren't picklable - exclude from saved representation
         return {k: v for k, v in self.__dict__.items() if k != "client"}
 
-    def apply(self, ddf, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False):
+    def transform(
+        self, ddf, nodes, output_dtypes=None, additional_columns=None, capture_dtypes=False
+    ):
         """
         Transforms all partitions of a Dask Dataframe by applying the operators
         from a collection of Nodes
@@ -180,7 +184,7 @@ class MerlinDaskExecutor:
 
         return ensure_optimize_dataframe_graph(
             ddf=ddf.map_partitions(
-                self._executor.apply,
+                self._executor.transform,
                 nodes,
                 additional_columns=additional_columns,
                 capture_dtypes=capture_dtypes,
@@ -211,7 +215,7 @@ class MerlinDaskExecutor:
 
             # apply transforms necessary for the inputs to the current column group, ignoring
             # the transforms from the statop itself
-            transformed_ddf = self.apply(
+            transformed_ddf = self.transform(
                 ddf,
                 node.parents_with_dependencies,
                 additional_columns=addl_input_cols,

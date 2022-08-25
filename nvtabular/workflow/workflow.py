@@ -241,7 +241,7 @@ class Workflow:
         ddf = dataset.to_ddf(columns=self._input_columns())
 
         return Dataset(
-            self.executor.apply(
+            self.executor.transform(
                 ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
             ),
             cpu=dataset.cpu,
