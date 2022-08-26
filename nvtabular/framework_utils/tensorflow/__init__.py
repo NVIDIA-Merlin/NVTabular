@@ -15,4 +15,4 @@
 #
 
 # flake8: noqa
-from .feature_column_utils import make_feature_column_workflow
+from nvtabular.framework_utils.tensorflow.feature_column_utils import make_feature_column_workflow

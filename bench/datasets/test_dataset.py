@@ -143,7 +143,7 @@ def parse_args():
         help="Number of output files to write on each worker",
     )
 
-    parser.add_argument("--workflow-path", type=str, help="Worflow path, so ETL is not performed")
+    parser.add_argument("--workflow-path", type=str, help="Workflow path, so ETL is not performed")
 
     args = parser.parse_args()
     return args

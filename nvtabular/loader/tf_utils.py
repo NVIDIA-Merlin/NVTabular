@@ -26,7 +26,7 @@ from merlin.core.utils import device_mem_size
 
 
 def configure_tensorflow(memory_allocation=None, device=None):
-    total_gpu_mem_mb = device_mem_size(kind="total", cpu=(not HAS_GPU)) / (1024 ** 2)
+    total_gpu_mem_mb = device_mem_size(kind="total", cpu=(not HAS_GPU)) / (1024**2)
 
     if memory_allocation is None:
         memory_allocation = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)

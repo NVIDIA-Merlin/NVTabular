@@ -1,14 +1,13 @@
 # packages necessary to run tests and push PRs
 # assumes requirements for nvtabular logic are already installed
 
-black==21.7b0
-click<8.1.0
+black==22.6.0
 flake8==3.9.2
 ipython_genutils
-isort==5.9.3
+isort==5.10.1
 pylint==2.7.4
-bandit==1.7.0
-flake8-nb==0.3.0
+bandit==1.7.4
+flake8-nb==0.5.2
 pytest>=5
 pytest-cov>=2
 scikit-learn>=0.20

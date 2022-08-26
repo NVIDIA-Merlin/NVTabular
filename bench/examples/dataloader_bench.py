@@ -26,13 +26,15 @@ from tqdm import tqdm
 class BatchRangeAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         values = map(int, values.split(","))
-        setattr(namespace, self.dest, [2 ** i for i in range(*values)])
+        setattr(namespace, self.dest, [2**i for i in range(*values)])
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Process some integers.")
     parser.add_argument(
-        "backend", choices=("tensorflow", "torch"), help="Which backend libary to output tensors in"
+        "backend",
+        choices=("tensorflow", "torch"),
+        help="Which backend library to output tensors in",
     )
     parser.add_argument("in_dir", help="directory with dataset files inside")
     parser.add_argument("in_file_type", help="type of file (i.e. parquet, csv, orc)")
@@ -48,7 +50,7 @@ def parse_args():
             "e.g. '9,24' for the default"
         ),
         type=str,
-        default=[2 ** i for i in range(9, 24)],
+        default=[2**i for i in range(9, 24)],
         action=BatchRangeAction,
     )
     return parser.parse_args()

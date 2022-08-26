@@ -18,8 +18,7 @@ from packaging.version import Version
 
 from merlin.core.dispatch import DataFrameType, annotate, array
 from merlin.schema import Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class Bucketize(Operator):

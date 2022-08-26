@@ -154,7 +154,7 @@ def test_hugectr(n_rows, err_tol):
         str(os.path.join(test_data_path, "data.csv")), index=False
     )
 
-    sample_data_trans = nvt.workflow.workflow._transform_partition(
+    sample_data_trans = nvt.workflow.executor.MerlinPythonExecutor().transform(
         sample_data, [workflow.output_node]
     )
 
