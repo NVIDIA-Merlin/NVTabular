@@ -29,7 +29,7 @@ except ImportError:
     cudf = None
 import pandas as pd
 
-from merlin.dag import Graph
+from merlin.dag import Graph, Node
 from merlin.dag.executors import DaskExecutor
 from merlin.io import Dataset
 from merlin.schema import Schema

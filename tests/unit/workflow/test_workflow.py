@@ -667,3 +667,25 @@ def test_workflow_saved_schema(tmpdir):
     for node in postorder_iter_nodes(workflow2.output_node):
         assert node.input_schema is not None
         assert node.output_schema is not None
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_subgraphs(dataset, engine):
+    user_subgraph = (["x"] >> ops.LogOp() >> ops.Normalize()) + (["name-cat"] >> ops.Categorify())
+    item_subgraph = ["y"] >> ops.LogOp() >> ops.Normalize()
+
+    output_node = user_subgraph + item_subgraph
+
+    workflow = Workflow(output_node, subgraphs={"user": user_subgraph, "item": item_subgraph})
+
+    workflow.fit(dataset)
+
+    # At serving time
+
+    transformed_user = workflow.subgraph("user").transform(dataset)
+    transformed_user_ddf = transformed_user.to_ddf().compute()
+    assert transformed_user.columns == transformed_user_ddf.columns
+
+    original_ddf = dataset.to_ddf().compute()
+    original_transformed = workflow.transform(dataset)
+    assert original_ddf.columns == original_transformed.columns
