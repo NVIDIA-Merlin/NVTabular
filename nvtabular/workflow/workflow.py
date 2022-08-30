@@ -18,7 +18,7 @@ import logging
 import sys
 import time
 import warnings
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 import cloudpickle
 import fsspec
@@ -70,9 +70,22 @@ class Workflow:
         The last node in the graph of operators this workflow should apply
     """
 
-    def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
-        self.graph = Graph(output_node)
+    def __init__(
+        self,
+        output_node: WorkflowNode,
+        client: Optional["distributed.Client"] = None,
+        subgraphs: Optional[Dict[str, Node]] = None,
+    ):
+        self.graph = Graph(output_node, subgraphs=subgraphs)
         self.executor = DaskExecutor(client)
+
+    def subgraph(self, name: str):
+        if not name in self.graph.subgraphs.keys():
+            raise ValueError(
+                f"No subgraph named {name}. Options are: {self.graph.subgraphs.keys()}"
+            )
+        subgraph = self.graph.subgraph(name)
+        return Workflow(subgraph.output_node, self.executor.client, subgraphs=subgraph.subgraphs)
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
