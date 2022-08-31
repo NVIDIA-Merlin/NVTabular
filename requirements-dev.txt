@@ -13,7 +13,7 @@ pytest-cov>=2
 scikit-learn>=0.20
 moto>=2
 boto3==1.17
-git+https://github.com/rapidsai/asvdb.git
+asvdb@git+https://github.com/rapidsai/asvdb.git
 graphviz>=0.16
 cpplint>=1.5
 codespell
