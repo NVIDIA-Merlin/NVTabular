@@ -60,7 +60,7 @@ By default, the Dask-CUDA workers will begin spilling data from device memory to
 e.g. `--device-limit-frac 0.66`
 
 ##### IO Threads (Writing)
-By default, multi-threading will not be used to write output data. Some systems may see better performance when 2+ threads are used to overlap sequencial writes by the same worker. The user can specify a specific number of threads using the `--num-io-threads` flag.
+By default, multi-threading will not be used to write output data. Some systems may see better performance when 2+ threads are used to overlap sequential writes by the same worker. The user can specify a specific number of threads using the `--num-io-threads` flag.
 
 e.g. `--num-io-threads 2`
 

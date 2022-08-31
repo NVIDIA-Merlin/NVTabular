@@ -40,9 +40,8 @@ from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullabl
 from merlin.core.utils import device_mem_size, run_on_worker
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
-
-from .operator import ColumnSelector, Operator
-from .stat_operator import StatOperator
+from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.stat_operator import StatOperator
 
 
 class Categorify(StatOperator):
@@ -222,7 +221,7 @@ class Categorify(StatOperator):
         #
         #   (2) Multi-column "Joint" encoding (there are multi-column groups
         #       in `columns` and `encode_type="joint"`).  Still a
-        #       1-to-1 transofrmation of categorical columns.  However,
+        #       1-to-1 transformation of categorical columns.  However,
         #       we concatenate column groups to determine uniques (rather
         #       than getting uniques of each categorical column separately).
         #
@@ -522,7 +521,7 @@ class Categorify(StatOperator):
             else self.max_size,
             "start_index": self.start_index,
             "cat_path": target_category_path,
-            "domain": {"min": 0, "max": cardinality, "name": category_name},
+            "domain": {"min": 0, "max": cardinality - 1, "name": category_name},
             "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
         }
 
@@ -653,7 +652,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
 
 
 def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
-    return n_cat, min(max(minimum_size, round(1.6 * n_cat ** 0.56)), maximum_size)
+    return n_cat, min(max(minimum_size, round(1.6 * n_cat**0.56)), maximum_size)
 
 
 def _make_name(*args, sep="_"):
@@ -879,7 +878,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
             x2 = gb[
                 _make_name(*(col_selector.names + [cont_col, "pow2", "sum"]), sep=options.name_sep)
             ]
-            result = x2 - x ** 2 / n
+            result = x2 - x**2 / n
             div = n - ddof
             div[div < 1] = 1
             result /= div

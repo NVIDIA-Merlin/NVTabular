@@ -19,8 +19,7 @@ from dask.dataframe.utils import meta_nonempty
 
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class Groupby(Operator):
@@ -298,9 +297,9 @@ def _first(x):
     # item in the list
     if hasattr(x, "list"):
         # cuDF-specific behavior
-        offsets = x.list._column.offsets
-        elements = x.list._column.elements
-        return elements[offsets[:-1]]
+        offsets = x.list._column.offsets.values
+        elements = x.list.leaves
+        return elements[offsets[:-1]]._column
     else:
         # cpu/pandas
         return x.apply(lambda y: y[0])
@@ -311,9 +310,9 @@ def _last(x):
     # item in the list
     if hasattr(x, "list"):
         # cuDF-specific behavior
-        offsets = x.list._column.offsets
-        elements = x.list._column.elements
-        return elements[offsets[1:].values - 1]
+        offsets = x.list._column.offsets.values
+        elements = x.list.leaves
+        return elements[offsets[1:] - 1]._column
     else:
         # cpu/pandas
         return x.apply(lambda y: y[-1])

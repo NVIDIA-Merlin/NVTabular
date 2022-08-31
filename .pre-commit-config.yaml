@@ -1,39 +1,50 @@
 repos:
-      - repo: https://github.com/timothycrosley/isort
-        rev: 5.10.1
-        hooks:
-        - id: isort
-          additional_dependencies: [toml]
-          exclude: examples/*
-      - repo: https://github.com/python/black
-        rev: 22.3.0
-        hooks:
-        - id: black
-      - repo: https://gitlab.com/pycqa/flake8
-        rev: 3.9.2
-        hooks:
-        - id: flake8
-      - repo: https://github.com/pycqa/pylint
-        rev: v2.14.1
-        hooks:
-        - id: pylint
-      - repo: https://github.com/econchick/interrogate
-        rev: 1.5.0
-        hooks:
-        - id: interrogate
-          exclude: ^(docs|bench|examples|tests|setup.py|versioneer.py)
-          args: [--config=pyproject.toml]
-      - repo: https://github.com/codespell-project/codespell
-        rev: v2.1.0
-        hooks:
-        - id: codespell
-      - repo: https://github.com/PyCQA/bandit
-        rev: 1.7.4
-        hooks:
-        - id: bandit
-          args: [--verbose, -ll, -x, tests,examples,bench]
-      - repo: https://github.com/s-weigand/flake8-nb
-        rev: v0.4.0
-        hooks:
-        - id: flake8-nb
-          files: \.ipynb$
+  # imports
+  - repo: https://github.com/MarcoGorelli/absolufy-imports
+    rev: v0.3.1
+    hooks:
+      - id: absolufy-imports
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.10.1
+    hooks:
+    - id: isort
+      additional_dependencies: [toml]
+      exclude: examples/.*
+  # code style
+  - repo: https://github.com/python/black
+    rev: 22.6.0
+    hooks:
+    - id: black
+  - repo: https://github.com/pycqa/pylint
+    rev: v2.14.1
+    hooks:
+    - id: pylint
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+    - id: flake8
+  # notebooks
+  - repo: https://github.com/s-weigand/flake8-nb
+    rev: v0.5.2
+    hooks:
+    - id: flake8-nb
+      files: \.ipynb$
+      exclude: bench/.*
+  # documentation
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.5.0
+    hooks:
+    - id: interrogate
+      exclude: ^(docs|bench|examples|tests|setup.py|versioneer.py)
+      args: [--config=pyproject.toml]
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.1
+    hooks:
+    - id: codespell
+      exclude: .github/.*
+  # security
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.4
+    hooks:
+    - id: bandit
+      args: [--verbose, -ll, -x, tests,examples,bench]

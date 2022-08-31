@@ -26,6 +26,7 @@ decimal_regex = "[0-9]+\.?[0-9]*|\.[0-9]+"  # noqa pylint: disable=W1401
 
 class CriteoBenchFastAI(BenchFastAI):
     def __init__(self, name="CriteoFastAI", val=6, split=None):
+        super().__init__(self)
         self.name = name
         self.val = val
         self.split = split
@@ -65,6 +66,7 @@ class CriteoBenchFastAI(BenchFastAI):
 
 class CriteoBenchHugeCTR(StandardBenchmark):
     def __init__(self, name="CriteoHugeCTR"):
+        super().__init__(self)
         self.name = name
 
     def get_epochs(self, output):
@@ -90,6 +92,7 @@ class CriteoBenchHugeCTR(StandardBenchmark):
 
 class CriteoTensorflow(StandardBenchmark):
     def __init__(self, name="CriteoTensorFlow"):
+        super().__init__(self)
         self.name = name
 
     def get_loss(self, line):
@@ -102,6 +105,7 @@ class CriteoTensorflow(StandardBenchmark):
 
 class CriteoTorch(StandardBenchmark):
     def __init__(self, name="CriteoTorch"):
+        super().__init__(self)
         self.name = name
 
     def get_info(self, output):

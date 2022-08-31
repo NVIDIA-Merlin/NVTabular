@@ -167,7 +167,7 @@ def test_tritonserver_inference_string(tmpdir, output_model):
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_large_strings(tmpdir, output_model):
-    strings = ["a" * (2 ** exp) for exp in range(1, 17)]
+    strings = ["a" * (2**exp) for exp in range(1, 17)]
     df = make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)

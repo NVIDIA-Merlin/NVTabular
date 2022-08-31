@@ -17,7 +17,7 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class StatOperator(Operator):

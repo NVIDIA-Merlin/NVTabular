@@ -19,8 +19,7 @@ import torch
 from torch.utils.dlpack import from_dlpack
 
 from merlin.core.dispatch import HAS_GPU
-
-from .backend import DataLoader
+from nvtabular.loader.backend import DataLoader
 
 
 class IterDL(torch.utils.data.IterableDataset):

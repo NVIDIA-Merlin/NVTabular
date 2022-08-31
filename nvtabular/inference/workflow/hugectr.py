@@ -79,7 +79,7 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
         if embeddings is None:
             raise Exception("embeddings cannot be None")
         else:
-            offsets = dict()
+            offsets = {}
             curr_offset = 0
             for name in categorical_cols:
                 offsets[name] = curr_offset

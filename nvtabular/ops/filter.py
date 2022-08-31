@@ -22,8 +22,7 @@ from merlin.core.dispatch import (
     is_dataframe_object,
     is_series_object,
 )
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class Filter(Operator):

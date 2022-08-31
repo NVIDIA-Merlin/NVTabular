@@ -15,8 +15,7 @@
 #
 from merlin.core.dispatch import DataFrameType
 from merlin.schema.tags import Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class AddMetadata(Operator):
