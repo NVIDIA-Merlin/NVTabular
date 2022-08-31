@@ -1,0 +1,43 @@
+﻿nvtabular.ops.JoinExternal
+==========================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: JoinExternal
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~JoinExternal.__init__
+      ~JoinExternal.column_mapping
+      ~JoinExternal.compute_column_schema
+      ~JoinExternal.compute_input_schema
+      ~JoinExternal.compute_output_schema
+      ~JoinExternal.compute_selector
+      ~JoinExternal.create_node
+      ~JoinExternal.inference_initialize
+      ~JoinExternal.output_column_names
+      ~JoinExternal.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~JoinExternal.dependencies
+      ~JoinExternal.dynamic_dtypes
+      ~JoinExternal.label
+      ~JoinExternal.output_dtype
+      ~JoinExternal.output_properties
+      ~JoinExternal.output_tags
+      ~JoinExternal.supports
+   
+   
