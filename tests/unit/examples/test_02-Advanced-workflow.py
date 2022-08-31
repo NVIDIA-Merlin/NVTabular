@@ -26,6 +26,7 @@ def test_example_02_advanced_workflow(tb):
         import os
         from unittest.mock import patch
         from merlin.datasets.synthetic import generate_data
+        from pathlib import Path
         mock_train, mock_valid = generate_data(
             input="movielens-1m",
             num_rows=1000,
@@ -33,9 +34,11 @@ def test_example_02_advanced_workflow(tb):
         )
         input_path = os.environ.get(
             "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/")
+            os.path.expanduser("~/merlin-framework/movielens/ml-1m")
         )
+        Path(input_path).mkdir(parents=True, exist_ok=True)
         mock_train.compute().to_parquet(f'{input_path}/train.parquet')
+        mock_train.compute().to_parquet(f'{input_path}/valid.parquet')
 
         p1 = patch(
             "merlin.datasets.entertainment.get_movielens",
@@ -44,7 +47,7 @@ def test_example_02_advanced_workflow(tb):
         p1.start()
         """
     )
-    tb.execute_cell(range(7))
+    tb.execute_cell(range(5))
     tb.inject(
         """
             import cudf
@@ -68,7 +71,7 @@ def test_example_02_advanced_workflow(tb):
             )
             """
     )
-    tb.execute_cell(range(8, len(tb.cells)))
+    tb.execute_cell(range(6, len(tb.cells)))
     metrics = tb.ref("metrics")
     assert set(metrics.history.keys()) == set(
         [

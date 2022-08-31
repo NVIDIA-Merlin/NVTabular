@@ -33,9 +33,12 @@ def test_example_01_getting_started(tb):
         )
         input_path = os.environ.get(
             "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/")
+            os.path.expanduser("~/merlin-framework/movielens/ml-1m")
         )
+        from pathlib import Path
+        Path(input_path).mkdir(parents=True, exist_ok=True)
         mock_train.compute().to_parquet(f'{input_path}/train.parquet')
+        mock_train.compute().to_parquet(f'{input_path}/valid.parquet')
 
         p1 = patch(
             "merlin.datasets.entertainment.get_movielens",
