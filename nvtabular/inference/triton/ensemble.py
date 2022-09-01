@@ -315,7 +315,7 @@ def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext
     config.ensemble_scheduling.step.append(nvt_step)
     config.ensemble_scheduling.step.append(tf_step)
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+    with open(os.path.join(output_path, "config.pbtxt"), "w", encoding="utf8") as o:
         text_format.PrintMessage(config, o)
     return config
 
@@ -439,7 +439,7 @@ def _generate_nvtabular_config(
             dim = sparse_max[col_name] if sparse_max and col_name in sparse_max.keys() else 1
             _add_model_param(col_schema, model_config.ModelOutput, config.output, [-1, dim])
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+    with open(os.path.join(output_path, "config.pbtxt"), "w", encoding="utf8") as o:
         text_format.PrintMessage(config, o)
     return config
 
@@ -497,7 +497,7 @@ def export_tensorflow_model(model, name, output_path, version=1):
             )
         )
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+    with open(os.path.join(output_path, "config.pbtxt"), "w", encoding="utf8") as o:
         text_format.PrintMessage(config, o)
     return config
 
@@ -560,13 +560,15 @@ def export_pytorch_model(
     )
 
     if sparse_max:
-        with open(os.path.join(output_path, str(version), "model_info.json"), "w") as o:
-            model_info = dict()
+        with open(
+            os.path.join(output_path, str(version), "model_info.json"), "w", encoding="utf8"
+        ) as o:
+            model_info = {}
             model_info["sparse_max"] = sparse_max
             model_info["use_fix_dtypes"] = use_fix_dtypes
             json.dump(model_info, o)
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+    with open(os.path.join(output_path, "config.pbtxt"), "w", encoding="utf8") as o:
         text_format.PrintMessage(config, o)
     return config
 
@@ -588,7 +590,7 @@ def _generate_pytorch_config(model, name, output_path, max_batch_size=None):
             )
         )
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+    with open(os.path.join(output_path, "config.pbtxt"), "w", encoding="utf8") as o:
         text_format.PrintMessage(config, o)
     return config
 
@@ -659,7 +661,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     embeddingkey_long_type = model_config.ModelParameter(string_value=embeddingkey_long_type_val)
     config.parameters["embeddingkey_long_type"].CopyFrom(embeddingkey_long_type)
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+    with open(os.path.join(output_path, "config.pbtxt"), "w", encoding="utf8") as o:
         text_format.PrintMessage(config, o)
     return config
 

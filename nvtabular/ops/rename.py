@@ -14,8 +14,7 @@
 # limitations under the License.
 #
 from merlin.core.dispatch import DataFrameType
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class Rename(Operator):

@@ -40,9 +40,8 @@ from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullabl
 from merlin.core.utils import device_mem_size, run_on_worker
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
-
-from .operator import ColumnSelector, Operator
-from .stat_operator import StatOperator
+from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.stat_operator import StatOperator
 
 
 class Categorify(StatOperator):
@@ -222,7 +221,7 @@ class Categorify(StatOperator):
         #
         #   (2) Multi-column "Joint" encoding (there are multi-column groups
         #       in `columns` and `encode_type="joint"`).  Still a
-        #       1-to-1 transofrmation of categorical columns.  However,
+        #       1-to-1 transformation of categorical columns.  However,
         #       we concatenate column groups to determine uniques (rather
         #       than getting uniques of each categorical column separately).
         #
