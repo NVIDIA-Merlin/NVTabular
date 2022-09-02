@@ -25,7 +25,7 @@ boto3==1.17
 
 
 # Assume these are required for notebook tests, but want to doublecheck that
-# scikit-learn>=0.20
+scikit-learn>=0.20
 # graphviz>=0.16
 # ipython_genutils
 
