@@ -1,6 +1,8 @@
 # packages necessary to run tests and push PRs
 # assumes requirements for nvtabular logic are already installed
 
+pybind11
+
 # linting
 cpplint>=1.5
 codespell
