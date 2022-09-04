@@ -33,11 +33,6 @@ except ImportError:
     torch = None
 
 try:
-    import fastai
-except ImportError:
-    fastai = None
-
-try:
     import tensorflow
 except ImportError:
     tensorflow = None
@@ -148,33 +143,6 @@ def test_rossman_torch(asv_db, bench_info, tmpdir, devices, report):
 
     # Run training for PyTorch container
     notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
-
-    with testbook(
-        notebook,
-        execute=False,
-        timeout=450,
-    ) as tb_training:
-        tb_training.inject(
-            f"""
-                import os
-                os.environ['INPUT_DATA_DIR'] = "{input_path}"
-                os.environ['OUTPUT_DATA_DIR'] = "{input_path}"
-            """
-        )
-        tb_training.execute_cell(list(range(0, len(tb_training.cells))))
-
-
-@pytest.mark.skipif(torch is None or fastai is None, reason="pytorch & fastai not installed")
-def test_rossman_fastai(asv_db, bench_info, tmpdir, devices, report):
-    rossman_base(tmpdir)
-    input_path = os.path.join(tmpdir, "rossman/input")
-    output_path = os.path.join(tmpdir, "rossman/output")
-    os.makedirs(output_path)
-
-    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
-
-    # Run training for PyTorch container
-    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-FastAI.ipynb")
 
     with testbook(
         notebook,

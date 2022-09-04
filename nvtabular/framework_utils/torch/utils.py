@@ -17,26 +17,6 @@
 import torch
 
 
-class FastaiTransform:
-    def __init__(self, dataloader):
-        self.data = DictTransform(dataloader)
-
-    def transform(self, batch):
-        concats = []
-        for columns in [self.data.cats, self.data.conts]:
-            # cols = [v for k,v in batch[0] if k in columns and isinstance(v, torch.Tensor)]
-            cols = []
-            for k, v in batch[0].items():
-                if k in columns and not isinstance(v, tuple) and isinstance(v, torch.Tensor):
-                    cols.append(v)
-            concats.append(torch.cat(cols, axis=1))
-        return (
-            concats[0].to("cuda", dtype=torch.long),
-            concats[1],
-            batch[1].to("cuda", dtype=torch.long),
-        )
-
-
 class DictTransform:
     def __init__(self, dataloader):
         self.cats = dataloader.cat_names
