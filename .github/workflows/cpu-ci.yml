@@ -67,7 +67,7 @@ jobs:
     # Build docs, treat warnings as errors
     - name: Building docs
       run: |
-        make -C docs html SPHINXOPTS="-W -q"
+        tox -e docs
     - name: Upload HTML
       uses: actions/upload-artifact@v2
       with:
