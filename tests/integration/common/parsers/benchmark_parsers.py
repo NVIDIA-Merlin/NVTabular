@@ -114,23 +114,6 @@ class StandardBenchmark(Benchmark):
         return timing_res[-1:]
 
 
-class BenchFastAI(StandardBenchmark):
-    def __init__(self, target_id, val=6, split=None):
-        super().__init__(f"{target_id}_fastai", val=val, split=split)
-
-    def get_epochs(self, output):
-        epochs = []
-        for line in output:
-            split_line = line.split(self.split) if self.split else line.split()
-            if len(split_line) == self.val and is_whole_number(split_line[0]):
-                # epoch line, detected based on if 1st character is a number
-                post_evts = self.get_epoch(line)
-                epochs.append(post_evts)
-            if "run_time" in line:
-                epochs.append(self.get_dl_timing(line))
-        return epochs[-1:]
-
-
 # Utils
 
 
