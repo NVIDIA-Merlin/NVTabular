@@ -121,6 +121,9 @@ class Workflow:
             This workflow where each node in the graph has a fitted schema
         """
         self.graph.construct_schema(input_schema)
+        for subworkflow in self.graph.subgraphs.values():
+            Graph(subworkflow).construct_schema(input_schema)
+
         return self
 
     @property
@@ -186,7 +189,7 @@ class Workflow:
         self.clear_stats()
 
         if not self.graph.output_schema:
-            self.graph.construct_schema(dataset.schema)
+            self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 

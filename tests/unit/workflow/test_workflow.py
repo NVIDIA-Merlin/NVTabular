@@ -678,14 +678,19 @@ def test_subgraphs(dataset, engine):
 
     workflow = Workflow(output_node, subgraphs={"user": user_subgraph, "item": item_subgraph})
 
+    # assert subgraph inputs before and after fitting.
+    assert workflow.graph.subgraph("user").input_schema.column_names == ["x", "name-cat"]
+    assert workflow.graph.subgraph("item").input_schema.column_names == ["y"]
+
     workflow.fit(dataset)
 
-    # At serving time
+    assert workflow.graph.subgraph("user").input_schema.column_names == ["x", "name-cat"]
+    assert workflow.graph.subgraph("item").input_schema.column_names == ["y"]
 
-    transformed_user = workflow.subgraph("user").transform(dataset)
-    transformed_user_ddf = transformed_user.to_ddf().compute()
-    assert transformed_user.columns == transformed_user_ddf.columns
+    transformed_user_ddf = workflow.subgraph("user").transform(dataset).to_ddf().compute()
+
+    assert transformed_user_ddf.columns == ["x", "name-cat"]
 
     original_ddf = dataset.to_ddf().compute()
-    original_transformed = workflow.transform(dataset)
+    original_transformed = workflow.transform(dataset).to_ddf().compute()
     assert original_ddf.columns == original_transformed.columns
