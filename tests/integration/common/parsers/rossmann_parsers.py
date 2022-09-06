@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from tests.integration.common.parsers.benchmark_parsers import BenchFastAI, StandardBenchmark
+from tests.integration.common.parsers.benchmark_parsers import StandardBenchmark
 
 
 class RossBenchTensorFlow(StandardBenchmark):
@@ -63,15 +63,3 @@ class RossBenchPytorch(StandardBenchmark):
             if "run_time" in line:
                 epochs.append(self.get_dl_timing(line))
         return epochs[-1:]
-
-
-class RossBenchFastAI(BenchFastAI):
-    def __init__(self, val=5, split=None):
-        super().__init__("Rossmann", val=val, split=split)
-
-    def get_epoch(self, line):
-        epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
-        t_loss = self.loss(epoch, float(t_loss))
-        v_loss = self.loss(epoch, float(v_loss), l_type="valid")
-        # exp_rmspe = self.rmspe(epoch, float(exp_rmspe))
-        return [t_loss, v_loss, exp_rmspe, o_time]
