@@ -30,10 +30,10 @@ except ImportError:
 import pandas as pd
 
 from merlin.dag import Graph
+from merlin.dag.executors import DaskExecutor
 from merlin.io import Dataset
 from merlin.schema import Schema
 from nvtabular.ops import StatOperator
-from nvtabular.workflow.executor import MerlinDaskExecutor
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
@@ -72,7 +72,7 @@ class Workflow:
 
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
         self.graph = Graph(output_node)
-        self.executor = MerlinDaskExecutor(client)
+        self.executor = DaskExecutor(client)
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``

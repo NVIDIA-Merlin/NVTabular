@@ -25,27 +25,13 @@ jobs:
       - name: Install Ubuntu packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y protobuf-compiler pandoc
+          sudo apt-get install -y protobuf-compiler
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools==59.4.0 wheel
-          python -m pip install nvidia-pyindex
-          python -m pip install -r requirements.txt pybind11
-          python -m pip install -r requirements-dev.txt
-          python -m pip uninstall protobuf -y
-          python -m pip install --no-binary=protobuf protobuf
-          python -m pip install tritonclient[all]
-          python -m pip install torch tensorflow-cpu
-          python -m pip install numpy==1.20.3
-      - name: Build
-        run: |
-          python setup.py develop --user
-      - name: Report the versions to build
-        run: |
-          sphinx-multiversion --dump-metadata docs/source docs/build/html | jq "keys"
+          python -m pip install --upgrade pip setuptools==59.4.0 wheel tox
       - name: Building docs (multiversion)
         run: |
-          sphinx-multiversion docs/source docs/build/html
+          tox -e docs-multi
       - name: Upload HTML
         uses: actions/upload-artifact@v2
         with:
