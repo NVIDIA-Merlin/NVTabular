@@ -61,27 +61,29 @@ cmdclass["build_ext"] = build_pybind11
 cmdclass["develop"] = develop
 
 
-def read_requirements(filename):
+def read_requirements(req_path, filename):
     base = os.path.abspath(os.path.dirname(__file__))
-    with codecs.open(os.path.join(base, filename), "rb", "utf-8") as f:
+    with codecs.open(os.path.join(base, req_path, filename), "rb", "utf-8") as f:
         lineiter = (line.strip() for line in f)
         packages = []
         for line in lineiter:
             if line:
                 if line.startswith("-r"):
                     filename = line.replace("-r", "").strip()
-                    packages.extend(read_requirements(filename))
+                    packages.extend(read_requirements(req_path, filename))
                 elif not line.startswith("#"):
                     packages.append(line)
         return packages
 
 
 requirements = {
-    "cpu": read_requirements("requirements.txt"),
-    "gpu": read_requirements("requirements-gpu.txt"),
+    "cpu": read_requirements("requirements", "base.txt"),
+    "gpu": read_requirements("requirements", "gpu.txt"),
 }
 dev_requirements = {
-    "dev": read_requirements("requirements-dev.txt"),
+    "dev": read_requirements("requirements", "dev.txt"),
+    "test": read_requirements("requirements", "test.txt"),
+    "docs": read_requirements("requirements", "docs.txt"),
 }
 
 with open("README.md", encoding="utf8") as readme_file:

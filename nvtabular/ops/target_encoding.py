@@ -261,7 +261,7 @@ class TargetEncoding(StatOperator):
 
     @property
     def output_tags(self):
-        return [Tags.CATEGORICAL]
+        return [Tags.CONTINUOUS]
 
     @property
     def target_columns(self):
