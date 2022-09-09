@@ -106,10 +106,10 @@
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 
 <span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Graph</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.executors</span> <span class="kn">import</span> <span class="n">DaskExecutor</span>
 <span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Dataset</span>
 <span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">StatOperator</span>
-<span class="kn">from</span> <span class="nn">nvtabular.workflow.executor</span> <span class="kn">import</span> <span class="n">MerlinDaskExecutor</span>
 <span class="kn">from</span> <span class="nn">nvtabular.workflow.node</span> <span class="kn">import</span> <span class="n">WorkflowNode</span>
 
 <span class="n">LOG</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;nvtabular&quot;</span><span class="p">)</span>
@@ -148,7 +148,7 @@
 
 <div class="viewcode-block" id="Workflow.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_node</span><span class="p">:</span> <span class="n">WorkflowNode</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;distributed.Client&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">(</span><span class="n">output_node</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">MerlinDaskExecutor</span><span class="p">(</span><span class="n">client</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">DaskExecutor</span><span class="p">(</span><span class="n">client</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Workflow.transform"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Transforms the dataset by applying the graph of operators to it. Requires the ``fit``</span>
@@ -463,12 +463,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v1.2.1/index.html">v1.2.1</a></dd>
       <dd><a href="../../../../v1.2.2/index.html">v1.2.2</a></dd>
       <dd><a href="../../../../v1.3.0/index.html">v1.3.0</a></dd>
       <dd><a href="../../../../v1.3.1/index.html">v1.3.1</a></dd>
       <dd><a href="../../../../v1.3.2/index.html">v1.3.2</a></dd>
       <dd><a href="../../../../v1.3.3/index.html">v1.3.3</a></dd>
+      <dd><a href="../../../../v1.4.0/index.html">v1.4.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
