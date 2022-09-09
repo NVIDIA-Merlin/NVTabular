@@ -11,4 +11,3 @@ The following notebooks show how to use NVTabular to predict sales on tabular da
 - [ETL with NVTabular](02-ETL-with-NVTabular.ipynb)
 - [Training with TensorFlow](03-Training-with-TF.ipynb)
 - [Training with PyTorch](03-Training-with-PyTorch.ipynb)
-- [Training with FastAI](03-Training-with-FastAI.ipynb)
