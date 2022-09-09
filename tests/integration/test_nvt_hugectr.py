@@ -41,6 +41,7 @@ from sklearn.model_selection import train_test_split
 import nvtabular as nvt
 import tests.conftest as test_utils
 from merlin.core.utils import download_file
+from merlin.dag.executors import LocalExecutor
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 
@@ -154,9 +155,7 @@ def test_hugectr(n_rows, err_tol):
         str(os.path.join(test_data_path, "data.csv")), index=False
     )
 
-    sample_data_trans = nvt.workflow.executor.MerlinPythonExecutor().transform(
-        sample_data, [workflow.output_node]
-    )
+    sample_data_trans = LocalExecutor().transform(sample_data, [workflow.output_node])
 
     dense_features, embedding_columns, row_ptrs = _convert(sample_data_trans, slot_sizes)
 
