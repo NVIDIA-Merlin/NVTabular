@@ -34,11 +34,11 @@ def test_example_02_advanced_workflow(tb):
         )
         input_path = os.environ.get(
             "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/ml-1m")
+            os.path.expanduser("~/merlin-framework/movielens/")
         )
         Path(input_path).mkdir(parents=True, exist_ok=True)
-        mock_train.compute().to_parquet(f'{input_path}/train.parquet')
-        mock_train.compute().to_parquet(f'{input_path}/valid.parquet')
+        mock_train.compute().to_parquet(f'{input_path}/ml-1m/train.parquet')
+        mock_train.compute().to_parquet(f'{input_path}/ml-1m/valid.parquet')
 
         p1 = patch(
             "merlin.datasets.entertainment.get_movielens",
@@ -50,7 +50,7 @@ def test_example_02_advanced_workflow(tb):
     tb.execute_cell(range(5))
     tb.inject(
         """
-            import cudf
+            from merlin.core.dispatch import get_lib
             import string
             import numpy as np
 
@@ -59,11 +59,11 @@ def test_example_02_advanced_workflow(tb):
                 np.random.shuffle(letters)
                 return ''.join(letters)[:np.random.randint(len(letters))]
 
-            train = cudf.read_parquet(f'{input_path}/train.parquet')
-            valid = cudf.read_parquet(f'{input_path}/train.parquet')
+            train = get_lib().read_parquet(f'{input_path}ml-1m/train.parquet')
+            valid = get_lib().read_parquet(f'{input_path}ml-1m/train.parquet')
 
             num_rows = train.movieId.unique().size
-            movies = cudf.DataFrame(
+            movies = get_lib().DataFrame(
                 data={
                     'movieId': train.movieId.unique(),
                     'title': [generate_title() for i in range(num_rows)],

@@ -33,12 +33,12 @@ def test_example_01_getting_started(tb):
         )
         input_path = os.environ.get(
             "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/ml-1m")
+            os.path.expanduser("~/merlin-framework/movielens/")
         )
         from pathlib import Path
         Path(input_path).mkdir(parents=True, exist_ok=True)
-        mock_train.compute().to_parquet(f'{input_path}/train.parquet')
-        mock_train.compute().to_parquet(f'{input_path}/valid.parquet')
+        mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
+        mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
 
         p1 = patch(
             "merlin.datasets.entertainment.get_movielens",
@@ -51,10 +51,10 @@ def test_example_01_getting_started(tb):
     tb.execute_cell(range(7))
     tb.inject(
         """
-            import cudf
+            from merlin.core.dispatch import get_lib
 
-            train = cudf.read_parquet(f'{input_path}/train.parquet')
-            valid = cudf.read_parquet(f'{input_path}/train.parquet')
+            train = get_lib().read_parquet(f'{input_path}ml-1m/train.parquet')
+            valid = get_lib().read_parquet(f'{input_path}ml-1m/valid.parquet')
             """
     )
     tb.execute_cell(range(8, len(tb.cells)))
