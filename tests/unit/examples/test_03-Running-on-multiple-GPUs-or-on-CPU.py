@@ -31,10 +31,8 @@ def test_example_03(tb):
             num_rows=1000,
             set_sizes=(0.8, 0.2)
         )
-        input_path = os.environ.get(
-            "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/")
-        )
+        input_path = os.path.expanduser("~/merlin-framework/movielens/")
+
         from pathlib import Path
         Path(input_path).mkdir(parents=True, exist_ok=True)
         mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
