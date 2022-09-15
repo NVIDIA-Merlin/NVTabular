@@ -17,7 +17,7 @@ import dask.dataframe as dd
 import numpy
 
 from merlin.core.dispatch import (
-    DataFrameType,
+    DataFrameLike,
     annotate,
     encode_list_column,
     flatten_list_column_values,
@@ -68,7 +68,7 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         new_df = type(df)()
         for name in col_selector.names:
             values = df[name]
@@ -138,7 +138,7 @@ class NormalizeMinMax(StatOperator):
         self.out_dtype = out_dtype
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType):
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
         new_df = type(df)()

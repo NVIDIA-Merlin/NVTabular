@@ -14,7 +14,8 @@
 # limitations under the License.
 #
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -46,7 +47,7 @@ class Clip(Operator):
         self.max_value = max_value
 
     @annotate("Clip_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         z_df = df[col_selector.names]
         if self.min_value is not None:
             z_df[z_df < self.min_value] = self.min_value

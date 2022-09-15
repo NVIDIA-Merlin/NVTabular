@@ -16,7 +16,8 @@
 import dask.dataframe as dd
 import numpy as np
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
 
@@ -47,7 +48,7 @@ class FillMissing(Operator):
         self._inference_transform = None
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         if self.add_binary_cols:
             for col in col_selector.names:
                 df[f"{col}_filled"] = df[col].isna()
@@ -103,7 +104,7 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 

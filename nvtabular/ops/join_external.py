@@ -24,7 +24,6 @@ import dask.dataframe as dd
 import pandas as pd
 
 from merlin.core.dispatch import (
-    DataFrameType,
     ExtData,
     arange,
     convert_data,
@@ -32,6 +31,7 @@ from merlin.core.dispatch import (
     detect_format,
     to_host,
 )
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Schema
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -157,7 +157,7 @@ class JoinExternal(Operator):
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = arange(len(df), like_df=df, dtype="int32")

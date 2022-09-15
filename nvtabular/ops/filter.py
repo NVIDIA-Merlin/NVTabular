@@ -15,13 +15,8 @@
 #
 from typing import Callable, Union
 
-from merlin.core.dispatch import (
-    DataFrameType,
-    SeriesType,
-    annotate,
-    is_dataframe_object,
-    is_series_object,
-)
+from merlin.core.dispatch import annotate, is_dataframe_object, is_series_object
+from merlin.core.protocols import DataFrameLike, SeriesLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -42,14 +37,14 @@ class Filter(Operator):
         dataframe with unwanted rows filtered out.
     """
 
-    def __init__(self, f: Callable[[DataFrameType], Union[DataFrameType, SeriesType]]):
+    def __init__(self, f: Callable[[DataFrameLike], Union[DataFrameLike, SeriesLike]]):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         filtered = self.f(df)
         if is_dataframe_object(filtered):
             new_df = filtered

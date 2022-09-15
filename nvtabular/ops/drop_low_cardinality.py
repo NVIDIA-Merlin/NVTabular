@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.core.dispatch import DataFrameType
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -29,7 +29,7 @@ class DropLowCardinality(Operator):
         super().__init__()
         self.min_cardinality = min_cardinality
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         """
         Selects all non-categorical columns and any categorical columns
         of at least the minimum cardinality from the dataframe.
@@ -38,12 +38,12 @@ class DropLowCardinality(Operator):
         ----------
         col_selector : ColumnSelector
             The columns to select.
-        df : DataFrameType
+        df : DataFrameLike
             The dataframe to transform
 
         Returns
         -------
-        DataFrameType
+        DataFrameLike
             Dataframe with only the selected columns.
         """
         return super()._get_columns(df, col_selector)

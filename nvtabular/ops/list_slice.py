@@ -21,7 +21,8 @@ try:
 except ImportError:
     cp = None
 
-from merlin.core.dispatch import DataFrameType, annotate, build_cudf_list_column, is_cpu_object
+from merlin.core.dispatch import annotate, build_cudf_list_column, is_cpu_object
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -75,7 +76,7 @@ class ListSlice(Operator):
             self.max_elements = self.end - self.start
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         on_cpu = is_cpu_object(df)
         ret = type(df)()
 

@@ -16,7 +16,7 @@
 import numpy as np
 
 from merlin.core.dispatch import (
-    DataFrameType,
+    DataFrameLike,
     annotate,
     encode_list_column,
     flatten_list_column_values,
@@ -40,7 +40,7 @@ class LogOp(Operator):
     """
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         for name in col_selector.names:
             column = df[name]
             if is_list_dtype(column):

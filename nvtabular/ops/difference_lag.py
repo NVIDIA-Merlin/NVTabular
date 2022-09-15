@@ -15,7 +15,8 @@
 #
 import numpy
 
-from merlin.core.dispatch import DataFrameType, annotate, is_dataframe_object
+from merlin.core.dispatch import annotate, is_dataframe_object
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -63,7 +64,7 @@ class DifferenceLag(Operator):
         self.shifts = [shift] if isinstance(shift, int) else shift
 
     @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         # compute a mask indicating partition boundaries, handling multiple partition_cols
         # represent partition boundaries by None values
         output = {}

@@ -18,7 +18,7 @@ import numpy as np
 from dask.delayed import Delayed
 
 from merlin.core.dispatch import (
-    DataFrameType,
+    DataFrameLike,
     arange,
     concat_columns,
     random_state,
@@ -375,7 +375,7 @@ class TargetEncoding(StatOperator):
 
         return tran_df
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         # Add temporary column for sorting
         tmp = "__tmp__"
         df[tmp] = arange(len(df), like_df=df, dtype="int32")

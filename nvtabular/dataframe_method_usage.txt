@@ -1,0 +1,15 @@
+df.columns 
+df.copy(
+df.drop(
+df.dropna(
+df.groupby(
+df.head(
+df.index 
+df.memory_usage(
+df.merge(
+df.nlargest(
+df.reset_index(
+df.sample(
+df.sort_values(
+df.to_numpy(
+df.to_parquet(

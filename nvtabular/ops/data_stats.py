@@ -16,7 +16,8 @@
 import dask.dataframe as dd
 import numpy as np
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.moments import _custom_moments
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
@@ -46,7 +47,7 @@ class DataStats(StatOperator):
         self.col_dtypes = []
         self.output = {}
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         return df
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")

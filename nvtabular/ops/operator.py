@@ -18,8 +18,8 @@ from __future__ import annotations
 from typing import Optional
 
 import nvtabular as nvt
-from merlin.core.dispatch import DataFrameType
-from merlin.dag import BaseOperator, ColumnSelector
+from merlin.core.protocols import DataFrameLike
+from merlin.dag import BaseOperator, ColumnSelector, Supports
 
 
 class Operator(BaseOperator):
@@ -27,7 +27,7 @@ class Operator(BaseOperator):
     Base class for all operator classes.
     """
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
@@ -53,3 +53,8 @@ class Operator(BaseOperator):
 
     def create_node(self, selector):
         return nvt.workflow.node.WorkflowNode(selector)
+
+    @property
+    def supports(self) -> Supports:
+        """Returns what kind of data representation this operator supports"""
+        return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
