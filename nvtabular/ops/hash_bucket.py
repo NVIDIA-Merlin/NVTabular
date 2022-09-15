@@ -18,7 +18,7 @@ from typing import Dict, Union
 import numpy
 
 from merlin.core.dispatch import (
-    DataFrameType,
+    DataFrameLike,
     annotate,
     encode_list_column,
     hash_series,
@@ -83,7 +83,7 @@ class HashBucket(Operator):
         super(HashBucket, self).__init__()
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         if isinstance(self.num_buckets, int):
             num_buckets = {name: self.num_buckets for name in col_selector.names}
         else:

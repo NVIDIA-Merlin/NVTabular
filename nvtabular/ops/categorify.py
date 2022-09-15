@@ -36,7 +36,8 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from merlin.core import dispatch
-from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
+from merlin.core.dispatch import annotate, is_cpu_object, nullable_series
+from merlin.core.protocols import DataFrameLike
 from merlin.core.utils import device_mem_size, run_on_worker
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
@@ -427,7 +428,7 @@ class Categorify(StatOperator):
         self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         new_df = df.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in col_selector.names)

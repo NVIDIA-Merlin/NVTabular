@@ -17,7 +17,8 @@ from typing import Dict, Union
 
 import numpy
 
-from merlin.core.dispatch import DataFrameType, annotate, hash_series
+from merlin.core.dispatch import annotate, hash_series
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -53,7 +54,7 @@ class HashedCross(Operator):
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         new_df = type(df)()
         for cross in _nest_columns(col_selector.names):
             val = 0

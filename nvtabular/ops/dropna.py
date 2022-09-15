@@ -14,7 +14,8 @@
 # limitations under the License.
 #
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -31,7 +32,7 @@ class Dropna(Operator):
     """
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         new_df = df.dropna(subset=col_selector.names or None)
         new_df.reset_index(drop=True, inplace=True)
         return new_df

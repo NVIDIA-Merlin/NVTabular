@@ -15,7 +15,8 @@
 #
 from inspect import getsourcelines, signature
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -69,7 +70,7 @@ class LambdaOp(Operator):
         self._properties = properties or {}
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         new_df = type(df)()
         for col in col_selector.names:
             if self._param_count == 2:

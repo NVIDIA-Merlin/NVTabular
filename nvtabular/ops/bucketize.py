@@ -16,7 +16,8 @@
 import numpy as np
 from packaging.version import Version
 
-from merlin.core.dispatch import DataFrameType, annotate, array
+from merlin.core.dispatch import annotate, array
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -66,7 +67,7 @@ class Bucketize(Operator):
         super().__init__()
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         boundaries = {name: self.boundaries(name) for name in col_selector.names}
         new_df = type(df)()
         for col, b in boundaries.items():

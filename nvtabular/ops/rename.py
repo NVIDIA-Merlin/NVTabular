@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.core.dispatch import DataFrameType
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -49,7 +49,7 @@ class Rename(Operator):
         self.name = name
         super().__init__()
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         df = df[col_selector.names]
         df.columns = list(self.column_mapping(col_selector).keys())
         return df

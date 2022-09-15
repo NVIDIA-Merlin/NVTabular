@@ -29,7 +29,8 @@ try:
 except ImportError:
     from scipy.sparse import coo_matrix
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -87,7 +88,7 @@ class ColumnSimilarity(Operator):
             self._initialized = True
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         use_values = self.on_device
         if isinstance(df, pd.DataFrame):
             # Disallow on-device computation for cpu-backed data

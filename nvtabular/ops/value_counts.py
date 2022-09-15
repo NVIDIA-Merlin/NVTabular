@@ -18,7 +18,8 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from merlin.core.dispatch import DataFrameType, is_list_dtype, pull_apart_list
+from merlin.core.dispatch import is_list_dtype, pull_apart_list
+from merlin.core.protocols import DataFrameLike
 from nvtabular.ops.operator import ColumnSelector
 from nvtabular.ops.stat_operator import StatOperator
 
@@ -54,7 +55,7 @@ class ValueCount(StatOperator):
     def fit_finalize(self, dask_stats):
         self.stats = dask_stats
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         return df
 
     def _compute_properties(self, col_schema, input_schema):

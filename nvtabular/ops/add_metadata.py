@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.core.dispatch import DataFrameType
+from merlin.core.protocols import DataFrameLike
 from merlin.schema.tags import Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -29,7 +29,7 @@ class AddMetadata(Operator):
         self.tags = tags or []
         self.properties = properties or {}
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         return df
 
     @property

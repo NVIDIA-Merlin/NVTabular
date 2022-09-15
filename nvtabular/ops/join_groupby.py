@@ -20,7 +20,8 @@ import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
-from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
+from merlin.core.dispatch import arange, concat_columns, read_parquet_dispatch
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Schema
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.operator import ColumnSelector, Operator
@@ -164,7 +165,7 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = arange(len(df), like_df=df, dtype="int32")

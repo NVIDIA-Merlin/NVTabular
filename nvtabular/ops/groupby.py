@@ -17,7 +17,8 @@ import re
 import numpy
 from dask.dataframe.utils import meta_nonempty
 
-from merlin.core.dispatch import DataFrameType, annotate
+from merlin.core.dispatch import annotate
+from merlin.core.protocols import DataFrameLike
 from merlin.schema import Schema
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -111,7 +112,7 @@ class Groupby(Operator):
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameLike) -> DataFrameLike:
         # Sort if necessary
         if self.sort_cols:
             df = df.sort_values(self.sort_cols, ascending=self.ascending, ignore_index=True)
