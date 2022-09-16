@@ -36,7 +36,7 @@ def test_example_03(tb):
             os.path.expanduser("~/merlin-framework/movielens/")
         )
         from pathlib import Path
-        Path(input_path).mkdir(parents=True, exist_ok=True)
+        Path(f'{input_path}ml-1m').mkdir(parents=True, exist_ok=True)
         mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
         mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
 
