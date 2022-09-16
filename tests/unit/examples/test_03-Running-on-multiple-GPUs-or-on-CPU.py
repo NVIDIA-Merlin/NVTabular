@@ -19,7 +19,7 @@ from testbook import testbook
 
 from tests.conftest import REPO_ROOT
 
-pytest.importskip("dask_cudf")
+pytest.importorskip("dask_cudf")
 
 
 @testbook(REPO_ROOT / "examples/03-Running-on-multiple-GPUs-or-on-CPU.ipynb", execute=False)
