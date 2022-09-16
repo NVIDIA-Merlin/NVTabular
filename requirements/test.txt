@@ -26,7 +26,7 @@ moto>=2
 boto3==1.17
 
 # needed to generate synthetic data
-merlin-models
+merlin-models@git+https://github.com/NVIDIA-Merlin/models.git
 
 # Assume these are required for notebook tests, but want to doublecheck that
 scikit-learn>=0.20
