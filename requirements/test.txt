@@ -13,6 +13,7 @@ Markdown==3.3.7
 pytest>=5
 pytest-cov>=2
 asvdb@git+https://github.com/rapidsai/asvdb.git
+testbook
 
 # needed to make test_s3 work
 pytest-xdist
