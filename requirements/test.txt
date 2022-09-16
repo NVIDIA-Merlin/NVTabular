@@ -14,6 +14,7 @@ pytest>=5
 pytest-cov>=2
 asvdb@git+https://github.com/rapidsai/asvdb.git
 testbook
+ipykernel
 
 # needed to make test_s3 work
 pytest-xdist
