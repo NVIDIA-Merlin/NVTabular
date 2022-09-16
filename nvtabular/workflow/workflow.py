@@ -189,6 +189,10 @@ class Workflow:
         self.clear_stats()
 
         if not self.graph.output_schema:
+            # for k, sg in self.graph.subgraphs.items():
+            #     if not sg.output_schema:
+            #         print(f"Fitting schema of subgraph {k}")
+            #         Workflow(sg).fit_schema(dataset.schema)
             self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
