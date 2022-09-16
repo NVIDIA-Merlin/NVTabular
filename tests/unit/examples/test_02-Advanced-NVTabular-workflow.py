@@ -19,7 +19,7 @@ from testbook import testbook
 from tests.conftest import REPO_ROOT
 
 
-@testbook(REPO_ROOT / "examples/02-Advanced-workflow.ipynb", execute=False)
+@testbook(REPO_ROOT / "examples/02-Advanced-NVTabular-workflow.ipynb", execute=False)
 def test_example_02_advanced_workflow(tb):
     tb.inject(
         """
@@ -37,8 +37,8 @@ def test_example_02_advanced_workflow(tb):
             os.path.expanduser("~/merlin-framework/movielens/")
         )
         Path(f'{input_path}ml-1m').mkdir(parents=True, exist_ok=True)
-        mock_train.compute().to_parquet(f'{input_path}/ml-1m/train.parquet')
-        mock_train.compute().to_parquet(f'{input_path}/ml-1m/valid.parquet')
+        mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
+        mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
 
         p1 = patch(
             "merlin.datasets.entertainment.get_movielens",
