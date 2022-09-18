@@ -9,7 +9,6 @@ torch
 tensorflow-cpu
 numpy==1.20.3
 Markdown==3.3.7
-merlin-core@git+https://github.com/NVIDIA-Merlin/core.git
 
 pytest>=5
 pytest-cov>=2
