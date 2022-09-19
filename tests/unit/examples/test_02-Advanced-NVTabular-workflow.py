@@ -65,7 +65,7 @@ def test_example_02_advanced_workflow(tb):
             num_rows = train.movieId.unique().size
             movies = get_lib().DataFrame(
                 data={
-                    'movieId': train.movieId.unique().astype(np.int64),
+                    'movieId': train.movieId.unique(),
                     'title': [generate_title() for i in range(num_rows)],
                     'genres': [['a_genre'] for i in range(num_rows)]}
             )
