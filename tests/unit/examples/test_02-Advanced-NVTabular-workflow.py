@@ -29,7 +29,7 @@ def test_example_02_advanced_workflow(tb):
         from pathlib import Path
         mock_train, mock_valid = generate_data(
             input="movielens-1m",
-            num_rows=1_000_000,
+            num_rows=1000,
             set_sizes=(0.8, 0.2)
         )
         input_path = os.environ.get(
