@@ -1,0 +1,43 @@
+﻿nvtabular.ops.AddTags
+=====================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: AddTags
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AddTags.__init__
+      ~AddTags.column_mapping
+      ~AddTags.compute_column_schema
+      ~AddTags.compute_input_schema
+      ~AddTags.compute_output_schema
+      ~AddTags.compute_selector
+      ~AddTags.create_node
+      ~AddTags.inference_initialize
+      ~AddTags.output_column_names
+      ~AddTags.transform
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AddTags.dependencies
+      ~AddTags.dynamic_dtypes
+      ~AddTags.label
+      ~AddTags.output_dtype
+      ~AddTags.output_properties
+      ~AddTags.output_tags
+      ~AddTags.supports
+   
+   
