@@ -14,9 +14,12 @@
 # limitations under the License.
 #
 
+import pytest
 from testbook import testbook
 
 from tests.conftest import REPO_ROOT
+
+pytest.importorskip("cudf")
 
 
 @testbook(REPO_ROOT / "examples/02-Advanced-NVTabular-workflow.ipynb", execute=False)
