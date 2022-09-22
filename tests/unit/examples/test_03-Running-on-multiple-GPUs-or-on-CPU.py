@@ -22,33 +22,37 @@ from tests.conftest import REPO_ROOT
 pytest.importorskip("dask_cudf")
 
 
-@testbook(REPO_ROOT / "examples/03-Running-on-multiple-GPUs-or-on-CPU.ipynb", execute=False)
-def test_example_03(tb):
-    tb.inject(
-        """
-        import os
-        from unittest.mock import patch
-        from merlin.datasets.synthetic import generate_data
-        mock_train, mock_valid = generate_data(
-            input="movielens-1m",
-            num_rows=1000,
-            set_sizes=(0.8, 0.2)
-        )
-        input_path = os.environ.get(
-            "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/")
-        )
-        from pathlib import Path
-        Path(f'{input_path}ml-1m').mkdir(parents=True, exist_ok=True)
-        mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
-        mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
+def test_example_03():
+    with testbook(
+        REPO_ROOT / "examples" / "03-Running-on-multiple-GPUs-or-on-CPU.ipynb",
+        execute=False,
+        timeout=180,
+    ) as tb:
+        tb.inject(
+            """
+            import os
+            from unittest.mock import patch
+            from merlin.datasets.synthetic import generate_data
+            mock_train, mock_valid = generate_data(
+                input="movielens-1m",
+                num_rows=1000,
+                set_sizes=(0.8, 0.2)
+            )
+            input_path = os.environ.get(
+                "INPUT_DATA_DIR",
+                os.path.expanduser("~/merlin-framework/movielens/")
+            )
+            from pathlib import Path
+            Path(f'{input_path}ml-1m').mkdir(parents=True, exist_ok=True)
+            mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
+            mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
 
-        p1 = patch(
-            "merlin.datasets.entertainment.get_movielens",
-            return_value=[mock_train, mock_valid]
-        )
-        p1.start()
+            p1 = patch(
+                "merlin.datasets.entertainment.get_movielens",
+                return_value=[mock_train, mock_valid]
+            )
+            p1.start()
 
-        """
-    )
-    tb.execute()
+            """
+        )
+        tb.execute()

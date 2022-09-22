@@ -19,53 +19,57 @@ from testbook import testbook
 from tests.conftest import REPO_ROOT
 
 
-@testbook(REPO_ROOT / "examples/01-Getting-started.ipynb", execute=False)
-def test_example_01_getting_started(tb):
-    tb.inject(
-        """
-        import os
-        from unittest.mock import patch
-        from merlin.datasets.synthetic import generate_data
-        mock_train, mock_valid = generate_data(
-            input="movielens-1m",
-            num_rows=1000,
-            set_sizes=(0.8, 0.2)
-        )
-        input_path = os.environ.get(
-            "INPUT_DATA_DIR",
-            os.path.expanduser("~/merlin-framework/movielens/")
-        )
-        from pathlib import Path
-        Path(f'{input_path}ml-1m').mkdir(parents=True, exist_ok=True)
-        mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
-        mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
-
-        p1 = patch(
-            "merlin.datasets.entertainment.get_movielens",
-            return_value=[mock_train, mock_valid]
-        )
-        p1.start()
-
-        """
-    )
-    tb.execute_cell(range(7))
-    tb.inject(
-        """
-            from merlin.core.dispatch import get_lib
-
-            train = get_lib().read_parquet(f'{input_path}ml-1m/train.parquet')
-            valid = get_lib().read_parquet(f'{input_path}ml-1m/valid.parquet')
+def test_example_01_getting_started():
+    with testbook(
+        REPO_ROOT / "examples" / "01-Getting-started.ipynb",
+        execute=False,
+        timeout=180,
+    ) as tb:
+        tb.inject(
             """
-    )
-    tb.execute_cell(range(8, len(tb.cells)))
-    metrics = tb.ref("metrics")
-    assert set(metrics.history.keys()) == set(
-        [
-            "loss",
-            "regularization_loss",
-            "root_mean_squared_error",
-            "val_loss",
-            "val_regularization_loss",
-            "val_root_mean_squared_error",
-        ]
-    )
+            import os
+            from unittest.mock import patch
+            from merlin.datasets.synthetic import generate_data
+            mock_train, mock_valid = generate_data(
+                input="movielens-1m",
+                num_rows=1000,
+                set_sizes=(0.8, 0.2)
+            )
+            input_path = os.environ.get(
+                "INPUT_DATA_DIR",
+                os.path.expanduser("~/merlin-framework/movielens/")
+            )
+            from pathlib import Path
+            Path(f'{input_path}ml-1m').mkdir(parents=True, exist_ok=True)
+            mock_train.compute().to_parquet(f'{input_path}ml-1m/train.parquet')
+            mock_train.compute().to_parquet(f'{input_path}ml-1m/valid.parquet')
+
+            p1 = patch(
+                "merlin.datasets.entertainment.get_movielens",
+                return_value=[mock_train, mock_valid]
+            )
+            p1.start()
+
+            """
+        )
+        tb.execute_cell(range(7))
+        tb.inject(
+            """
+                from merlin.core.dispatch import get_lib
+
+                train = get_lib().read_parquet(f'{input_path}ml-1m/train.parquet')
+                valid = get_lib().read_parquet(f'{input_path}ml-1m/valid.parquet')
+                """
+        )
+        tb.execute_cell(range(8, len(tb.cells)))
+        metrics = tb.ref("metrics")
+        assert set(metrics.history.keys()) == set(
+            [
+                "loss",
+                "regularization_loss",
+                "root_mean_squared_error",
+                "val_loss",
+                "val_regularization_loss",
+                "val_root_mean_squared_error",
+            ]
+        )
