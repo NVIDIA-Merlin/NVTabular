@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import nest_asyncio
 import pytest
 from testbook import testbook
 
 from tests.conftest import REPO_ROOT
 
 pytest.importorskip("cudf")
+nest_asyncio.apply()
 
 
 def test_example_02_advanced_workflow():

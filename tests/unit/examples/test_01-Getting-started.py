@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import nest_asyncio
 from testbook import testbook
 
 from tests.conftest import REPO_ROOT
+
+nest_asyncio.apply()
 
 
 def test_example_01_getting_started():
