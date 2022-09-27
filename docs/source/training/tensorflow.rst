@@ -113,5 +113,4 @@ a callback can be used for it.
     history = model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=5)
 
 You can find additional examples in our repository such as
-`MovieLens <../examples/getting-started-movielens/>`__ and
-`Outbrain <../examples/advanced-ops-outbrain/>`__.
+`MovieLens <../examples/getting-started-movielens/>`__.

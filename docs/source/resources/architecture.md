@@ -71,4 +71,4 @@ We can easily convert this workflow definition into a graph, and visualize the f
 ```
 ![NVTabular Workflow Graph](/images/nvt_workflow_graph.png)
 
-The Rename operator can be used to change the names of columns. This operator provides several different options for renaming columns such as applying a user defined function to get new column names, as well as appending a suffix to each column. You can see the [Outbrain](https://github.com/NVIDIA/NVTabular/tree/new_api/examples/wnd_outbrain) example for usage of the Rename operator.
+The Rename operator can be used to change the names of columns. This operator provides several different options for renaming columns such as applying a user defined function to get new column names, as well as appending a suffix to each column. Refer to the API documentation for the {class}`Rename <nvtabular.ops.Rename>` operator.
