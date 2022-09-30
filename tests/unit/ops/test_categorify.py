@@ -329,6 +329,17 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
             "expected_e": [3, 2, 1, 4],
             "expected_ae": [3, 4, 2, 1],
         },
+        # Include null value
+        {
+            "df_data": {
+                "Author": [np.nan, "User_E", "User_B", "User_A"],
+                "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [0, 3, 2, 1],
+            "expected_e": [3, 2, 1, 4],
+            "expected_ae": [1, 4, 3, 2],
+        },
     ],
 )
 def test_categorify_multi_combo(tmpdir, input_with_output, cat_names, cpu):
