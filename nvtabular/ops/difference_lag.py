@@ -17,8 +17,7 @@ import numpy
 
 from merlin.core.dispatch import DataFrameType, annotate, is_dataframe_object
 from merlin.schema import Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class DifferenceLag(Operator):

@@ -25,10 +25,9 @@ from merlin.core.dispatch import (
 )
 from merlin.dag import Supports
 from merlin.schema import Tags
-
-from .moments import _custom_moments
-from .operator import ColumnSelector, Operator
-from .stat_operator import StatOperator
+from nvtabular.ops.moments import _custom_moments
+from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.stat_operator import StatOperator
 
 
 class Normalize(StatOperator):

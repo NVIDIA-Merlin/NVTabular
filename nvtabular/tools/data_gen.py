@@ -124,7 +124,8 @@ class DatasetGen:
                 if HAS_GPU:
                     ser = dist.create_col(
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
-                    ).ceil()
+                    )
+                    ser = make_series(np.ceil(ser)).astype(ser.dtype)
                 else:
                     ser = dist.create_col(
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
@@ -137,7 +138,8 @@ class DatasetGen:
             if HAS_GPU:
                 ser = dist.create_col(
                     col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
-                ).ceil()
+                )
+                ser = make_series(np.ceil(ser)).astype(ser.dtype)
             else:
                 ser = dist.create_col(
                     col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
@@ -159,13 +161,13 @@ class DatasetGen:
         return df
 
     def create_labels(self, size, labs_rep):
+        """Create Label columns"""
         df = make_df()
         for col in labs_rep:
             dist = col.distro or self.dist
             if HAS_GPU:
-                ser = dist.create_col(
-                    size, dtype=col.dtype, min_val=0, max_val=col.cardinality
-                ).ceil()
+                ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality)
+                ser = make_series(np.ceil(ser)).astype(ser.dtype)
             else:
                 ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality)
                 ser = make_df(np.ceil(ser))[0]
@@ -175,6 +177,9 @@ class DatasetGen:
         return df
 
     def merge_cats_encoding(self, ser, cats):
+        """Merges the categories with a target series.
+        Creating categorical representation for ser.
+        """
         # df and cats are both series
         # set cats to dfs
         offs = None
@@ -188,6 +193,7 @@ class DatasetGen:
         return ser["names"], offs
 
     def create_cat_entries(self, cardinality, min_size=1, max_size=5):
+        """Create categorical encoding values to be used with a target series."""
         set_entries = []
         while len(set_entries) <= cardinality:
             letters = string.ascii_letters + string.digits
@@ -203,6 +209,9 @@ class DatasetGen:
         cols,
         entries=False,
     ):
+        """
+        Create a dataframe with the supplied columns and sizes.
+        """
         conts_rep = cols["conts"] if "conts" in cols else None
         cats_rep = cols["cats"] if "cats" in cols else None
         labs_rep = cols["labels"] if "labels" in cols else None
@@ -228,6 +237,9 @@ class DatasetGen:
         entries=False,
         output=".",
     ):
+        """Create the full dataset (dataframe) that can be comprised of multiple dataframes.
+        Allowing for larger than memory sized datasets.
+        """
         files_created = []
         # always use entries for row_size estimate
         df_single = self.create_df(
@@ -261,6 +273,7 @@ class DatasetGen:
         return files_created
 
     def create_vocab(self, cats_rep, output):
+        """Create actual string values for entries in series. Without encoding."""
         # build vocab for necessary categoricals using cats_rep info
         vocab_files = []
         for col in cats_rep:

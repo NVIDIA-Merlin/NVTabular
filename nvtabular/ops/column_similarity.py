@@ -31,8 +31,7 @@ except ImportError:
 
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema, Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class ColumnSimilarity(Operator):
@@ -284,5 +283,5 @@ def _tfidf_weight(X, np):
 
 
 def _normalize(X, np):
-    X.data = X.data / np.sqrt(np.bincount(X.row, X.data ** 2))[X.row]
+    X.data = X.data / np.sqrt(np.bincount(X.row, X.data**2))[X.row]
     return X

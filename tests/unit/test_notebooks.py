@@ -88,50 +88,6 @@ def test_criteo_tf_notebook(tmpdir):
     )
 
 
-def test_criteo_pyt_notebook(tmpdir):
-    tor = pytest.importorskip("fastai")  # noqa
-    # create a toy dataset in tmpdir, and point environment variables so the notebook
-    # will read from it
-    os.system("mkdir -p " + os.path.join(tmpdir, "converted/criteo"))
-    for i in range(24):
-        df = _get_random_criteo_data(1000)
-        df.to_parquet(os.path.join(tmpdir, "converted/criteo", f"day_{i}.parquet"))
-    os.environ["BASE_DIR"] = str(tmpdir)
-
-    def _nb_modify(line):
-        # Disable LocalCUDACluster
-        line = line.replace("client.run(_rmm_pool)", "# client.run(_rmm_pool)")
-        line = line.replace("if cluster is None:", "if False:")
-        line = line.replace("client = Client(cluster)", "# client = Client(cluster)")
-        line = line.replace(
-            "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
-        )
-        line = line.replace("client", "# client")
-        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
-        line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
-        return line
-
-    _run_notebook(
-        tmpdir,
-        os.path.join(
-            dirname(TEST_PATH),
-            "examples/scaling-criteo/",
-            "02-ETL-with-NVTabular.ipynb",
-        ),
-        # disable rmm.reinitialize, seems to be causing issues
-        transform=_nb_modify,
-    )
-
-    _run_notebook(
-        tmpdir,
-        os.path.join(
-            dirname(TEST_PATH),
-            "examples/scaling-criteo/",
-            "03-Training-with-FastAI.ipynb",
-        ),
-    )
-
-
 def test_optimize_criteo(tmpdir):
     input_path = str(tmpdir.mkdir("input"))
     _get_random_criteo_data(1000).to_csv(os.path.join(input_path, "day_0"), sep="\t", header=False)
@@ -224,46 +180,6 @@ def test_movielens_example(tmpdir):
             _run_notebook(tmpdir, notebook_path, transform=_modify_tf_triton)
 
 
-def test_rossman_example(tmpdir):
-    _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
-    _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
-    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
-
-    notebook_path = os.path.join(
-        dirname(TEST_PATH),
-        "examples/tabular-data-rossmann/",
-        "02-ETL-with-NVTabular.ipynb",
-    )
-    _run_notebook(tmpdir, notebook_path)
-
-    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
-
-    notebooks = []
-    try:
-        import torch  # noqa
-
-        notebooks.append("03-Training-with-PyTorch.ipynb")
-        import fastai  # noqa
-
-        notebooks.append("03-Training-with-FastAI.ipynb")
-    except Exception:
-        pass
-    try:
-        import nvtabular.loader.tensorflow  # noqa
-
-        notebooks.append("03-Training-with-TF.ipynb")
-    except Exception:
-        pass
-
-    for notebook in notebooks:
-        notebook_path = os.path.join(
-            dirname(TEST_PATH),
-            "examples/tabular-data-rossmann/",
-            notebook,
-        )
-        _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
-
-
 def test_multigpu_dask_example(tmpdir):
     with get_cuda_cluster() as cuda_cluster:
         os.environ["BASE_DIR"] = str(tmpdir)
@@ -315,104 +231,6 @@ def _get_random_criteo_data(rows):
     # binarize the labels
     ret.label = ret.label.astype(int)
     return ret
-
-
-def _get_random_rossmann_data(rows):
-    dtypes = {
-        col: int
-        for col in [
-            "Store",
-            "DayOfWeek",
-            "Sales",
-            "Customers",
-            "Open",
-            "Promo",
-            "SchoolHoliday",
-            "Year",
-            "Month",
-            "Week",
-            "Day",
-            "CompetitionOpenSinceMonth",
-            "CompetitionOpenSinceYear",
-            "Promo2",
-            "Promo2SinceWeek",
-            "Promo2SinceYear",
-            "trend",
-            "trend_DE",
-            "Month_DE",
-            "Day_DE",
-            "Max_TemperatureC",
-            "Mean_TemperatureC",
-            "Min_TemperatureC",
-            "Dew_PointC",
-            "MeanDew_PointC",
-            "Min_DewpointC",
-            "Max_Humidity",
-            "Mean_Humidity",
-            "Min_Humidity",
-            "Max_Sea_Level_PressurehPa",
-            "Mean_Sea_Level_PressurehPa",
-            "Min_Sea_Level_PressurehPa",
-            "Max_Wind_SpeedKm_h",
-            "Mean_Wind_SpeedKm_h",
-            "WindDirDegrees",
-            "CompetitionDaysOpen",
-            "CompetitionMonthsOpen",
-            "Promo2Days",
-            "Promo2Weeks",
-            "State_DE",
-            "Id",
-        ]
-    }  # noqa
-    dtypes.update(
-        {
-            col: object
-            for col in [
-                "Date",
-                "StoreType",
-                "Assortment",
-                "PromoInterval",
-                "State",
-                "file",
-                "week",
-                "file_DE",
-                "week_DE",
-                "Date_DE",
-                "Events",
-                "StateName",
-                "CompetitionOpenSince",
-                "Promo2Since",
-            ]
-        }
-    )  # noqa
-    dtypes.update(
-        {
-            col: float
-            for col in [
-                "CompetitionDistance",
-                "Max_VisibilityKm",
-                "Mean_VisibilityKm",
-                "Min_VisibilitykM",
-                "Max_Gust_SpeedKm_h",
-                "Precipitationmm",
-                "CloudCover",
-                "AfterSchoolHoliday",
-                "BeforeSchoolHoliday",
-                "AfterStateHoliday",
-                "BeforeStateHoliday",
-                "AfterPromo",
-                "BeforePromo",
-                "SchoolHoliday_bw",
-                "StateHoliday_bw",
-                "Promo_bw",
-                "SchoolHoliday_fw",
-                "StateHoliday_fw",
-                "Promo_fw",
-            ]
-        }
-    )  # noqa
-    dtypes["StateHoliday"] = bool
-    return cudf.datasets.randomdata(rows, dtypes=dtypes)
 
 
 def _get_random_movielens_data(tmpdir, rows, dataset="movie", valid=None):

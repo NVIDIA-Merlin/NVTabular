@@ -23,8 +23,7 @@ except ImportError:
 
 from merlin.core.dispatch import DataFrameType, annotate, build_cudf_list_column, is_cpu_object
 from merlin.schema import Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class ListSlice(Operator):

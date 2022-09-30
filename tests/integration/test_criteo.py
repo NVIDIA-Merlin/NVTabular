@@ -24,11 +24,6 @@ from testbook import testbook
 import tests.conftest as test_utils
 
 try:
-    import fastai
-except ImportError:
-    fastai = None
-
-try:
     import hugectr
 except ImportError:
     hugectr = None
@@ -81,27 +76,6 @@ def criteo_base(tmpdir):
             """
         )
         tb_dl_convert.execute_cell(list(range(0, len(tb_dl_convert.cells))))
-
-
-@pytest.mark.skipif(torch is None or fastai is None, reason="pytorch & fastai not installed")
-def test_criteo_fastai(asv_db, bench_info, tmpdir, report):
-    criteo_base(tmpdir)
-    output_path = os.path.join(tmpdir, "tests/crit_test")
-
-    notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "03-Training-with-FastAI.ipynb")
-    with testbook(
-        notebook,
-        execute=False,
-        timeout=3600,
-    ) as tb_train_torch:
-        tb_train_torch.inject(
-            f"""
-                import os
-                os.environ['INPUT_DATA_DIR'] = "{output_path}"
-                os.environ['OUTPUT_DATA_DIR'] = "{output_path}"
-            """
-        )
-        tb_train_torch.execute_cell(list(range(0, len(tb_train_torch.cells))))
 
 
 @pytest.mark.skipif(tensorflow is None, reason="tensorflow not installed")
