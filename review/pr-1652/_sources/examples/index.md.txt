@@ -38,25 +38,13 @@ The MovieLens25M is a popular dataset for recommender systems and is used in aca
 - Using the NVTabular dataloader with the TensorFlow Keras model
 - Using the NVTabular dataloader with PyTorch
 
-### 2. [Advanced Ops with Outbrain](https://github.com/NVIDIA/NVTabular/tree/main/examples/advanced-ops-outbrain)
-
-The [Outbrain dataset](https://www.kaggle.com/c/outbrain-click-prediction) is based on a Kaggle Competition in which Kagglers were challenged to predict which ads and other forms of sponsored content that their global users would click. This example notebook demonstrates how to use the available NVTabular operators, write a custom operator, and train a Wide&Deep model with the NVTabular dataloader in TensorFlow.
-
-### 3. [Scaling Large Datasets with Criteo](https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo)
+### 2. [Scaling Large Datasets with Criteo](https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo)
 
 [Criteo](https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/) provides the largest publicly available dataset for recommender systems with a size of 1TB of uncompressed click logs that contain 4 billion examples. This example notebook demonstrates how to scale NVTabular, use multiple GPUs and multiple nodes with NVTabular for ETL, and train a recommender system model with the NVTabular dataloader for PyTorch.
 
-### 4. [Multi-GPU with MovieLens](https://github.com/NVIDIA/NVTabular/tree/main/examples/multi-gpu-movielens)
+### 3. [Multi-GPU with MovieLens](https://github.com/NVIDIA/NVTabular/tree/main/examples/multi-gpu-movielens)
 
 In the Getting Started with MovieLens example, we explain the fundamentals of NVTabular and its dataloader, HugeCTR, and Triton Inference. With this example, we revisit the same dataset but demonstrate how to perform multi-GPU training with the NVTabular dataloader in TensorFlow.
-
-### 5. [Winning Solution of the RecSys2020 Competition](https://github.com/NVIDIA/NVTabular/tree/main/examples/winning-solution-recsys2020-twitter)
-
-Twitter provided a dataset for the [RecSys2020 challenge](http://www.recsyschallenge.com/2020/). The goal was to predict user engagement based on 200M user-tweet pairs. This example notebook demonstrates how to use NVTabular's available operators for feature engineering and train a XGBoost model on the GPU with dask.
-
-### 6. [Applying the Techniques to other Tabular Problems with Rossmann](https://github.com/NVIDIA/NVTabular/tree/main/examples/tabular-data-rossmann)
-
-Rossmann operates over 3,000 drug stores across seven European countries. Historical sales data for 1,115 Rossmann stores are provided. The goal is to forecast the **Sales** column for the test set. Kaggle hosted it as a [competition](https://www.kaggle.com/c/rossmann-store-sales/overview).
 
 ## Running the Example Notebooks
 

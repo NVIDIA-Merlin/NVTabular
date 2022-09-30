@@ -11,5 +11,5 @@ Refer to the following notebooks:
 
 * [Download and Convert](01-Download-Convert.ipynb)
 * [ETL with NVTabular](02-ETL-with-NVTabular.ipynb)
-* Training a model: [HugeCTR](03-Training-with-HugeCTR.ipynb) | [TensorFlow](03-Training-with-TF.ipynb) | [FastAI](03-Training-with-FastAI.ipynb)
+* Training a model: [HugeCTR](03-Training-with-HugeCTR.ipynb) | [TensorFlow](03-Training-with-TF.ipynb)
 * Use Triton Inference Server to serve a model: [HugeCTR](04-Triton-Inference-with-HugeCTR.ipynb) | [TensorFlow](04-Triton-Inference-with-TF.ipynb)

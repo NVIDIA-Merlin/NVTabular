@@ -50,21 +50,15 @@
 <li class="toctree-l2"><a class="reference internal" href="#structure">Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#available-example-notebooks">Available Example Notebooks</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#getting-started-with-movielens">1. Getting Started with MovieLens</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#advanced-ops-with-outbrain">2. Advanced Ops with Outbrain</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#scaling-large-datasets-with-criteo">3. Scaling Large Datasets with Criteo</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#multi-gpu-with-movielens">4. Multi-GPU with MovieLens</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#winning-solution-of-the-recsys2020-competition">5. Winning Solution of the RecSys2020 Competition</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#applying-the-techniques-to-other-tabular-problems-with-rossmann">6. Applying the Techniques to other Tabular Problems with Rossmann</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scaling-large-datasets-with-criteo">2. Scaling Large Datasets with Criteo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multi-gpu-with-movielens">3. Multi-GPU with MovieLens</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#running-the-example-notebooks">Running the Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
-<li class="toctree-l2"><a class="reference internal" href="advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
@@ -136,25 +130,13 @@ jupyter notebook
 <li><p>Using the NVTabular dataloader with PyTorch</p></li>
 </ul>
 </div>
-<div class="section" id="advanced-ops-with-outbrain">
-<h3>2. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/advanced-ops-outbrain">Advanced Ops with Outbrain</a><a class="headerlink" href="#advanced-ops-with-outbrain" title="Permalink to this headline"></a></h3>
-<p>The <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Outbrain dataset</a> is based on a Kaggle Competition in which Kagglers were challenged to predict which ads and other forms of sponsored content that their global users would click. This example notebook demonstrates how to use the available NVTabular operators, write a custom operator, and train a Wide&amp;Deep model with the NVTabular dataloader in TensorFlow.</p>
-</div>
 <div class="section" id="scaling-large-datasets-with-criteo">
-<h3>3. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo">Scaling Large Datasets with Criteo</a><a class="headerlink" href="#scaling-large-datasets-with-criteo" title="Permalink to this headline"></a></h3>
+<h3>2. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo">Scaling Large Datasets with Criteo</a><a class="headerlink" href="#scaling-large-datasets-with-criteo" title="Permalink to this headline"></a></h3>
 <p><a class="reference external" href="https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/">Criteo</a> provides the largest publicly available dataset for recommender systems with a size of 1TB of uncompressed click logs that contain 4 billion examples. This example notebook demonstrates how to scale NVTabular, use multiple GPUs and multiple nodes with NVTabular for ETL, and train a recommender system model with the NVTabular dataloader for PyTorch.</p>
 </div>
 <div class="section" id="multi-gpu-with-movielens">
-<h3>4. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/multi-gpu-movielens">Multi-GPU with MovieLens</a><a class="headerlink" href="#multi-gpu-with-movielens" title="Permalink to this headline"></a></h3>
+<h3>3. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/multi-gpu-movielens">Multi-GPU with MovieLens</a><a class="headerlink" href="#multi-gpu-with-movielens" title="Permalink to this headline"></a></h3>
 <p>In the Getting Started with MovieLens example, we explain the fundamentals of NVTabular and its dataloader, HugeCTR, and Triton Inference. With this example, we revisit the same dataset but demonstrate how to perform multi-GPU training with the NVTabular dataloader in TensorFlow.</p>
-</div>
-<div class="section" id="winning-solution-of-the-recsys2020-competition">
-<h3>5. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/winning-solution-recsys2020-twitter">Winning Solution of the RecSys2020 Competition</a><a class="headerlink" href="#winning-solution-of-the-recsys2020-competition" title="Permalink to this headline"></a></h3>
-<p>Twitter provided a dataset for the <a class="reference external" href="http://www.recsyschallenge.com/2020/">RecSys2020 challenge</a>. The goal was to predict user engagement based on 200M user-tweet pairs. This example notebook demonstrates how to use NVTabular’s available operators for feature engineering and train a XGBoost model on the GPU with dask.</p>
-</div>
-<div class="section" id="applying-the-techniques-to-other-tabular-problems-with-rossmann">
-<h3>6. <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/tabular-data-rossmann">Applying the Techniques to other Tabular Problems with Rossmann</a><a class="headerlink" href="#applying-the-techniques-to-other-tabular-problems-with-rossmann" title="Permalink to this headline"></a></h3>
-<p>Rossmann operates over 3,000 drug stores across seven European countries. Historical sales data for 1,115 Rossmann stores are provided. The goal is to forecast the <strong>Sales</strong> column for the test set. Kaggle hosted it as a <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales/overview">competition</a>.</p>
 </div>
 </div>
 <div class="section" id="running-the-example-notebooks">
