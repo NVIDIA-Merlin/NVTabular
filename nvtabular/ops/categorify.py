@@ -758,7 +758,8 @@ def _top_level_groupby(df, options: FitOptions):
             df_gb = type(df)()
             ignore_index = True
             df_gb[cat_col_selector_str] = _concat(
-                [df[col] for col in cat_col_selector.names], ignore_index
+                [_maybe_flatten_list_column(col, df)[col] for col in cat_col_selector.names],
+                ignore_index,
             )
             cat_col_selector = ColumnSelector([cat_col_selector_str])
         else:
@@ -795,9 +796,7 @@ def _top_level_groupby(df, options: FitOptions):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf/pd support)
-        if is_list_col(cat_col_selector, df_gb):
-            # handle list columns by encoding the list values
-            df_gb = dispatch.flatten_list_column(df_gb[cat_col_selector.names[0]])
+        df_gb = _maybe_flatten_list_column(cat_col_selector.names[0], df_gb)
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
@@ -1468,6 +1467,15 @@ def is_list_col(col_selector, df):
     if has_lists and len(col_selector.names) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
+
+
+def _maybe_flatten_list_column(col: str, df):
+    # Flatten the specified column (col) if it is
+    # a list dtype. Otherwise, pass back df "as is"
+    selector = ColumnSelector([col])
+    if is_list_col(selector, df):
+        return dispatch.flatten_list_column(df[selector.names[0]])
+    return df
 
 
 def _hash_bucket(df, num_buckets, col, encode_type="joint"):
