@@ -834,7 +834,8 @@
             <span class="n">df_gb</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)()</span>
             <span class="n">ignore_index</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="n">df_gb</span><span class="p">[</span><span class="n">cat_col_selector_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">],</span> <span class="n">ignore_index</span>
+                <span class="p">[</span><span class="n">_maybe_flatten_list_column</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">df</span><span class="p">)[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">],</span>
+                <span class="n">ignore_index</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">cat_col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="n">cat_col_selector_str</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
@@ -871,9 +872,7 @@
 
         <span class="c1"># Perform groupby and flatten column index</span>
         <span class="c1"># (flattening provides better cudf/pd support)</span>
-        <span class="k">if</span> <span class="n">is_list_col</span><span class="p">(</span><span class="n">cat_col_selector</span><span class="p">,</span> <span class="n">df_gb</span><span class="p">):</span>
-            <span class="c1"># handle list columns by encoding the list values</span>
-            <span class="n">df_gb</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">flatten_list_column</span><span class="p">(</span><span class="n">df_gb</span><span class="p">[</span><span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">df_gb</span> <span class="o">=</span> <span class="n">_maybe_flatten_list_column</span><span class="p">(</span><span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">df_gb</span><span class="p">)</span>
         <span class="c1"># NOTE: groupby(..., dropna=False) requires pandas&gt;=1.1.0</span>
         <span class="n">gb</span> <span class="o">=</span> <span class="n">df_gb</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">cat_col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">agg_dict</span><span class="p">)</span>
         <span class="n">gb</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
@@ -1544,6 +1543,15 @@
     <span class="k">if</span> <span class="n">has_lists</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Can&#39;t categorical encode multiple list columns&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">has_lists</span>
+
+
+<span class="k">def</span> <span class="nf">_maybe_flatten_list_column</span><span class="p">(</span><span class="n">col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+    <span class="c1"># Flatten the specified column (col) if it is</span>
+    <span class="c1"># a list dtype. Otherwise, pass back df &quot;as is&quot;</span>
+    <span class="n">selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="n">col</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">is_list_col</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">flatten_list_column</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="k">return</span> <span class="n">df</span>
 
 
 <span class="k">def</span> <span class="nf">_hash_bucket</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">num_buckets</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">encode_type</span><span class="o">=</span><span class="s2">&quot;joint&quot;</span><span class="p">):</span>
