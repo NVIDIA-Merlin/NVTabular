@@ -17,6 +17,7 @@ import os
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Optional, Union
 
@@ -30,6 +31,7 @@ from dask.dataframe.core import _concat, aca, split_out_on_cols
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
+from dask.utils_test import hlg_layer
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
@@ -40,6 +42,58 @@ from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
+
+
+def _general_concat(
+    frames,
+    cardinality_memory_limit=False,
+    col_selector=None,
+    **kwargs,
+):
+    if isinstance(frames[0], pa.Table):
+        df = pa.concat_tables(frames, promote=True)
+        if (
+            cardinality_memory_limit
+            and col_selector is not None
+            and df.nbytes > cardinality_memory_limit
+        ):
+            # Before fully converting this pyarrow Table
+            # to a cudf DatFrame, we can reduce the memory
+            # footprint of `df`. Since the size of `df`
+            # depends on the cardinality of the features,
+            # and NOT on the partition size, the remaining
+            # logic in this function has an OOM-error risk
+            # (even with tiny partitions).
+            size_columns = []
+            for col in col_selector.names:
+                name = col + "_size"
+                if name in df.schema.names:
+                    # Convert this column alone to cudf,
+                    # and drop the field from df. Note that
+                    # we are only converting this column to
+                    # cudf to take advantage of fast `max`
+                    # performance.
+                    size_columns.append(dispatch.from_host(df.select([name])))
+                    df = df.drop([name])
+                    # Use numpy to calculate the "minimum"
+                    # dtype needed to capture the "size" column,
+                    # and cast the type
+                    typ = np.min_scalar_type(size_columns[-1][name].max() * 2)
+                    size_columns[-1][name] = size_columns[-1][name].astype(typ)
+            # Convert the remaining columns in df to cudf,
+            # and append the type-casted "size" columns
+            df = dispatch.concat_columns([dispatch.from_host(df)] + size_columns)
+        else:
+            # Empty DataFrame - No need for type-casting
+            df = dispatch.from_host(df)
+        return df
+    else:
+        # For now, if we are not concatenating in host memory,
+        # we will assume that reducing the memory footprint of
+        # "size" columns is not a priority. However, the same
+        # type-casting optimization can also be done for both
+        # pandas and cudf-backed data here.
+        return _concat(frames, **kwargs)
 
 
 class Categorify(StatOperator):
@@ -803,6 +857,10 @@ def _top_level_groupby(df, options: FitOptions = None, cat_col_names: list = Non
     ]
     gb.reset_index(inplace=True, drop=False)
     del df_gb
+
+    if options.on_host and not is_cpu_object(gb):
+        # Spill GPU data to pyarrow buffer
+        return gb.to_arrow(preserve_index=False)
     return gb
 
 
@@ -813,9 +871,15 @@ def _mid_level_groupby(
     freq_limit_val=None,
     options: FitOptions = None,
     sort: bool = False,
+    final: bool = False,
 ):
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
+
+    if options.on_host and isinstance(df, pa.Table):
+        # Construct gpu DataFrame from pyarrow table.
+        # `on_host=True` implies gpu-backed data.
+        df = dispatch.from_host(df)
 
     groups = df.groupby(col_selector.names, dropna=False)
     gb = groups.agg(
@@ -879,6 +943,10 @@ def _mid_level_groupby(
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
+    if options.on_host and not is_cpu_object(gb[required]) and not final:
+        gb_pd = gb[required].to_arrow(preserve_index=False)
+        del gb
+        return gb_pd
     return gb[required]
 
 
@@ -959,53 +1027,13 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    if options.on_host:
-        # Construct gpu DataFrame from pyarrow data.
-        # `on_host=True` implies gpu-backed data,
-        # because CPU-backed data would have never
-        # been converted from pandas to pyarrow.
-        df = pa.concat_tables(dfs, promote=True)
-        if (
-            df.nbytes > options.cardinality_memory_limit
-            if options.cardinality_memory_limit
-            else False
-        ):
-            # Before fully converting this pyarrow Table
-            # to a cudf DatFrame, we can reduce the memory
-            # footprint of `df`. Since the size of `df`
-            # depends on the cardinality of the features,
-            # and NOT on the partition size, the remaining
-            # logic in this function has an OOM-error risk
-            # (even with tiny partitions).
-            size_columns = []
-            for col in col_selector.names:
-                name = col + "_size"
-                if name in df.schema.names:
-                    # Convert this column alone to cudf,
-                    # and drop the field from df. Note that
-                    # we are only converting this column to
-                    # cudf to take advantage of fast `max`
-                    # performance.
-                    size_columns.append(dispatch.from_host(df.select([name])))
-                    df = df.drop([name])
-                    # Use numpy to calculate the "minimum"
-                    # dtype needed to capture the "size" column,
-                    # and cast the type
-                    typ = np.min_scalar_type(size_columns[-1][name].max() * 2)
-                    size_columns[-1][name] = size_columns[-1][name].astype(typ)
-            # Convert the remaining columns in df to cudf,
-            # and append the type-casted "size" columns
-            df = dispatch.concat_columns([dispatch.from_host(df)] + size_columns)
-        else:
-            # Empty DataFrame - No need for type-casting
-            df = dispatch.from_host(df)
-    else:
-        # For now, if we are not concatenating in host memory,
-        # we will assume that reducing the memory footprint of
-        # "size" columns is not a priority. However, the same
-        # type-casting optimization can also be done for both
-        # pandas and cudf-backed data here.
-        df = _concat(dfs, ignore_index=True)
+    # Collect aggregation results into single frame
+    df = _general_concat(
+        dfs,
+        cardinality_memory_limit=options.cardinality_memory_limit,
+        col_selector=col_selector,
+        ignore_index=True,
+    )
 
     # Check if we should warn user that this Column is likely
     # to cause memory-pressure issues
@@ -1207,12 +1235,12 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     )
     write_agg_name = "write_agg-" + token
     finalize_labels_name = options.stat_name + "-" + token
-    options.on_host = False  # TODO: Support on_host
     ddf_deps = []
     col_groups_str = []
     for i, col in enumerate(options.col_groups):
         split_out = 1  # TODO: Add this to options and support spit_out > 1
         col = [col] if isinstance(col, str) else col
+        col = ColumnSelector(col) if isinstance(col, list) else col
         col_str = _make_name(*col.names, sep=options.name_sep)
         col_groups_str.append(col_str)
         freq_limit_val = None
@@ -1224,19 +1252,39 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             )
 
         # Use Dask's ACA code for the aggregation
+        chunk = _top_level_groupby
+        chunk_kwargs = dict(
+            cat_col_names=col,
+            options=options,
+        )
+        aggregate = _mid_level_groupby
+        aggregate_kwargs = dict(
+            col_selector=col,
+            freq_limit_val=freq_limit_val,
+            options=options,
+        )
         ddf_deps.append(
             aca(
                 [ddf],
-                chunk=_top_level_groupby,
-                chunk_kwargs=dict(
-                    cat_col_names=col,
-                    options=options,
+                chunk=chunk,
+                chunk_kwargs=chunk_kwargs,
+                combine=aggregate,
+                combine_kwargs=dict(
+                    **aggregate_kwargs,
+                    final=False,
                 ),
-                aggregate=_mid_level_groupby,
+                aggregate=aggregate,
                 aggregate_kwargs=dict(
-                    col_selector=col,
-                    freq_limit_val=freq_limit_val,
-                    options=options,
+                    **aggregate_kwargs,
+                    final=True,
+                ),
+                meta=_mid_level_groupby(
+                    _general_concat(
+                        [_top_level_groupby(ddf._meta, **chunk_kwargs)],
+                        ignore_index=True,
+                    ),
+                    **aggregate_kwargs,
+                    final=True,
                 ),
                 token="nvt-aggregate",
                 ignore_index=True,
@@ -1248,8 +1296,17 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             )
         )
 
+        # Temporary "hack" to set custom `concat_func`
+        # in Dask's ACA algorithm
+        hlg_layer(ddf_deps[-1].dask, "nvt-aggregate-agg").concat_func = partial(
+            _general_concat,
+            cardinality_memory_limit=options.cardinality_memory_limit,
+            col_selector=col,
+            ignore_index=True,
+        )
+
         # Write aggregation to disk
-        # TODO: Support multi-partition aggs
+        # TODO: Support split_out > 1
         dsk[(write_agg_name, i)] = (
             write_func,
             [(ddf_deps[-1]._name, 0)],
