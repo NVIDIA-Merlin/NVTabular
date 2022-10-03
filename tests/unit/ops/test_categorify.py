@@ -654,3 +654,35 @@ def test_categorify_max_size_null_iloc_check():
     unique_C2 = pd.read_parquet("./categories/unique.C2.parquet")
     assert str(unique_C2["C2"].iloc[0]) in ["<NA>", "nan"]
     assert unique_C2["C2_size"].iloc[0] == 0
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_categorify_joint_list(cpu):
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": [
+                ["User_B", "User_C"],
+                [],
+                ["User_A", "User_D"],
+                ["User_A"],
+            ],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Post", ["Author", "Engaging User"]]
+    cats = cat_names >> nvt.ops.Categorify(encode_type="joint")
+    workflow = nvt.Workflow(cats)
+    df_out = (
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+    )
+
+    compare_a = df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+    compare_e = (
+        df_out["Engaging User"].explode().dropna().to_list()
+        if cpu
+        else df_out["Engaging User"].explode().dropna().to_arrow().to_pylist()
+    )
+
+    assert compare_a == [1, 5, 2, 3]
+    assert compare_e == [2, 3, 1, 4, 1]

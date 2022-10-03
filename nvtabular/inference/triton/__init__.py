@@ -65,7 +65,7 @@ def convert_triton_output_to_df(columns, response):
 
 
 def get_column_types(path):
-    return json.load(open(os.path.join(path, "column_types.json")))
+    return json.load(open(os.path.join(path, "column_types.json"), encoding="utf8"))
 
 
 def _convert_tensor(t):

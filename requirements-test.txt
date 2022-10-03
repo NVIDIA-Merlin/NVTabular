@@ -1,0 +1,2 @@
+merlin-core@git+https://github.com/NVIDIA-Merlin/core.git
+nest-asyncio

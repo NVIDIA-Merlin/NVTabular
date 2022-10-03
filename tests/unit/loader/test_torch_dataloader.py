@@ -233,7 +233,7 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
                 "Return y_pred and y to non-log space and compute RMSPE"
                 y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
                 pct_var = (y_pred - y) / y
-                return (pct_var ** 2).mean().pow(0.5)
+                return (pct_var**2).mean().pow(0.5)
 
             train_loss, y_pred, y = process_epoch(
                 data_itr,
@@ -421,7 +421,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
     results = {}
 
-    for batch_size in [2 ** i for i in range(9, 25, 1)]:
+    for batch_size in [2**i for i in range(9, 25, 1)]:
         print("Checking batch size: ", batch_size)
         num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
 
@@ -586,7 +586,7 @@ def test_mh_model_support(tmpdir):
         "Return y_pred and y to non-log space and compute RMSPE"
         y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
         pct_var = (y_pred - y) / y
-        return (pct_var ** 2).mean().pow(0.5)
+        return (pct_var**2).mean().pow(0.5)
 
     train_loss, y_pred, y = process_epoch(
         data_itr,

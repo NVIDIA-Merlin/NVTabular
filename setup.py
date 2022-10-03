@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import codecs
 import os
 import sys
 
@@ -60,13 +61,33 @@ cmdclass["build_ext"] = build_pybind11
 cmdclass["develop"] = develop
 
 
-def parse_requirements(filename):
-    """load requirements from a pip requirements file"""
-    lineiter = (line.strip() for line in open(filename))
-    return [line for line in lineiter if line and not line.startswith("#")]
+def read_requirements(req_path, filename):
+    base = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(base, req_path, filename), "rb", "utf-8") as f:
+        lineiter = (line.strip() for line in f)
+        packages = []
+        for line in lineiter:
+            if line:
+                if line.startswith("-r"):
+                    filename = line.replace("-r", "").strip()
+                    packages.extend(read_requirements(req_path, filename))
+                elif not line.startswith("#"):
+                    packages.append(line)
+        return packages
 
 
-install_reqs = parse_requirements("./requirements.txt")
+requirements = {
+    "cpu": read_requirements("requirements", "base.txt"),
+    "gpu": read_requirements("requirements", "gpu.txt"),
+}
+dev_requirements = {
+    "dev": read_requirements("requirements", "dev.txt"),
+    "test": read_requirements("requirements", "test.txt"),
+    "docs": read_requirements("requirements", "docs.txt"),
+}
+
+with open("README.md", encoding="utf8") as readme_file:
+    long_description = readme_file.read()
 
 setup(
     name="nvtabular",
@@ -75,7 +96,7 @@ setup(
     url="https://github.com/NVIDIA-Merlin/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
-    long_description=open("README.md", encoding="utf8").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -88,5 +109,9 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     zip_safe=False,
-    install_requires=install_reqs,
+    install_requires=requirements["cpu"],
+    extras_require={
+        **requirements,
+        **dev_requirements,
+    },
 )

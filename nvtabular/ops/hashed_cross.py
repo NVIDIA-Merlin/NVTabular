@@ -18,8 +18,7 @@ from typing import Dict, Union
 import numpy
 
 from merlin.core.dispatch import DataFrameType, annotate, hash_series
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class HashedCross(Operator):

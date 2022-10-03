@@ -178,6 +178,7 @@ def create_movielens_inference_data(model_dir, output_dir, nrows):
     from tensorflow import keras
 
     import nvtabular as nvt
+    from merlin.dag.executors import LocalExecutor
     from nvtabular.loader.tensorflow import KerasSequenceLoader
 
     workflow_path = os.path.join(os.path.expanduser(model_dir), "movielens_nvt/1/workflow")
@@ -193,9 +194,7 @@ def create_movielens_inference_data(model_dir, output_dir, nrows):
 
     sample_data = cudf.read_parquet(data_path, nrows=nrows)
     sample_data.to_csv(os.path.join(output_dir, workflow_output_test_file_name))
-    sample_data_trans = nvt.workflow.workflow._transform_partition(
-        sample_data, [workflow.output_node]
-    )
+    sample_data_trans = LocalExecutor().transform(sample_data, [workflow.output_node])
     sample_data_trans.to_parquet(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
     CATEGORICAL_COLUMNS = ["movieId", "userId"]  # Single-hot

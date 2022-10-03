@@ -32,7 +32,6 @@ config="-rsx --devices $2"
 # Run tests for training containers
 pytest $config tests/integration/test_criteo.py
 pytest $config tests/integration/test_movielens.py
-pytest $config tests/integration/test_rossman.py
 
 # Run tests for specific containers
 if [ "$container" == "merlin-hugectr" ]; then
