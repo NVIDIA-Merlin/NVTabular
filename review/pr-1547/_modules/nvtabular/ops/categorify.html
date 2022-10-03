@@ -1122,72 +1122,15 @@
         <span class="c1"># Use ignore_index=True to avoid allocating memory for</span>
         <span class="c1"># an index we don&#39;t even need</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">na_position</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">new_cols</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">nulls_missing</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-            <span class="n">name_size</span> <span class="o">=</span> <span class="n">col</span> <span class="o">+</span> <span class="s2">&quot;_size&quot;</span>
-            <span class="n">null_size</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="c1"># Set null size if first element in `col` is</span>
-            <span class="c1"># null, and the `size` aggregation is known</span>
-            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span> <span class="ow">and</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">null_size</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
-                <span class="n">max_emb_size</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                    <span class="n">max_emb_size</span> <span class="o">=</span> <span class="n">max_emb_size</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                        <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span> <span class="o">-</span> <span class="mi">1</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="mi">1</span>
 
-                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`nlargest` cannot be 0 or negative&quot;</span><span class="p">)</span>
+        <span class="n">name_size_multi</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">name_size_multi</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+            <span class="c1"># Using &quot;combo&quot; encoding</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">_combo_encode</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">name_size_multi</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Using (default) &quot;joint&quot; encoding</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">_joint_encode</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
 
-                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
-                    <span class="c1"># remove NAs from column, we have na count from above.</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-                    <span class="c1"># sort based on count (name_size column)</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">name_size</span><span class="p">)</span>
-                    <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
-                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
-                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="c1"># recreate newly &quot;count&quot; ordered df</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">new_cols</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">series_has_nulls</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
-                <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-                <span class="n">nulls_missing</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                    <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
-                    <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
-                    <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
-                        <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
-                        <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="p">)</span>
-
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># ensure None aka &quot;unknown&quot; stays at index 0</span>
-                <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
-                    <span class="n">df_0</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>
-                    <span class="n">df_1</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">([</span><span class="n">df_0</span><span class="p">,</span> <span class="n">df_1</span><span class="p">])</span>
-                <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-                <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
-                    <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">nulls_missing</span><span class="p">:</span>
-            <span class="n">df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">new_cols</span><span class="p">)</span>
         <span class="n">df</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">df_null</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)({</span><span class="n">c</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">})</span>
@@ -1197,6 +1140,119 @@
 
     <span class="k">del</span> <span class="n">df</span>
     <span class="k">return</span> <span class="n">path</span>
+
+
+<span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;_combo_encode&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_combo_encode</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">name_size_multi</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">):</span>
+    <span class="c1"># Combo-encoding utility (used by _write_uniques)</span>
+
+    <span class="c1"># Account for max_size and num_buckets</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
+        <span class="n">max_emb_size</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot specify max_size as a dictionary for &#39;combo&#39; encoding.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                    <span class="s2">&quot;Cannot specify num_buckets as a dictionary for &#39;combo&#39; encoding.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`nlargest` cannot be 0 or negative&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+            <span class="c1"># sort based on count (name_size_multi column)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">name_size_multi</span><span class="p">)</span>
+
+    <span class="c1"># Deal with nulls</span>
+    <span class="n">has_nans</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">has_nans</span><span class="p">,</span> <span class="s2">&quot;iloc&quot;</span><span class="p">):</span>
+        <span class="n">has_nans</span> <span class="o">=</span> <span class="n">has_nans</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_nans</span><span class="p">:</span>
+        <span class="n">null_data</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">}</span>
+        <span class="n">null_data</span><span class="p">[</span><span class="n">name_size_multi</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">null_df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">null_data</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">([</span><span class="n">null_df</span><span class="p">,</span> <span class="n">df</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;_joint_encode&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_joint_encode</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">):</span>
+    <span class="c1"># Joint-encoding utility (used by _write_uniques)</span>
+
+    <span class="n">new_cols</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">nulls_missing</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+        <span class="n">name_size</span> <span class="o">=</span> <span class="n">col</span> <span class="o">+</span> <span class="s2">&quot;_size&quot;</span>
+        <span class="n">null_size</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Set null size if first element in `col` is</span>
+        <span class="c1"># null, and the `size` aggregation is known</span>
+        <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span> <span class="ow">and</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">null_size</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
+            <span class="n">max_emb_size</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">max_emb_size</span> <span class="o">=</span> <span class="n">max_emb_size</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                    <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`nlargest` cannot be 0 or negative&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                <span class="c1"># remove NAs from column, we have na count from above.</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>  <span class="c1"># TODO: This seems dangerous - Check this</span>
+                <span class="c1"># sort based on count (name_size column)</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">name_size</span><span class="p">)</span>
+                <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
+                    <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
+                    <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># recreate newly &quot;count&quot; ordered df</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">new_cols</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">series_has_nulls</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">nulls_missing</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]],</span>
+                <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">nullable_series</span><span class="p">([</span><span class="n">null_size</span><span class="p">],</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]],</span>
+                    <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># ensure None aka &quot;unknown&quot; stays at index 0</span>
+            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                <span class="n">df_0</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">df_1</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">([</span><span class="n">df_0</span><span class="p">,</span> <span class="n">df_1</span><span class="p">])</span>
+            <span class="n">new_cols</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span><span class="p">:</span>
+                <span class="n">new_cols</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nulls_missing</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)(</span><span class="n">new_cols</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
 
 
 <span class="k">def</span> <span class="nf">_finish_labels</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">cols</span><span class="p">):</span>
