@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scaling Criteo: Triton Inference with TensorFlow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -22,7 +22,7 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Applying the Techniques to other Tabular Problems with Rossmann" href="../tabular-data-rossmann/index.html" />
+    <link rel="next" title="Multi-GPU Example Notebooks" href="../multi-gpu-movielens/index.html" />
     <link rel="prev" title="Scaling Criteo: Triton Inference with HugeCTR" href="04-Triton-Inference-with-HugeCTR.html" /> 
 </head>
 
@@ -50,21 +50,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Scaling to Large Datasets with Criteo</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
 <li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
 <li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
 <li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">Train with FastAI</a></li>
 <li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Serve a HugeCTR Model</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Serve a TensorFlow Model</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
@@ -116,7 +113,7 @@
 </div>
 </div>
 </div>
-<div class="tex2jax_ignore mathjax_ignore section" id="scaling-criteo-triton-inference-with-tensorflow">
+<div class="section" id="scaling-criteo-triton-inference-with-tensorflow">
 <h1>Scaling Criteo: Triton Inference with TensorFlow<a class="headerlink" href="#scaling-criteo-triton-inference-with-tensorflow" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -150,7 +147,7 @@
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
-<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/output&quot;</span><span class="p">)</span>
+<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/output&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -161,10 +158,24 @@
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/nvtabular/workflow/workflow.py:373: UserWarning: Loading workflow generated with nvtabular version 0.10.0+123.g44d3c3e8.dirty - but we are running nvtabular 1.2.2+4.gebf56ca0f. This might cause issues
+  warnings.warn(
+</pre></div>
+</div>
+</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="s2">&quot;model.savedmodel&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2022-07-14 23:15:34.019787: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2022-07-14 23:15:36.054064: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 46898 MB memory:  -&gt; device: 0, name: Quadro RTX 8000, pci bus id: 0000:15:00.0, compute capability: 7.5
+2022-07-14 23:15:36.054715: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 46890 MB memory:  -&gt; device: 1, name: Quadro RTX 8000, pci bus id: 0000:2d:00.0, compute capability: 7.5
 </pre></div>
 </div>
 </div>
@@ -189,12 +200,97 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">export_tensorflow_ensemble</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="s2">&quot;criteo&quot;</span><span class="p">,</span> <span class="s2">&quot;/models&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">export_tensorflow_ensemble</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="s2">&quot;criteo&quot;</span><span class="p">,</span> <span class="s2">&quot;/tmp/model/models/&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:tensorflow:Assets written to: /models/criteo_tf/1/model.savedmodel/assets
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>WARNING:absl:Function `_wrapped_model` contains input name(s) C1, C10, C11, C12, C13, C14, C15, C16, C17, C18, C19, C2, C20, C21, C22, C23, C24, C25, C26, C3, C4, C5, C6, C7, C8, C9, I1, I10, I11, I12, I13, I2, I3, I4, I5, I6, I7, I8, I9 with unsupported characters which will be renamed to c1, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c2, c20, c21, c22, c23, c24, c25, c26, c3, c4, c5, c6, c7, c8, c9, i1, i10, i11, i12, i13, i2, i3, i4, i5, i6, i7, i8, i9 in the SavedModel.
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:tensorflow:Assets written to: /tmp/model/models/criteo_tf/1/model.savedmodel/assets
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>INFO:tensorflow:Assets written to: /tmp/model/models/criteo_tf/1/model.savedmodel/assets
+WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f0638513520&gt; has the same name &#39;DenseFeatures&#39; as a built-in Keras object. Consider renaming &lt;class &#39;keras.saving.saved_model.load.DenseFeatures&#39;&gt; to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C1, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C10, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C11, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C12, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C13, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C14, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C15, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C16, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C17, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C18, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C19, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C2, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C20, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C21, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C22, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C23, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C24, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C25, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C26, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C3, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C4, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C5, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C6, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C7, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C8, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C9, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I1, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I10, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I11, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I12, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I13, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I2, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I3, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I4, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I5, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I6, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I7, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I8, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
+/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I9, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.
+  warnings.warn(
 </pre></div>
 </div>
 </div>
@@ -202,60 +298,62 @@
 <p>We can take a look on the generated files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>tree /models
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>tree /tmp/model
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-Blue">/models</span>
-├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo</span>
-│   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
-│   └── config.pbtxt
-├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo_nvt</span>
-│   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
-│   │   ├── model.py
-│   │   └── <span class=" -Color -Color-Bold -Color-Bold-Blue">workflow</span>
-│   │       ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">categories</span>
-│   │       │   ├── unique.C1.parquet
-│   │       │   ├── unique.C10.parquet
-│   │       │   ├── unique.C11.parquet
-│   │       │   ├── unique.C12.parquet
-│   │       │   ├── unique.C13.parquet
-│   │       │   ├── unique.C14.parquet
-│   │       │   ├── unique.C15.parquet
-│   │       │   ├── unique.C16.parquet
-│   │       │   ├── unique.C17.parquet
-│   │       │   ├── unique.C18.parquet
-│   │       │   ├── unique.C19.parquet
-│   │       │   ├── unique.C2.parquet
-│   │       │   ├── unique.C20.parquet
-│   │       │   ├── unique.C21.parquet
-│   │       │   ├── unique.C22.parquet
-│   │       │   ├── unique.C23.parquet
-│   │       │   ├── unique.C24.parquet
-│   │       │   ├── unique.C25.parquet
-│   │       │   ├── unique.C26.parquet
-│   │       │   ├── unique.C3.parquet
-│   │       │   ├── unique.C4.parquet
-│   │       │   ├── unique.C5.parquet
-│   │       │   ├── unique.C6.parquet
-│   │       │   ├── unique.C7.parquet
-│   │       │   ├── unique.C8.parquet
-│   │       │   └── unique.C9.parquet
-│   │       ├── metadata.json
-│   │       └── workflow.pkl
-│   └── config.pbtxt
-└── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo_tf</span>
-    ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
-    │   └── <span class=" -Color -Color-Bold -Color-Bold-Blue">model.savedmodel</span>
-    │       ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">assets</span>
-    │       ├── saved_model.pb
-    │       └── <span class=" -Color -Color-Bold -Color-Bold-Blue">variables</span>
-    │           ├── variables.data-00000-of-00001
-    │           └── variables.index
-    └── config.pbtxt
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-Blue">/tmp/model</span>
+└── <span class=" -Color -Color-Bold -Color-Bold-Blue">models</span>
+    ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo</span>
+    │   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
+    │   └── config.pbtxt
+    ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo_nvt</span>
+    │   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
+    │   │   ├── model.py
+    │   │   └── <span class=" -Color -Color-Bold -Color-Bold-Blue">workflow</span>
+    │   │       ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">categories</span>
+    │   │       │   ├── unique.C1.parquet
+    │   │       │   ├── unique.C10.parquet
+    │   │       │   ├── unique.C11.parquet
+    │   │       │   ├── unique.C12.parquet
+    │   │       │   ├── unique.C13.parquet
+    │   │       │   ├── unique.C14.parquet
+    │   │       │   ├── unique.C15.parquet
+    │   │       │   ├── unique.C16.parquet
+    │   │       │   ├── unique.C17.parquet
+    │   │       │   ├── unique.C18.parquet
+    │   │       │   ├── unique.C19.parquet
+    │   │       │   ├── unique.C2.parquet
+    │   │       │   ├── unique.C20.parquet
+    │   │       │   ├── unique.C21.parquet
+    │   │       │   ├── unique.C22.parquet
+    │   │       │   ├── unique.C23.parquet
+    │   │       │   ├── unique.C24.parquet
+    │   │       │   ├── unique.C25.parquet
+    │   │       │   ├── unique.C26.parquet
+    │   │       │   ├── unique.C3.parquet
+    │   │       │   ├── unique.C4.parquet
+    │   │       │   ├── unique.C5.parquet
+    │   │       │   ├── unique.C6.parquet
+    │   │       │   ├── unique.C7.parquet
+    │   │       │   ├── unique.C8.parquet
+    │   │       │   └── unique.C9.parquet
+    │   │       ├── metadata.json
+    │   │       └── workflow.pkl
+    │   └── config.pbtxt
+    └── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo_tf</span>
+        ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
+        │   └── <span class=" -Color -Color-Bold -Color-Bold-Blue">model.savedmodel</span>
+        │       ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">assets</span>
+        │       ├── keras_metadata.pb
+        │       ├── saved_model.pb
+        │       └── <span class=" -Color -Color-Bold -Color-Bold-Blue">variables</span>
+        │           ├── variables.data-00000-of-00001
+        │           └── variables.index
+        └── config.pbtxt
 
-11 directories, 35 files
+12 directories, 36 files
 </pre></div>
 </div>
 </div>
@@ -267,15 +365,10 @@
 <p>First, we restart this notebook to free the GPU memory.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">IPython</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># import IPython</span>
 
-<span class="n">app</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">Application</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
-<span class="n">app</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">do_shutdown</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;status&#39;: &#39;ok&#39;, &#39;restart&#39;: True}
+<span class="c1"># app = IPython.Application.instance()</span>
+<span class="c1"># app.kernel.do_shutdown(True)</span>
 </pre></div>
 </div>
 </div>
@@ -293,10 +386,10 @@
 <p>We connect to the Triton Inference Server.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonhttpclient</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">grpc_client</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">triton_client</span> <span class="o">=</span> <span class="n">tritonhttpclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;triton:8000&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">triton_client</span> <span class="o">=</span> <span class="n">grpc_client</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;client created.&quot;</span><span class="p">)</span>
 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel creation failed: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
@@ -327,8 +420,9 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>GET /v2/health/live, headers None
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-length&#39;: &#39;0&#39;, &#39;content-type&#39;: &#39;text/plain&#39;}&gt;
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>is_server_live, metadata ()
+
+live: true
 </pre></div>
 </div>
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>True
@@ -349,13 +443,28 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/index, headers None
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>get_model_repository_index, metadata ()
 
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;62&#39;}&gt;
-bytearray(b&#39;[{&quot;name&quot;:&quot;criteo&quot;},{&quot;name&quot;:&quot;criteo_nvt&quot;},{&quot;name&quot;:&quot;criteo_tf&quot;}]&#39;)
+models {
+  name: &quot;criteo&quot;
+}
+models {
+  name: &quot;criteo_nvt&quot;
+}
+models {
+  name: &quot;criteo_tf&quot;
+}
 </pre></div>
 </div>
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;name&#39;: &#39;criteo&#39;}, {&#39;name&#39;: &#39;criteo_nvt&#39;}, {&#39;name&#39;: &#39;criteo_tf&#39;}]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>models {
+  name: &quot;criteo&quot;
+}
+models {
+  name: &quot;criteo_nvt&quot;
+}
+models {
+  name: &quot;criteo_tf&quot;
+}
 </pre></div>
 </div>
 </div>
@@ -370,12 +479,13 @@ bytearray(b&#39;[{&quot;name&quot;:&quot;criteo&quot;},{&quot;name&quot;:&quot;c
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/criteo/load, headers None
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>load_model, metadata ()
+override files omitted:
+model_name: &quot;criteo&quot;
 
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
 Loaded model &#39;criteo&#39;
-CPU times: user 0 ns, sys: 3.33 ms, total: 3.33 ms
-Wall time: 56.5 s
+CPU times: user 13.5 ms, sys: 8.86 ms, total: 22.4 ms
+Wall time: 41.9 s
 </pre></div>
 </div>
 </div>
@@ -393,6 +503,7 @@ Wall time: 56.5 s
 
 <span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
 <span class="n">batch_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;converted/criteo&quot;</span><span class="p">)</span>
+<span class="c1"># raise(ValueError(f&quot;{batch_path}&quot;))</span>
 <span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">batch_path</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="n">batch</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="s2">&quot;label&quot;</span><span class="p">]]</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
@@ -474,7 +585,7 @@ dtype: object
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonclient.http</span> <span class="k">as</span> <span class="nn">httpclient</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">httpclient</span>
 <span class="kn">from</span> <span class="nn">tritonclient.utils</span> <span class="kn">import</span> <span class="n">np_to_triton_dtype</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
@@ -508,14 +619,319 @@ dtype: object
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/models/criteo/infer, headers {&#39;Inference-Header-Content-Length&#39;: 3382}
-b&#39;{&quot;id&quot;:&quot;1&quot;,&quot;inputs&quot;:[{&quot;name&quot;:&quot;I1&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I2&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I3&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I4&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I5&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I6&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I7&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I8&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I9&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I10&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I11&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I12&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I13&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C1&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C2&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C3&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C4&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C5&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C6&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C7&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C8&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C9&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C10&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C11&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C12&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C13&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C14&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C15&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C16&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C17&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C18&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C19&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C20&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C21&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C22&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C23&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C24&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C25&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C26&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}}],&quot;outputs&quot;:[{&quot;name&quot;:&quot;output&quot;,&quot;parameters&quot;:{&quot;binary_data&quot;:true}}]}\x05\x00\x00\x00 \x00\x00\x00\x00\x00\x00\x00n\x00\x00\x00\x03\x00\x00\x00\xe9\x00\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x92\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0e\x00\x00\x00=\x00\x00\x00c\x00\x00\x00\x07\x00\x00\x00\x05\x00\x00\x00\x07\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x002\x01\x00\x00U\x0c\x00\x00\x1d\x0c\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00y\rwb\x8d\xfd\xf3\xe5y\rwbX]\x1f\xe2\xa6\xff\xaa\xa0\x03B\x98\xad/D\xea\xaf\xd5\x15\xaao\r\xc6\xbeb\xcf\x7f\\\x94!4\x8a\xda\xeeIl8H\&#39;\xb08#\x9f\xd6&lt;M\x06U\xe7\xcbm\xcdo\xcbm\xcdo\xcbm\xcdo!\xaa\x805\x81\xed\x16\xabb\xeb\xf5\xb5\x03\x89\x80()lBC\x8b\xcc\xf2\xd1\xa6\xdf\xdeFT\xe1\xf5\x1d\x1f\x82N.\xc1}\x02.\xa9\xc0\xe9}\xc1}\x02.1B|\x0cd\xdcRf1B|\x0c\x1f\x1d\x98\x95\&#39;N\xeb\x99\x84aq\x12\xb7\xff\xc5\x00\xb7\xff\xc5\x00\xb7\xff\xc5\x007\xe5N\xbe7\xe5N\xbe7\xe5N\xbe\xcct\x0b\x8a\x99\xfe\xbb\xf3\x0b\r\x0f\xf7\xfa&gt;\xdcL\xfa&gt;\xdcL\xfa&gt;\xdcL\xaaV\x08\xd2\xaaV\x08\xd2\xaaV\x08\xd2\xba\x0b\x17\xb8\x11\x15\xeb\xa1\x8d\x1b\x8fb\x0b\xc2\x12\x95\x0b\xc2\x12\x95\x0b\xc2\x12\x95(/\x8e\xc3c\xd8\xbf\xfe(/\x8e\xc3]Z\xf6\x14\xa1&lt;2\xa3]Z\xf6\x14\x89\xb0\xb1%V\xee\xe1\xc8\x89\xb0\xb1%\x0b\xfc\xc1\xd7\xe8\xe9R\x17\x0b\xfc\xc1\xd7\x9c`\xaf|\x8a\x0c5u\x05\xb9\xa94\xfckC0\xea!\x13\x99\x02He\xff\x1dW\x10\xedW\xe9W\xb7\x1dW\x10\xed&#39;
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;inference-header-content-length&#39;: &#39;226&#39;, &#39;content-length&#39;: &#39;238&#39;}&gt;
-bytearray(b&#39;{&quot;id&quot;:&quot;1&quot;,&quot;model_name&quot;:&quot;criteo&quot;,&quot;model_version&quot;:&quot;1&quot;,&quot;parameters&quot;:{&quot;sequence_id&quot;:0,&quot;sequence_start&quot;:false,&quot;sequence_end&quot;:false},&quot;outputs&quot;:[{&quot;name&quot;:&quot;output&quot;,&quot;datatype&quot;:&quot;FP32&quot;,&quot;shape&quot;:[3,1],&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}}]}&#39;)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>infer, metadata ()
+model_name: &quot;criteo&quot;
+id: &quot;1&quot;
+inputs {
+  name: &quot;I1&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I2&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I3&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I4&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I5&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I6&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I7&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I8&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I9&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I10&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I11&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I12&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;I13&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C1&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C2&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C3&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C4&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C5&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C6&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C7&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C8&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C9&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C10&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C11&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C12&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C13&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C14&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C15&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C16&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C17&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C18&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C19&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C20&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C21&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C22&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C23&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C24&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C25&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+inputs {
+  name: &quot;C26&quot;
+  datatype: &quot;INT32&quot;
+  shape: 3
+  shape: 1
+}
+outputs {
+  name: &quot;output&quot;
+}
+raw_input_contents: &quot;\005\000\000\000 \000\000\000\000\000\000\000&quot;
+raw_input_contents: &quot;n\000\000\000\003\000\000\000\351\000\000\000&quot;
+raw_input_contents: &quot;\000\000\000\000\005\000\000\000\001\000\000\000&quot;
+raw_input_contents: &quot;\020\000\000\000\000\000\000\000\222\000\000\000&quot;
+raw_input_contents: &quot;\000\000\000\000\001\000\000\000\001\000\000\000&quot;
+raw_input_contents: &quot;\001\000\000\000\000\000\000\000\000\000\000\000&quot;
+raw_input_contents: &quot;\000\000\000\000\000\000\000\000\000\000\000\000&quot;
+raw_input_contents: &quot;\016\000\000\000=\000\000\000c\000\000\000&quot;
+raw_input_contents: &quot;\007\000\000\000\005\000\000\000\007\000\000\000&quot;
+raw_input_contents: &quot;\001\000\000\000\000\000\000\000\000\000\000\000&quot;
+raw_input_contents: &quot;\000\000\000\000\001\000\000\000\001\000\000\000&quot;
+raw_input_contents: &quot;2\001\000\000U\014\000\000\035\014\000\000&quot;
+raw_input_contents: &quot;\000\000\000\000\005\000\000\000\001\000\000\000&quot;
+raw_input_contents: &quot;y\rwb\215\375\363\345y\rwb&quot;
+raw_input_contents: &quot;X]\037\342\246\377\252\240\003B\230\255&quot;
+raw_input_contents: &quot;/D\352\257\325\025\252o\r\306\276b&quot;
+raw_input_contents: &quot;\317\177\\\224!4\212\332\356Il8&quot;
+raw_input_contents: &quot;H\&#39;\2608#\237\326&lt;M\006U\347&quot;
+raw_input_contents: &quot;\313m\315o\313m\315o\313m\315o&quot;
+raw_input_contents: &quot;!\252\2005\201\355\026\253b\353\365\265&quot;
+raw_input_contents: &quot;\003\211\200()lBC\213\314\362\321&quot;
+raw_input_contents: &quot;\246\337\336FT\341\365\035\037\202N.&quot;
+raw_input_contents: &quot;\301}\002.\251\300\351}\301}\002.&quot;
+raw_input_contents: &quot;1B|\014d\334Rf1B|\014&quot;
+raw_input_contents: &quot;\037\035\230\225\&#39;N\353\231\204aq\022&quot;
+raw_input_contents: &quot;\267\377\305\000\267\377\305\000\267\377\305\000&quot;
+raw_input_contents: &quot;7\345N\2767\345N\2767\345N\276&quot;
+raw_input_contents: &quot;\314t\013\212\231\376\273\363\013\r\017\367&quot;
+raw_input_contents: &quot;\372&gt;\334L\372&gt;\334L\372&gt;\334L&quot;
+raw_input_contents: &quot;\252V\010\322\252V\010\322\252V\010\322&quot;
+raw_input_contents: &quot;\272\013\027\270\021\025\353\241\215\033\217b&quot;
+raw_input_contents: &quot;\013\302\022\225\013\302\022\225\013\302\022\225&quot;
+raw_input_contents: &quot;(/\216\303c\330\277\376(/\216\303&quot;
+raw_input_contents: &quot;]Z\366\024\241&lt;2\243]Z\366\024&quot;
+raw_input_contents: &quot;\211\260\261%V\356\341\310\211\260\261%&quot;
+raw_input_contents: &quot;\013\374\301\327\350\351R\027\013\374\301\327&quot;
+raw_input_contents: &quot;\234`\257|\212\0145u\005\271\2514&quot;
+raw_input_contents: &quot;\374kC0\352!\023\231\002He\377&quot;
+raw_input_contents: &quot;\035W\020\355W\351W\267\035W\020\355&quot;
+
+model_name: &quot;criteo&quot;
+model_version: &quot;1&quot;
+id: &quot;1&quot;
+parameters {
+  key: &quot;sequence_end&quot;
+  value {
+    bool_param: false
+  }
+}
+parameters {
+  key: &quot;sequence_id&quot;
+  value {
+    int64_param: 0
+  }
+}
+parameters {
+  key: &quot;sequence_start&quot;
+  value {
+    bool_param: false
+  }
+}
+outputs {
+  name: &quot;output&quot;
+  datatype: &quot;FP32&quot;
+  shape: 3
+  shape: 1
+}
+raw_output_contents: &quot;Dd\217&lt;$r\233&lt;\241\231u&lt;&quot;
+
 predicted softmax result:
- [[0.02414342]
- [0.0328052 ]
- [0.02708623]]
+ [[0.01750387]
+ [0.01897532]
+ [0.01499024]]
 </pre></div>
 </div>
 </div>
@@ -530,18 +946,36 @@ predicted softmax result:
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/criteo/unload, headers None
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>unload_model, metadata ()
+model_name: &quot;criteo&quot;
+parameters {
+  key: &quot;unload_dependents&quot;
+  value {
+    bool_param: false
+  }
+}
 
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
-Loaded model &#39;criteo&#39;
-POST /v2/repository/models/criteo_nvt/unload, headers None
+Unloaded model &#39;criteo&#39;
+unload_model, metadata ()
+model_name: &quot;criteo_nvt&quot;
+parameters {
+  key: &quot;unload_dependents&quot;
+  value {
+    bool_param: false
+  }
+}
 
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
-Loaded model &#39;criteo_nvt&#39;
-POST /v2/repository/models/criteo_tf/unload, headers None
+Unloaded model &#39;criteo_nvt&#39;
+unload_model, metadata ()
+model_name: &quot;criteo_tf&quot;
+parameters {
+  key: &quot;unload_dependents&quot;
+  value {
+    bool_param: false
+  }
+}
 
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
-Loaded model &#39;criteo_tf&#39;
+Unloaded model &#39;criteo_tf&#39;
 </pre></div>
 </div>
 </div>
@@ -555,7 +989,7 @@ Loaded model &#39;criteo_tf&#39;
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="04-Triton-Inference-with-HugeCTR.html" class="btn btn-neutral float-left" title="Scaling Criteo: Triton Inference with HugeCTR" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../tabular-data-rossmann/index.html" class="btn btn-neutral float-right" title="Applying the Techniques to other Tabular Problems with Rossmann" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../multi-gpu-movielens/index.html" class="btn btn-neutral float-right" title="Multi-GPU Example Notebooks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

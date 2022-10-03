@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scaling Criteo: Triton Inference with HugeCTR &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -23,7 +23,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Scaling Criteo: Triton Inference with TensorFlow" href="04-Triton-Inference-with-TF.html" />
-    <link rel="prev" title="Scaling Criteo: Training with FastAI" href="03-Training-with-FastAI.html" /> 
+    <link rel="prev" title="Scaling Criteo: Training with TensorFlow" href="03-Training-with-TF.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -50,21 +50,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Scaling to Large Datasets with Criteo</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
 <li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
 <li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
 <li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">Train with FastAI</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Serve a HugeCTR Model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Serve a TensorFlow Model</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
@@ -116,7 +113,7 @@
 </div>
 </div>
 </div>
-<div class="tex2jax_ignore mathjax_ignore section" id="scaling-criteo-triton-inference-with-hugectr">
+<div class="section" id="scaling-criteo-triton-inference-with-hugectr">
 <h1>Scaling Criteo: Triton Inference with HugeCTR<a class="headerlink" href="#scaling-criteo-triton-inference-with-hugectr" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -153,13 +150,21 @@
 </pre></div>
 </div>
 </div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>mv: cannot stat &#39;*9600.model&#39;: No such file or directory
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>256
+</pre></div>
+</div>
+</div>
 </div>
 <p>Now we can save our models to be deployed at the inference stage. To do so we will use export_hugectr_ensemble method below. With this method, we can generate the config.pbtxt files automatically for each model. In doing so, we should also create a hugectr_params dictionary, and define the parameters like where the amazonreview.json file will be read, slots which corresponds to number of categorical features, <code class="docutils literal notranslate"><span class="pre">embedding_vector_size</span></code>, <code class="docutils literal notranslate"><span class="pre">max_nnz</span></code>, and <code class="docutils literal notranslate"><span class="pre">n_outputs</span></code> which is number of outputs.<br><br>
 The script below creates an ensemble triton server model where</p>
 <ul class="simple">
 <li><p>workflow is the the nvtabular workflow used in preprocessing,</p></li>
 <li><p>hugectr_model_path is the HugeCTR model that should be served.</p></li>
-<li><p>This path includes the .model <a class="reference external" href="http://files.name">files.name</a> is the base name of the various triton models</p></li>
+<li><p>This path includes the .model files.name is the base name of the various triton models</p></li>
 <li><p>output_path is the path where is model will be saved to.</p></li>
 <li><p>cats are the categorical column names</p></li>
 <li><p>conts are the continuous column names</p></li>
@@ -170,8 +175,14 @@ The script below creates an ensemble triton server model where</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
 
 <span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
-<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/output&quot;</span><span class="p">)</span>
+<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/output&quot;</span><span class="p">))</span>
 <span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/nvtabular/workflow/workflow.py:373: UserWarning: Loading workflow generated with nvtabular version 0.10.0+124.g0930748e.dirty - but we are running nvtabular 1.2.2+4.gebf56ca0f. This might cause issues
+  warnings.warn(
 </pre></div>
 </div>
 </div>
@@ -179,7 +190,7 @@ The script below creates an ensemble triton server model where</p>
 <p>Let’s clear the directory</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;rm -rf /model/*&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;rm -rf /tmp/model/*&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -194,7 +205,7 @@ The script below creates an ensemble triton server model where</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.inference.triton</span> <span class="kn">import</span> <span class="n">export_hugectr_ensemble</span>
 
 <span class="n">hugectr_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-<span class="n">hugectr_params</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;/model/criteo/1/criteo.json&quot;</span>
+<span class="n">hugectr_params</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;/tmp/model/criteo/1/criteo.json&quot;</span>
 <span class="n">hugectr_params</span><span class="p">[</span><span class="s2">&quot;slots&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">26</span>
 <span class="n">hugectr_params</span><span class="p">[</span><span class="s2">&quot;max_nnz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">hugectr_params</span><span class="p">[</span><span class="s2">&quot;embedding_vector_size&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">128</span>
@@ -204,7 +215,7 @@ The script below creates an ensemble triton server model where</p>
     <span class="n">hugectr_model_path</span><span class="o">=</span><span class="s2">&quot;./criteo_hugectr/1/&quot;</span><span class="p">,</span>
     <span class="n">hugectr_params</span><span class="o">=</span><span class="n">hugectr_params</span><span class="p">,</span>
     <span class="n">name</span><span class="o">=</span><span class="s2">&quot;criteo&quot;</span><span class="p">,</span>
-    <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/model/&quot;</span><span class="p">,</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/tmp/model/&quot;</span><span class="p">,</span>
     <span class="n">label_columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">],</span>
     <span class="n">cats</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;C&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">27</span><span class="p">)],</span>
     <span class="n">conts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;I&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">14</span><span class="p">)],</span>
@@ -217,12 +228,12 @@ The script below creates an ensemble triton server model where</p>
 <p>We can take a look at the generated files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>tree /model
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>tree /tmp/model
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-Blue">/model</span>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-Blue">/tmp/model</span>
 ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">criteo</span>
 │   ├── <span class=" -Color -Color-Bold -Color-Bold-Blue">1</span>
 │   │   ├── 0_opt_sparse_9600.model
@@ -268,12 +279,11 @@ The script below creates an ensemble triton server model where</p>
     │       │   ├── unique.C7.parquet
     │       │   ├── unique.C8.parquet
     │       │   └── unique.C9.parquet
-    │       ├── column_types.json
     │       ├── metadata.json
     │       └── workflow.pkl
     └── config.pbtxt
 
-9 directories, 40 files
+9 directories, 39 files
 </pre></div>
 </div>
 </div>
@@ -281,16 +291,18 @@ The script below creates an ensemble triton server model where</p>
 <p>We need to write a configuration file with the stored model weights and model configuration.</p>
 <div class="cell tag_flake8-noqa-cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%writefile</span> &#39;/model/ps.json&#39;
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># %%writefile &#39;/tmp/model/ps.json&#39;</span>
+<span class="kn">import</span> <span class="nn">json</span>
 
+<span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
 <span class="p">{</span>
-    <span class="s2">&quot;supportlonglong&quot;</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+    <span class="s2">&quot;supportlonglong&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
     <span class="s2">&quot;models&quot;</span><span class="p">:</span> <span class="p">[</span>
         <span class="p">{</span>
             <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;criteo&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;sparse_files&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;/model/criteo/1/0_sparse_9600.model&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;dense_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/model/criteo/1/_dense_9600.model&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;network_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/model/criteo/1/criteo.json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sparse_files&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;/tmp/model/criteo/1/0_sparse_9600.model&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;dense_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/tmp/model/criteo/1/_dense_9600.model&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;network_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/tmp/model/criteo/1/criteo.json&quot;</span><span class="p">,</span>
             <span class="s2">&quot;max_batch_size&quot;</span><span class="p">:</span> <span class="s2">&quot;64&quot;</span><span class="p">,</span>
             <span class="s2">&quot;gpucache&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
             <span class="s2">&quot;hit_rate_threshold&quot;</span><span class="p">:</span> <span class="s2">&quot;0.9&quot;</span><span class="p">,</span>
@@ -300,14 +312,16 @@ The script below creates an ensemble triton server model where</p>
             <span class="s2">&quot;cache_refresh_percentage_per_iteration&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
             <span class="s2">&quot;deployed_device_list&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">],</span>
             <span class="s2">&quot;default_value_for_each_table&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;0.0&quot;</span><span class="p">,</span> <span class="s2">&quot;0.0&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;maxnum_catfeature_query_per_table_per_sample&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">26</span><span class="p">],</span>
+            <span class="s2">&quot;embedding_vecsize_per_table&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">16</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">26</span><span class="p">)],</span>
         <span class="p">}</span>
     <span class="p">],</span>
 <span class="p">}</span>
-</pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting /model/ps.json
+<span class="p">)</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/tmp/model/ps.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -381,14 +395,11 @@ The script below creates an ensemble triton server model where</p>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/index, headers None
 
-&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;93&#39;}&gt;
-bytearray(b&#39;[{&quot;name&quot;:&quot;.ipynb_checkpoints&quot;},{&quot;name&quot;:&quot;criteo&quot;},{&quot;name&quot;:&quot;criteo_ens&quot;},{&quot;name&quot;:&quot;criteo_nvt&quot;}]&#39;)
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;63&#39;}&gt;
+bytearray(b&#39;[{&quot;name&quot;:&quot;criteo&quot;},{&quot;name&quot;:&quot;criteo_ens&quot;},{&quot;name&quot;:&quot;criteo_nvt&quot;}]&#39;)
 </pre></div>
 </div>
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;name&#39;: &#39;.ipynb_checkpoints&#39;},
- {&#39;name&#39;: &#39;criteo&#39;},
- {&#39;name&#39;: &#39;criteo_ens&#39;},
- {&#39;name&#39;: &#39;criteo_nvt&#39;}]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;name&#39;: &#39;criteo&#39;}, {&#39;name&#39;: &#39;criteo_ens&#39;}, {&#39;name&#39;: &#39;criteo_nvt&#39;}]
 </pre></div>
 </div>
 </div>
@@ -404,11 +415,11 @@ bytearray(b&#39;[{&quot;name&quot;:&quot;.ipynb_checkpoints&quot;},{&quot;name&q
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/criteo_nvt/load, headers None
-
+{}
 &lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
 Loaded model &#39;criteo_nvt&#39;
-CPU times: user 4.21 ms, sys: 258 µs, total: 4.47 ms
-Wall time: 20.6 s
+CPU times: user 7.84 ms, sys: 14 ms, total: 21.9 ms
+Wall time: 36.6 s
 </pre></div>
 </div>
 </div>
@@ -423,11 +434,11 @@ Wall time: 20.6 s
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/criteo/load, headers None
-
+{}
 &lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
 Loaded model &#39;criteo&#39;
-CPU times: user 1.8 ms, sys: 3.01 ms, total: 4.81 ms
-Wall time: 32.4 s
+CPU times: user 3.75 ms, sys: 3.62 ms, total: 7.38 ms
+Wall time: 6.04 s
 </pre></div>
 </div>
 </div>
@@ -442,11 +453,11 @@ Wall time: 32.4 s
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/repository/models/criteo_ens/load, headers None
-
+{}
 &lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/json&#39;, &#39;content-length&#39;: &#39;0&#39;}&gt;
 Loaded model &#39;criteo_ens&#39;
-CPU times: user 4.7 ms, sys: 0 ns, total: 4.7 ms
-Wall time: 20.2 s
+CPU times: user 12.1 ms, sys: 9.87 ms, total: 21.9 ms
+Wall time: 37.5 s
 </pre></div>
 </div>
 </div>
@@ -463,6 +474,7 @@ Wall time: 20.2 s
 <span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 
 <span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
 <span class="n">batch_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;converted/criteo&quot;</span><span class="p">)</span>
 <span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">batch_path</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="n">batch</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="s2">&quot;label&quot;</span><span class="p">]]</span>
@@ -580,33 +592,10 @@ dtype: object
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>POST /v2/models/criteo_ens/infer, headers {&#39;Inference-Header-Content-Length&#39;: 3383}
 b&#39;{&quot;id&quot;:&quot;1&quot;,&quot;inputs&quot;:[{&quot;name&quot;:&quot;I1&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I2&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I3&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I4&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I5&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I6&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I7&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I8&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I9&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I10&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I11&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I12&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;I13&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C1&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C2&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C3&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C4&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C5&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C6&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C7&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C8&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C9&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C10&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C11&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C12&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C13&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C14&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C15&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C16&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C17&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C18&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C19&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C20&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C21&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C22&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C23&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C24&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C25&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}},{&quot;name&quot;:&quot;C26&quot;,&quot;shape&quot;:[3,1],&quot;datatype&quot;:&quot;INT32&quot;,&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}}],&quot;outputs&quot;:[{&quot;name&quot;:&quot;OUTPUT0&quot;,&quot;parameters&quot;:{&quot;binary_data&quot;:true}}]}\x05\x00\x00\x00 \x00\x00\x00\x00\x00\x00\x00n\x00\x00\x00\x03\x00\x00\x00\xe9\x00\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x92\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0e\x00\x00\x00=\x00\x00\x00c\x00\x00\x00\x07\x00\x00\x00\x05\x00\x00\x00\x07\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x002\x01\x00\x00U\x0c\x00\x00\x1d\x0c\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00y\rwb\x8d\xfd\xf3\xe5y\rwbX]\x1f\xe2\xa6\xff\xaa\xa0\x03B\x98\xad/D\xea\xaf\xd5\x15\xaao\r\xc6\xbeb\xcf\x7f\\\x94!4\x8a\xda\xeeIl8H\&#39;\xb08#\x9f\xd6&lt;M\x06U\xe7\xcbm\xcdo\xcbm\xcdo\xcbm\xcdo!\xaa\x805\x81\xed\x16\xabb\xeb\xf5\xb5\x03\x89\x80()lBC\x8b\xcc\xf2\xd1\xa6\xdf\xdeFT\xe1\xf5\x1d\x1f\x82N.\xc1}\x02.\xa9\xc0\xe9}\xc1}\x02.1B|\x0cd\xdcRf1B|\x0c\x1f\x1d\x98\x95\&#39;N\xeb\x99\x84aq\x12\xb7\xff\xc5\x00\xb7\xff\xc5\x00\xb7\xff\xc5\x007\xe5N\xbe7\xe5N\xbe7\xe5N\xbe\xcct\x0b\x8a\x99\xfe\xbb\xf3\x0b\r\x0f\xf7\xfa&gt;\xdcL\xfa&gt;\xdcL\xfa&gt;\xdcL\xaaV\x08\xd2\xaaV\x08\xd2\xaaV\x08\xd2\xba\x0b\x17\xb8\x11\x15\xeb\xa1\x8d\x1b\x8fb\x0b\xc2\x12\x95\x0b\xc2\x12\x95\x0b\xc2\x12\x95(/\x8e\xc3c\xd8\xbf\xfe(/\x8e\xc3]Z\xf6\x14\xa1&lt;2\xa3]Z\xf6\x14\x89\xb0\xb1%V\xee\xe1\xc8\x89\xb0\xb1%\x0b\xfc\xc1\xd7\xe8\xe9R\x17\x0b\xfc\xc1\xd7\x9c`\xaf|\x8a\x0c5u\x05\xb9\xa94\xfckC0\xea!\x13\x99\x02He\xff\x1dW\x10\xedW\xe9W\xb7\x1dW\x10\xed&#39;
-&lt;HTTPSocketPoolResponse status=400 headers={&#39;content-length&#39;: &#39;122&#39;, &#39;content-type&#39;: &#39;text/plain&#39;}&gt;
-</pre></div>
-</div>
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">InferenceServerException</span><span class="g g-Whitespace">                  </span>Traceback (most recent call last)
-<span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">ipykernel_2961</span><span class="o">/</span><span class="mf">3517835948.</span><span class="n">py</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
-<span class="g g-Whitespace">      </span><span class="mi">5</span> <span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
-<span class="g g-Whitespace">      </span><span class="mi">6</span> <span class="c1"># make the request with tritonclient.http.InferInput object</span>
-<span class="ne">----&gt; </span><span class="mi">7</span> <span class="n">response</span> <span class="o">=</span> <span class="n">triton_client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="s2">&quot;criteo_ens&quot;</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
-<span class="g g-Whitespace">      </span><span class="mi">8</span> 
-<span class="g g-Whitespace">      </span><span class="mi">9</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted sigmoid result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;OUTPUT0&quot;</span><span class="p">))</span>
-
-<span class="nn">/usr/local/lib/python3.8/dist-packages/tritonclient/http/__init__.py</span> in <span class="ni">infer</span><span class="nt">(self, model_name, inputs, model_version, outputs, request_id, sequence_id, sequence_start, sequence_end, priority, timeout, headers, query_params, request_compression_algorithm, response_compression_algorithm)</span>
-<span class="g g-Whitespace">   </span><span class="mi">1254</span>                               <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
-<span class="g g-Whitespace">   </span><span class="mi">1255</span>                               <span class="n">query_params</span><span class="o">=</span><span class="n">query_params</span><span class="p">)</span>
-<span class="ne">-&gt; </span><span class="mi">1256</span>         <span class="n">_raise_if_error</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-<span class="g g-Whitespace">   </span><span class="mi">1257</span> 
-<span class="g g-Whitespace">   </span><span class="mi">1258</span>         <span class="k">return</span> <span class="n">InferResult</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">)</span>
-
-<span class="nn">/usr/local/lib/python3.8/dist-packages/tritonclient/http/__init__.py</span> in <span class="ni">_raise_if_error</span><span class="nt">(response)</span>
-<span class="g g-Whitespace">     </span><span class="mi">62</span>     <span class="n">error</span> <span class="o">=</span> <span class="n">_get_error</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-<span class="g g-Whitespace">     </span><span class="mi">63</span>     <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<span class="ne">---&gt; </span><span class="mi">64</span>         <span class="k">raise</span> <span class="n">error</span>
-<span class="g g-Whitespace">     </span><span class="mi">65</span> 
-<span class="g g-Whitespace">     </span><span class="mi">66</span> 
-
-<span class="ne">InferenceServerException</span>: in ensemble &#39;criteo_ens&#39;, Failed to process the request(s), message: The stub process has exited unexpectedly.
+&lt;HTTPSocketPoolResponse status=200 headers={&#39;content-type&#39;: &#39;application/octet-stream&#39;, &#39;inference-header-content-length&#39;: &#39;229&#39;, &#39;content-length&#39;: &#39;241&#39;}&gt;
+bytearray(b&#39;{&quot;id&quot;:&quot;1&quot;,&quot;model_name&quot;:&quot;criteo_ens&quot;,&quot;model_version&quot;:&quot;1&quot;,&quot;parameters&quot;:{&quot;sequence_id&quot;:0,&quot;sequence_start&quot;:false,&quot;sequence_end&quot;:false},&quot;outputs&quot;:[{&quot;name&quot;:&quot;OUTPUT0&quot;,&quot;datatype&quot;:&quot;FP32&quot;,&quot;shape&quot;:[3],&quot;parameters&quot;:{&quot;binary_data_size&quot;:12}}]}&#39;)
+predicted sigmoid result:
+ [0.03639793 0.0345494  0.03440537]
 </pre></div>
 </div>
 </div>
@@ -645,7 +634,7 @@ Loaded model &#39;criteo&#39;
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="03-Training-with-FastAI.html" class="btn btn-neutral float-left" title="Scaling Criteo: Training with FastAI" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Training-with-TF.html" class="btn btn-neutral float-left" title="Scaling Criteo: Training with TensorFlow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="04-Triton-Inference-with-TF.html" class="btn btn-neutral float-right" title="Scaling Criteo: Triton Inference with TensorFlow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

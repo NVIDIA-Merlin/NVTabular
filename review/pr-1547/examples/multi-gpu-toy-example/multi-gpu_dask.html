@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Multi-GPU Scaling in NVTabular with Dask &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -22,7 +22,7 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="NVTabular demo on RecSys2020 Challenge" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" />
+    <link rel="next" title="API Documentation" href="../../api.html" />
     <link rel="prev" title="Multi-GPU Training with TensorFlow on MovieLens" href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html" /> 
 </head>
 
@@ -50,16 +50,14 @@
 <li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html">Multi-GPU Training with TensorFlow on MovieLens</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Multi-GPU Scaling in NVTabular with Dask</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
@@ -111,7 +109,7 @@
 </div>
 </div>
 </div>
-<div class="tex2jax_ignore mathjax_ignore section" id="multi-gpu-scaling-in-nvtabular-with-dask">
+<div class="section" id="multi-gpu-scaling-in-nvtabular-with-dask">
 <h1>Multi-GPU Scaling in NVTabular with Dask<a class="headerlink" href="#multi-gpu-scaling-in-nvtabular-with-dask" title="Permalink to this headline"></a></h1>
 <div class="section" id="nvtabular-dask-integration">
 <h2>NVTabular + Dask Integration<a class="headerlink" href="#nvtabular-dask-integration" title="Permalink to this headline"></a></h2>
@@ -255,7 +253,7 @@
 </div>
 <div class="section" id="initializing-memory-pools">
 <h4>Initializing Memory Pools<a class="headerlink" href="#initializing-memory-pools" title="Permalink to this headline"></a></h4>
-<p>Since allocating memory is often a performance bottleneck, it is usually a good idea to initialize a memory pool on each of our workers. When using a distributed cluster, we must use the <code class="docutils literal notranslate"><span class="pre">client.run</span></code> utility to make sure a function is exectuted on all available workers.</p>
+<p>Since allocating memory is often a performance bottleneck, it is usually a good idea to initialize a memory pool on each of our workers. When using a distributed cluster, we must use the <code class="docutils literal notranslate"><span class="pre">client.run</span></code> utility to make sure a function is executed on all available workers.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize RMM pool on ALL workers</span>
@@ -980,7 +978,7 @@ Wall time: 2.26 s
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html" class="btn btn-neutral float-left" title="Multi-GPU Training with TensorFlow on MovieLens" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html" class="btn btn-neutral float-right" title="NVTabular demo on RecSys2020 Challenge" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../../api.html" class="btn btn-neutral float-right" title="API Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

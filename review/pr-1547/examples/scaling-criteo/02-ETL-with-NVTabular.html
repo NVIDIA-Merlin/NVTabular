@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scaling Criteo: ETL with NVTabular &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -50,21 +50,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-ops-outbrain/index.html">Advanced Ops with Outbrain</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Scaling to Large Datasets with Criteo</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">ETL with NVTabular</a></li>
 <li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
 <li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
-<li class="toctree-l3"><a class="reference internal" href="03-Training-with-FastAI.html">Train with FastAI</a></li>
 <li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Serve a HugeCTR Model</a></li>
 <li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Serve a TensorFlow Model</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../tabular-data-rossmann/index.html">Applying Techniques to Rossmann Stores Data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost.html">Winning Solution of the RecSys2020 Competition</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
@@ -117,7 +114,7 @@
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
-<div class="tex2jax_ignore mathjax_ignore section" id="scaling-criteo-etl-with-nvtabular">
+<div class="section" id="scaling-criteo-etl-with-nvtabular">
 <h1>Scaling Criteo: ETL with NVTabular<a class="headerlink" href="#scaling-criteo-etl-with-nvtabular" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -148,10 +145,10 @@
 <li><p>Dask Bag: Similar to a Dask-based version of PyToolz or a Pythonic version of PySpark RDD</p></li>
 </ul>
 <p>For example, Dask DataFrame provides a convenient API for decomposing large Pandas (or cuDF) DataFrame/Series objects into a collection of DataFrame partitions.</p>
-<a class="reference internal image-reference" href="../../_images/dask-dataframe.svg"><img alt="../../_images/dask-dataframe.svg" src="../../_images/dask-dataframe.svg" width="20%" /></a>
+<a class="reference internal image-reference" href="../../_images/dask-dataframe1.svg"><img alt="../../_images/dask-dataframe1.svg" src="../../_images/dask-dataframe1.svg" width="20%" /></a>
 <p>We use <strong>dask_cudf</strong> to process large datasets as a collection of cuDF dataframes instead of Pandas. CuDF is a GPU DataFrame library for loading, joining, aggregating, filtering, and otherwise manipulating data.
 <br><br>
-<strong>Dask enables easily to schedule tasks for multiple workers: multi-GPU or multi-node. We just need to initialize a Dask cluster (<code class="docutils literal notranslate"><span class="pre">LocalCUDACluster</span></code>) and NVTabular will use the cluster to execture the workflow.</strong></p>
+<strong>Dask enables easily to schedule tasks for multiple workers: multi-GPU or multi-node. We just need to initialize a Dask cluster (<code class="docutils literal notranslate"><span class="pre">LocalCUDACluster</span></code>) and NVTabular will use the cluster to execute the workflow.</strong></p>
 </div>
 </div>
 <div class="section" id="etl-with-nvtabular">

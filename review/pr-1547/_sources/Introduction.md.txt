@@ -65,17 +65,14 @@ pip install nvtabular
 #### Installing NVTabular with Docker
 
 NVTabular Docker containers are available in the [NVIDIA Merlin container
-repository](https://catalog.ngc.nvidia.com/?filters=&orderBy=scoreDESC&query=merlin). There are six different containers:
-
+repository](https://catalog.ngc.nvidia.com/?filters=&orderBy=scoreDESC&query=merlin).
+The following table summarizes the key information about the containers:
 
 | Container Name             | Container Location | Functionality |
 | -------------------------- | ------------------ | ------------- |
-| merlin-tensorflow-inference           |https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-tensorflow-inference      | NVTabular, Tensorflow and Triton Inference |
-| merlin-pytorch-inference           |https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-pytorch-inference           | NVTabular, PyTorch, and Triton Inference |
-| merlin-inference           | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-inference           | NVTabular, HugeCTR, and Triton Inference |
-| merlin-training            | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-training            | NVTabular and HugeCTR                    |
-| merlin-tensorflow-training | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-tensorflow-training | NVTabular, TensorFlow, and HugeCTR Tensorflow Embedding plugin |
-| merlin-pytorch-training    | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-pytorch-training    | NVTabular and PyTorch                    |
+| merlin-hugectr             |https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-hugectr         | NVTabular, HugeCTR, and Triton Inference |
+| merlin-tensorflow          |https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-tensorflow      | NVTabular, Tensorflow and Triton Inference |
+| merlin-pytorch             |https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-pytorch         | NVTabular, PyTorch, and Triton Inference |
 
 To use these Docker containers, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see [Support Matrix](https://github.com/NVIDIA/NVTabular/blob/main/docs/source/resources/support_matrix.rst).
 
