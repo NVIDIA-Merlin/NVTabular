@@ -13,11 +13,13 @@
 # limitations under the License.
 #
 
+import math
 import os
 import warnings
+from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
-from functools import partial
+from operator import getitem
 from pathlib import Path
 from typing import Optional, Union
 
@@ -27,11 +29,11 @@ import pandas as pd
 import pyarrow as pa
 from dask.base import tokenize
 from dask.core import flatten
-from dask.dataframe.core import _concat, aca, split_out_on_cols
+from dask.dataframe.core import _concat, new_dd_object
+from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
-from dask.utils_test import hlg_layer
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
@@ -42,58 +44,6 @@ from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
-
-
-def _general_concat(
-    frames,
-    cardinality_memory_limit=False,
-    col_selector=None,
-    **kwargs,
-):
-    if isinstance(frames[0], pa.Table):
-        df = pa.concat_tables(frames, promote=True)
-        if (
-            cardinality_memory_limit
-            and col_selector is not None
-            and df.nbytes > cardinality_memory_limit
-        ):
-            # Before fully converting this pyarrow Table
-            # to a cudf DatFrame, we can reduce the memory
-            # footprint of `df`. Since the size of `df`
-            # depends on the cardinality of the features,
-            # and NOT on the partition size, the remaining
-            # logic in this function has an OOM-error risk
-            # (even with tiny partitions).
-            size_columns = []
-            for col in col_selector.names:
-                name = col + "_size"
-                if name in df.schema.names:
-                    # Convert this column alone to cudf,
-                    # and drop the field from df. Note that
-                    # we are only converting this column to
-                    # cudf to take advantage of fast `max`
-                    # performance.
-                    size_columns.append(dispatch.from_host(df.select([name])))
-                    df = df.drop([name])
-                    # Use numpy to calculate the "minimum"
-                    # dtype needed to capture the "size" column,
-                    # and cast the type
-                    typ = np.min_scalar_type(size_columns[-1][name].max() * 2)
-                    size_columns[-1][name] = size_columns[-1][name].astype(typ)
-            # Convert the remaining columns in df to cudf,
-            # and append the type-casted "size" columns
-            df = dispatch.concat_columns([dispatch.from_host(df)] + size_columns)
-        else:
-            # Empty DataFrame - No need for type-casting
-            df = dispatch.from_host(df)
-        return df
-    else:
-        # For now, if we are not concatenating in host memory,
-        # we will assume that reducing the memory footprint of
-        # "size" columns is not a priority. However, the same
-        # type-casting optimization can also be done for both
-        # pandas and cudf-backed data here.
-        return _concat(frames, **kwargs)
 
 
 class Categorify(StatOperator):
@@ -788,104 +738,173 @@ class FitOptions:
         self.col_groups = col_selectors
 
 
+def _general_concat(
+    frames,
+    cardinality_memory_limit=False,
+    col_selector=None,
+    **kwargs,
+):
+    if isinstance(frames[0], pa.Table):
+        df = pa.concat_tables(frames, promote=True)
+        if (
+            cardinality_memory_limit
+            and col_selector is not None
+            and df.nbytes > cardinality_memory_limit
+        ):
+            # Before fully converting this pyarrow Table
+            # to a cudf DatFrame, we can reduce the memory
+            # footprint of `df`. Since the size of `df`
+            # depends on the cardinality of the features,
+            # and NOT on the partition size, the remaining
+            # logic in this function has an OOM-error risk
+            # (even with tiny partitions).
+            size_columns = []
+            for col in col_selector.names:
+                name = col + "_size"
+                if name in df.schema.names:
+                    # Convert this column alone to cudf,
+                    # and drop the field from df. Note that
+                    # we are only converting this column to
+                    # cudf to take advantage of fast `max`
+                    # performance.
+                    size_columns.append(dispatch.from_host(df.select([name])))
+                    df = df.drop([name])
+                    # Use numpy to calculate the "minimum"
+                    # dtype needed to capture the "size" column,
+                    # and cast the type
+                    typ = np.min_scalar_type(size_columns[-1][name].max() * 2)
+                    size_columns[-1][name] = size_columns[-1][name].astype(typ)
+            # Convert the remaining columns in df to cudf,
+            # and append the type-casted "size" columns
+            df = dispatch.concat_columns([dispatch.from_host(df)] + size_columns)
+        else:
+            # Empty DataFrame - No need for type-casting
+            df = dispatch.from_host(df)
+        return df
+    else:
+        # For now, if we are not concatenating in host memory,
+        # we will assume that reducing the memory footprint of
+        # "size" columns is not a priority. However, the same
+        # type-casting optimization can also be done for both
+        # pandas and cudf-backed data here.
+        return _concat(frames, **kwargs)
+
+
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(df, options: FitOptions = None, cat_col_names: list = None):
+def _top_level_groupby(df, options: FitOptions = None, spill=True):
+    assert options is not None
     sum_sq = "std" in options.agg_list or "var" in options.agg_list
     calculate_min = "min" in options.agg_list
     calculate_max = "max" in options.agg_list
-
     # Top-level operation for category-based groupby aggregations
-    if not isinstance(cat_col_names, ColumnSelector):
-        cat_col_selector = ColumnSelector(cat_col_names)
-    else:
-        cat_col_selector = cat_col_names
+    output = {}
+    k = 0
+    for i, cat_col_names in enumerate(options.col_groups):
+        if not isinstance(cat_col_names, ColumnSelector):
+            cat_col_selector = ColumnSelector(cat_col_names)
+        else:
+            cat_col_selector = cat_col_names
 
-    cat_col_selector_str = _make_name(*cat_col_selector.names, sep=options.name_sep)
+        cat_col_selector_str = _make_name(*cat_col_selector.names, sep=options.name_sep)
 
-    if options.concat_groups and len(cat_col_selector.names) > 1:
-        # Concatenate columns and replace cat_col_group
-        # with the single name
-        df_gb = type(df)()
-        ignore_index = True
-        df_gb[cat_col_selector_str] = _concat(
-            [_maybe_flatten_list_column(col, df)[col] for col in cat_col_selector.names],
-            ignore_index,
-        )
-        cat_col_selector = ColumnSelector([cat_col_selector_str])
-    else:
-        # Compile aggregation dictionary and add "squared-sum"
-        # column(s) (necessary when `agg_cols` is non-empty)
-        combined_col_selector = cat_col_selector + options.agg_cols
+        if options.concat_groups and len(cat_col_selector.names) > 1:
+            # Concatenate columns and replace cat_col_group
+            # with the single name
+            df_gb = type(df)()
+            ignore_index = True
+            df_gb[cat_col_selector_str] = _concat(
+                [_maybe_flatten_list_column(col, df)[col] for col in cat_col_selector.names],
+                ignore_index,
+            )
+            cat_col_selector = ColumnSelector([cat_col_selector_str])
+        else:
+            # Compile aggregation dictionary and add "squared-sum"
+            # column(s) (necessary when `agg_cols` is non-empty)
+            combined_col_selector = cat_col_selector + options.agg_cols
 
-        df_gb = df[combined_col_selector.names].copy(deep=False)
+            df_gb = df[combined_col_selector.names].copy(deep=False)
 
-    agg_dict = {}
-    base_aggs = []
-    if "size" in options.agg_list:
-        # This is either for a Categorify operation,
-        # or "size" is in the list of aggregations
-        base_aggs.append("size")
-    if set(options.agg_list).difference({"size", "min", "max"}):
-        # This is a groupby aggregation that may
-        # require "count" statistics
-        base_aggs.append("count")
-    agg_dict[cat_col_selector.names[0]] = base_aggs
-    if isinstance(options.agg_cols, list):
-        options.agg_cols = ColumnSelector(options.agg_cols)
-    for col in options.agg_cols.names:
-        agg_dict[col] = ["sum"]
-        if sum_sq:
-            name = _make_name(col, "pow2", sep=options.name_sep)
-            df_gb[name] = df_gb[col].pow(2)
-            agg_dict[name] = ["sum"]
+        agg_dict = {}
+        base_aggs = []
+        if "size" in options.agg_list:
+            # This is either for a Categorify operation,
+            # or "size" is in the list of aggregations
+            base_aggs.append("size")
+        if set(options.agg_list).difference({"size", "min", "max"}):
+            # This is a groupby aggregation that may
+            # require "count" statistics
+            base_aggs.append("count")
+        agg_dict[cat_col_selector.names[0]] = base_aggs
+        if isinstance(options.agg_cols, list):
+            options.agg_cols = ColumnSelector(options.agg_cols)
+        for col in options.agg_cols.names:
+            agg_dict[col] = ["sum"]
+            if sum_sq:
+                name = _make_name(col, "pow2", sep=options.name_sep)
+                df_gb[name] = df_gb[col].pow(2)
+                agg_dict[name] = ["sum"]
 
-        if calculate_min:
-            agg_dict[col].append("min")
-        if calculate_max:
-            agg_dict[col].append("max")
+            if calculate_min:
+                agg_dict[col].append("min")
+            if calculate_max:
+                agg_dict[col].append("max")
 
-    # Perform groupby and flatten column index
-    # (flattening provides better cudf/pd support)
-    df_gb = _maybe_flatten_list_column(cat_col_selector.names[0], df_gb)
-    # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
-    gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
-    gb.columns = [
-        _make_name(*(tuple(cat_col_selector.names) + name[1:]), sep=options.name_sep)
-        if name[0] == cat_col_selector.names[0]
-        else _make_name(*(tuple(cat_col_selector.names) + name), sep=options.name_sep)
-        for name in gb.columns.to_flat_index()
-    ]
-    gb.reset_index(inplace=True, drop=False)
-    del df_gb
-
-    if options.on_host and not is_cpu_object(gb):
-        # Spill GPU data to pyarrow buffer
-        return gb.to_arrow(preserve_index=False)
-    return gb
+        # Perform groupby and flatten column index
+        # (flattening provides better cudf/pd support)
+        df_gb = _maybe_flatten_list_column(cat_col_selector.names[0], df_gb)
+        # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
+        gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
+        gb.columns = [
+            _make_name(*(tuple(cat_col_selector.names) + name[1:]), sep=options.name_sep)
+            if name[0] == cat_col_selector.names[0]
+            else _make_name(*(tuple(cat_col_selector.names) + name), sep=options.name_sep)
+            for name in gb.columns.to_flat_index()
+        ]
+        gb.reset_index(inplace=True, drop=False)
+        del df_gb
+        # Split the result by the hash value of the categorical column
+        nsplits = options.tree_width[cat_col_selector_str]
+        for j, split in shuffle_group(
+            gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
+        ).items():
+            if spill and options.on_host and not is_cpu_object(split):
+                output[k] = split.to_arrow(preserve_index=False)
+            else:
+                output[k] = split
+            k += 1
+        del gb
+    return output
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
 def _mid_level_groupby(
-    df,
-    col_selector: ColumnSelector = None,
-    freq_limit_val=None,
-    options: FitOptions = None,
-    sort: bool = False,
-    final: bool = False,
+    dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions, spill=True
 ):
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    if options.on_host and isinstance(df, pa.Table):
-        # Construct gpu DataFrame from pyarrow table.
-        # `on_host=True` implies gpu-backed data.
-        df = dispatch.from_host(df)
-
+    df = _general_concat(dfs, ignore_index=True)
     groups = df.groupby(col_selector.names, dropna=False)
     gb = groups.agg(
         {col: _get_aggregation_type(col) for col in df.columns if col not in col_selector.names}
     )
     gb.reset_index(drop=False, inplace=True)
+
+    if spill and options.on_host and not is_cpu_object(gb):
+        gb_pd = gb.to_arrow(preserve_index=False)
+        del gb
+        return gb_pd
+    return gb
+
+
+@annotate("bottom_level_groupby", color="green", domain="nvt_python")
+def _bottom_level_groupby(
+    dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions, spill=True
+):
+
+    gb = _mid_level_groupby(dfs, col_selector, freq_limit_val, options, spill=False)
+    if options.concat_groups and len(col_selector.names) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
     name_count = _make_name(*(col_selector.names + ["count"]), sep=options.name_sep)
     name_size = _make_name(*(col_selector.names + ["size"]), sep=options.name_sep)
@@ -943,7 +962,7 @@ def _mid_level_groupby(
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
-    if options.on_host and not is_cpu_object(gb[required]) and not final:
+    if spill and options.on_host and not is_cpu_object(gb[required]):
         gb_pd = gb[required].to_arrow(preserve_index=False)
         del gb
         return gb_pd
@@ -1223,8 +1242,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     out_path = fs.sep.join([options.out_path, options.stat_name])
     fs.mkdirs(out_path, exist_ok=True)
 
-    options.on_host = False
-    # Generate single graph for all column groups
     dsk = {}
     token = tokenize(
         ddf,
@@ -1234,18 +1251,36 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         options.tree_width,
         options.on_host,
     )
-    write_agg_name = "write_agg-" + token
+    split_name = "split-" + token
+    reduce_1_name = "reduce_1-" + token
+    reduce_3_name = "reduce_3-" + token
     finalize_labels_name = options.stat_name + "-" + token
-    ddf_deps = []
+
+    # Use map_partitions to improve task fusion
+    grouped = ddf.to_bag(format="frame").map_partitions(
+        _top_level_groupby, options=options, token="level_1"
+    )
+    _grouped_meta = _top_level_groupby(ddf._meta, options=options)
+    _grouped_meta_col = {}
+
+    dsk_split = defaultdict(dict)
+    for p in range(ddf.npartitions):
+        k = 0
+        for c, col in enumerate(options.col_groups):
+            col = [col] if isinstance(col, str) else col
+            col_str = _make_name(*col.names, sep=options.name_sep)
+            _grouped_meta_col[c] = _grouped_meta[k]
+            for s in range(options.tree_width[col_str]):
+                dsk_split[c][(split_name, p, c, s)] = (getitem, (grouped.name, p), k)
+                k += 1
+
     col_groups_str = []
-    for i, col in enumerate(options.col_groups):
-        split_out = options.tree_width[
-            col_str
-        ]  # TODO: Add this to options and support spit_out > 1
+    col_group_frames = []
+    for c, col in enumerate(options.col_groups):
         col = [col] if isinstance(col, str) else col
-        col = ColumnSelector(col) if isinstance(col, list) else col
         col_str = _make_name(*col.names, sep=options.name_sep)
         col_groups_str.append(col_str)
+        reduce_2_name = f"reduce_2-{c}-" + token
         freq_limit_val = None
         if options.freq_limit:
             freq_limit_val = (
@@ -1253,85 +1288,101 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                 if isinstance(options.freq_limit, dict)
                 else options.freq_limit
             )
+        for s in range(options.tree_width[col_str]):
+            split_every = 32  # TODO: make this configurable
+            parts = ddf.npartitions
+            widths = [parts]
+            while parts > 1:
+                parts = math.ceil(parts / split_every)
+                widths.append(int(parts))
+            height = len(widths)
+            if height >= 2:
+                # Loop over reduction levels
+                for depth in range(1, height):
+                    # Loop over reduction groups
+                    for group in range(widths[depth]):
+                        # Calculate inputs for the current group
+                        p_max = widths[depth - 1]
+                        lstart = split_every * group
+                        lstop = min(lstart + split_every, p_max)
+                        if depth == 1:
+                            # Input nodes are from input layer
+                            input_keys = [(split_name, p, c, s) for p in range(lstart, lstop)]
+                        else:
+                            # Input nodes are tree-reduction nodes
+                            input_keys = [
+                                (reduce_1_name, p, c, s, depth - 1) for p in range(lstart, lstop)
+                            ]
 
-        # Use Dask's ACA code for the aggregation
-        chunk = _top_level_groupby
-        chunk_kwargs = dict(
-            cat_col_names=col,
-            options=options,
-        )
-        aggregate = _mid_level_groupby
-        aggregate_kwargs = dict(
-            col_selector=col,
-            freq_limit_val=freq_limit_val,
-            options=options,
-        )
+                        # Define task
+                        if depth == height - 1:
+                            # Final Node
+                            assert (
+                                group == 0
+                            ), f"group = {group}, not 0 for final tree reduction task"
+                            dsk_split[c][(reduce_2_name, s)] = (
+                                _bottom_level_groupby,
+                                input_keys,
+                                col,
+                                freq_limit_val,
+                                options,
+                                False,
+                            )
+                        else:
+                            # Intermediate Node
+                            dsk_split[c][(reduce_1_name, group, c, s, depth)] = (
+                                _mid_level_groupby,
+                                input_keys,
+                                col,
+                                freq_limit_val,
+                                options,
+                            )
+            else:
+                # Deal with single-partition case
+                dsk_split[c][(reduce_2_name, s)] = (
+                    _bottom_level_groupby,
+                    [(split_name, 0, c, s)],
+                    col,
+                    freq_limit_val,
+                    options,
+                    False,
+                )
 
-        _ddf = ddf[col.names]
-        _top_meta = _general_concat(
-            [_top_level_groupby(_ddf._meta, **chunk_kwargs)],
-            ignore_index=True,
+        # Make DataFrame collection for column-group result
+        _meta = _bottom_level_groupby(
+            [_grouped_meta_col[c]],
+            col,
+            freq_limit_val,
+            options,
+            spill=False,
         )
-        _mid_meta = _mid_level_groupby(
-            _top_meta,
-            **aggregate_kwargs,
-            final=True,
-        )
+        _divisions = (None,) * (options.tree_width[col_str] + 1)
+        graph = HighLevelGraph.from_collections(reduce_2_name, dsk_split[c], dependencies=[grouped])
+        col_group_frames.append(new_dd_object(graph, reduce_2_name, _meta, _divisions))
 
-        ddf_deps.append(
-            aca(
-                [_ddf],
-                chunk=chunk,
-                chunk_kwargs=chunk_kwargs,
-                combine=aggregate,
-                combine_kwargs=dict(
-                    **aggregate_kwargs,
-                    final=False,
-                ),
-                aggregate=aggregate,
-                aggregate_kwargs=dict(
-                    **aggregate_kwargs,
-                    final=True,
-                ),
-                meta=_mid_meta,
-                token="nvt-aggregate",
-                ignore_index=True,
-                split_every=16 if split_out == 1 else 8,
-                split_out=split_out,
-                split_out_setup=split_out_on_cols,
-                split_out_setup_kwargs={
-                    "cols": [col_str] if col_str in _top_meta.columns else col.names
-                },
-                sort=False,
+        if options.on_host:
+            col_group_frames[-1] = (
+                col_group_frames[-1]
+                .to_bag(format="frame")
+                .map_partitions(lambda x: x.to_arrow(preserve_index=False))
             )
-        )
 
-        # Temporary "hack" to set custom `concat_func`
-        # in Dask's ACA algorithm
-        hlg_layer(ddf_deps[-1].dask, "nvt-aggregate-agg").concat_func = partial(
-            _general_concat,
-            cardinality_memory_limit=options.cardinality_memory_limit,
-            col_selector=col,
-            ignore_index=True,
-        )
-
-        # Write aggregation to disk
-        # TODO: Support split_out > 1
-        dsk[(write_agg_name, i)] = (
+        dsk[(reduce_3_name, c)] = (
             write_func,
-            [(ddf_deps[-1]._name, s) for s in range(split_out)],
+            col_group_frames[-1].__dask_keys__(),
             out_path,
             col,
             options,
         )
 
-    # Create "final" task to trigger all aggregations
     dsk[finalize_labels_name] = (
         _finish_labels,
-        list(dsk.keys()),
+        [(reduce_3_name, c) for c, col in enumerate(options.col_groups)],
         col_groups_str,
     )
-    graph = HighLevelGraph.from_collections(finalize_labels_name, dsk, dependencies=ddf_deps)
+    graph = HighLevelGraph.from_collections(
+        finalize_labels_name, dsk, dependencies=col_group_frames
+    )
     return graph, finalize_labels_name
 
 
