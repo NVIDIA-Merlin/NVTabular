@@ -979,7 +979,14 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+def _write_gb_stats(
+    dfs,
+    base_path,
+    col_selector: ColumnSelector,
+    options: FitOptions,
+    cpu: bool,
+    tmp_path: str = None,
+):
     if options.concat_groups and len(col_selector) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
@@ -1022,7 +1029,14 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+def _write_uniques(
+    dfs,
+    base_path,
+    col_selector: ColumnSelector,
+    options: FitOptions,
+    cpu: bool,
+    tmp_path: str = None,
+):
     """Writes out a dataframe to a parquet file.
 
     Parameters
@@ -1046,13 +1060,23 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    # Collect aggregation results into single frame
-    df = _general_concat(
-        dfs,
-        cardinality_memory_limit=options.cardinality_memory_limit,
-        col_selector=col_selector,
-        ignore_index=True,
-    )
+    if tmp_path:
+        # TODO: Create an "official" dispatch for this
+        # TODO: Avoid computation for "big" data
+        if cpu:
+            df = dd.read_parquet(tmp_path).reset_index(drop=True).compute()
+        else:
+            import dask_cudf
+
+            df = dask_cudf.read_parquet(tmp_path).reset_index(drop=True).compute()
+    else:
+        # Collect aggregation results into single frame
+        df = _general_concat(
+            dfs,
+            cardinality_memory_limit=options.cardinality_memory_limit,
+            col_selector=col_selector,
+            ignore_index=True,
+        )
 
     # Check if we should warn user that this Column is likely
     # to cause memory-pressure issues
@@ -1360,12 +1384,17 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         graph = HighLevelGraph.from_collections(reduce_2_name, dsk_split[c], dependencies=[grouped])
         col_group_frames.append(new_dd_object(graph, reduce_2_name, _meta, _divisions))
 
-        if options.on_host:
-            col_group_frames[-1] = (
-                col_group_frames[-1]
-                .to_bag(format="frame")
-                .map_partitions(lambda x: x.to_arrow(preserve_index=False))
+        # Write multi-partition data to temporary files.
+        # TODO: Avoid the temporary write, and convert
+        # `write_func` into a collection-level function
+        cpu = isinstance(col_group_frames[-1]._meta, pd.DataFrame)
+        if col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
+            tmp_path = f"tmp.{c}"
+            col_group_frames[-1] = col_group_frames[-1].to_parquet(
+                tmp_path, overwrite=True, write_index=False, compute=False
             )
+        else:
+            tmp_path = None
 
         dsk[(reduce_3_name, c)] = (
             write_func,
@@ -1373,6 +1402,8 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             out_path,
             col,
             options,
+            cpu,
+            tmp_path,
         )
 
     dsk[finalize_labels_name] = (
