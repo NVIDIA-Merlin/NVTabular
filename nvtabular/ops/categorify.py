@@ -1223,6 +1223,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     out_path = fs.sep.join([options.out_path, options.stat_name])
     fs.mkdirs(out_path, exist_ok=True)
 
+    options.on_host = False
     # Generate single graph for all column groups
     dsk = {}
     token = tokenize(
@@ -1238,7 +1239,9 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     ddf_deps = []
     col_groups_str = []
     for i, col in enumerate(options.col_groups):
-        split_out = 1  # TODO: Add this to options and support spit_out > 1
+        split_out = options.tree_width[
+            col_str
+        ]  # TODO: Add this to options and support spit_out > 1
         col = [col] if isinstance(col, str) else col
         col = ColumnSelector(col) if isinstance(col, list) else col
         col_str = _make_name(*col.names, sep=options.name_sep)
@@ -1263,9 +1266,21 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             freq_limit_val=freq_limit_val,
             options=options,
         )
+
+        _ddf = ddf[col.names]
+        _top_meta = _general_concat(
+            [_top_level_groupby(_ddf._meta, **chunk_kwargs)],
+            ignore_index=True,
+        )
+        _mid_meta = _mid_level_groupby(
+            _top_meta,
+            **aggregate_kwargs,
+            final=True,
+        )
+
         ddf_deps.append(
             aca(
-                [ddf],
+                [_ddf],
                 chunk=chunk,
                 chunk_kwargs=chunk_kwargs,
                 combine=aggregate,
@@ -1278,20 +1293,15 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                     **aggregate_kwargs,
                     final=True,
                 ),
-                meta=_mid_level_groupby(
-                    _general_concat(
-                        [_top_level_groupby(ddf._meta, **chunk_kwargs)],
-                        ignore_index=True,
-                    ),
-                    **aggregate_kwargs,
-                    final=True,
-                ),
+                meta=_mid_meta,
                 token="nvt-aggregate",
                 ignore_index=True,
-                split_every=options.tree_width[col_str],
+                split_every=16 if split_out == 1 else 8,
                 split_out=split_out,
                 split_out_setup=split_out_on_cols,
-                split_out_setup_kwargs={"cols": col.names},
+                split_out_setup_kwargs={
+                    "cols": [col_str] if col_str in _top_meta.columns else col.names
+                },
                 sort=False,
             )
         )
@@ -1309,7 +1319,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         # TODO: Support split_out > 1
         dsk[(write_agg_name, i)] = (
             write_func,
-            [(ddf_deps[-1]._name, 0)],
+            [(ddf_deps[-1]._name, s) for s in range(split_out)],
             out_path,
             col,
             options,
