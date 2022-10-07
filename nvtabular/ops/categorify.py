@@ -1133,14 +1133,10 @@ def _write_uniques(
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
     if path:
-        # TODO: Create an "official" dispatch for this?
-        if cpu:
-            df = dd.read_parquet(path).reset_index(drop=True)
-        else:
-            import dask_cudf
-
-            df = dask_cudf.read_parquet(path).reset_index(drop=True)
-
+        df = dispatch.read_dispatch(cpu=cpu, collection=True)(
+            path,
+            split_row_groups=False,
+        ).reset_index(drop=True)
         simple = simple and df.npartitions > 1
         if simple:  # No need to read all categories in at once
             col_name = col_selector.names[0]
