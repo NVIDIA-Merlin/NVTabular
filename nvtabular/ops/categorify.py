@@ -1614,6 +1614,9 @@ def _encode(
         value.reset_index(drop=False, inplace=True)
 
     use_collection = hasattr(value, "_meta")
+    if use_collection and value.npartitions == 1:
+        value = value.compute(scheduler="synchronous")
+        use_collection = False
     if use_collection or not search_sorted:
         if list_col:
             codes = dispatch.flatten_list_column(df[selection_l.names[0]])
