@@ -1037,58 +1037,8 @@ def _write_gb_stats(
     cpu: bool,
     path: str = None,
 ):
+    # TODO: Remove this function?
     return path
-
-    # if options.concat_groups and len(col_selector) > 1:
-    #     col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
-
-    # if tmp_path:
-    #     # TODO: Create an "official" dispatch for this
-    #     # TODO: Avoid computation for "big" data
-    #     if cpu:
-    #         dfs = [dd.read_parquet(tmp_path).reset_index(drop=True).compute()]
-    #     else:
-    #         import dask_cudf
-
-    #         dfs = [dask_cudf.read_parquet(tmp_path).reset_index(drop=True).compute()]
-
-    # rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
-    # path = os.path.join(base_path, rel_path)
-    # pwriter = None
-    # #if (not options.on_host or is_cpu_object(dfs[0])) and len(dfs):
-    # if len(dfs) and not isinstance(dfs[0], pa.Table):
-    #     # Want first non-empty df for schema (if there are any)
-    #     _d = next((df for df in dfs if len(df)), dfs[0])
-    #     pwriter = dispatch.parquet_writer_dispatch(_d, path=path, compression=None)
-
-    # # Loop over dfs and append to file
-    # # TODO: For high-cardinality columns, should support
-    # #       Dask-based to_parquet call here (but would need to
-    # #       support directory reading within dependent ops)
-    # n_writes = 0
-    # for df in dfs:
-    #     if len(df):
-
-    #         if isinstance(df, pa.Table): #options.on_host and not is_cpu_object(df):
-    #             # Use pyarrow - df is already a pyarrow table
-    #             if pwriter is None:
-    #                 pwriter = pq.ParquetWriter(path, df.schema, compression=None)
-    #             pwriter.write_table(df)
-    #         else:
-    #             # df is a cudf or pandas DataFrame
-    #             df.reset_index(drop=True, inplace=True)
-    #             pwriter.write_table(df)
-    #         n_writes += 1
-
-    # # No data to write
-    # if n_writes == 0:
-    #     raise RuntimeError("GroupbyStatistics result is empty.")
-
-    # # Close writer and return path
-    # if pwriter is not None:
-    #     pwriter.close()
-
-    # return path
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
@@ -1645,7 +1595,9 @@ def _encode(
                     )
         else:
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
-                path, columns=selection_r.names
+                path,
+                columns=selection_r.names,
+                split_row_groups=False,  # Remove if use_collection is False
             )
             value.index = value.index.rename("labels")
             if use_collection:
@@ -1684,17 +1636,19 @@ def _encode(
         if freq_threshold and buckets and storage_name in buckets:
 
             if use_collection:
-                merged_df = (
-                    value.merge(
-                        codes,
-                        left_on=selection_r.names,
-                        right_on=selection_l.names,
-                        how="right",
-                        broadcast=True,
-                    )
-                    .compute(scheduler="synchronous")
-                    .sort_values("order")
-                )
+                # Manual broadcast merge
+                merged_df = _concat(
+                    [
+                        codes.merge(
+                            part.compute(scheduler="synchronous"),
+                            left_on=selection_l.names,
+                            right_on=selection_r.names,
+                            how="left",
+                        ).dropna(subset=["labels"])
+                        for part in value.partitions
+                    ],
+                    ignore_index=False,
+                ).sort_values("order")
             else:
                 merged_df = codes.merge(
                     value, left_on=selection_l.names, right_on=selection_r.names, how="left"
@@ -1702,10 +1656,16 @@ def _encode(
 
             merged_df.reset_index(drop=True, inplace=True)
             max_id = merged_df["labels"].max()
-            merged_df["labels"].fillna(
-                df._constructor_sliced(na_sentinel + max_id + 1), inplace=True
-            )
-            labels = merged_df["labels"].values
+            if len(merged_df) < len(codes):
+                # Missing nulls
+                labels = df._constructor_sliced(na_sentinel + max_id + 1)
+                labels.iloc[merged_df["order"]] = merged_df["labels"]
+                labels = labels.values
+            else:
+                merged_df["labels"].fillna(
+                    df._constructor_sliced(na_sentinel + max_id + 1), inplace=True
+                )
+                labels = merged_df["labels"].values
         # only do hashing
         elif buckets and storage_name in buckets:
             labels = na_sentinel
@@ -1713,17 +1673,31 @@ def _encode(
         else:
             na_sentinel = 0
             if use_collection:
-                labels = (
-                    value.merge(
-                        codes,
-                        left_on=selection_r.names,
-                        right_on=selection_l.names,
-                        how="right",
-                        broadcast=True,
-                    )
-                    .compute(scheduler="synchronous")
-                    .sort_values("order")["labels"]
+                # Manual broadcast merge
+                merged_df = _concat(
+                    [
+                        codes.merge(
+                            part.compute(scheduler="synchronous"),
+                            left_on=selection_l.names,
+                            right_on=selection_r.names,
+                            how="left",
+                        ).dropna(subset=["labels"])
+                        for part in value.partitions
+                    ],
+                    ignore_index=True,
                 )
+                if len(merged_df) < len(codes):
+                    # Missing nulls
+                    labels = codes._constructor_sliced(
+                        np.full(
+                            len(codes),
+                            na_sentinel,
+                            like=merged_df["labels"].values,
+                        ),
+                    )
+                    labels.iloc[merged_df["order"]] = merged_df["labels"]
+                else:
+                    labels = merged_df.sort_values("order")["labels"].reset_index(drop=True)
             else:
                 labels = codes.merge(
                     value, left_on=selection_l.names, right_on=selection_r.names, how="left"
