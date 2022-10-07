@@ -27,6 +27,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.dataset as pa_ds
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat, new_dd_object
@@ -35,15 +36,18 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
-from pyarrow import parquet as pq
 
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
+
+# from merlin.io.dataset import Dataset
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
+
+# from pyarrow import parquet as pq
 
 
 class Categorify(StatOperator):
@@ -395,7 +399,12 @@ class Categorify(StatOperator):
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")
                 col_df = dispatch.make_df(vals)
-                col_df.to_parquet(save_path)
+                dispatch.convert_data(
+                    col_df, cpu=isinstance(col_df, pd.DataFrame), to_collection=True
+                ).to_parquet(save_path, overwrite=True, compute=False).compute(
+                    scheduler="synchronous"
+                )
+                # col_df.to_parquet(save_path)
                 categories[col] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
             categories = vocabs
@@ -631,7 +640,10 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
         max_size = {name: max_size for name in cat_names}
     for col in cat_names:
         path = paths.get(col)
-        num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
+        num_rows = 0
+        if path:
+            for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
+                num_rows += file_frag.metadata.num_rows
         if isinstance(buckets, dict):
             bucket_size = buckets.get(col, 0)
         elif isinstance(buckets, int):
@@ -862,11 +874,24 @@ def _top_level_groupby(df, options: FitOptions = None, spill=True):
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
+
+        # Extract null groups into gb_null
+        isnull = gb.isnull().any(1)
+        gb_null = gb[~isnull]
+        gb = gb[isnull]
+        if not len(gb_null):
+            gb_null = None
+        del isnull
+
         # Split the result by the hash value of the categorical column
         nsplits = options.tree_width[cat_col_selector_str]
         for j, split in shuffle_group(
             gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
         ).items():
+            if gb_null is not None:
+                # Guarantee that the first split will contain null groups
+                split = _concat([gb_null, split], ignore_index=True)
+                gb_null = None
             if spill and options.on_host and not is_cpu_object(split):
                 output[k] = split.to_arrow(preserve_index=False)
             else:
@@ -985,47 +1010,60 @@ def _write_gb_stats(
     col_selector: ColumnSelector,
     options: FitOptions,
     cpu: bool,
-    tmp_path: str = None,
+    path: str = None,
 ):
-    if options.concat_groups and len(col_selector) > 1:
-        col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
-
-    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
-    path = os.path.join(base_path, rel_path)
-    pwriter = None
-    if (not options.on_host or is_cpu_object(dfs[0])) and len(dfs):
-        # Want first non-empty df for schema (if there are any)
-        _d = next((df for df in dfs if len(df)), dfs[0])
-        pwriter = dispatch.parquet_writer_dispatch(_d, path=path, compression=None)
-
-    # Loop over dfs and append to file
-    # TODO: For high-cardinality columns, should support
-    #       Dask-based to_parquet call here (but would need to
-    #       support directory reading within dependent ops)
-    n_writes = 0
-    for df in dfs:
-        if len(df):
-
-            if options.on_host and not is_cpu_object(df):
-                # Use pyarrow - df is already a pyarrow table
-                if pwriter is None:
-                    pwriter = pq.ParquetWriter(path, df.schema, compression=None)
-                pwriter.write_table(df)
-            else:
-                # df is a cudf or pandas DataFrame
-                df.reset_index(drop=True, inplace=True)
-                pwriter.write_table(df)
-            n_writes += 1
-
-    # No data to write
-    if n_writes == 0:
-        raise RuntimeError("GroupbyStatistics result is empty.")
-
-    # Close writer and return path
-    if pwriter is not None:
-        pwriter.close()
-
     return path
+
+    # if options.concat_groups and len(col_selector) > 1:
+    #     col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
+
+    # if tmp_path:
+    #     # TODO: Create an "official" dispatch for this
+    #     # TODO: Avoid computation for "big" data
+    #     if cpu:
+    #         dfs = [dd.read_parquet(tmp_path).reset_index(drop=True).compute()]
+    #     else:
+    #         import dask_cudf
+
+    #         dfs = [dask_cudf.read_parquet(tmp_path).reset_index(drop=True).compute()]
+
+    # rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
+    # path = os.path.join(base_path, rel_path)
+    # pwriter = None
+    # #if (not options.on_host or is_cpu_object(dfs[0])) and len(dfs):
+    # if len(dfs) and not isinstance(dfs[0], pa.Table):
+    #     # Want first non-empty df for schema (if there are any)
+    #     _d = next((df for df in dfs if len(df)), dfs[0])
+    #     pwriter = dispatch.parquet_writer_dispatch(_d, path=path, compression=None)
+
+    # # Loop over dfs and append to file
+    # # TODO: For high-cardinality columns, should support
+    # #       Dask-based to_parquet call here (but would need to
+    # #       support directory reading within dependent ops)
+    # n_writes = 0
+    # for df in dfs:
+    #     if len(df):
+
+    #         if isinstance(df, pa.Table): #options.on_host and not is_cpu_object(df):
+    #             # Use pyarrow - df is already a pyarrow table
+    #             if pwriter is None:
+    #                 pwriter = pq.ParquetWriter(path, df.schema, compression=None)
+    #             pwriter.write_table(df)
+    #         else:
+    #             # df is a cudf or pandas DataFrame
+    #             df.reset_index(drop=True, inplace=True)
+    #             pwriter.write_table(df)
+    #         n_writes += 1
+
+    # # No data to write
+    # if n_writes == 0:
+    #     raise RuntimeError("GroupbyStatistics result is empty.")
+
+    # # Close writer and return path
+    # if pwriter is not None:
+    #     pwriter.close()
+
+    # return path
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
@@ -1035,7 +1073,7 @@ def _write_uniques(
     col_selector: ColumnSelector,
     options: FitOptions,
     cpu: bool,
-    tmp_path: str = None,
+    path: str = None,
 ):
     """Writes out a dataframe to a parquet file.
 
@@ -1057,18 +1095,73 @@ def _write_uniques(
         the path to the output parquet file.
 
     """
+    # Check if we will need to pull all data into memory (at once)
+    # to support the fit options
+    simple = (
+        len(col_selector.names) == 1
+        and not options.freq_limit
+        and not options.num_buckets
+        and not options.max_size
+    )
+
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    if tmp_path:
-        # TODO: Create an "official" dispatch for this
-        # TODO: Avoid computation for "big" data
+    if path:
+        # TODO: Create an "official" dispatch for this?
         if cpu:
-            df = dd.read_parquet(tmp_path).reset_index(drop=True).compute()
+            df = dd.read_parquet(path).reset_index(drop=True)
         else:
             import dask_cudf
 
-            df = dask_cudf.read_parquet(tmp_path).reset_index(drop=True).compute()
+            df = dask_cudf.read_parquet(path).reset_index(drop=True)
+
+        if simple and df.npartitions > 1:  # No need to read all categories in at once
+            from dask.blockwise import BlockIndex
+
+            col_name = col_selector.names[0]
+            name_size = col_name + "_size"
+            has_size = name_size in df
+
+            # Step 1 - Sort by col_name
+            df = df.sort_values(col_name, na_position="first")
+
+            # Step 2 - Check for null group and drop it
+            def _drop_first_row(part, index):
+                return part.iloc[1:] if index == (0,) else part
+
+            null_row = df.head(1)
+            if null_row[col_name].iloc[:1].isnull().any():
+                df = df.map_partitions(_drop_first_row, BlockIndex((df.npartitions,)))
+            else:
+                _data = {col_name: nullable_series([None], null_row, null_row[col_name].dtype)}
+                if has_size:
+                    _data[name_size] = nullable_series([0], null_row, null_row[name_size].dtype)
+                null_row = type(null_row)(_data)
+
+            # Step 3 - Sort by size (without null group)
+            if has_size:
+                df = df.sort_values(name_size, ascending=False)
+
+            # Step 4 - Add null group back to df
+            def _add_row(part, index, first_row=None):
+                if index == (0,) and first_row is not None:
+                    return _concat([first_row, part], ignore_index=True)
+                return part
+
+            df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)), first_row=null_row)
+            rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
+            path = "/".join([base_path, rel_path])
+            df.to_parquet(path, overwrite=True, compute=False, write_index=False).compute(
+                scheduler="synchronous"
+            )
+
+            # TODO: Delete tmp dir at path
+            return path
+
+        # TODO: Avoid computing for more cases
+        df = df.compute(scheduler="synchronous")
+        # TODO: Delete tmp dir at path
     else:
         # Collect aggregation results into single frame
         df = _general_concat(
@@ -1105,14 +1198,18 @@ def _write_uniques(
             # Using (default) "joint" encoding
             df = _joint_encode(df, col_selector, options)
 
-        df.to_parquet(path, index=False, compression=None)
+        df_write = df
     else:
         df_null = type(df)({c: [None] for c in col_selector.names})
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
-        df_null.to_parquet(path, index=False, compression=None)
+        df_write = df_null
 
+    df_write.to_parquet(path, overwrite=True, compute=False, write_index=False).compute(
+        scheduler="synchronous"
+    )
     del df
+    del df_write
     return path
 
 
@@ -1388,13 +1485,25 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         # TODO: Avoid the temporary write, and convert
         # `write_func` into a collection-level function
         cpu = isinstance(col_group_frames[-1]._meta, pd.DataFrame)
-        if col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
-            tmp_path = f"tmp.{c}"
+        if write_func.__name__ == "_write_gb_stats":
+            if options.concat_groups and len(col) > 1:
+                col_selector = ColumnSelector([_make_name(*col.names, sep=options.name_sep)])
+            else:
+                col_selector = col
+            rel_path = "cat_stats.%s.parquet" % (
+                _make_name(*col_selector.names, sep=options.name_sep)
+            )
+            path = os.path.join(out_path, rel_path)
             col_group_frames[-1] = col_group_frames[-1].to_parquet(
-                tmp_path, overwrite=True, write_index=False, compute=False
+                path, overwrite=True, write_index=False, compute=False
+            )
+        elif col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
+            path = os.path.join(out_path, f"tmp.uniques.{c}")
+            col_group_frames[-1] = col_group_frames[-1].to_parquet(
+                path, overwrite=True, write_index=False, compute=False
             )
         else:
-            tmp_path = None
+            path = None
 
         dsk[(reduce_3_name, c)] = (
             write_func,
@@ -1403,7 +1512,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             col,
             options,
             cpu,
-            tmp_path,
+            path,
         )
 
     dsk[finalize_labels_name] = (
@@ -1498,8 +1607,12 @@ def _encode(
     selection_r = ColumnSelector(name if isinstance(name, list) else [storage_name])
     list_col = is_list_col(selection_l, df)
     if path:
-        read_pq_func = dispatch.read_parquet_dispatch(df)
-        if cat_cache is not None:
+        use_collection = True
+        read_pq_func = dispatch.read_dispatch(df, fmt="parquet", collection=use_collection)
+        # TODO: Update fetch_table_data to support dask-based read
+        # (Then always use dask-based read and set use_collection
+        # based on value.npartitions after the read)
+        if cat_cache is not None and not use_collection:
             cat_cache = (
                 cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
             )
@@ -1517,18 +1630,22 @@ def _encode(
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
                 path, columns=selection_r.names
             )
-            value.index.name = "labels"
-            value.reset_index(drop=False, inplace=True)
+            value.index = value.index.rename("labels")
+            if use_collection:
+                value = value.reset_index(drop=False)
+            else:
+                value.reset_index(drop=False, inplace=True)
 
     if value is None:
         value = type(df)()
         for c in selection_r.names:
             typ = df[selection_l.names[0]].dtype if len(selection_l.names) == 1 else df[c].dtype
             value[c] = nullable_series([None], df, typ)
-        value.index.name = "labels"
+        value.index = value.index.rename("labels")
         value.reset_index(drop=False, inplace=True)
 
-    if not search_sorted:
+    use_collection = hasattr(value, "_meta")
+    if use_collection or not search_sorted:
         if list_col:
             codes = dispatch.flatten_list_column(df[selection_l.names[0]])
             codes["order"] = dispatch.arange(len(codes), like_df=df)
@@ -1548,9 +1665,24 @@ def _encode(
 
         # apply frequency hashing
         if freq_threshold and buckets and storage_name in buckets:
-            merged_df = codes.merge(
-                value, left_on=selection_l.names, right_on=selection_r.names, how="left"
-            ).sort_values("order")
+
+            if use_collection:
+                merged_df = (
+                    value.merge(
+                        codes,
+                        left_on=selection_r.names,
+                        right_on=selection_l.names,
+                        how="right",
+                        broadcast=True,
+                    )
+                    .compute(scheduler="synchronous")
+                    .sort_values("order")
+                )
+            else:
+                merged_df = codes.merge(
+                    value, left_on=selection_l.names, right_on=selection_r.names, how="left"
+                ).sort_values("order")
+
             merged_df.reset_index(drop=True, inplace=True)
             max_id = merged_df["labels"].max()
             merged_df["labels"].fillna(
@@ -1563,9 +1695,22 @@ def _encode(
         # no hashing
         else:
             na_sentinel = 0
-            labels = codes.merge(
-                value, left_on=selection_l.names, right_on=selection_r.names, how="left"
-            ).sort_values("order")["labels"]
+            if use_collection:
+                labels = (
+                    value.merge(
+                        codes,
+                        left_on=selection_r.names,
+                        right_on=selection_l.names,
+                        how="right",
+                        broadcast=True,
+                    )
+                    .compute(scheduler="synchronous")
+                    .sort_values("order")["labels"]
+                )
+            else:
+                labels = codes.merge(
+                    value, left_on=selection_l.names, right_on=selection_r.names, how="left"
+                ).sort_values("order")["labels"]
             labels.fillna(na_sentinel, inplace=True)
             labels = labels.values
     else:
@@ -1661,4 +1806,7 @@ def _reset_df_index(col_name, cat_file_path, idx_count):
     # save the new indexes in file
     new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
     cat_df.to_parquet(new_cat_file_path)
+    dispatch.convert_data(
+        cat_df, cpu=isinstance(cat_df, pd.DataFrame), to_collection=True
+    ).to_parquet(new_cat_file_path, overwrite=True, compute=False).compute(scheduler="synchronous")
     return idx_count, new_cat_file_path

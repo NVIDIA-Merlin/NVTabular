@@ -66,9 +66,9 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
         workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     vals = df["session_id"].value_counts()
-    vocab = dispatch.read_dispatch(cpu=cpu)(
+    vocab = dispatch.read_dispatch(cpu=cpu, fmt="parquet", collection=True)(
         os.path.join(tmpdir, "categories", "unique.session_id.parquet")
-    )
+    ).compute(scheduler="synchronous")
 
     if cpu:
         expected = dict(zip(vals.index, vals))
