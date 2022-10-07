@@ -29,6 +29,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
 from dask.base import tokenize
+from dask.blockwise import BlockIndex
 from dask.core import flatten
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.shuffle import shuffle_group
@@ -399,12 +400,7 @@ class Categorify(StatOperator):
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")
                 col_df = dispatch.make_df(vals)
-                dispatch.convert_data(
-                    col_df, cpu=isinstance(col_df, pd.DataFrame), to_collection=True
-                ).to_parquet(save_path, overwrite=True, compute=False).compute(
-                    scheduler="synchronous"
-                )
-                # col_df.to_parquet(save_path)
+                _to_parquet_dask(col_df, save_path)
                 categories[col] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
             categories = vocabs
@@ -671,6 +667,35 @@ def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
 
 def _make_name(*args, sep="_"):
     return sep.join(args)
+
+
+def _to_parquet_dask(ref_df, path, compute=True, write_index=False):
+    fs = get_fs_token_paths(path, mode="wb")[0]
+    path = fs._strip_protocol(path)
+    if fs.isdir(path):
+        fs.rm(path, recursive=True)
+    fs.mkdir(path, exists_ok=True)
+
+    _ddf = (
+        ref_df
+        if hasattr(ref_df, "_meta")
+        else dispatch.convert_data(ref_df, cpu=isinstance(ref_df, pd.DataFrame), to_collection=True)
+    )
+
+    if not compute:
+        kwargs = dict(overwrite=True, compute=False, write_index=write_index)
+        return _ddf.to_parquet(path, **kwargs)
+
+    size = 0
+    for p, part in enumerate(_ddf.partitions):
+        local_path = "/".join([path, f"part.{p}.parquet"])
+        _df = part.compute(scheduler="synchronous")
+        if not write_index:
+            _len = len(_df)
+            _df = _df.set_index(np.arange(size, size + _len), drop=True)
+            size += _len
+        _df.to_parquet(local_path)
+    return
 
 
 @dataclass
@@ -1116,16 +1141,20 @@ def _write_uniques(
 
             df = dask_cudf.read_parquet(path).reset_index(drop=True)
 
-        if simple and df.npartitions > 1:  # No need to read all categories in at once
-            from dask.blockwise import BlockIndex
-
+        simple = simple and df.npartitions > 1
+        if simple:  # No need to read all categories in at once
             col_name = col_selector.names[0]
             name_size = col_name + "_size"
             has_size = name_size in df
 
-            # Step 1 - Sort by col_name
-            df = df.sort_values(col_name, na_position="first")
+            try:
+                # Step 1 - Sort by col_name
+                df = df.sort_values(col_name, na_position="first")
+            except NotImplementedError:
+                # Dask-based sort failed - Need to compute first
+                simple = False
 
+        if simple:
             # Step 2 - Check for null group and drop it
             def _drop_first_row(part, index):
                 return part.iloc[1:] if index == (0,) else part
@@ -1152,9 +1181,7 @@ def _write_uniques(
             df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)), first_row=null_row)
             rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
             path = "/".join([base_path, rel_path])
-            df.to_parquet(path, overwrite=True, compute=False, write_index=False).compute(
-                scheduler="synchronous"
-            )
+            _to_parquet_dask(df, path)
 
             # TODO: Delete tmp dir at path
             return path
@@ -1205,9 +1232,7 @@ def _write_uniques(
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_write = df_null
 
-    df_write.to_parquet(path, overwrite=True, compute=False, write_index=False).compute(
-        scheduler="synchronous"
-    )
+    _to_parquet_dask(df_write, path)
     del df
     del df_write
     return path
@@ -1494,14 +1519,10 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                 _make_name(*col_selector.names, sep=options.name_sep)
             )
             path = os.path.join(out_path, rel_path)
-            col_group_frames[-1] = col_group_frames[-1].to_parquet(
-                path, overwrite=True, write_index=False, compute=False
-            )
+            col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
         elif col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
             path = os.path.join(out_path, f"tmp.uniques.{c}")
-            col_group_frames[-1] = col_group_frames[-1].to_parquet(
-                path, overwrite=True, write_index=False, compute=False
-            )
+            col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
         else:
             path = None
 
@@ -1798,15 +1819,14 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
 
 
 def _reset_df_index(col_name, cat_file_path, idx_count):
-    cat_df = dispatch.read_parquet_dispatch(None)(cat_file_path)
+    cat_df = dispatch.read_dispatch(collection=True)(cat_file_path, index=False).compute(
+        scheduler="synchronous"
+    )
     # change indexes for category
     cat_df.index += idx_count
     # update count
     idx_count += cat_df.shape[0]
     # save the new indexes in file
     new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
-    cat_df.to_parquet(new_cat_file_path)
-    dispatch.convert_data(
-        cat_df, cpu=isinstance(cat_df, pd.DataFrame), to_collection=True
-    ).to_parquet(new_cat_file_path, overwrite=True, compute=False).compute(scheduler="synchronous")
+    _to_parquet_dask(cat_df, new_cat_file_path, write_index=True)
     return idx_count, new_cat_file_path

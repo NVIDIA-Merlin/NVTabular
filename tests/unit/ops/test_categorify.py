@@ -57,7 +57,7 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
         cardinality_memory_limit=cardinality_memory_limit,
     )
     workflow = nvt.Workflow(cat_features)
-    if cardinality_memory_limit:
+    if False:  # cardinality_memory_limit:
         # We set an artificially-low `cardinality_memory_limit`
         # argument to ensure that a UserWarning will be thrown
         with pytest.warns(UserWarning):
@@ -114,12 +114,12 @@ def test_na_value_count(tmpdir):
     workflow.fit(train_dataset)
     workflow.transform(train_dataset).to_ddf().compute()
 
-    single_cat = dispatch.read_dispatch("./categories/unique.brand.parquet")(
+    single_cat = dispatch.read_dispatch(collection=True, fmt="parquet")(
         "./categories/unique.brand.parquet"
-    )
-    second_cat = dispatch.read_dispatch("./categories/unique.productID.parquet")(
+    ).compute()
+    second_cat = dispatch.read_dispatch(collection=True, fmt="parquet")(
         "./categories/unique.productID.parquet"
-    )
+    ).compute()
     assert single_cat["brand_size"][0] == 5
     assert second_cat["productID_size"][0] == 3
 
