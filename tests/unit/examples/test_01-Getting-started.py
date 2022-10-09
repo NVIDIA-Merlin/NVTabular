@@ -14,10 +14,12 @@
 # limitations under the License.
 #
 import nest_asyncio
+import pytest
 from testbook import testbook
 
 from tests.conftest import REPO_ROOT
 
+pytest.importorskip("tensorflow")
 nest_asyncio.apply()
 
 

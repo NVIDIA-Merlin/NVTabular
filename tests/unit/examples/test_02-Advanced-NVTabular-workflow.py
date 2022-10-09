@@ -20,6 +20,7 @@ from testbook import testbook
 from tests.conftest import REPO_ROOT
 
 pytest.importorskip("cudf")
+pytest.importorskip("tensorflow")
 nest_asyncio.apply()
 
 
