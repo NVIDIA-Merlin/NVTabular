@@ -31,6 +31,7 @@ import pyarrow.dataset as pa_ds
 from dask.base import tokenize
 from dask.blockwise import BlockIndex
 from dask.core import flatten
+from dask.dataframe.core import DataFrame as DaskDataFrame
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
@@ -197,6 +198,8 @@ class Categorify(StatOperator):
         used to store unique categories. By default, this limit is 12.5% of the total memory.
         Note that this argument is meant as a guide for internal optimizations and UserWarnings
         within NVTabular, and does not guarantee that the memory limit will be satisfied.
+    storage_options: dict, default None
+        Optional fsspec storage options needed to access ``out_path``.
     """
 
     def __init__(
@@ -217,6 +220,7 @@ class Categorify(StatOperator):
         start_index=0,
         single_table=False,
         cardinality_memory_limit=None,
+        storage_options=None,
     ):
 
         # We need to handle three types of encoding here:
@@ -272,6 +276,7 @@ class Categorify(StatOperator):
         self.search_sorted = search_sorted
         self.start_index = start_index
         self.cardinality_memory_limit = cardinality_memory_limit
+        self.storage_options = storage_options or {}
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -669,32 +674,61 @@ def _make_name(*args, sep="_"):
     return sep.join(args)
 
 
-def _to_parquet_dask(ref_df, path, compute=True, write_index=False):
-    fs = get_fs_token_paths(path, mode="wb")[0]
+def _to_parquet_dask(
+    df_out,
+    path,
+    compute=True,
+    write_index=False,
+    storage_options=None,
+):
+    # Simple utility to write a DataFrame
+    # to a directory of Parquet files
+
+    # Setup file-system and path
+    storage_options = storage_options or {}
+    fs = get_fs_token_paths(path, mode="wb", storage_options=storage_options)[0]
     path = fs._strip_protocol(path)
+
+    # Check if we have a dask collection
+    is_collection = isinstance(df_out, DaskDataFrame)
+
+    # If compute=False, use `ddf.to_parquet`
+    if not compute:
+        kwargs = dict(
+            overwrite=True,
+            compute=False,
+            write_index=write_index,
+            storage_options=storage_options,
+        )
+        return (
+            df_out
+            if is_collection
+            else dispatch.convert_data(
+                df_out,
+                cpu=isinstance(df_out, pd.DataFrame),
+                to_collection=True,
+            )
+        ).to_parquet(path, **kwargs)
+
+    # Create empty directory if it doesn't already exist
     if fs.isdir(path):
         fs.rm(path, recursive=True)
     fs.mkdir(path, exists_ok=True)
 
-    _ddf = (
-        ref_df
-        if hasattr(ref_df, "_meta")
-        else dispatch.convert_data(ref_df, cpu=isinstance(ref_df, pd.DataFrame), to_collection=True)
-    )
-
-    if not compute:
-        kwargs = dict(overwrite=True, compute=False, write_index=write_index)
-        return _ddf.to_parquet(path, **kwargs)
-
+    # Iterate over partitions and write to disk
     size = 0
-    for p, part in enumerate(_ddf.partitions):
+    for p, part in enumerate(df_out.partitions if is_collection else [df_out]):
         local_path = "/".join([path, f"part.{p}.parquet"])
-        _df = part.compute(scheduler="synchronous")
+        _df = part.compute(scheduler="synchronous") if is_collection else part
         if not write_index:
+            # If we are NOT writing the index of df_out,
+            # then make sure we are writing a "correct"
+            # index. Note that we avoid using ddf.to_parquet
+            # so that we can make sure the index is correct.
             _len = len(_df)
             _df = _df.set_index(np.arange(size, size + _len), drop=True)
             size += _len
-        _df.to_parquet(local_path)
+        _df.to_parquet(local_path, storage_options=storage_options)
     return
 
 
