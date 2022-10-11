@@ -282,11 +282,7 @@ class Categorify(StatOperator):
         self.cardinality_memory_limit = cardinality_memory_limit
         self.storage_options = storage_options or {}
         self.split_every = split_every
-        if tree_width is not None:
-            if split_out is None:
-                split_out = tree_width
-            warnings.warn("tree_width is now deprecated, please use split_out and split_every.")
-        self.split_out = split_out or 1
+        self.split_out = _set_split_out(split_out, tree_width)
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -1865,3 +1861,16 @@ def _reset_df_index(col_name, cat_file_path, idx_count):
     new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
     _to_parquet_dask(cat_df, new_cat_file_path, write_index=True)
     return idx_count, new_cat_file_path
+
+
+def _set_split_out(split_out, tree_width=None):
+    # Simple utility to deprecate `tree_width`, and
+    # set `split_out` instead
+    if tree_width is not None:
+        if split_out is None:
+            split_out = tree_width
+        warnings.warn(
+            "tree_width is now deprecated, please use split_out and split_every.",
+            FutureWarning,
+        )
+    return split_out or 1
