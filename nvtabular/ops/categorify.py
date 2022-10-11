@@ -139,12 +139,15 @@ class Categorify(StatOperator):
         encoded as a new column. Note that replacement is not allowed for
         "combo", because the same column name can be included in
         multiple groups.
-    tree_width : dict or int, optional
-        Tree width of the hash-based groupby reduction for each categorical
-        column. High-cardinality columns may require a large `tree_width`,
-        while low-cardinality columns can likely use `tree_width=1`.
+    split_out : dict or int, optional
+        Number of files needed to store the unique values of each categorical
+        column. High-cardinality columns may require a large `split_out`,
+        while low-cardinality columns can likely use `split_out=1` (default).
         If passing a dict, each key and value should correspond to the column
-        name and width, respectively. The default value is 8 for all columns.
+        name and value, respectively. The default value is 1 for all columns.
+    split_every : dict or int, optional
+        Number of adjacent partitions to aggregate in each tree-reduction
+        node. The default value is 8 for all columns.
     out_path : str, optional
         Root directory where groupby statistics will be written out in
         parquet format.
@@ -206,7 +209,6 @@ class Categorify(StatOperator):
         self,
         freq_threshold=0,
         out_path=None,
-        tree_width=None,
         na_sentinel=None,
         cat_cache="host",
         dtype=None,
@@ -221,6 +223,9 @@ class Categorify(StatOperator):
         single_table=False,
         cardinality_memory_limit=None,
         storage_options=None,
+        tree_width=None,
+        split_out=1,
+        split_every=8,
     ):
 
         # We need to handle three types of encoding here:
@@ -267,7 +272,6 @@ class Categorify(StatOperator):
         self.single_table = single_table
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
-        self.tree_width = tree_width
         self.na_sentinel = na_sentinel or 0
         self.dtype = dtype
         self.on_host = on_host
@@ -277,6 +281,12 @@ class Categorify(StatOperator):
         self.start_index = start_index
         self.cardinality_memory_limit = cardinality_memory_limit
         self.storage_options = storage_options or {}
+        self.split_every = split_every
+        if tree_width is not None:
+            if split_out is None:
+                split_out = tree_width
+            warnings.warn("tree_width is now deprecated, please use split_out and split_every.")
+        self.split_out = split_out
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -425,13 +435,14 @@ class Categorify(StatOperator):
             [],
             self.out_path,
             self.freq_threshold,
-            self.tree_width,
+            self.split_out,
             self.on_host,
             concat_groups=self.encode_type == "joint",
             name_sep=self.name_sep,
             max_size=self.max_size,
             num_buckets=self.num_buckets,
             cardinality_memory_limit=self.cardinality_memory_limit,
+            split_every=self.split_every,
         )
 
     def set_storage_path(self, new_path, copy=False):
@@ -489,6 +500,11 @@ class Categorify(StatOperator):
                     max_size=self.max_size,
                     dtype=self.output_dtype,
                     start_index=self.start_index,
+                    split_out=(
+                        self.split_out.get(storage_name, 1)
+                        if isinstance(self.split_out, dict)
+                        else self.split_out
+                    ),
                 )
                 new_df[name] = encoded
             except Exception as e:
@@ -751,8 +767,8 @@ class FitOptions:
             Categories with a count/frequency below this threshold will be
             omitted from the encoding and corresponding data will be mapped
             to the "null" category.
-        tree_width:
-           Tree width of the hash-based groupby reduction for each categorical column.
+        split_out:
+           Number of output partitions to use for each category in ``fit``.
         on_host:
             Whether to convert cudf data to pandas between tasks in the groupby reduction.
         stat_name:
@@ -770,6 +786,8 @@ class FitOptions:
             The index to start mapping our output categorical values to.
         cardinality_memory_limit: int
             Suggested upper limit on categorical data containers.
+        split_every:
+            Number of adjacent partitions to reduce in each tree node.
     """
 
     col_groups: list
@@ -777,7 +795,7 @@ class FitOptions:
     agg_list: list
     out_path: str
     freq_limit: Union[int, dict]
-    tree_width: Union[int, dict]
+    split_out: Union[int, dict]
     on_host: bool
     stat_name: str = "categories"
     concat_groups: bool = False
@@ -786,6 +804,7 @@ class FitOptions:
     num_buckets: Optional[Union[int, dict]] = None
     start_index: int = 0
     cardinality_memory_limit: Optional[int] = None
+    split_every: Optional[Union[int, dict]] = 8
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -943,7 +962,7 @@ def _top_level_groupby(df, options: FitOptions = None, spill=True):
         del isnull
 
         # Split the result by the hash value of the categorical column
-        nsplits = options.tree_width[cat_col_selector_str]
+        nsplits = options.split_out[cat_col_selector_str]
         for j, split in shuffle_group(
             gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
         ).items():
@@ -1347,21 +1366,27 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         if options.agg_cols:
             raise ValueError("Cannot aggregate continuous-column stats with concat_groups=True")
 
-    # Update tree_width
-    tw = {}
+    # Update split_out and split_every
+    so, se = {}, {}
     for col in options.col_groups:
         col = [col] if isinstance(col, str) else col
         if isinstance(col, tuple):
             col = list(col)
-
         col_str = _make_name(*col.names, sep=options.name_sep)
-        if options.tree_width is None:
-            tw[col_str] = 8
-        elif isinstance(options.tree_width, int):
-            tw[col_str] = options.tree_width
-        else:
-            tw[col_str] = options.tree_width.get(col_str, None) or 8
-    options.tree_width = tw
+
+        for _d, _opt, _default in [
+            (so, options.split_out, 1),
+            (se, options.split_every, 8),
+        ]:
+            if _opt is None:
+                _d[col_str] = _default
+            elif isinstance(_opt, int):
+                _d[col_str] = _opt
+            else:
+                _d[col_str] = _opt.get(col_str, _default)
+
+    options.split_out = so
+    options.split_every = se
 
     # Make dedicated output directory for the categories
     fs = get_fs_token_paths(options.out_path)[0]
@@ -1374,7 +1399,8 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         options.col_groups,
         options.out_path,
         options.freq_limit,
-        options.tree_width,
+        options.split_out,
+        options.split_every,
         options.on_host,
     )
     split_name = "split-" + token
@@ -1396,7 +1422,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             col = [col] if isinstance(col, str) else col
             col_str = _make_name(*col.names, sep=options.name_sep)
             _grouped_meta_col[c] = _grouped_meta[k]
-            for s in range(options.tree_width[col_str]):
+            for s in range(options.split_out[col_str]):
                 dsk_split[c][(split_name, p, c, s)] = (getitem, (grouped.name, p), k)
                 k += 1
 
@@ -1414,8 +1440,8 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                 if isinstance(options.freq_limit, dict)
                 else options.freq_limit
             )
-        for s in range(options.tree_width[col_str]):
-            split_every = 32  # TODO: make this configurable
+        for s in range(options.split_out[col_str]):
+            split_every = options.split_every[col_str]  # TODO: make this configurable
             parts = ddf.npartitions
             widths = [parts]
             while parts > 1:
@@ -1482,7 +1508,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             options,
             spill=False,
         )
-        _divisions = (None,) * (options.tree_width[col_str] + 1)
+        _divisions = (None,) * (options.split_out[col_str] + 1)
         graph = HighLevelGraph.from_collections(reduce_2_name, dsk_split[c], dependencies=[grouped])
         col_group_frames.append(new_dd_object(graph, reduce_2_name, _meta, _divisions))
 
@@ -1557,6 +1583,7 @@ def _encode(
     max_size=0,
     dtype=None,
     start_index=0,
+    split_out=1,
 ):
     """The _encode method is responsible for transforming a dataframe by taking the written
     out vocabulary file and looking up values to translate inputs to numeric
@@ -1608,12 +1635,12 @@ def _encode(
     selection_r = ColumnSelector(name if isinstance(name, list) else [storage_name])
     list_col = is_list_col(selection_l, df)
     if path:
-        use_collection = True
-        read_pq_func = dispatch.read_dispatch(df, fmt="parquet", collection=use_collection)
-        # TODO: Update fetch_table_data to support dask-based read
-        # (Then always use dask-based read and set use_collection
-        # based on value.npartitions after the read)
-        if cat_cache is not None and not use_collection:
+        read_pq_func = dispatch.read_dispatch(
+            df,
+            fmt="parquet",
+            collection=split_out > 1,
+        )
+        if cat_cache is not None and split_out == 1:
             cat_cache = (
                 cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
             )
@@ -1631,10 +1658,10 @@ def _encode(
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
                 path,
                 columns=selection_r.names,
-                split_row_groups=False,  # Remove if use_collection is False
+                **(dict(split_row_groups=False) if split_out > 1 else {}),
             )
             value.index = value.index.rename("labels")
-            if use_collection:
+            if split_out > 1:
                 value = value.reset_index(drop=False)
             else:
                 value.reset_index(drop=False, inplace=True)
@@ -1647,8 +1674,9 @@ def _encode(
         value.index = value.index.rename("labels")
         value.reset_index(drop=False, inplace=True)
 
-    use_collection = hasattr(value, "_meta")
+    use_collection = isinstance(value, DaskDataFrame)
     if use_collection and value.npartitions == 1:
+        # Use simple merge for single-partition case
         value = value.compute(scheduler="synchronous")
         use_collection = False
     if use_collection or not search_sorted:
