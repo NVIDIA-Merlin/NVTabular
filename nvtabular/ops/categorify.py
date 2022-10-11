@@ -710,6 +710,7 @@ def _to_parquet_dask(
             overwrite=True,
             compute=False,
             write_index=write_index,
+            compression=None,
             storage_options=storage_options,
         )
         return (
@@ -723,24 +724,33 @@ def _to_parquet_dask(
         ).to_parquet(path, **kwargs)
 
     # Create empty directory if it doesn't already exist
-    if fs.isdir(path):
+    use_directory = is_collection and df_out.npartitions > 1
+    if fs.isdir(path) or fs.exists(path):
         fs.rm(path, recursive=True)
-    fs.mkdir(path, exists_ok=True)
+    if use_directory:
+        fs.mkdir(path, exists_ok=True)
 
     # Iterate over partitions and write to disk
     size = 0
     for p, part in enumerate(df_out.partitions if is_collection else [df_out]):
-        local_path = "/".join([path, f"part.{p}.parquet"])
+        local_path = "/".join([path, f"part.{p}.parquet"]) if use_directory else path
         _df = part.compute(scheduler="synchronous") if is_collection else part
         if not write_index:
-            # If we are NOT writing the index of df_out,
-            # then make sure we are writing a "correct"
-            # index. Note that we avoid using ddf.to_parquet
-            # so that we can make sure the index is correct.
-            _len = len(_df)
-            _df = _df.set_index(np.arange(size, size + _len), drop=True)
-            size += _len
-        _df.to_parquet(local_path, storage_options=storage_options)
+            if use_directory:
+                # If we are NOT writing the index of df_out,
+                # then make sure we are writing a "correct"
+                # index. Note that we avoid using ddf.to_parquet
+                # so that we can make sure the index is correct.
+                _len = len(_df)
+                _df.set_index(np.arange(size, size + _len), drop=True, inplace=True)
+                size += _len
+            else:
+                _df.reset_index(drop=True, inplace=True)
+        _df.to_parquet(
+            local_path,
+            compression=None,
+            storage_options=storage_options,
+        )
     return
 
 
