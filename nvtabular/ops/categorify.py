@@ -224,7 +224,7 @@ class Categorify(StatOperator):
         cardinality_memory_limit=None,
         storage_options=None,
         tree_width=None,
-        split_out=1,
+        split_out=None,
         split_every=8,
     ):
 
@@ -286,7 +286,7 @@ class Categorify(StatOperator):
             if split_out is None:
                 split_out = tree_width
             warnings.warn("tree_width is now deprecated, please use split_out and split_every.")
-        self.split_out = split_out
+        self.split_out = split_out or 1
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
