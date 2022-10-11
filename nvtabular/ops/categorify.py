@@ -742,7 +742,11 @@ def _to_parquet_dask(
                 # index. Note that we avoid using ddf.to_parquet
                 # so that we can make sure the index is correct.
                 _len = len(_df)
-                _df.set_index(np.arange(size, size + _len), drop=True, inplace=True)
+                _df.set_index(
+                    np.arange(size, size + _len, like=_df.index.values),
+                    drop=True,
+                    inplace=True,
+                )
                 size += _len
             else:
                 _df.reset_index(drop=True, inplace=True)
