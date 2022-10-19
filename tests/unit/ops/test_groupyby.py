@@ -277,5 +277,9 @@ def test_groupby_list_first_last(cpu):
     out = workflow.fit_transform(dataset).compute()
 
     # Check "first" and "last" aggregations
-    assert out["user_vector_first"] == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
-    assert out["user_vector_last"] == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
+    if cpu:
+        assert [r.tolist() for r in out["user_vector_first"]] == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
+        assert [r.tolist() for r in out["user_vector_last"]] == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
+    else:
+        assert out["user_vector_first"].to_arrow().tolist() == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
+        assert out["user_vector_last"].to_arrow().tolist() == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
