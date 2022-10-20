@@ -167,16 +167,13 @@ def datasets(tmpdir_factory):
     df.iloc[half:].to_parquet(str(datadir["parquet"].join("dataset-1.parquet")), chunk_size=1000)
 
     # Write CSV Dataset (Leave out categorical column)
-    df.iloc[:half].drop(columns=["name-cat"]).to_csv(
-        str(datadir["csv"].join("dataset-0.csv")), index=False
-    )
-    df.iloc[half:].drop(columns=["name-cat"]).to_csv(
-        str(datadir["csv"].join("dataset-1.csv")), index=False
-    )
-    df.iloc[:half].drop(columns=["name-cat"]).to_csv(
+    df = df[allcols_csv]  # Set deterministic column order before write
+    df.iloc[:half].to_csv(str(datadir["csv"].join("dataset-0.csv")), index=False)
+    df.iloc[half:].to_csv(str(datadir["csv"].join("dataset-1.csv")), index=False)
+    df.iloc[:half].to_csv(
         str(datadir["csv-no-header"].join("dataset-0.csv")), header=False, index=False
     )
-    df.iloc[half:].drop(columns=["name-cat"]).to_csv(
+    df.iloc[half:].to_csv(
         str(datadir["csv-no-header"].join("dataset-1.csv")), header=False, index=False
     )
 
