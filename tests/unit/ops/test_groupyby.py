@@ -276,13 +276,11 @@ def test_groupby_list_first_last(cpu):
     workflow = nvt.Workflow(output)
     out = workflow.fit_transform(dataset).compute()
 
-    def _flatten_pd(ser):
-        return [r.tolist() if hasattr(r, "tolist") else r for r in ser]
-
     # Check "first" and "last" aggregations
-    if cpu:
-        assert _flatten_pd(out["user_vector_first"]) == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
-        assert _flatten_pd(out["user_vector_last"]) == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
-    else:
-        assert out["user_vector_first"].to_arrow().tolist() == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
-        assert out["user_vector_last"].to_arrow().tolist() == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
+    def _flatten_ser(ser):
+        if cpu:
+            return [r.tolist() if hasattr(r, "tolist") else r for r in ser]
+        return ser.to_arrow().tolist()
+
+    assert _flatten_ser(out["user_vector_first"]) == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
+    assert _flatten_ser(out["user_vector_last"]) == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
