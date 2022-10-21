@@ -278,6 +278,7 @@ def test_groupby_list_first_last(cpu):
 
     def _flatten_ser(ser):
         if cpu:
+            # Nested list may be a np.ndarray
             return [r.tolist() if hasattr(r, "tolist") else r for r in ser]
         return ser.to_arrow().tolist()
 
