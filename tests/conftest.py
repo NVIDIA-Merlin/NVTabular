@@ -22,6 +22,7 @@ import signal
 import socket
 import subprocess
 import time
+from pathlib import Path
 
 import dask
 import numpy as np
@@ -57,6 +58,8 @@ from numba import cuda
 
 import nvtabular
 from merlin.dag.node import iter_nodes
+
+REPO_ROOT = Path(__file__).parent.parent
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -164,16 +167,13 @@ def datasets(tmpdir_factory):
     df.iloc[half:].to_parquet(str(datadir["parquet"].join("dataset-1.parquet")), chunk_size=1000)
 
     # Write CSV Dataset (Leave out categorical column)
-    df.iloc[:half].drop(columns=["name-cat"]).to_csv(
-        str(datadir["csv"].join("dataset-0.csv")), index=False
-    )
-    df.iloc[half:].drop(columns=["name-cat"]).to_csv(
-        str(datadir["csv"].join("dataset-1.csv")), index=False
-    )
-    df.iloc[:half].drop(columns=["name-cat"]).to_csv(
+    df = df[allcols_csv]  # Set deterministic column order before write
+    df.iloc[:half].to_csv(str(datadir["csv"].join("dataset-0.csv")), index=False)
+    df.iloc[half:].to_csv(str(datadir["csv"].join("dataset-1.csv")), index=False)
+    df.iloc[:half].to_csv(
         str(datadir["csv-no-header"].join("dataset-0.csv")), header=False, index=False
     )
-    df.iloc[half:].drop(columns=["name-cat"]).to_csv(
+    df.iloc[half:].to_csv(
         str(datadir["csv-no-header"].join("dataset-1.csv")), header=False, index=False
     )
 
