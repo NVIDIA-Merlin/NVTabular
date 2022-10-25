@@ -254,3 +254,34 @@ def test_groupby_column_names_containing_aggregations(cpu):
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     assert new_gdf is not None
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_list_first_last(cpu):
+    # Initial dataset
+    df = make_df(
+        {
+            "user_id": [1, 1, 2, 3],
+            "user_vector": [[1, 2, 3], [4, 5, 6], [2, 2, 3], [3, 2, 3]],
+        }
+    )
+    ddf = dd.from_pandas(df, npartitions=3)
+    dataset = nvt.Dataset(ddf, cpu=cpu)
+
+    # Define Groupby Workflow
+    output = df.columns >> ops.Groupby(
+        groupby_cols="user_id",
+        aggs={"user_vector": ["first", "last"]},
+    )
+    workflow = nvt.Workflow(output)
+    out = workflow.fit_transform(dataset).compute()
+
+    def _flatten_ser(ser):
+        if cpu:
+            # Nested list may be a np.ndarray
+            return [r.tolist() if hasattr(r, "tolist") else r for r in ser]
+        return ser.to_arrow().tolist()
+
+    # Check "first" and "last" aggregations
+    assert _flatten_ser(out["user_vector_first"]) == [[1, 2, 3], [2, 2, 3], [3, 2, 3]]
+    assert _flatten_ser(out["user_vector_last"]) == [[4, 5, 6], [2, 2, 3], [3, 2, 3]]
