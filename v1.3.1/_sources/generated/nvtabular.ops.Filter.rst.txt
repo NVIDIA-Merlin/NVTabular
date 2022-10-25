@@ -23,6 +23,7 @@
       ~Filter.inference_initialize
       ~Filter.output_column_names
       ~Filter.transform
+      ~Filter.validate_schemas
    
    
 

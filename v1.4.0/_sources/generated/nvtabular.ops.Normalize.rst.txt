@@ -27,6 +27,7 @@
       ~Normalize.output_column_names
       ~Normalize.set_storage_path
       ~Normalize.transform
+      ~Normalize.validate_schemas
    
    
 

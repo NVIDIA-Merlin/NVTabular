@@ -23,6 +23,7 @@
       ~DropLowCardinality.inference_initialize
       ~DropLowCardinality.output_column_names
       ~DropLowCardinality.transform
+      ~DropLowCardinality.validate_schemas
    
    
 

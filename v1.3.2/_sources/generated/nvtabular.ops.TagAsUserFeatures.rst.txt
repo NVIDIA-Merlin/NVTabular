@@ -23,6 +23,7 @@
       ~TagAsUserFeatures.inference_initialize
       ~TagAsUserFeatures.output_column_names
       ~TagAsUserFeatures.transform
+      ~TagAsUserFeatures.validate_schemas
    
    
 

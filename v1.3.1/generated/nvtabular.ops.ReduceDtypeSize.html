@@ -126,19 +126,19 @@ column will fit. For float columns this will cast to a float32.</p>
 <td><p>zero and reinitialize all relevant statistical properties</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">column_mapping</span></code>(col_selector)</p></td>
-<td><p></p></td>
+<td><p>Compute which output columns depend on which input columns</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_column_schema</span></code>(col_name, input_schema)</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_input_schema</span></code>(root_schema, …)</p></td>
-<td><p>Given the schemas coming from upstream sources and a column selector for the input columns, returns a set of schemas for the input columns this operator will use :param root_schema: Base schema of the dataset before running any operators.</p></td>
+<td><p>Given the schemas coming from upstream sources and a column selector for the input columns, returns a set of schemas for the input columns this operator will use</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.ReduceDtypeSize.compute_output_schema" title="nvtabular.ops.ReduceDtypeSize.compute_output_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_output_schema</span></code></a>(input_schema, selector)</p></td>
-<td><p>Given a set of schemas and a column selector for the input columns, returns a set of schemas for the transformed columns this operator will produce :param input_schema: The schemas of the columns to apply this operator to :type input_schema: Schema :param col_selector: The column selector to apply to the input schema :type col_selector: ColumnSelector</p></td>
+<td><p>Given a set of schemas and a column selector for the input columns, returns a set of schemas for the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code>(input_schema, selector, …)</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code>(input_schema, selector[, …])</p></td>
+<td><p>Provides a hook method for sub-classes to override to implement custom column selection logic.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_node</span></code>(selector)</p></td>
 <td><p></p></td>
@@ -153,13 +153,16 @@ column will fit. For float columns this will cast to a float32.</p>
 <td><p>Configures this operator for use in inference.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
-<td><p>Given a set of columns names returns the names of the transformed columns this operator will produce :param columns: The columns to apply this operator to :type columns: list of str, or list of list of str</p></td>
+<td><p>Given a set of columns names returns the names of the transformed columns this operator will produce</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code>(new_path[, copy])</p></td>
 <td><p>Certain stat operators need external storage - for instance Categorify writes out parquet files containing the categorical mapping.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.ReduceDtypeSize.transform" title="nvtabular.ops.ReduceDtypeSize.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
 <td><p>Transform the dataframe by applying this operator to the set of input columns</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
+<td><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p></td>
 </tr>
 </tbody>
 </table>
@@ -237,17 +240,19 @@ the computed statistics from the ‘fit’ object’</p>
 <dt id="nvtabular.ops.ReduceDtypeSize.compute_output_schema">
 <code class="sig-name descname"><span class="pre">compute_output_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_output_schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/reduce_dtype_size.html#ReduceDtypeSize.compute_output_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.ReduceDtypeSize.compute_output_schema" title="Permalink to this definition"></a></dt>
 <dd><p>Given a set of schemas and a column selector for the input columns,
-returns a set of schemas for the transformed columns this operator will produce
-:param input_schema: The schemas of the columns to apply this operator to
-:type input_schema: Schema
-:param col_selector: The column selector to apply to the input schema
-:type col_selector: ColumnSelector</p>
+returns a set of schemas for the transformed columns this operator will produce</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>The schemas of the columns produced by this operator</p>
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_schema</strong> (<em>Schema</em>) – The schemas of the columns to apply this operator to</p></li>
+<li><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – The column selector to apply to the input schema</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>Schema</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The schemas of the columns produced by this operator</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Schema</p>
 </dd>
 </dl>
 </dd></dl>
@@ -290,12 +295,12 @@ returns a set of schemas for the transformed columns this operator will produce
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.3.0/index.html">v1.3.0</a></dd>
       <dd><a href="nvtabular.ops.ReduceDtypeSize.html">v1.3.1</a></dd>
       <dd><a href="../../v1.3.2/index.html">v1.3.2</a></dd>
       <dd><a href="../../v1.3.3/index.html">v1.3.3</a></dd>
       <dd><a href="../../v1.4.0/index.html">v1.4.0</a></dd>
       <dd><a href="../../v1.5.0/index.html">v1.5.0</a></dd>
+      <dd><a href="../../v1.6.0/index.html">v1.6.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

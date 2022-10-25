@@ -27,6 +27,7 @@
       ~JoinGroupby.output_column_names
       ~JoinGroupby.set_storage_path
       ~JoinGroupby.transform
+      ~JoinGroupby.validate_schemas
    
    
 

@@ -24,6 +24,7 @@
       ~HashBucket.inference_initialize
       ~HashBucket.output_column_names
       ~HashBucket.transform
+      ~HashBucket.validate_schemas
    
    
 

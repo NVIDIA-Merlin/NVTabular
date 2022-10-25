@@ -27,6 +27,7 @@
       ~StatOperator.output_column_names
       ~StatOperator.set_storage_path
       ~StatOperator.transform
+      ~StatOperator.validate_schemas
    
    
 

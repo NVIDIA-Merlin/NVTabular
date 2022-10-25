@@ -23,6 +23,7 @@
       ~LogOp.inference_initialize
       ~LogOp.output_column_names
       ~LogOp.transform
+      ~LogOp.validate_schemas
    
    
 

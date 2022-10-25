@@ -23,6 +23,7 @@
       ~LambdaOp.inference_initialize
       ~LambdaOp.output_column_names
       ~LambdaOp.transform
+      ~LambdaOp.validate_schemas
    
    
 

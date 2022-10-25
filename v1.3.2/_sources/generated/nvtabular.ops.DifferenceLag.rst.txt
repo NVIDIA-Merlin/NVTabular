@@ -23,6 +23,7 @@
       ~DifferenceLag.inference_initialize
       ~DifferenceLag.output_column_names
       ~DifferenceLag.transform
+      ~DifferenceLag.validate_schemas
    
    
 

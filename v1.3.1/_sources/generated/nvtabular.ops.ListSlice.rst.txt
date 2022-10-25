@@ -23,6 +23,7 @@
       ~ListSlice.inference_initialize
       ~ListSlice.output_column_names
       ~ListSlice.transform
+      ~ListSlice.validate_schemas
    
    
 

@@ -23,6 +23,7 @@
       ~ColumnSimilarity.inference_initialize
       ~ColumnSimilarity.output_column_names
       ~ColumnSimilarity.transform
+      ~ColumnSimilarity.validate_schemas
    
    
 

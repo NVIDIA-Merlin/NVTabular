@@ -23,6 +23,7 @@
       ~FillMissing.inference_initialize
       ~FillMissing.output_column_names
       ~FillMissing.transform
+      ~FillMissing.validate_schemas
    
    
 

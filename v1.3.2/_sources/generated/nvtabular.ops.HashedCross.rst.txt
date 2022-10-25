@@ -23,6 +23,7 @@
       ~HashedCross.inference_initialize
       ~HashedCross.output_column_names
       ~HashedCross.transform
+      ~HashedCross.validate_schemas
    
    
 

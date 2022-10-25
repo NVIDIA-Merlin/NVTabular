@@ -29,6 +29,7 @@
       ~Categorify.process_vocabs
       ~Categorify.set_storage_path
       ~Categorify.transform
+      ~Categorify.validate_schemas
    
    
 

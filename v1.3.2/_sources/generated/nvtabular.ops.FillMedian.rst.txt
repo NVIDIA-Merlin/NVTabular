@@ -27,6 +27,7 @@
       ~FillMedian.output_column_names
       ~FillMedian.set_storage_path
       ~FillMedian.transform
+      ~FillMedian.validate_schemas
    
    
 

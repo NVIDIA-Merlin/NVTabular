@@ -23,6 +23,7 @@
       ~JoinExternal.inference_initialize
       ~JoinExternal.output_column_names
       ~JoinExternal.transform
+      ~JoinExternal.validate_schemas
    
    
 

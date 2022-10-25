@@ -27,6 +27,7 @@
       ~TargetEncoding.output_column_names
       ~TargetEncoding.set_storage_path
       ~TargetEncoding.transform
+      ~TargetEncoding.validate_schemas
    
    
 

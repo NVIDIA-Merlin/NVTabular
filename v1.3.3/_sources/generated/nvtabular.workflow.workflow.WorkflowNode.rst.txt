@@ -19,6 +19,7 @@
       ~WorkflowNode.add_parent
       ~WorkflowNode.compute_schemas
       ~WorkflowNode.construct_from
+      ~WorkflowNode.exportable
       ~WorkflowNode.remove_child
       ~WorkflowNode.remove_inputs
       ~WorkflowNode.validate_schemas
@@ -31,9 +32,9 @@
 
    .. autosummary::
    
+      ~WorkflowNode.Nodable
       ~WorkflowNode.column_mapping
       ~WorkflowNode.dependency_columns
-      ~WorkflowNode.exportable
       ~WorkflowNode.graph
       ~WorkflowNode.grouped_parents_with_dependencies
       ~WorkflowNode.input_columns

@@ -23,6 +23,7 @@
       ~TagAsItemFeatures.inference_initialize
       ~TagAsItemFeatures.output_column_names
       ~TagAsItemFeatures.transform
+      ~TagAsItemFeatures.validate_schemas
    
    
 

@@ -143,13 +143,13 @@ number of “hash buckets” for every output feature.</p>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_input_schema</span></code>(root_schema, …)</p></td>
-<td><p>Given the schemas coming from upstream sources and a column selector for the input columns, returns a set of schemas for the input columns this operator will use :param root_schema: Base schema of the dataset before running any operators.</p></td>
+<td><p>Given the schemas coming from upstream sources and a column selector for the input columns, returns a set of schemas for the input columns this operator will use</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_output_schema</span></code>(input_schema, col_selector)</p></td>
-<td><p>Given a set of schemas and a column selector for the input columns, returns a set of schemas for the transformed columns this operator will produce :param input_schema: The schemas of the columns to apply this operator to :type input_schema: Schema :param col_selector: The column selector to apply to the input schema :type col_selector: ColumnSelector</p></td>
+<td><p>Given a set of schemas and a column selector for the input columns, returns a set of schemas for the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code>(input_schema, selector, …)</p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code>(input_schema, selector[, …])</p></td>
+<td><p>Provides a hook method for sub-classes to override to implement custom column selection logic.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_node</span></code>(selector)</p></td>
 <td><p></p></td>
@@ -158,10 +158,13 @@ number of “hash buckets” for every output feature.</p>
 <td><p>Configures this operator for use in inference.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
-<td><p>Given a set of columns names returns the names of the transformed columns this operator will produce :param columns: The columns to apply this operator to :type columns: list of str, or list of list of str</p></td>
+<td><p>Given a set of columns names returns the names of the transformed columns this operator will produce</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.HashedCross.transform" title="nvtabular.ops.HashedCross.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
 <td><p>Transform the dataframe by applying this operator to the set of input columns</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
+<td><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p></td>
 </tr>
 </tbody>
 </table>
@@ -263,12 +266,12 @@ number of “hash buckets” for every output feature.</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.3.0/index.html">v1.3.0</a></dd>
       <dd><a href="../../v1.3.1/index.html">v1.3.1</a></dd>
       <dd><a href="../../v1.3.2/index.html">v1.3.2</a></dd>
       <dd><a href="nvtabular.ops.HashedCross.html">v1.3.3</a></dd>
       <dd><a href="../../v1.4.0/index.html">v1.4.0</a></dd>
       <dd><a href="../../v1.5.0/index.html">v1.5.0</a></dd>
+      <dd><a href="../../v1.6.0/index.html">v1.6.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

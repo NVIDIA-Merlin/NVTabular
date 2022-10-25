@@ -23,6 +23,7 @@
       ~AddProperties.inference_initialize
       ~AddProperties.output_column_names
       ~AddProperties.transform
+      ~AddProperties.validate_schemas
    
    
 

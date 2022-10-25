@@ -23,6 +23,7 @@
       ~AddTags.inference_initialize
       ~AddTags.output_column_names
       ~AddTags.transform
+      ~AddTags.validate_schemas
    
    
 

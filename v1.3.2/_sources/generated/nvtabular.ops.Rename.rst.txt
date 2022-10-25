@@ -23,6 +23,7 @@
       ~Rename.inference_initialize
       ~Rename.output_column_names
       ~Rename.transform
+      ~Rename.validate_schemas
    
    
 

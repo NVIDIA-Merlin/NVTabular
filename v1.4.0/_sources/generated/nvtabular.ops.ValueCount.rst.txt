@@ -27,6 +27,7 @@
       ~ValueCount.output_column_names
       ~ValueCount.set_storage_path
       ~ValueCount.transform
+      ~ValueCount.validate_schemas
    
    
 

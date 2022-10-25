@@ -23,6 +23,7 @@
       ~Dropna.inference_initialize
       ~Dropna.output_column_names
       ~Dropna.transform
+      ~Dropna.validate_schemas
    
    
 

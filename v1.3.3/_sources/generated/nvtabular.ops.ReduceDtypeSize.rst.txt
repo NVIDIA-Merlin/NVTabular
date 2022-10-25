@@ -27,6 +27,7 @@
       ~ReduceDtypeSize.output_column_names
       ~ReduceDtypeSize.set_storage_path
       ~ReduceDtypeSize.transform
+      ~ReduceDtypeSize.validate_schemas
    
    
 
