@@ -23,7 +23,8 @@ import tensorflow as tf  # noqa
 import merlin.loader.tensorflow
 from merlin.core.dispatch import HAS_GPU
 from merlin.io import Dataset
-from merlin.schema import ColumnSchema, Tags
+from merlin.schema import Tags
+from nvtabular.loader.backend import _augment_schema
 from nvtabular.loader.tf_utils import get_dataset_schema_from_feature_columns
 
 dd_engine = {
@@ -242,27 +243,16 @@ class KerasSequenceLoader(merlin.loader.tensorflow.Loader):
             feature_columns, cat_names, cont_names, schema=schema
         )
 
-        # Tag the label_names as being Tags.TARGET in the schema
-        label_names = [label_names] if isinstance(label_names, str) else label_names
-        for label in label_names:
-            schema[label] = schema[label].with_tags(Tags.TARGET)
+        dataset.schema = _augment_schema(
+            dataset.schema,
+            cat_names,
+            cont_names,
+            label_names,
+            sparse_names,
+            sparse_max,
+            sparse_as_dense,
+        )
 
-        # Set the appropriate properties for the sparse_names/sparse_max/sparse_as_dense
-        for col in sparse_names or []:
-            cs = schema[col]
-            properties = cs.properties
-            if sparse_max and col in sparse_max:
-                properties["value_count"] = {"min": sparse_max[col], "max": sparse_max[col]}
-            schema[col] = ColumnSchema(
-                name=cs.name,
-                tags=cs.tags,
-                dtype=cs.dtype,
-                is_list=True,
-                is_ragged=not sparse_as_dense,
-                properties=properties,
-            )
-
-        dataset.schema = schema
         super().__init__(
             dataset,
             batch_size,

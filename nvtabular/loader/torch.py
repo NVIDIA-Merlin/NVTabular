@@ -16,7 +16,7 @@
 import torch
 
 import merlin.loader.torch
-from merlin.schema import ColumnSchema, Tags
+from nvtabular.loader.backend import _augment_schema
 
 
 class TorchAsyncItr(merlin.loader.torch.Loader):
@@ -67,31 +67,9 @@ class TorchAsyncItr(merlin.loader.torch.Loader):
         sparse_max=None,
         sparse_as_dense=False,
     ):
-        schema = dataset.schema
-        labels = [labels] if isinstance(labels, str) else labels
-        for label in labels or []:
-            schema[label] = schema[label].with_tags(Tags.TARGET)
-        for label in cats or []:
-            schema[label] = schema[label].with_tags(Tags.CATEGORICAL)
-        for label in conts or []:
-            schema[label] = schema[label].with_tags(Tags.CONTINUOUS)
-
-        # Set the appropriate properties for the sparse_names/sparse_max/sparse_as_dense
-        for col in sparse_names or []:
-            cs = schema[col]
-            properties = cs.properties
-            if sparse_max and col in sparse_max:
-                properties["value_count"] = {"min": sparse_max[col], "max": sparse_max[col]}
-            schema[col] = ColumnSchema(
-                name=cs.name,
-                tags=cs.tags,
-                dtype=cs.dtype,
-                is_list=True,
-                is_ragged=not sparse_as_dense,
-                properties=properties,
-            )
-
-        dataset.schema = schema
+        dataset.schema = _augment_schema(
+            dataset.schema, cats, conts, labels, sparse_names, sparse_max, sparse_as_dense
+        )
 
         super().__init__(
             dataset,
