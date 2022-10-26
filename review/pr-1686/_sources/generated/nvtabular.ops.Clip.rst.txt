@@ -23,6 +23,7 @@
       ~Clip.inference_initialize
       ~Clip.output_column_names
       ~Clip.transform
+      ~Clip.validate_schemas
    
    
 

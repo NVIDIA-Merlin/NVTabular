@@ -23,6 +23,7 @@
       ~Groupby.inference_initialize
       ~Groupby.output_column_names
       ~Groupby.transform
+      ~Groupby.validate_schemas
    
    
 

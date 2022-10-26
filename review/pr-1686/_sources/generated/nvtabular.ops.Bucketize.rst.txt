@@ -23,6 +23,7 @@
       ~Bucketize.inference_initialize
       ~Bucketize.output_column_names
       ~Bucketize.transform
+      ~Bucketize.validate_schemas
    
    
 

@@ -23,6 +23,7 @@
       ~AddMetadata.inference_initialize
       ~AddMetadata.output_column_names
       ~AddMetadata.transform
+      ~AddMetadata.validate_schemas
    
    
 

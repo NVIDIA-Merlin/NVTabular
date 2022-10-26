@@ -373,9 +373,7 @@
     <span class="c1"># item in the list</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;list&quot;</span><span class="p">):</span>
         <span class="c1"># cuDF-specific behavior</span>
-        <span class="n">offsets</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">_column</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">values</span>
-        <span class="n">elements</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">leaves</span>
-        <span class="k">return</span> <span class="n">elements</span><span class="p">[</span><span class="n">offsets</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">_column</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># cpu/pandas</span>
         <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">y</span><span class="p">:</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -386,9 +384,7 @@
     <span class="c1"># item in the list</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;list&quot;</span><span class="p">):</span>
         <span class="c1"># cuDF-specific behavior</span>
-        <span class="n">offsets</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">_column</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">values</span>
-        <span class="n">elements</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">leaves</span>
-        <span class="k">return</span> <span class="n">elements</span><span class="p">[</span><span class="n">offsets</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_column</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># cpu/pandas</span>
         <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">y</span><span class="p">:</span> <span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>

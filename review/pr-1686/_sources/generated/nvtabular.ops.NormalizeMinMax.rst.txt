@@ -27,6 +27,7 @@
       ~NormalizeMinMax.output_column_names
       ~NormalizeMinMax.set_storage_path
       ~NormalizeMinMax.transform
+      ~NormalizeMinMax.validate_schemas
    
    
 

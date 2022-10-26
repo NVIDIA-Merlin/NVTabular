@@ -23,6 +23,7 @@
       ~TagAsUserID.inference_initialize
       ~TagAsUserID.output_column_names
       ~TagAsUserID.transform
+      ~TagAsUserID.validate_schemas
    
    
 
