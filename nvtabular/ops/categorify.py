@@ -705,7 +705,7 @@ def _to_parquet_dask(
     # Check if we have a dask collection
     is_collection = isinstance(df_out, DaskDataFrame)
 
-    # If compute=False, use `ddf.to_parquet`
+    # If compute=False, use `ddf.to_parquet` method
     if not compute:
         kwargs = dict(
             overwrite=True,
