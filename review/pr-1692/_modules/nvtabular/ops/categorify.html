@@ -781,7 +781,7 @@
     <span class="c1"># Check if we have a dask collection</span>
     <span class="n">is_collection</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df_out</span><span class="p">,</span> <span class="n">DaskDataFrame</span><span class="p">)</span>
 
-    <span class="c1"># If compute=False, use `ddf.to_parquet`</span>
+    <span class="c1"># If compute=False, use `ddf.to_parquet` method</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">compute</span><span class="p">:</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
