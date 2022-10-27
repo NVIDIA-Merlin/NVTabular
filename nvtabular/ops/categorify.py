@@ -713,6 +713,7 @@ def _to_parquet_dask(
             write_index=write_index,
             compression=None,
             storage_options=storage_options,
+            schema=None,
         )
         return (
             df_out
@@ -1423,9 +1424,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     grouped = ddf.to_bag(format="frame").map_partitions(
         _top_level_groupby, options=options, token="level_1"
     )
-    # TODO: Avoid calling `ddf.head()` here by making
-    # `ddf._meta.dtypes` more accurate?
-    _grouped_meta = _top_level_groupby(ddf.head(), options=options)
+    _grouped_meta = _top_level_groupby(ddf._meta, options=options)
     _grouped_meta_col = {}
 
     dsk_split = defaultdict(dict)
