@@ -789,6 +789,7 @@
             <span class="n">write_index</span><span class="o">=</span><span class="n">write_index</span><span class="p">,</span>
             <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span><span class="p">,</span>
+            <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="n">df_out</span>
@@ -1499,9 +1500,7 @@
     <span class="n">grouped</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">to_bag</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;frame&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span>
         <span class="n">_top_level_groupby</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;level_1&quot;</span>
     <span class="p">)</span>
-    <span class="c1"># TODO: Avoid calling `ddf.head()` here by making</span>
-    <span class="c1"># `ddf._meta.dtypes` more accurate?</span>
-    <span class="n">_grouped_meta</span> <span class="o">=</span> <span class="n">_top_level_groupby</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">head</span><span class="p">(),</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+    <span class="n">_grouped_meta</span> <span class="o">=</span> <span class="n">_top_level_groupby</span><span class="p">(</span><span class="n">ddf</span><span class="o">.</span><span class="n">_meta</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
     <span class="n">_grouped_meta_col</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="n">dsk_split</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
