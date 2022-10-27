@@ -37,12 +37,13 @@ except ImportError:
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
 from nvtabular import ops
-from nvtabular.utils import _pynvml_mem_size, device_mem_size, get_rmm_size
 
 
 def setup_rmm_pool(client, pool_size):
     # Initialize an RMM pool allocator.
     # Note: RMM may require the pool size to be a multiple of 256.
+    from merlin.core.utils import get_rmm_size
+
     pool_size = get_rmm_size(pool_size)
     client.run(rmm.reinitialize, pool_allocator=True, initial_pool_size=pool_size)
     return None
@@ -113,6 +114,7 @@ def main(args):
 
     For a detailed parameter overview see `NVTabular/examples/MultiGPUBench.md`
     """
+    from merlin.core.utils import device_mem_size, pynvml_mem_size
 
     # Input
     data_path = args.data_path[:-1] if args.data_path[-1] == "/" else args.data_path
@@ -141,14 +143,14 @@ def main(args):
     label_name = ["label"]
 
     # Specify Categorify/GroupbyStatistics options
-    tree_width = {}
+    split_out = {}
     cat_cache = {}
     for col in cat_names:
         if col in high_card_columns:
-            tree_width[col] = args.tree_width
+            split_out[col] = args.split_out
             cat_cache[col] = args.cat_cache_high
         else:
-            tree_width[col] = 1
+            split_out[col] = 1
             cat_cache[col] = args.cat_cache_low
 
     # Use total device size to calculate args.device_limit_frac
@@ -166,7 +168,7 @@ def main(args):
 
     # Check if any device memory is already occupied
     for dev in args.devices.split(","):
-        fmem = _pynvml_mem_size(kind="free", index=int(dev))
+        fmem = pynvml_mem_size(kind="free", index=int(dev))
         used = (device_size - fmem) / 1e9
         if used > 1.0:
             warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
@@ -205,7 +207,7 @@ def main(args):
 
     cat_features = cat_names >> ops.Categorify(
         out_path=stats_path,
-        tree_width=tree_width,
+        split_out=split_out,
         cat_cache=cat_cache,
         freq_threshold=freq_limit,
         search_sorted=not freq_limit,
@@ -360,16 +362,16 @@ def parse_args():
         "--high-cards",
         default="C20,C1,C22,C10",
         type=str,
-        help="Specify a list of high-cardinality columns.  The tree-width "
+        help="Specify a list of high-cardinality columns.  The split-out "
         "and cat-cache options will apply to these columns only."
         '(Default "C20,C1,C22,C10")',
     )
     parser.add_argument(
-        "--tree-width",
-        default=8,
+        "--split-out",
+        default=1,
         type=int,
-        help="Tree width for GroupbyStatistics operations on high-cardinality "
-        "columns (Default 8)",
+        help="Number of files needed to store unique values for high-cardinality "
+        "columns (Default 1)",
     )
     parser.add_argument(
         "--cat-cache-high",
