@@ -102,12 +102,13 @@ class JoinGroupby(StatOperator):
         self.storage_name = {}
         self.name_sep = name_sep
         self.stats = stats
-        self.split_out = nvt_cat._set_split_out(split_out, tree_width)
+        self.split_out = split_out
         self.split_every = split_every
         self.out_path = out_path or "./"
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.categories = {}
+        nvt_cat._deprecate_tree_width(tree_width)
 
         self._cont_names = None
 

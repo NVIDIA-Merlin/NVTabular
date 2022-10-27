@@ -25,6 +25,7 @@ from merlin.core import dispatch
 from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, ops
 from nvtabular.ops.categorify import get_embedding_sizes
+from tests.conftest import assert_eq
 
 try:
     import cudf
@@ -57,7 +58,7 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
         cardinality_memory_limit=cardinality_memory_limit,
     )
     workflow = nvt.Workflow(cat_features)
-    if False:  # cardinality_memory_limit:
+    if cardinality_memory_limit:
         # We set an artificially-low `cardinality_memory_limit`
         # argument to ensure that a UserWarning will be thrown
         with pytest.warns(UserWarning):
@@ -66,9 +67,9 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
         workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     vals = df["session_id"].value_counts()
-    vocab = dispatch.read_dispatch(cpu=cpu, fmt="parquet", collection=True)(
+    vocab = dispatch.read_dispatch(cpu=cpu)(
         os.path.join(tmpdir, "categories", "unique.session_id.parquet")
-    ).compute(scheduler="synchronous")
+    )
 
     if cpu:
         expected = dict(zip(vals.index, vals))
@@ -114,12 +115,8 @@ def test_na_value_count(tmpdir):
     workflow.fit(train_dataset)
     workflow.transform(train_dataset).to_ddf().compute()
 
-    single_cat = dispatch.read_dispatch(collection=True, fmt="parquet")(
-        "./categories/unique.brand.parquet"
-    ).compute()
-    second_cat = dispatch.read_dispatch(collection=True, fmt="parquet")(
-        "./categories/unique.productID.parquet"
-    ).compute()
+    single_cat = dispatch.read_dispatch(fmt="parquet")("./categories/unique.brand.parquet")
+    second_cat = dispatch.read_dispatch(fmt="parquet")("./categories/unique.productID.parquet")
     assert single_cat["brand_size"][0] == 5
     assert second_cat["productID_size"][0] == 3
 
@@ -697,3 +694,34 @@ def test_categorify_joint_list(cpu):
 
     assert compare_a == [1, 5, 2, 3]
     assert compare_e == [2, 3, 1, 4, 1]
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("split_out", [2, 3])
+def test_categorify_split_out(cpu, split_out):
+    # Test that the result of split_out>1 is
+    # equivalent to that of split_out=1
+    df = make_df({"user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10})
+    dataset = nvt.Dataset(df, cpu=cpu)
+
+    workflow_1 = nvt.Workflow(["user_id"] >> ops.Categorify(split_out=split_out))
+    workflow_1.fit(dataset)
+    cats_1 = dispatch.read_dispatch(fmt="parquet")("./categories/unique.user_id.parquet")
+    result_1 = workflow_1.transform(dataset).compute()
+
+    workflow_n = nvt.Workflow(["user_id"] >> ops.Categorify(split_out=split_out))
+    workflow_n.fit(dataset)
+    cats_n = dispatch.read_dispatch(fmt="parquet", collection=True)(
+        "./categories/unique.user_id.parquet"
+    ).compute(scheduler="synchronous")
+    result_n = workflow_n.transform(dataset).compute()
+
+    # Make sure categories are the same
+    assert_eq(cats_n, cats_1)
+
+    # Check that transform works
+    assert_eq(result_n, result_1)
+
+    # Check for tree_width FutureWarning
+    with pytest.warns(FutureWarning):
+        nvt.Workflow(["user_id"] >> ops.Categorify(tree_width=8))

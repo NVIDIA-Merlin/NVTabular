@@ -224,7 +224,7 @@ class Categorify(StatOperator):
         cardinality_memory_limit=None,
         storage_options=None,
         tree_width=None,
-        split_out=None,
+        split_out=1,
         split_every=8,
     ):
 
@@ -282,7 +282,8 @@ class Categorify(StatOperator):
         self.cardinality_memory_limit = cardinality_memory_limit
         self.storage_options = storage_options or {}
         self.split_every = split_every
-        self.split_out = _set_split_out(split_out, tree_width)
+        self.split_out = split_out
+        _deprecate_tree_width(tree_width)
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -1877,14 +1878,11 @@ def _reset_df_index(col_name, cat_file_path, idx_count):
     return idx_count, new_cat_file_path
 
 
-def _set_split_out(split_out, tree_width=None):
-    # Simple utility to deprecate `tree_width`, and
-    # set `split_out` instead
+def _deprecate_tree_width(tree_width):
+    # Warn user if tree_width is specified
     if tree_width is not None:
-        if split_out is None:
-            split_out = tree_width
         warnings.warn(
-            "tree_width is now deprecated, please use split_out and split_every.",
+            "tree_width is now deprecated, and will be ignored. "
+            "Please use split_out and split_every.",
             FutureWarning,
         )
-    return split_out or 1

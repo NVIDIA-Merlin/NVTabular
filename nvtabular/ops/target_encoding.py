@@ -156,7 +156,7 @@ class TargetEncoding(StatOperator):
         self.p_smooth = p_smooth
         self.out_col = [out_col] if isinstance(out_col, str) else out_col
         self.out_dtype = out_dtype
-        self.split_out = nvt_cat._set_split_out(split_out, tree_width)
+        self.split_out = split_out
         self.split_every = split_every
         self.out_path = out_path or "./"
         self.on_host = on_host
@@ -166,6 +166,7 @@ class TargetEncoding(StatOperator):
         self.fold_name = "__fold__"
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
+        nvt_cat._deprecate_tree_width(tree_width)
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
