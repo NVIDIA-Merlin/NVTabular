@@ -1,0 +1,1131 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Copyright 2021 NVIDIA Corporation. All Rights Reserved.\n",
+    "#\n",
+    "# Licensed under the Apache License, Version 2.0 (the \"License\");\n",
+    "# you may not use this file except in compliance with the License.\n",
+    "# You may obtain a copy of the License at\n",
+    "#\n",
+    "#     http://www.apache.org/licenses/LICENSE-2.0\n",
+    "#\n",
+    "# Unless required by applicable law or agreed to in writing, software\n",
+    "# distributed under the License is distributed on an \"AS IS\" BASIS,\n",
+    "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
+    "# See the License for the specific language governing permissions and\n",
+    "# limitations under the License.\n",
+    "# =============================================================================="
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Scaling Criteo: Triton Inference with TensorFlow\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "The last step is to deploy the ETL workflow and saved model to production. In the production setting, we want to transform the input data as during training (ETL). We need to apply the same mean/std for continuous features and use the same categorical mapping to convert the categories to continuous integer before we use the deep learning model for a prediction. Therefore, we deploy the NVTabular workflow with the TensorFlow model as an ensemble model to Triton Inference. The ensemble model garantuees that the same transformation are applied to the raw inputs.\n",
+    "\n",
+    "<img src='./imgs/triton-tf.png' width=\"25%\">\n",
+    "\n",
+    "### Learning objectives\n",
+    "\n",
+    "In this notebook, we learn how to deploy our models to production\n",
+    "\n",
+    "- Use **NVTabular** to generate config and model files for Triton Inference Server\n",
+    "- Deploy an ensemble of NVTabular workflow and TensorFlow model\n",
+    "- Send example request to Triton Inference Server"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Inference with Triton and TensorFlow\n",
+    "\n",
+    "First, we need to generate the Triton Inference Server configurations and save the models in the correct format. In the previous notebooks [02-ETL-with-NVTabular](./02-ETL-with-NVTabular.ipynb) and [03-Training-with-TF](./03-Training-with-TF.ipynb) we saved the NVTabular workflow and TensorFlow model to disk. We will load them."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Saving Ensemble Model for Triton Inference Server"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "\n",
+    "import tensorflow as tf\n",
+    "import nvtabular as nvt"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "BASE_DIR = os.environ.get(\"BASE_DIR\", \"/raid/data/criteo\")\n",
+    "input_path = os.environ.get(\"INPUT_DATA_DIR\", os.path.join(BASE_DIR, \"test_dask/output\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/workflow/workflow.py:373: UserWarning: Loading workflow generated with nvtabular version 0.10.0+123.g44d3c3e8.dirty - but we are running nvtabular 1.2.2+4.gebf56ca0f. This might cause issues\n",
+      "  warnings.warn(\n"
+     ]
+    }
+   ],
+   "source": [
+    "workflow = nvt.Workflow.load(os.path.join(input_path, \"workflow\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "2022-07-14 23:15:34.019787: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX512F FMA\n",
+      "To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.\n",
+      "2022-07-14 23:15:36.054064: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 46898 MB memory:  -> device: 0, name: Quadro RTX 8000, pci bus id: 0000:15:00.0, compute capability: 7.5\n",
+      "2022-07-14 23:15:36.054715: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:1 with 46890 MB memory:  -> device: 1, name: Quadro RTX 8000, pci bus id: 0000:2d:00.0, compute capability: 7.5\n"
+     ]
+    }
+   ],
+   "source": [
+    "model = tf.keras.models.load_model(os.path.join(input_path, \"model.savedmodel\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "TensorFlow expect the Integer as `int32` datatype. Therefore, we need to define the NVTabular output datatypes to `int32` for categorical features."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "for key in workflow.output_dtypes.keys():\n",
+    "    if key.startswith(\"C\"):\n",
+    "        workflow.output_dtypes[key] = \"int32\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "NVTabular provides an easy function to deploy the ensemble model for Triton Inference Server."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from nvtabular.inference.triton import export_tensorflow_ensemble"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "WARNING:absl:Function `_wrapped_model` contains input name(s) C1, C10, C11, C12, C13, C14, C15, C16, C17, C18, C19, C2, C20, C21, C22, C23, C24, C25, C26, C3, C4, C5, C6, C7, C8, C9, I1, I10, I11, I12, I13, I2, I3, I4, I5, I6, I7, I8, I9 with unsupported characters which will be renamed to c1, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c2, c20, c21, c22, c23, c24, c25, c26, c3, c4, c5, c6, c7, c8, c9, i1, i10, i11, i12, i13, i2, i3, i4, i5, i6, i7, i8, i9 in the SavedModel.\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Assets written to: /tmp/model/models/criteo_tf/1/model.savedmodel/assets\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "INFO:tensorflow:Assets written to: /tmp/model/models/criteo_tf/1/model.savedmodel/assets\n",
+      "WARNING:absl:<keras.saving.saved_model.load.DenseFeatures object at 0x7f0638513520> has the same name 'DenseFeatures' as a built-in Keras object. Consider renaming <class 'keras.saving.saved_model.load.DenseFeatures'> to avoid naming conflicts when loading with `tf.keras.models.load_model`. If renaming is not possible, pass the object in the `custom_objects` parameter of the load function.\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C1, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C10, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C11, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C12, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C13, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C14, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C15, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C16, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C17, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C18, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C19, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C2, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C20, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C21, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C22, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C23, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C24, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C25, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C26, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C3, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C4, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C5, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C6, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C7, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C8, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects int32 for column C9, but workflow  is producing type int64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I1, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I10, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I11, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I12, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I13, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I2, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I3, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I4, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I5, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I6, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I7, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I8, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n",
+      "/usr/local/lib/python3.8/dist-packages/nvtabular/inference/triton/ensemble.py:85: UserWarning: TF model expects float32 for column I9, but workflow  is producing type float64. Overriding dtype in NVTabular workflow.\n",
+      "  warnings.warn(\n"
+     ]
+    }
+   ],
+   "source": [
+    "export_tensorflow_ensemble(model, workflow, \"criteo\", \"/tmp/model/models/\", [\"label\"])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can take a look on the generated files."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\u001b[01;34m/tmp/model\u001b[00m\n",
+      "└── \u001b[01;34mmodels\u001b[00m\n",
+      "    ├── \u001b[01;34mcriteo\u001b[00m\n",
+      "    │   ├── \u001b[01;34m1\u001b[00m\n",
+      "    │   └── config.pbtxt\n",
+      "    ├── \u001b[01;34mcriteo_nvt\u001b[00m\n",
+      "    │   ├── \u001b[01;34m1\u001b[00m\n",
+      "    │   │   ├── model.py\n",
+      "    │   │   └── \u001b[01;34mworkflow\u001b[00m\n",
+      "    │   │       ├── \u001b[01;34mcategories\u001b[00m\n",
+      "    │   │       │   ├── unique.C1.parquet\n",
+      "    │   │       │   ├── unique.C10.parquet\n",
+      "    │   │       │   ├── unique.C11.parquet\n",
+      "    │   │       │   ├── unique.C12.parquet\n",
+      "    │   │       │   ├── unique.C13.parquet\n",
+      "    │   │       │   ├── unique.C14.parquet\n",
+      "    │   │       │   ├── unique.C15.parquet\n",
+      "    │   │       │   ├── unique.C16.parquet\n",
+      "    │   │       │   ├── unique.C17.parquet\n",
+      "    │   │       │   ├── unique.C18.parquet\n",
+      "    │   │       │   ├── unique.C19.parquet\n",
+      "    │   │       │   ├── unique.C2.parquet\n",
+      "    │   │       │   ├── unique.C20.parquet\n",
+      "    │   │       │   ├── unique.C21.parquet\n",
+      "    │   │       │   ├── unique.C22.parquet\n",
+      "    │   │       │   ├── unique.C23.parquet\n",
+      "    │   │       │   ├── unique.C24.parquet\n",
+      "    │   │       │   ├── unique.C25.parquet\n",
+      "    │   │       │   ├── unique.C26.parquet\n",
+      "    │   │       │   ├── unique.C3.parquet\n",
+      "    │   │       │   ├── unique.C4.parquet\n",
+      "    │   │       │   ├── unique.C5.parquet\n",
+      "    │   │       │   ├── unique.C6.parquet\n",
+      "    │   │       │   ├── unique.C7.parquet\n",
+      "    │   │       │   ├── unique.C8.parquet\n",
+      "    │   │       │   └── unique.C9.parquet\n",
+      "    │   │       ├── metadata.json\n",
+      "    │   │       └── workflow.pkl\n",
+      "    │   └── config.pbtxt\n",
+      "    └── \u001b[01;34mcriteo_tf\u001b[00m\n",
+      "        ├── \u001b[01;34m1\u001b[00m\n",
+      "        │   └── \u001b[01;34mmodel.savedmodel\u001b[00m\n",
+      "        │       ├── \u001b[01;34massets\u001b[00m\n",
+      "        │       ├── keras_metadata.pb\n",
+      "        │       ├── saved_model.pb\n",
+      "        │       └── \u001b[01;34mvariables\u001b[00m\n",
+      "        │           ├── variables.data-00000-of-00001\n",
+      "        │           └── variables.index\n",
+      "        └── config.pbtxt\n",
+      "\n",
+      "12 directories, 36 files\n"
+     ]
+    }
+   ],
+   "source": [
+    "!tree /tmp/model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Loading Ensemble Model with Triton Inference Server\n",
+    "\n",
+    "We have only saved the models for Triton Inference Server. We started Triton Inference Server in explicit mode, meaning that we need to send a request that Triton will load the ensemble model."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First, we restart this notebook to free the GPU memory."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# import IPython\n",
+    "\n",
+    "# app = IPython.Application.instance()\n",
+    "# app.kernel.do_shutdown(True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We define the BASE_DIR again."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "\n",
+    "BASE_DIR = os.environ.get(\"BASE_DIR\", \"/raid/data/criteo\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We connect to the Triton Inference Server."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "client created.\n"
+     ]
+    }
+   ],
+   "source": [
+    "import tritonclient.grpc as grpc_client\n",
+    "\n",
+    "try:\n",
+    "    triton_client = grpc_client.InferenceServerClient(url=\"localhost:8001\", verbose=True)\n",
+    "    print(\"client created.\")\n",
+    "except Exception as e:\n",
+    "    print(\"channel creation failed: \" + str(e))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We deactivate warnings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import warnings\n",
+    "\n",
+    "warnings.filterwarnings(\"ignore\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We check if the server is alive."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "is_server_live, metadata ()\n",
+      "\n",
+      "live: true\n",
+      "\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "True"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "triton_client.is_server_live()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We check the available models in the repositories:\n",
+    "- criteo: Ensemble \n",
+    "- criteo_nvt: NVTabular \n",
+    "- criteo_tf: TensorFlow model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "get_model_repository_index, metadata ()\n",
+      "\n",
+      "models {\n",
+      "  name: \"criteo\"\n",
+      "}\n",
+      "models {\n",
+      "  name: \"criteo_nvt\"\n",
+      "}\n",
+      "models {\n",
+      "  name: \"criteo_tf\"\n",
+      "}\n",
+      "\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "models {\n",
+       "  name: \"criteo\"\n",
+       "}\n",
+       "models {\n",
+       "  name: \"criteo_nvt\"\n",
+       "}\n",
+       "models {\n",
+       "  name: \"criteo_tf\"\n",
+       "}"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "triton_client.get_model_repository_index()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We load the ensembled model."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "load_model, metadata ()\n",
+      "override files omitted:\n",
+      "model_name: \"criteo\"\n",
+      "\n",
+      "Loaded model 'criteo'\n",
+      "CPU times: user 13.5 ms, sys: 8.86 ms, total: 22.4 ms\n",
+      "Wall time: 41.9 s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "\n",
+    "triton_client.load_model(model_name=\"criteo\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Example Request to Triton Inference Server\n",
+    "\n",
+    "Now, the models are loaded and we can create a sample request. We read an example **raw batch** for inference."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "     I1   I2    I3    I4    I5  I6  I7  I8  I9  I10  ...        C17  \\\n",
+      "0     5  110  <NA>    16  <NA>   1   0  14   7    1  ... -771205462   \n",
+      "1    32    3     5  <NA>     1   0   0  61   5    0  ... -771205462   \n",
+      "2  <NA>  233     1   146     1   0   0  99   7    0  ... -771205462   \n",
+      "\n",
+      "          C18         C19         C20         C21        C22        C23  \\\n",
+      "0 -1206449222 -1793932789 -1014091992   351689309  632402057 -675152885   \n",
+      "1 -1578429167 -1793932789   -20981661 -1556988767 -924717482  391309800   \n",
+      "2  1653545869 -1793932789 -1014091992   351689309  632402057 -675152885   \n",
+      "\n",
+      "          C24         C25         C26  \n",
+      "0  2091868316   809724924  -317696227  \n",
+      "1  1966410890 -1726799382 -1218975401  \n",
+      "2   883538181   -10139646  -317696227  \n",
+      "\n",
+      "[3 rows x 39 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Get dataframe library - cudf or pandas\n",
+    "from merlin.core.dispatch import get_lib\n",
+    "\n",
+    "df_lib = get_lib()\n",
+    "\n",
+    "# read in the workflow (to get input/output schema to call triton with)\n",
+    "batch_path = os.path.join(BASE_DIR, \"converted/criteo\")\n",
+    "# raise(ValueError(f\"{batch_path}\"))\n",
+    "batch = df_lib.read_parquet(os.path.join(batch_path, \"*.parquet\"), num_rows=3)\n",
+    "batch = batch[[x for x in batch.columns if x != \"label\"]]\n",
+    "print(batch)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We prepare the batch for inference by using correct column names and data types. We use the same datatypes as defined in our dataframe."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "I1     int32\n",
+       "I2     int32\n",
+       "I3     int32\n",
+       "I4     int32\n",
+       "I5     int32\n",
+       "I6     int32\n",
+       "I7     int32\n",
+       "I8     int32\n",
+       "I9     int32\n",
+       "I10    int32\n",
+       "I11    int32\n",
+       "I12    int32\n",
+       "I13    int32\n",
+       "C1     int32\n",
+       "C2     int32\n",
+       "C3     int32\n",
+       "C4     int32\n",
+       "C5     int32\n",
+       "C6     int32\n",
+       "C7     int32\n",
+       "C8     int32\n",
+       "C9     int32\n",
+       "C10    int32\n",
+       "C11    int32\n",
+       "C12    int32\n",
+       "C13    int32\n",
+       "C14    int32\n",
+       "C15    int32\n",
+       "C16    int32\n",
+       "C17    int32\n",
+       "C18    int32\n",
+       "C19    int32\n",
+       "C20    int32\n",
+       "C21    int32\n",
+       "C22    int32\n",
+       "C23    int32\n",
+       "C24    int32\n",
+       "C25    int32\n",
+       "C26    int32\n",
+       "dtype: object"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "batch.dtypes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import tritonclient.grpc as httpclient\n",
+    "from tritonclient.utils import np_to_triton_dtype\n",
+    "import numpy as np\n",
+    "\n",
+    "inputs = []\n",
+    "\n",
+    "col_names = list(batch.columns)\n",
+    "col_dtypes = [np.int32] * len(col_names)\n",
+    "\n",
+    "for i, col in enumerate(batch.columns):\n",
+    "    d = batch[col].fillna(0).values_host.astype(col_dtypes[i])\n",
+    "    d = d.reshape(len(d), 1)\n",
+    "    inputs.append(httpclient.InferInput(col_names[i], d.shape, np_to_triton_dtype(col_dtypes[i])))\n",
+    "    inputs[i].set_data_from_numpy(d)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We send the request to the triton server and collect the last output."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "infer, metadata ()\n",
+      "model_name: \"criteo\"\n",
+      "id: \"1\"\n",
+      "inputs {\n",
+      "  name: \"I1\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I2\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I3\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I4\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I5\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I6\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I7\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I8\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I9\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I10\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I11\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I12\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"I13\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C1\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C2\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C3\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C4\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C5\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C6\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C7\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C8\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C9\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C10\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C11\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C12\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C13\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C14\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C15\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C16\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C17\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C18\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C19\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C20\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C21\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C22\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C23\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C24\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C25\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "inputs {\n",
+      "  name: \"C26\"\n",
+      "  datatype: \"INT32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "outputs {\n",
+      "  name: \"output\"\n",
+      "}\n",
+      "raw_input_contents: \"\\005\\000\\000\\000 \\000\\000\\000\\000\\000\\000\\000\"\n",
+      "raw_input_contents: \"n\\000\\000\\000\\003\\000\\000\\000\\351\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\000\\000\\000\\000\\005\\000\\000\\000\\001\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\020\\000\\000\\000\\000\\000\\000\\000\\222\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\000\\000\\000\\000\\001\\000\\000\\000\\001\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\001\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\016\\000\\000\\000=\\000\\000\\000c\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\007\\000\\000\\000\\005\\000\\000\\000\\007\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\001\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\"\n",
+      "raw_input_contents: \"\\000\\000\\000\\000\\001\\000\\000\\000\\001\\000\\000\\000\"\n",
+      "raw_input_contents: \"2\\001\\000\\000U\\014\\000\\000\\035\\014\\000\\000\"\n",
+      "raw_input_contents: \"\\000\\000\\000\\000\\005\\000\\000\\000\\001\\000\\000\\000\"\n",
+      "raw_input_contents: \"y\\rwb\\215\\375\\363\\345y\\rwb\"\n",
+      "raw_input_contents: \"X]\\037\\342\\246\\377\\252\\240\\003B\\230\\255\"\n",
+      "raw_input_contents: \"/D\\352\\257\\325\\025\\252o\\r\\306\\276b\"\n",
+      "raw_input_contents: \"\\317\\177\\\\\\224!4\\212\\332\\356Il8\"\n",
+      "raw_input_contents: \"H\\'\\2608#\\237\\326<M\\006U\\347\"\n",
+      "raw_input_contents: \"\\313m\\315o\\313m\\315o\\313m\\315o\"\n",
+      "raw_input_contents: \"!\\252\\2005\\201\\355\\026\\253b\\353\\365\\265\"\n",
+      "raw_input_contents: \"\\003\\211\\200()lBC\\213\\314\\362\\321\"\n",
+      "raw_input_contents: \"\\246\\337\\336FT\\341\\365\\035\\037\\202N.\"\n",
+      "raw_input_contents: \"\\301}\\002.\\251\\300\\351}\\301}\\002.\"\n",
+      "raw_input_contents: \"1B|\\014d\\334Rf1B|\\014\"\n",
+      "raw_input_contents: \"\\037\\035\\230\\225\\'N\\353\\231\\204aq\\022\"\n",
+      "raw_input_contents: \"\\267\\377\\305\\000\\267\\377\\305\\000\\267\\377\\305\\000\"\n",
+      "raw_input_contents: \"7\\345N\\2767\\345N\\2767\\345N\\276\"\n",
+      "raw_input_contents: \"\\314t\\013\\212\\231\\376\\273\\363\\013\\r\\017\\367\"\n",
+      "raw_input_contents: \"\\372>\\334L\\372>\\334L\\372>\\334L\"\n",
+      "raw_input_contents: \"\\252V\\010\\322\\252V\\010\\322\\252V\\010\\322\"\n",
+      "raw_input_contents: \"\\272\\013\\027\\270\\021\\025\\353\\241\\215\\033\\217b\"\n",
+      "raw_input_contents: \"\\013\\302\\022\\225\\013\\302\\022\\225\\013\\302\\022\\225\"\n",
+      "raw_input_contents: \"(/\\216\\303c\\330\\277\\376(/\\216\\303\"\n",
+      "raw_input_contents: \"]Z\\366\\024\\241<2\\243]Z\\366\\024\"\n",
+      "raw_input_contents: \"\\211\\260\\261%V\\356\\341\\310\\211\\260\\261%\"\n",
+      "raw_input_contents: \"\\013\\374\\301\\327\\350\\351R\\027\\013\\374\\301\\327\"\n",
+      "raw_input_contents: \"\\234`\\257|\\212\\0145u\\005\\271\\2514\"\n",
+      "raw_input_contents: \"\\374kC0\\352!\\023\\231\\002He\\377\"\n",
+      "raw_input_contents: \"\\035W\\020\\355W\\351W\\267\\035W\\020\\355\"\n",
+      "\n",
+      "model_name: \"criteo\"\n",
+      "model_version: \"1\"\n",
+      "id: \"1\"\n",
+      "parameters {\n",
+      "  key: \"sequence_end\"\n",
+      "  value {\n",
+      "    bool_param: false\n",
+      "  }\n",
+      "}\n",
+      "parameters {\n",
+      "  key: \"sequence_id\"\n",
+      "  value {\n",
+      "    int64_param: 0\n",
+      "  }\n",
+      "}\n",
+      "parameters {\n",
+      "  key: \"sequence_start\"\n",
+      "  value {\n",
+      "    bool_param: false\n",
+      "  }\n",
+      "}\n",
+      "outputs {\n",
+      "  name: \"output\"\n",
+      "  datatype: \"FP32\"\n",
+      "  shape: 3\n",
+      "  shape: 1\n",
+      "}\n",
+      "raw_output_contents: \"Dd\\217<$r\\233<\\241\\231u<\"\n",
+      "\n",
+      "predicted softmax result:\n",
+      " [[0.01750387]\n",
+      " [0.01897532]\n",
+      " [0.01499024]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "# placeholder variables for the output\n",
+    "outputs = [httpclient.InferRequestedOutput(\"output\")]\n",
+    "\n",
+    "# build a client to connect to our server.\n",
+    "# This InferenceServerClient object is what we'll be using to talk to Triton.\n",
+    "# make the request with tritonclient.http.InferInput object\n",
+    "response = triton_client.infer(\"criteo\", inputs, request_id=\"1\", outputs=outputs)\n",
+    "\n",
+    "print(\"predicted softmax result:\\n\", response.as_numpy(\"output\"))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's unload the model. We need to unload each model."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "unload_model, metadata ()\n",
+      "model_name: \"criteo\"\n",
+      "parameters {\n",
+      "  key: \"unload_dependents\"\n",
+      "  value {\n",
+      "    bool_param: false\n",
+      "  }\n",
+      "}\n",
+      "\n",
+      "Unloaded model 'criteo'\n",
+      "unload_model, metadata ()\n",
+      "model_name: \"criteo_nvt\"\n",
+      "parameters {\n",
+      "  key: \"unload_dependents\"\n",
+      "  value {\n",
+      "    bool_param: false\n",
+      "  }\n",
+      "}\n",
+      "\n",
+      "Unloaded model 'criteo_nvt'\n",
+      "unload_model, metadata ()\n",
+      "model_name: \"criteo_tf\"\n",
+      "parameters {\n",
+      "  key: \"unload_dependents\"\n",
+      "  value {\n",
+      "    bool_param: false\n",
+      "  }\n",
+      "}\n",
+      "\n",
+      "Unloaded model 'criteo_tf'\n"
+     ]
+    }
+   ],
+   "source": [
+    "triton_client.unload_model(model_name=\"criteo\")\n",
+    "triton_client.unload_model(model_name=\"criteo_nvt\")\n",
+    "triton_client.unload_model(model_name=\"criteo_tf\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3.9.7 64-bit",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.7"
+  },
+  "vscode": {
+   "interpreter": {
+    "hash": "916dbcbb3f70747c44a77c7bcd40155683ae19c65e1c03b4aa3499c5328201f1"
+   }
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
