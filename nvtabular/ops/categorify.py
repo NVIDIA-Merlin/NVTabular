@@ -693,6 +693,7 @@ def _to_parquet_dask(
     compute=True,
     write_index=False,
     storage_options=None,
+    first_n=None,
 ):
     # Simple utility to write a DataFrame
     # to a directory of Parquet files
@@ -707,6 +708,8 @@ def _to_parquet_dask(
 
     # If compute=False, use `ddf.to_parquet` method
     if not compute:
+        if first_n is not None:
+            raise ValueError("first_n not supported for compute=False")
         kwargs = dict(
             overwrite=True,
             compute=False,
@@ -751,7 +754,11 @@ def _to_parquet_dask(
                 )
                 size += _len
             else:
+                if first_n is not None:
+                    size += len(_df)
                 _df.reset_index(drop=True, inplace=True)
+        if first_n is not None and size > first_n:
+            _df = _df.iloc[: -(size - first_n)]
         _df.to_parquet(
             local_path,
             compression=None,
@@ -992,9 +999,7 @@ def _top_level_groupby(df, options: FitOptions = None, spill=True):
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(
-    dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions, spill=True
-):
+def _mid_level_groupby(dfs, col_selector: ColumnSelector, options: FitOptions, spill=True):
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
@@ -1017,7 +1022,7 @@ def _bottom_level_groupby(
     dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions, spill=True
 ):
 
-    gb = _mid_level_groupby(dfs, col_selector, freq_limit_val, options, spill=False)
+    gb = _mid_level_groupby(dfs, col_selector, options, spill=False)
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
@@ -1135,29 +1140,25 @@ def _write_uniques(
         the path to the output parquet file.
 
     """
-    # Check if we will need to pull all data into memory (at once)
-    # to support the fit options
-    simple = (
-        len(col_selector.names) == 1
-        and not options.freq_limit
-        and not options.num_buckets
-        and not options.max_size
-    )
-
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
     if path:
+        # We have a parquet path to construct uniques from
+        # (rather than a list of DataFrame objects)
         df = dispatch.read_dispatch(cpu=cpu, collection=True)(
             path,
             split_row_groups=False,
         ).reset_index(drop=True)
-        simple = simple and df.npartitions > 1
-        if simple:  # No need to read all categories in at once
+
+        # Check if we need to compute the DataFrame collection
+        # of unique values. For now, we can avoid doing this when
+        # we are not jointly encoding multiple columns.
+        # TODO: Handle dask-based joint/combo encoding
+        if simple := len(col_selector.names) == 1 and df.npartitions > 1:
             col_name = col_selector.names[0]
             name_size = col_name + "_size"
             has_size = name_size in df
-
             try:
                 # Step 1 - Sort by col_name
                 df = df.sort_values(col_name, na_position="first")
@@ -1165,8 +1166,30 @@ def _write_uniques(
                 # Dask-based sort failed - Need to compute first
                 simple = False
 
+        # At this point, `simple` may have changed from True to False
+        # if the backend library failed to sort by the target column.
         if simple:
-            # Step 2 - Check for null group and drop it
+            # Step 2 - Check for max_size
+            nlargest = None
+            if options.max_size:
+                max_emb_size = (
+                    options.max_size[col_name]
+                    if isinstance(options.max_size, dict)
+                    else options.max_size
+                )
+                if options.num_buckets:
+                    num_buckets = (
+                        options.num_buckets
+                        if isinstance(options.num_buckets, int)
+                        else options.num_buckets[col_name]
+                    )
+                else:
+                    num_buckets = 0
+                nlargest = max_emb_size - num_buckets
+                if nlargest <= 0:
+                    raise ValueError("`nlargest` cannot be 0 or negative")
+
+            # Step 3 - Check for null group and drop it
             def _drop_first_row(part, index):
                 return part.iloc[1:] if index == (0,) else part
 
@@ -1179,11 +1202,11 @@ def _write_uniques(
                     _data[name_size] = nullable_series([0], null_row, null_row[name_size].dtype)
                 null_row = type(null_row)(_data)
 
-            # Step 3 - Sort by size (without null group)
+            # Step 4 - Sort by size (without null group)
             if has_size:
                 df = df.sort_values(name_size, ascending=False)
 
-            # Step 4 - Add null group back to df
+            # Step 5 - Add null group back to df
             def _add_row(part, index, first_row=None):
                 if index == (0,) and first_row is not None:
                     return _concat([first_row, part], ignore_index=True)
@@ -1192,15 +1215,17 @@ def _write_uniques(
             df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)), first_row=null_row)
             rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
             path = "/".join([base_path, rel_path])
-            _to_parquet_dask(df, path)
+            _to_parquet_dask(df, path, first_n=nlargest)
 
             # TODO: Delete tmp dir at path
             return path
 
-        # TODO: Avoid computing for more cases
-        df = df.compute(scheduler="synchronous")
+        # If we have reached this point, we must compute the
+        # DataFrame collection of unique values.
         # TODO: Delete tmp dir at path
+        df = df.compute(scheduler="synchronous")
     else:
+        # We have a list of DataFrame objects.
         # Collect aggregation results into single frame
         df = _general_concat(
             dfs,
@@ -1498,7 +1523,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                                 _mid_level_groupby,
                                 input_keys,
                                 col,
-                                freq_limit_val,
                                 options,
                             )
             else:

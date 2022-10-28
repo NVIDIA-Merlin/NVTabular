@@ -698,22 +698,31 @@ def test_categorify_joint_list(cpu):
 
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("split_out", [2, 3])
-def test_categorify_split_out(cpu, split_out):
+@pytest.mark.parametrize("max_size", [0, 6])
+@pytest.mark.parametrize("buckets", [None, 3])
+def test_categorify_split_out(tmpdir, cpu, split_out, max_size, buckets):
     # Test that the result of split_out>1 is
     # equivalent to that of split_out=1
     df = make_df({"user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10})
     dataset = nvt.Dataset(df, cpu=cpu)
 
-    workflow_1 = nvt.Workflow(["user_id"] >> ops.Categorify(split_out=split_out))
+    kwargs = dict(
+        max_size=max_size,
+        num_buckets=buckets,
+        out_path=str(tmpdir),
+    )
+    check_path = "/".join([str(tmpdir), "categories/unique.user_id.parquet"])
+
+    workflow_1 = nvt.Workflow(["user_id"] >> ops.Categorify(split_out=1, **kwargs))
     workflow_1.fit(dataset)
-    cats_1 = dispatch.read_dispatch(fmt="parquet")("./categories/unique.user_id.parquet")
+    cats_1 = dispatch.read_dispatch(fmt="parquet")(check_path)
     result_1 = workflow_1.transform(dataset).compute()
 
-    workflow_n = nvt.Workflow(["user_id"] >> ops.Categorify(split_out=split_out))
+    workflow_n = nvt.Workflow(["user_id"] >> ops.Categorify(split_out=split_out, **kwargs))
     workflow_n.fit(dataset)
-    cats_n = dispatch.read_dispatch(fmt="parquet", collection=True)(
-        "./categories/unique.user_id.parquet"
-    ).compute(scheduler="synchronous")
+    cats_n = dispatch.read_dispatch(fmt="parquet", collection=True)(check_path).compute(
+        scheduler="synchronous"
+    )
     result_n = workflow_n.transform(dataset).compute()
 
     # Make sure categories are the same
