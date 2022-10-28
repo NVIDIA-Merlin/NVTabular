@@ -604,6 +604,9 @@ def test_horovod_multigpu(tmpdir):
         process.wait()
         stdout, stderr = process.communicate()
         print(stdout, stderr)
+        # if horovod failed to run because of environment issue, lets not fail the test here
+        if b"horovod does not find an installed MPI." in stderr:
+            pytest.skip("Skipping test because of horovod missing MPI")
         assert "Loss:" in str(stdout)
 
 
