@@ -726,6 +726,9 @@ def test_categorify_split_out(tmpdir, cpu, split_out, max_size, buckets):
     result_n = workflow_n.transform(dataset).compute()
 
     # Make sure categories are the same
+    # (Note that pandas may convert int64 to float64,
+    # instead of nullable Int64)
+    cats_n["user_id"] = cats_n["user_id"].astype(cats_1["user_id"].dtype)
     assert_eq(cats_n, cats_1)
 
     # Check that transform works
