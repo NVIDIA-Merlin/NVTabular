@@ -769,6 +769,7 @@
     <span class="n">compute</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">storage_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">first_n</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="c1"># Simple utility to write a DataFrame</span>
     <span class="c1"># to a directory of Parquet files</span>
@@ -783,6 +784,8 @@
 
     <span class="c1"># If compute=False, use `ddf.to_parquet` method</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">compute</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;first_n not supported for compute=False&quot;</span><span class="p">)</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -827,7 +830,11 @@
                 <span class="p">)</span>
                 <span class="n">size</span> <span class="o">+=</span> <span class="n">_len</span>
             <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">size</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_df</span><span class="p">)</span>
                 <span class="n">_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="n">first_n</span><span class="p">:</span>
+            <span class="n">_df</span> <span class="o">=</span> <span class="n">_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="o">-</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="n">first_n</span><span class="p">)]</span>
         <span class="n">_df</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
             <span class="n">local_path</span><span class="p">,</span>
             <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1068,9 +1075,7 @@
 
 
 <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;mid_level_groupby&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">_mid_level_groupby</span><span class="p">(</span>
-    <span class="n">dfs</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">freq_limit_val</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">,</span> <span class="n">spill</span><span class="o">=</span><span class="kc">True</span>
-<span class="p">):</span>
+<span class="k">def</span> <span class="nf">_mid_level_groupby</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">,</span> <span class="n">spill</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">concat_groups</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)])</span>
 
@@ -1093,7 +1098,7 @@
     <span class="n">dfs</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">freq_limit_val</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">,</span> <span class="n">spill</span><span class="o">=</span><span class="kc">True</span>
 <span class="p">):</span>
 
-    <span class="n">gb</span> <span class="o">=</span> <span class="n">_mid_level_groupby</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">freq_limit_val</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="n">spill</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">gb</span> <span class="o">=</span> <span class="n">_mid_level_groupby</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="n">spill</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">concat_groups</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)])</span>
 
@@ -1211,29 +1216,25 @@
 <span class="sd">        the path to the output parquet file.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Check if we will need to pull all data into memory (at once)</span>
-    <span class="c1"># to support the fit options</span>
-    <span class="n">simple</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
-        <span class="ow">and</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">freq_limit</span>
-        <span class="ow">and</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span>
-        <span class="ow">and</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span>
-    <span class="p">)</span>
-
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">concat_groups</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">([</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)])</span>
 
     <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+        <span class="c1"># We have a parquet path to construct uniques from</span>
+        <span class="c1"># (rather than a list of DataFrame objects)</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">read_dispatch</span><span class="p">(</span><span class="n">cpu</span><span class="o">=</span><span class="n">cpu</span><span class="p">,</span> <span class="n">collection</span><span class="o">=</span><span class="kc">True</span><span class="p">)(</span>
             <span class="n">path</span><span class="p">,</span>
             <span class="n">split_row_groups</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">simple</span> <span class="o">=</span> <span class="n">simple</span> <span class="ow">and</span> <span class="n">df</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>  <span class="c1"># No need to read all categories in at once</span>
+
+        <span class="c1"># Check if we need to compute the DataFrame collection</span>
+        <span class="c1"># of unique values. For now, we can avoid doing this when</span>
+        <span class="c1"># we are not jointly encoding multiple columns.</span>
+        <span class="c1"># TODO: Handle dask-based joint/combo encoding</span>
+        <span class="k">if</span> <span class="n">simple</span> <span class="o">:=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">df</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
             <span class="n">col_name</span> <span class="o">=</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">name_size</span> <span class="o">=</span> <span class="n">col_name</span> <span class="o">+</span> <span class="s2">&quot;_size&quot;</span>
             <span class="n">has_size</span> <span class="o">=</span> <span class="n">name_size</span> <span class="ow">in</span> <span class="n">df</span>
-
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Step 1 - Sort by col_name</span>
                 <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="n">na_position</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
@@ -1241,8 +1242,30 @@
                 <span class="c1"># Dask-based sort failed - Need to compute first</span>
                 <span class="n">simple</span> <span class="o">=</span> <span class="kc">False</span>
 
+        <span class="c1"># At this point, `simple` may have changed from True to False</span>
+        <span class="c1"># if the backend library failed to sort by the target column.</span>
         <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>
-            <span class="c1"># Step 2 - Check for null group and drop it</span>
+            <span class="c1"># Step 2 - Check for max_size</span>
+            <span class="n">nlargest</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
+                <span class="n">max_emb_size</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">max_size</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="n">options</span><span class="o">.</span><span class="n">max_size</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">:</span>
+                    <span class="n">num_buckets</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+                        <span class="k">else</span> <span class="n">options</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">num_buckets</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">nlargest</span> <span class="o">=</span> <span class="n">max_emb_size</span> <span class="o">-</span> <span class="n">num_buckets</span>
+                <span class="k">if</span> <span class="n">nlargest</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`nlargest` cannot be 0 or negative&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Step 3 - Check for null group and drop it</span>
             <span class="k">def</span> <span class="nf">_drop_first_row</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">part</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">index</span> <span class="o">==</span> <span class="p">(</span><span class="mi">0</span><span class="p">,)</span> <span class="k">else</span> <span class="n">part</span>
 
@@ -1255,11 +1278,19 @@
                     <span class="n">_data</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">nullable_series</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">null_row</span><span class="p">,</span> <span class="n">null_row</span><span class="p">[</span><span class="n">name_size</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
                 <span class="n">null_row</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">null_row</span><span class="p">)(</span><span class="n">_data</span><span class="p">)</span>
 
-            <span class="c1"># Step 3 - Sort by size (without null group)</span>
+            <span class="c1"># Step 4 - Sort by size (without null group)</span>
             <span class="k">if</span> <span class="n">has_size</span><span class="p">:</span>
-                <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">name_size</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="c1"># Avoid using dask_cudf to calculate divisions</span>
+                <span class="c1"># (since it may produce too-few partitions)</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span>
+                    <span class="n">name_size</span><span class="p">,</span>
+                    <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">divisions</span><span class="o">=</span><span class="n">dd</span><span class="o">.</span><span class="n">shuffle</span><span class="o">.</span><span class="n">_calculate_divisions</span><span class="p">(</span>
+                        <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">name_size</span><span class="p">],</span> <span class="kc">False</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">npartitions</span>
+                    <span class="p">)[</span><span class="mi">0</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="p">)</span>
 
-            <span class="c1"># Step 4 - Add null group back to df</span>
+            <span class="c1"># Step 5 - Add null group back to df</span>
             <span class="k">def</span> <span class="nf">_add_row</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">first_row</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">index</span> <span class="o">==</span> <span class="p">(</span><span class="mi">0</span><span class="p">,)</span> <span class="ow">and</span> <span class="n">first_row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">return</span> <span class="n">_concat</span><span class="p">([</span><span class="n">first_row</span><span class="p">,</span> <span class="n">part</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1268,15 +1299,17 @@
             <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="n">_add_row</span><span class="p">,</span> <span class="n">BlockIndex</span><span class="p">((</span><span class="n">df</span><span class="o">.</span><span class="n">npartitions</span><span class="p">,)),</span> <span class="n">first_row</span><span class="o">=</span><span class="n">null_row</span><span class="p">)</span>
             <span class="n">rel_path</span> <span class="o">=</span> <span class="s2">&quot;unique.</span><span class="si">%s</span><span class="s2">.parquet&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">))</span>
             <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">base_path</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">])</span>
-            <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+            <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">first_n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">)</span>
 
             <span class="c1"># TODO: Delete tmp dir at path</span>
             <span class="k">return</span> <span class="n">path</span>
 
-        <span class="c1"># TODO: Avoid computing for more cases</span>
-        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">&quot;synchronous&quot;</span><span class="p">)</span>
+        <span class="c1"># If we have reached this point, we must compute the</span>
+        <span class="c1"># DataFrame collection of unique values.</span>
         <span class="c1"># TODO: Delete tmp dir at path</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">&quot;synchronous&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># We have a list of DataFrame objects.</span>
         <span class="c1"># Collect aggregation results into single frame</span>
         <span class="n">df</span> <span class="o">=</span> <span class="n">_general_concat</span><span class="p">(</span>
             <span class="n">dfs</span><span class="p">,</span>
@@ -1574,7 +1607,6 @@
                                 <span class="n">_mid_level_groupby</span><span class="p">,</span>
                                 <span class="n">input_keys</span><span class="p">,</span>
                                 <span class="n">col</span><span class="p">,</span>
-                                <span class="n">freq_limit_val</span><span class="p">,</span>
                                 <span class="n">options</span><span class="p">,</span>
                             <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
@@ -1615,7 +1647,7 @@
             <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">)</span>
             <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">path</span><span class="p">,</span> <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">write_func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;_write_uniques&quot;</span><span class="p">:</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;tmp.uniques.</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;tmp.uniques.</span><span class="si">{</span><span class="n">col_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">path</span><span class="p">,</span> <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
