@@ -34,8 +34,7 @@ try:
 except ImportError:
     storage = None
 
-from merlin.core.utils import device_mem_size, pynvml_mem_size, get_rmm_size
-
+from merlin.core.utils import device_mem_size, get_rmm_size, pynvml_mem_size
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
 from nvtabular import ops
