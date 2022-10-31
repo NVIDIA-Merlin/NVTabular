@@ -42,14 +42,10 @@ from fsspec.core import get_fs_token_paths
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
-
-# from merlin.io.dataset import Dataset
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
-
-# from pyarrow import parquet as pq
 
 
 class Categorify(StatOperator):
@@ -201,8 +197,6 @@ class Categorify(StatOperator):
         used to store unique categories. By default, this limit is 12.5% of the total memory.
         Note that this argument is meant as a guide for internal optimizations and UserWarnings
         within NVTabular, and does not guarantee that the memory limit will be satisfied.
-    storage_options: dict, default None
-        Optional fsspec storage options needed to access ``out_path``.
     """
 
     def __init__(
@@ -222,7 +216,6 @@ class Categorify(StatOperator):
         start_index=0,
         single_table=False,
         cardinality_memory_limit=None,
-        storage_options=None,
         tree_width=None,
         split_out=1,
         split_every=8,
@@ -280,7 +273,6 @@ class Categorify(StatOperator):
         self.search_sorted = search_sorted
         self.start_index = start_index
         self.cardinality_memory_limit = cardinality_memory_limit
-        self.storage_options = storage_options or {}
         self.split_every = split_every
         self.split_out = split_out
         _deprecate_tree_width(tree_width)
@@ -692,16 +684,13 @@ def _to_parquet_dask(
     path,
     compute=True,
     write_index=False,
-    storage_options=None,
     first_n=None,
 ):
     # Simple utility to write a DataFrame
     # to a directory of Parquet files
 
-    # Setup file-system and path
-    storage_options = storage_options or {}
-    fs = get_fs_token_paths(path, mode="wb", storage_options=storage_options)[0]
-    path = fs._strip_protocol(path)
+    # Get filesystem and path
+    fs = get_fs_token_paths(path, mode="wb")[0]
 
     # Check if we have a dask collection
     is_collection = isinstance(df_out, DaskDataFrame)
@@ -715,7 +704,6 @@ def _to_parquet_dask(
             compute=False,
             write_index=write_index,
             compression=None,
-            storage_options=storage_options,
             schema=None,
         )
         return (
@@ -730,16 +718,17 @@ def _to_parquet_dask(
 
     # Create empty directory if it doesn't already exist
     use_directory = is_collection and df_out.npartitions > 1
-    if fs.isdir(path) or fs.exists(path):
-        fs.rm(path, recursive=True)
+    _path = fs._strip_protocol(path)
+    if fs.isdir(_path) or fs.exists(_path):
+        fs.rm(_path, recursive=True)
     if use_directory:
-        fs.mkdir(path, exists_ok=True)
+        fs.mkdir(_path, exists_ok=True)
 
     # Iterate over partitions and write to disk
     size = 0
     for p, part in enumerate(df_out.partitions if is_collection else [df_out]):
         local_path = "/".join([path, f"part.{p}.parquet"]) if use_directory else path
-        _df = part.compute(scheduler="synchronous") if is_collection else part
+        _df = _compute_sync(part) if is_collection else part
         if not write_index:
             if use_directory:
                 # If we are NOT writing the index of df_out,
@@ -759,11 +748,7 @@ def _to_parquet_dask(
                 _df.reset_index(drop=True, inplace=True)
         if first_n is not None and size > first_n:
             _df = _df.iloc[: -(size - first_n)]
-        _df.to_parquet(
-            local_path,
-            compression=None,
-            storage_options=storage_options,
-        )
+        _df.to_parquet(local_path, compression=None)
     return
 
 
@@ -853,6 +838,7 @@ def _general_concat(
     col_selector=None,
     **kwargs,
 ):
+    # Concatenate DataFrame or pa.Table objects
     if isinstance(frames[0], pa.Table):
         df = pa.concat_tables(frames, promote=True)
         if (
@@ -1098,19 +1084,6 @@ def _get_aggregation_type(col):
         return "sum"
 
 
-@annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(
-    dfs,
-    base_path,
-    col_selector: ColumnSelector,
-    options: FitOptions,
-    cpu: bool,
-    path: str = None,
-):
-    # TODO: Remove this function?
-    return path
-
-
 @annotate("write_uniques", color="green", domain="nvt_python")
 def _write_uniques(
     dfs,
@@ -1153,8 +1126,7 @@ def _write_uniques(
 
         # Check if we need to compute the DataFrame collection
         # of unique values. For now, we can avoid doing this when
-        # we are not jointly encoding multiple columns.
-        # TODO: Handle dask-based joint/combo encoding
+        # we are not jointly encoding multiple columns
         if simple := (len(col_selector.names) == 1 and df.npartitions > 1):
             col_name = col_selector.names[0]
             name_size = col_name + "_size"
@@ -1222,16 +1194,16 @@ def _write_uniques(
 
             df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)), first_row=null_row)
             rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
-            path = "/".join([base_path, rel_path])
-            _to_parquet_dask(df, path, first_n=nlargest)
+            out_path = "/".join([base_path, rel_path])
+            _to_parquet_dask(df, out_path, first_n=nlargest, compute=True)
 
-            # TODO: Delete tmp dir at path
-            return path
+            # TODO: Delete temporary parquet file(s) now thet the final
+            # uniques are written to disk? (May not want to wait on deletion)
+            return out_path
 
-        # If we have reached this point, we must compute the
-        # DataFrame collection of unique values.
-        # TODO: Delete tmp dir at path
-        df = df.compute(scheduler="synchronous")
+        # If we have reached this point, we have a dask collection
+        # that must be computed before continuing
+        df = _compute_sync(df)
     else:
         # We have a list of DataFrame objects.
         # Collect aggregation results into single frame
@@ -1486,7 +1458,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                 else options.freq_limit
             )
         for s in range(options.split_out[col_str]):
-            split_every = options.split_every[col_str]  # TODO: make this configurable
+            split_every = options.split_every[col_str]
             parts = ddf.npartitions
             widths = [parts]
             while parts > 1:
@@ -1556,11 +1528,11 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         graph = HighLevelGraph.from_collections(reduce_2_name, dsk_split[c], dependencies=[grouped])
         col_group_frames.append(new_dd_object(graph, reduce_2_name, _meta, _divisions))
 
-        # Write multi-partition data to temporary files.
-        # TODO: Avoid the temporary write, and convert
-        # `write_func` into a collection-level function
+        # Write data to (possibly temporary) parquet files
         cpu = isinstance(col_group_frames[-1]._meta, pd.DataFrame)
-        if write_func.__name__ == "_write_gb_stats":
+        if write_func is None:
+            # Write results directly to disk, and use
+            # a final "barrier" task
             if options.concat_groups and len(col) > 1:
                 col_selector = ColumnSelector([_make_name(*col.names, sep=options.name_sep)])
             else:
@@ -1570,22 +1542,33 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             )
             path = os.path.join(out_path, rel_path)
             col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
-        elif col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
-            path = os.path.join(out_path, f"tmp.uniques.{col_str}")
-            col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
+            # Barrier-only task
+            dsk[(reduce_3_name, c)] = (
+                lambda keys, path: path,
+                col_group_frames[-1].__dask_keys__(),
+                path,
+            )
         else:
-            path = None
+            # Possibly write data to temporary parquet files,
+            # and perform write operation(s) in final `write_func` task
+            assert callable(write_func)
+            if col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
+                path = os.path.join(out_path, f"tmp.uniques.{col_str}")
+                col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
+            else:
+                path = None
+            # Write + barrier task
+            dsk[(reduce_3_name, c)] = (
+                write_func,
+                col_group_frames[-1].__dask_keys__(),
+                out_path,
+                col,
+                options,
+                cpu,
+                path,
+            )
 
-        dsk[(reduce_3_name, c)] = (
-            write_func,
-            col_group_frames[-1].__dask_keys__(),
-            out_path,
-            col,
-            options,
-            cpu,
-            path,
-        )
-
+    # Tie everything together into a graph with a single output key
     dsk[finalize_labels_name] = (
         _finish_labels,
         [(reduce_3_name, c) for c, col in enumerate(options.col_groups)],
@@ -1609,7 +1592,7 @@ def _category_stats(ddf, options: FitOptions):
     if options.agg_list == []:
         options.agg_list = ["count"]
 
-    return _groupby_to_disk(ddf, _write_gb_stats, options)
+    return _groupby_to_disk(ddf, None, options)
 
 
 def _encode(
@@ -1721,7 +1704,7 @@ def _encode(
     use_collection = isinstance(value, DaskDataFrame)
     if use_collection and value.npartitions == 1:
         # Use simple merge for single-partition case
-        value = value.compute(scheduler="synchronous")
+        value = _compute_sync(value)
         use_collection = False
     if use_collection or not search_sorted:
         if list_col:
@@ -1749,7 +1732,7 @@ def _encode(
                 merged_df = _concat(
                     [
                         codes.merge(
-                            part.compute(scheduler="synchronous"),
+                            _compute_sync(part),
                             left_on=selection_l.names,
                             right_on=selection_r.names,
                             how="left",
@@ -1786,7 +1769,7 @@ def _encode(
                 merged_df = _concat(
                     [
                         codes.merge(
-                            part.compute(scheduler="synchronous"),
+                            _compute_sync(part),
                             left_on=selection_l.names,
                             right_on=selection_r.names,
                             how="left",
@@ -1898,9 +1881,7 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
 
 
 def _reset_df_index(col_name, cat_file_path, idx_count):
-    cat_df = dispatch.read_dispatch(collection=True)(cat_file_path, index=False).compute(
-        scheduler="synchronous"
-    )
+    cat_df = _compute_sync(dispatch.read_dispatch(collection=True)(cat_file_path, index=False))
     # change indexes for category
     cat_df.index += idx_count
     # update count
@@ -1919,3 +1900,12 @@ def _deprecate_tree_width(tree_width):
             "Please use split_out and split_every.",
             FutureWarning,
         )
+
+
+def _compute_sync(collection):
+    # Simple utility to compute a dask collection with
+    # a synchronous scheduler (and to catch warnings
+    # that are intended for users doing this by accident)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Running on a single-machine scheduler.*")
+        return collection.compute(scheduler="synchronous")
