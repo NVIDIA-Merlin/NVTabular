@@ -1155,7 +1155,7 @@ def _write_uniques(
         # of unique values. For now, we can avoid doing this when
         # we are not jointly encoding multiple columns.
         # TODO: Handle dask-based joint/combo encoding
-        if simple := len(col_selector.names) == 1 and df.npartitions > 1:
+        if simple := (len(col_selector.names) == 1 and df.npartitions > 1):
             col_name = col_selector.names[0]
             name_size = col_name + "_size"
             has_size = name_size in df
@@ -1204,7 +1204,15 @@ def _write_uniques(
 
             # Step 4 - Sort by size (without null group)
             if has_size:
-                df = df.sort_values(name_size, ascending=False)
+                # Avoid using dask_cudf to calculate divisions
+                # (since it may produce too-few partitions)
+                df = df.sort_values(
+                    name_size,
+                    ascending=False,
+                    divisions=dd.shuffle._calculate_divisions(
+                        df, df[name_size], False, df.npartitions
+                    )[0][::-1],
+                )
 
             # Step 5 - Add null group back to df
             def _add_row(part, index, first_row=None):
@@ -1563,7 +1571,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             path = os.path.join(out_path, rel_path)
             col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
         elif col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
-            path = os.path.join(out_path, f"tmp.uniques.{c}")
+            path = os.path.join(out_path, f"tmp.uniques.{col_str}")
             col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
         else:
             path = None
