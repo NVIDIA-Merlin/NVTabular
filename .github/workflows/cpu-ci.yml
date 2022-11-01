@@ -42,7 +42,7 @@ jobs:
         tox -e test-cpu
     - name: Generate package for pypi
       run: |
-        python setup.py sdist
+        python setup.py sdist bdist_wheel
     - name: Upload pypi artifacts to github
       uses: actions/upload-artifact@v2
       with:
