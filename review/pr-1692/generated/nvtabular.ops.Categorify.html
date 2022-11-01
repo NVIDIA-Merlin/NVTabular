@@ -185,8 +185,8 @@ encoded as a new column. Note that replacement is not allowed for
 “combo”, because the same column name can be included in
 multiple groups.</p></li>
 <li><p><strong>split_out</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>, </em><em>optional</em>) – Number of files needed to store the unique values of each categorical
-column. High-cardinality columns may require a large <cite>split_out</cite>,
-while low-cardinality columns can likely use <cite>split_out=1</cite> (default).
+column. High-cardinality columns may require <cite>split_out&gt;1</cite>, while
+low-cardinality columns should be fine with the <cite>split_out=1</cite> default.
 If passing a dict, each key and value should correspond to the column
 name and value, respectively. The default value is 1 for all columns.</p></li>
 <li><p><strong>split_every</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>, </em><em>optional</em>) – Number of adjacent partitions to aggregate in each tree-reduction

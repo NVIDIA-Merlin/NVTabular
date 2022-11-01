@@ -213,8 +213,8 @@
 <span class="sd">        multiple groups.</span>
 <span class="sd">    split_out : dict or int, optional</span>
 <span class="sd">        Number of files needed to store the unique values of each categorical</span>
-<span class="sd">        column. High-cardinality columns may require a large `split_out`,</span>
-<span class="sd">        while low-cardinality columns can likely use `split_out=1` (default).</span>
+<span class="sd">        column. High-cardinality columns may require `split_out&gt;1`, while</span>
+<span class="sd">        low-cardinality columns should be fine with the `split_out=1` default.</span>
 <span class="sd">        If passing a dict, each key and value should correspond to the column</span>
 <span class="sd">        name and value, respectively. The default value is 1 for all columns.</span>
 <span class="sd">    split_every : dict or int, optional</span>
