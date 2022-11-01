@@ -130,17 +130,17 @@ output may be incorrect. See: <code class="docutils literal notranslate"><span c
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>groupby_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – The column names to be used as groupby keys.
+<li><p><strong>groupby_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> or </em><em>list of str</em>) – The column names to be used as groupby keys.
 WARNING: Ensure the dataset was partitioned by those
 groupby keys (see above for an example).</p></li>
-<li><p><strong>sort_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to be used to sort each partition before
+<li><p><strong>sort_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> or </em><em>list of str</em>) – Columns to be used to sort each partition before
 groupby aggregation is performed. If this argument
 is not specified, the results will not be sorted.</p></li>
-<li><p><strong>aggs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.10)"><em>dict</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Groupby aggregations to perform. Supported list-based
+<li><p><strong>aggs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – Groupby aggregations to perform. Supported list-based
 aggregations include “list”, “first” &amp; “last”. Most
 conventional aggregations supported by Pandas/cuDF are
 also allowed (e.g. “sum”, “count”, “max”, “mean”, etc.).</p></li>
-<li><p><strong>name_sep</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – String separator to use for new column names.</p></li>
+<li><p><strong>name_sep</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – String separator to use for new column names.</p></li>
 </ul>
 </dd>
 </dl>
