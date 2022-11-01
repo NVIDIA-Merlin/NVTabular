@@ -137,8 +137,8 @@ class Categorify(StatOperator):
         multiple groups.
     split_out : dict or int, optional
         Number of files needed to store the unique values of each categorical
-        column. High-cardinality columns may require a large `split_out`,
-        while low-cardinality columns can likely use `split_out=1` (default).
+        column. High-cardinality columns may require `split_out>1`, while
+        low-cardinality columns should be fine with the `split_out=1` default.
         If passing a dict, each key and value should correspond to the column
         name and value, respectively. The default value is 1 for all columns.
     split_every : dict or int, optional
