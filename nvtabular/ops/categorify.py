@@ -356,8 +356,11 @@ class Categorify(StatOperator):
         columns = [
             list(c) if isinstance(c, tuple) else c
             for c in col_selector.grouped_names
-            if c not in cols_with_vocabs
+            if (_make_name(*c, sep=self.name_sep) if isinstance(c, tuple) else c)
+            not in cols_with_vocabs
         ]
+        if not columns:
+            return Delayed("no-op", {"no-op": {}})
 
         # Define a rough row-count at which we are likely to
         # start hitting memory-pressure issues that cannot
@@ -397,17 +400,26 @@ class Categorify(StatOperator):
             base_path = os.path.join(self.out_path, fit_options.stat_name)
             os.makedirs(base_path, exist_ok=True)
             for col, vocab in vocabs.items():
-                vals = {col: vocab}
-                if vocab.iloc[0] is not None:
-                    with_empty = dispatch.add_to_series(vocab, [None]).reset_index()[0]
-                    vals = {col: with_empty}
+                col_name = _make_name(*col, sep=self.name_sep) if isinstance(col, tuple) else col
+                vals = {col_name: vocab}
+                if not vocab.iloc[:1].isna().any():
+                    with_empty = dispatch.concat(
+                        [
+                            dispatch.nullable_series([None], vocab.to_frame(), vocab.dtype),
+                            vocab,
+                        ]
+                    ).reset_index()[0]
+                    vals = {col_name: with_empty}
 
-                save_path = os.path.join(base_path, f"unique.{col}.parquet")
+                save_path = os.path.join(base_path, f"unique.{col_name}.parquet")
                 col_df = dispatch.make_df(vals)
-                _to_parquet_dask(col_df, save_path)
-                categories[col] = save_path
+                _to_parquet_dask_eager(col_df, save_path)
+                categories[col_name] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
-            categories = vocabs
+            categories = {
+                (_make_name(*col, sep=self.name_sep) if isinstance(col, tuple) else col): path
+                for col, path in vocabs.items()
+            }
         else:
             error = """Unrecognized vocab type,
             please provide either a dictionary with paths to parquet files
@@ -432,6 +444,7 @@ class Categorify(StatOperator):
             num_buckets=self.num_buckets,
             cardinality_memory_limit=self.cardinality_memory_limit,
             split_every=self.split_every,
+            start_index=self.start_index,
         )
 
     def set_storage_path(self, new_path, copy=False):
@@ -679,45 +692,44 @@ def _make_name(*args, sep="_"):
     return sep.join(args)
 
 
-def _to_parquet_dask(
-    df_out,
+def _to_parquet_dask_lazy(df, path, write_index=False):
+    # Write DataFrame data to parquet (lazily) with dask
+
+    # Check if we already have a dask collection
+    is_collection = isinstance(df, DaskDataFrame)
+
+    # Use `ddf.to_parquet` method
+    kwargs = dict(
+        overwrite=True,
+        compute=False,
+        write_index=write_index,
+        schema=None,
+    )
+    return (
+        df
+        if is_collection
+        else dispatch.convert_data(
+            df,
+            cpu=isinstance(df, pd.DataFrame),
+            to_collection=True,
+        )
+    ).to_parquet(path, **kwargs)
+
+
+def _to_parquet_dask_eager(
+    df,
     path,
-    compute=True,
-    write_index=False,
+    preserve_index=False,
     first_n=None,
 ):
-    # Simple utility to write a DataFrame
-    # to a directory of Parquet files
+    # Write DataFrame data to parquet (eagerly) with dask
 
-    # Get filesystem and path
-    fs = get_fs_token_paths(path, mode="wb")[0]
-
-    # Check if we have a dask collection
-    is_collection = isinstance(df_out, DaskDataFrame)
-
-    # If compute=False, use `ddf.to_parquet` method
-    if not compute:
-        if first_n is not None:
-            raise ValueError("first_n not supported for compute=False")
-        kwargs = dict(
-            overwrite=True,
-            compute=False,
-            write_index=write_index,
-            compression=None,
-            schema=None,
-        )
-        return (
-            df_out
-            if is_collection
-            else dispatch.convert_data(
-                df_out,
-                cpu=isinstance(df_out, pd.DataFrame),
-                to_collection=True,
-            )
-        ).to_parquet(path, **kwargs)
+    # Check if we already have a dask collection
+    is_collection = isinstance(df, DaskDataFrame)
 
     # Create empty directory if it doesn't already exist
-    use_directory = is_collection and df_out.npartitions > 1
+    use_directory = is_collection and df.npartitions > 1
+    fs = get_fs_token_paths(path, mode="wb")[0]
     _path = fs._strip_protocol(path)
     if fs.isdir(_path) or fs.exists(_path):
         fs.rm(_path, recursive=True)
@@ -726,29 +738,26 @@ def _to_parquet_dask(
 
     # Iterate over partitions and write to disk
     size = 0
-    for p, part in enumerate(df_out.partitions if is_collection else [df_out]):
+    for p, part in enumerate(df.partitions if is_collection else [df]):
         local_path = "/".join([path, f"part.{p}.parquet"]) if use_directory else path
         _df = _compute_sync(part) if is_collection else part
-        if not write_index:
-            if use_directory:
-                # If we are NOT writing the index of df_out,
-                # then make sure we are writing a "correct"
-                # index. Note that we avoid using ddf.to_parquet
-                # so that we can make sure the index is correct.
-                _len = len(_df)
-                _df.set_index(
-                    np.arange(size, size + _len, like=_df.index.values),
-                    drop=True,
-                    inplace=True,
-                )
-                size += _len
-            else:
-                if first_n is not None:
-                    size += len(_df)
-                _df.reset_index(drop=True, inplace=True)
+        if not preserve_index:
+            # If we are NOT writing the index of df,
+            # then make sure we are writing a "correct"
+            # index. Note that we avoid using ddf.to_parquet
+            # so that we can make sure the index is correct
+            _len = len(_df)
+            _df.set_index(
+                pd.RangeIndex(start=size, stop=size + _len, step=1),
+                drop=True,
+                inplace=True,
+            )
+            size += _len
         if first_n is not None and size > first_n:
             _df = _df.iloc[: -(size - first_n)]
         _df.to_parquet(local_path, compression=None)
+        if first_n is not None and size >= first_n:
+            break  # Ignore any remaining files
     return
 
 
@@ -1195,7 +1204,7 @@ def _write_uniques(
             df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)), first_row=null_row)
             rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
             out_path = "/".join([base_path, rel_path])
-            _to_parquet_dask(df, out_path, first_n=nlargest, compute=True)
+            _to_parquet_dask_eager(df, out_path, first_n=nlargest)
 
             # TODO: Delete temporary parquet file(s) now thet the final
             # uniques are written to disk? (May not want to wait on deletion)
@@ -1248,7 +1257,8 @@ def _write_uniques(
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_write = df_null
 
-    _to_parquet_dask(df_write, path)
+    # Assume max_size was already taken into account
+    _to_parquet_dask_eager(df_write, path)
     del df
     del df_write
     return path
@@ -1373,7 +1383,7 @@ def _finish_labels(paths, cols):
 
 def _groupby_to_disk(ddf, write_func, options: FitOptions):
     if not options.col_groups:
-        return {}
+        raise ValueError("no column groups to aggregate")
 
     if options.concat_groups:
         if options.agg_list and not set(options.agg_list).issubset({"count", "size"}):
@@ -1541,7 +1551,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                 _make_name(*col_selector.names, sep=options.name_sep)
             )
             path = os.path.join(out_path, rel_path)
-            col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
+            col_group_frames[-1] = _to_parquet_dask_lazy(col_group_frames[-1], path)
             # Barrier-only task
             dsk[(reduce_3_name, c)] = (
                 lambda keys, path: path,
@@ -1554,7 +1564,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
             assert callable(write_func)
             if col_group_frames[-1].npartitions > 1 and write_func.__name__ == "_write_uniques":
                 path = os.path.join(out_path, f"tmp.uniques.{col_str}")
-                col_group_frames[-1] = _to_parquet_dask(col_group_frames[-1], path, compute=False)
+                col_group_frames[-1] = _to_parquet_dask_lazy(col_group_frames[-1], path)
             else:
                 path = None
             # Write + barrier task
@@ -1601,7 +1611,7 @@ def _encode(
     path,
     df,
     cat_cache,
-    na_sentinel=-1,
+    na_sentinel=0,
     freq_threshold=0,
     search_sorted=False,
     buckets=None,
@@ -1624,7 +1634,7 @@ def _encode(
     df : DataFrame
     cat_cache :
     na_sentinel : int
-        Sentinel for NA value. Defaults to -1.
+        Sentinel for NA value. Defaults to 0.
     freq_threshold :  int
         Categories with a count or frequency below this threshold will
         be omitted from the encoding and corresponding data will be
@@ -1763,7 +1773,6 @@ def _encode(
             labels = na_sentinel
         # no hashing
         else:
-            na_sentinel = 0
             if use_collection:
                 # Manual broadcast merge
                 merged_df = _concat(
@@ -1888,7 +1897,7 @@ def _reset_df_index(col_name, cat_file_path, idx_count):
     idx_count += cat_df.shape[0]
     # save the new indexes in file
     new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
-    _to_parquet_dask(cat_df, new_cat_file_path, write_index=True)
+    _to_parquet_dask_eager(cat_df, new_cat_file_path, preserve_index=True)
     return idx_count, new_cat_file_path
 
 
