@@ -463,7 +463,7 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
         global_size=2,
         global_rank=global_rank,
     )
-    indices = data_loader._gather_indices_for_dev(None)
+    indices = data_loader._indices_for_process()
     assert indices == [global_rank]
 
 
@@ -604,6 +604,9 @@ def test_horovod_multigpu(tmpdir):
         process.wait()
         stdout, stderr = process.communicate()
         print(stdout, stderr)
+        # if horovod failed to run because of environment issue, lets not fail the test here
+        if b"horovod does not find an installed MPI." in stderr:
+            pytest.skip("Skipping test because of horovod missing MPI")
         assert "Loss:" in str(stdout)
 
 

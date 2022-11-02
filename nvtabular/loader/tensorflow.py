@@ -13,34 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import contextlib
-import logging
 import os
 
 import dask.dataframe as dd
-import numpy as np
 
-from merlin.core.dispatch import HAS_GPU
-from merlin.schema import Tags
-from nvtabular.loader.backend import DataLoader
-from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
-
-from_dlpack = configure_tensorflow()
-LOG = logging.getLogger("nvtabular")
-# tf import must happen after config to restrict memory use
+# must happen after the merlin.loader.tensorflow import
 import tensorflow as tf  # noqa
 
-# noqa
-try:
-    from merlin.io import Dataset
-
-    nvt_dataset_class = Dataset
-except ImportError:
-    nvt_dataset_class = None
-# pylint has issues with TF array ops, so disable checks until fixed:
-# https://github.com/PyCQA/pylint/issues/3613
-# pylint: disable=no-value-for-parameter,unexpected-keyword-arg,redundant-keyword-arg
-
+import merlin.loader.tensorflow
+from merlin.core.dispatch import HAS_GPU
+from merlin.io import Dataset
+from merlin.schema import Tags
+from nvtabular.loader.backend import _augment_schema
+from nvtabular.loader.tf_utils import get_dataset_schema_from_feature_columns
 
 dd_engine = {
     "parquet": dd.read_parquet,
@@ -79,14 +64,7 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, device,
 
     cpu = device and "cpu" in device
 
-    if nvt_dataset_class:
-        return nvt_dataset_class(files, engine=engine, cpu=cpu)
-    else:
-        LOG.warning(
-            "NVTabular Dataset class not detected, reverting to Dask Dataframe."
-            "Expect slower iteration speeds."
-        )
-    return dd_engine[engine](files)
+    return Dataset(files, engine=engine, cpu=cpu)
 
 
 def _validate_schema(feature_columns, cat_names, cont_names, schema=None):
@@ -124,7 +102,7 @@ def _get_schema(dataset):
     return None
 
 
-class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
+class KerasSequenceLoader(merlin.loader.tensorflow.Loader):
     """
     Infinite generator used to asynchronously iterate through CSV or Parquet
     dataframes on GPU by leveraging an NVTabular `Dataset`. Applies preprocessing
@@ -265,216 +243,26 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             feature_columns, cat_names, cont_names, schema=schema
         )
 
-        DataLoader.__init__(
-            self,
+        dataset.schema = _augment_schema(
+            dataset.schema,
+            cat_names,
+            cont_names,
+            label_names,
+            sparse_names,
+            sparse_max,
+            sparse_as_dense,
+        )
+
+        super().__init__(
             dataset,
             batch_size,
-            shuffle,
-            cat_names=cat_names,
-            cont_names=cont_names,
-            label_names=label_names,
+            shuffle=shuffle,
             seed_fn=seed_fn,
             parts_per_chunk=parts_per_chunk,
-            device=device,
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
-            sparse_names=sparse_names,
-            sparse_max=sparse_max,
-            sparse_as_dense=sparse_as_dense,
         )
-        self._map_fns = []
-
-    def __len__(self):
-        """
-        recreating since otherwise Keras yells at you
-        """
-        # TODO: what's a better way to do this inheritance
-        # of the appropriate methods? A Metaclass?
-        DataLoader.stop(self)
-        return DataLoader.__len__(self)
-
-    def __getitem__(self, idx):
-        """
-        implemented exclusively for consistency
-        with Keras model.fit. Does not leverage
-        passed idx in any way
-        """
-        return DataLoader.__next__(self)
-
-    def map(self, fn):
-        """
-        Applying a function to each batch.
-
-        This can for instance be used to add `sample_weight` to the model.
-        """
-        self._map_fns.append(fn)
-
-        return self
-
-    @contextlib.contextmanager
-    def _get_device_ctx(self, dev):
-        # with tf.device("/device:GPU:{}".format(dev)) as tf_device:
-        #     # tf.device changes the cupy cuda device, which breaks us on multigpu
-        #     # force cupy to still use the device we expect
-        #     cupy.cuda.Device(dev).use()
-        #     yield tf_device
-        # commenting out since device statements cause
-        # RuntimeErrors when exiting if two dataloaders
-        # are running at once (e.g. train and validation)
-        if dev != "cpu":
-            yield tf.device("/GPU:" + str(dev))
-        else:
-            # https://www.tensorflow.org/guide/gpu#manual_device_placement
-            yield tf.device("/device:CPU:0")
-
-    def _split_fn(self, tensor, idx, axis=0):
-        return tf.split(tensor, idx, axis=axis)
-
-    def _tensor_split(self, tensor, idx, axis=0):
-        """
-        Same function as above but need this method
-        for api match.
-        """
-        return tf.split(tensor, idx, axis=axis)
-
-    @property
-    def _LONG_DTYPE(self):
-        return tf.int64
-
-    @property
-    def _FLOAT32_DTYPE(self):
-        return tf.float32
-
-    def _pack(self, gdf):
-        if isinstance(gdf, np.ndarray):
-            return gdf
-        elif hasattr(gdf, "to_dlpack") and callable(getattr(gdf, "to_dlpack")):
-            return gdf.to_dlpack()
-        elif hasattr(gdf, "to_numpy") and callable(getattr(gdf, "to_numpy")):
-            gdf = gdf.to_numpy()
-            if isinstance(gdf[0], list):
-                gdf = np.stack(gdf)
-            return gdf
-        return gdf.toDlpack()
-
-    def _unpack(self, gdf):
-        if hasattr(gdf, "shape"):
-            return tf.convert_to_tensor(gdf)
-        return from_dlpack(gdf)
-
-    def _to_tensor(self, gdf, dtype=None):
-        if gdf.empty:
-            return
-
-        # checks necessary because of this bug
-        # https://github.com/tensorflow/tensorflow/issues/42660
-        if len(gdf.shape) == 1 or gdf.shape[1] == 1:
-            dlpack = self._pack(gdf)
-        elif gdf.shape[0] == 1:
-            dlpack = self._pack(gdf.values[0])
-        else:
-            dlpack = self._pack(gdf.values.T)
-        # catch error caused by tf eager context
-        # not being initialized
-
-        try:
-            x = self._unpack(dlpack)
-        except AssertionError:
-            tf.random.uniform((1,))
-            x = self._unpack(dlpack)
-        # if rank is already two it is  already in list format
-        if gdf.shape[0] == 1 and not tf.rank(x) == 2:
-            # batch size 1 so got squashed to a vector
-            x = tf.expand_dims(x, 0)
-        elif len(gdf.shape) == 1 or len(x.shape) == 1:
-            # sort of a generic check for any other
-            # len(shape)==1 case, could probably
-            # be more specific
-            x = tf.expand_dims(x, -1)
-        elif gdf.shape[1] > 1:
-            # matrix which means we had to transpose
-            # for the bug above, so untranspose
-            x = tf.transpose(x)
-        return x
-
-    def _pull_values_offsets(self, values_offset):
-        """
-        values_offset is either a tuple (values, offsets) or just values.
-        Values is a tensor.
-        This method is used to turn a tensor into its sparse representation
-        """
-        # pull_values_offsets, return values offsets diff_offsets
-        diff_offsets = None
-        if isinstance(values_offset, tuple):
-            values = tf.reshape(values_offset[0], [-1])
-            diff_offsets = tf.cast(tf.reshape(values_offset[1], [-1]), dtype=tf.int64)
-            offsets = tf.math.cumsum(diff_offsets)
-        else:
-            values = tf.reshape(values_offset, [-1])
-            offsets = tf.arange(tf.shape(values)[0], dtype=tf.int64)
-            diff_offsets = offsets[1:] - offsets[:-1]
-        num_rows = len(offsets)
-        return values, offsets, diff_offsets, num_rows
-
-    def _get_max_seq_len(self, diff_offsets):
-        # get_max_seq_len, return int
-        return int(tf.math.reduce_max(diff_offsets))
-
-    def _get_indices(self, offsets, diff_offsets):
-        # Building the indices to reconstruct the sparse tensors
-        row_ids = tf.range(len(offsets), dtype=tf.int64)
-
-        row_ids_repeated = tf.repeat(row_ids, diff_offsets)
-        row_offset_repeated = tf.repeat(offsets, diff_offsets)
-        col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
-        indices = tf.concat(
-            values=[tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
-        )
-        return indices
-
-    def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
-        sparse_tensor = tf.sparse.SparseTensor(
-            indices=indices, values=values, dense_shape=[num_rows, seq_limit]
-        )
-        return sparse_tensor
-
-    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
-        ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
-        tensor = tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
-        if self.sparse_as_dense:
-            tensor = tf.sparse.to_dense(tensor)
-        return tensor
-
-    def _handle_tensors(self, cats, conts, labels):
-        to_return = super()._handle_tensors(cats, conts, labels)
-
-        for map_fn in self._map_fns:
-            to_return = map_fn(*to_return)
-
-        return to_return
 
 
-class KerasSequenceValidater(tf.keras.callbacks.Callback):
-    # TODO: document
-    _supports_tf_logs = True
-
-    def __init__(self, dataloader):
-        super().__init__()
-        self.dataloader = dataloader
-
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs if logs is not None else {}
-        for X, y_true in self.dataloader:
-            y_pred = self.model(X)
-
-            # TODO: how do we want to handle the multi-output case?
-            for metric in self.model.metrics:
-                metric.update_state(y_true, y_pred)
-
-        set_logs = {}
-        for metric in self.model.metrics:
-            set_logs[f"val_{metric.name}"] = metric.result().numpy()
-        logs.update(set_logs)
-        print(set_logs)
-        return logs
+KerasSequenceValidater = merlin.loader.tensorflow.KerasSequenceValidater
