@@ -432,8 +432,11 @@
         <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
             <span class="nb">list</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">c</span>
             <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">grouped_names</span>
-            <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cols_with_vocabs</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">c</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">c</span><span class="p">)</span>
+            <span class="ow">not</span> <span class="ow">in</span> <span class="n">cols_with_vocabs</span>
         <span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Delayed</span><span class="p">(</span><span class="s2">&quot;no-op&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;no-op&quot;</span><span class="p">:</span> <span class="p">{}})</span>
 
         <span class="c1"># Define a rough row-count at which we are likely to</span>
         <span class="c1"># start hitting memory-pressure issues that cannot</span>
@@ -473,17 +476,26 @@
             <span class="n">base_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span> <span class="n">fit_options</span><span class="o">.</span><span class="n">stat_name</span><span class="p">)</span>
             <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">vocab</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">vocab</span><span class="p">}</span>
-                <span class="k">if</span> <span class="n">vocab</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">with_empty</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">add_to_series</span><span class="p">(</span><span class="n">vocab</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
-                    <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">with_empty</span><span class="p">}</span>
+                <span class="n">col_name</span> <span class="o">=</span> <span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">col</span>
+                <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">col_name</span><span class="p">:</span> <span class="n">vocab</span><span class="p">}</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">vocab</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                    <span class="n">with_empty</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">dispatch</span><span class="o">.</span><span class="n">nullable_series</span><span class="p">([</span><span class="kc">None</span><span class="p">],</span> <span class="n">vocab</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(),</span> <span class="n">vocab</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span>
+                            <span class="n">vocab</span><span class="p">,</span>
+                        <span class="p">]</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">col_name</span><span class="p">:</span> <span class="n">with_empty</span><span class="p">}</span>
 
-                <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;unique.</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">.parquet&quot;</span><span class="p">)</span>
+                <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;unique.</span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2">.parquet&quot;</span><span class="p">)</span>
                 <span class="n">col_df</span> <span class="o">=</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">make_df</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
-                <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">col_df</span><span class="p">,</span> <span class="n">save_path</span><span class="p">)</span>
-                <span class="n">categories</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">save_path</span>
+                <span class="n">_to_parquet_dask_eager</span><span class="p">(</span><span class="n">col_df</span><span class="p">,</span> <span class="n">save_path</span><span class="p">)</span>
+                <span class="n">categories</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">save_path</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vocabs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
-            <span class="n">categories</span> <span class="o">=</span> <span class="n">vocabs</span>
+            <span class="n">categories</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="p">(</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">col</span><span class="p">):</span> <span class="n">path</span>
+                <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">error</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;Unrecognized vocab type,</span>
 <span class="s2">            please provide either a dictionary with paths to parquet files</span>
@@ -508,6 +520,7 @@
             <span class="n">num_buckets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_buckets</span><span class="p">,</span>
             <span class="n">cardinality_memory_limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cardinality_memory_limit</span><span class="p">,</span>
             <span class="n">split_every</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_every</span><span class="p">,</span>
+            <span class="n">start_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_index</span><span class="p">,</span>
         <span class="p">)</span>
 
 <div class="viewcode-block" id="Categorify.set_storage_path"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Categorify.html#nvtabular.ops.Categorify.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -755,45 +768,44 @@
     <span class="k">return</span> <span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_to_parquet_dask</span><span class="p">(</span>
-    <span class="n">df_out</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">_to_parquet_dask_lazy</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="c1"># Write DataFrame data to parquet (lazily) with dask</span>
+
+    <span class="c1"># Check if we already have a dask collection</span>
+    <span class="n">is_collection</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">DaskDataFrame</span><span class="p">)</span>
+
+    <span class="c1"># Use `ddf.to_parquet` method</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">write_index</span><span class="o">=</span><span class="n">write_index</span><span class="p">,</span>
+        <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">df</span>
+        <span class="k">if</span> <span class="n">is_collection</span>
+        <span class="k">else</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">convert_data</span><span class="p">(</span>
+            <span class="n">df</span><span class="p">,</span>
+            <span class="n">cpu</span><span class="o">=</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">),</span>
+            <span class="n">to_collection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_to_parquet_dask_eager</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">,</span>
     <span class="n">path</span><span class="p">,</span>
-    <span class="n">compute</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">preserve_index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">first_n</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="c1"># Simple utility to write a DataFrame</span>
-    <span class="c1"># to a directory of Parquet files</span>
+    <span class="c1"># Write DataFrame data to parquet (eagerly) with dask</span>
 
-    <span class="c1"># Get filesystem and path</span>
-    <span class="n">fs</span> <span class="o">=</span> <span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;wb&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="c1"># Check if we have a dask collection</span>
-    <span class="n">is_collection</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df_out</span><span class="p">,</span> <span class="n">DaskDataFrame</span><span class="p">)</span>
-
-    <span class="c1"># If compute=False, use `ddf.to_parquet` method</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">compute</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;first_n not supported for compute=False&quot;</span><span class="p">)</span>
-        <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="n">write_index</span><span class="o">=</span><span class="n">write_index</span><span class="p">,</span>
-            <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span>
-            <span class="n">df_out</span>
-            <span class="k">if</span> <span class="n">is_collection</span>
-            <span class="k">else</span> <span class="n">dispatch</span><span class="o">.</span><span class="n">convert_data</span><span class="p">(</span>
-                <span class="n">df_out</span><span class="p">,</span>
-                <span class="n">cpu</span><span class="o">=</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">df_out</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">),</span>
-                <span class="n">to_collection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c1"># Check if we already have a dask collection</span>
+    <span class="n">is_collection</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">DaskDataFrame</span><span class="p">)</span>
 
     <span class="c1"># Create empty directory if it doesn&#39;t already exist</span>
-    <span class="n">use_directory</span> <span class="o">=</span> <span class="n">is_collection</span> <span class="ow">and</span> <span class="n">df_out</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span>
+    <span class="n">use_directory</span> <span class="o">=</span> <span class="n">is_collection</span> <span class="ow">and</span> <span class="n">df</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span>
+    <span class="n">fs</span> <span class="o">=</span> <span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;wb&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">_path</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">_strip_protocol</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fs</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fs</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">_path</span><span class="p">):</span>
         <span class="n">fs</span><span class="o">.</span><span class="n">rm</span><span class="p">(</span><span class="n">_path</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -802,29 +814,26 @@
 
     <span class="c1"># Iterate over partitions and write to disk</span>
     <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">part</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">df_out</span><span class="o">.</span><span class="n">partitions</span> <span class="k">if</span> <span class="n">is_collection</span> <span class="k">else</span> <span class="p">[</span><span class="n">df_out</span><span class="p">]):</span>
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">part</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">partitions</span> <span class="k">if</span> <span class="n">is_collection</span> <span class="k">else</span> <span class="p">[</span><span class="n">df</span><span class="p">]):</span>
         <span class="n">local_path</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;part.</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">.parquet&quot;</span><span class="p">])</span> <span class="k">if</span> <span class="n">use_directory</span> <span class="k">else</span> <span class="n">path</span>
         <span class="n">_df</span> <span class="o">=</span> <span class="n">_compute_sync</span><span class="p">(</span><span class="n">part</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_collection</span> <span class="k">else</span> <span class="n">part</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">write_index</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">use_directory</span><span class="p">:</span>
-                <span class="c1"># If we are NOT writing the index of df_out,</span>
-                <span class="c1"># then make sure we are writing a &quot;correct&quot;</span>
-                <span class="c1"># index. Note that we avoid using ddf.to_parquet</span>
-                <span class="c1"># so that we can make sure the index is correct.</span>
-                <span class="n">_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_df</span><span class="p">)</span>
-                <span class="n">_df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">size</span> <span class="o">+</span> <span class="n">_len</span><span class="p">,</span> <span class="n">like</span><span class="o">=</span><span class="n">_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
-                    <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">size</span> <span class="o">+=</span> <span class="n">_len</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">size</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_df</span><span class="p">)</span>
-                <span class="n">_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">preserve_index</span><span class="p">:</span>
+            <span class="c1"># If we are NOT writing the index of df,</span>
+            <span class="c1"># then make sure we are writing a &quot;correct&quot;</span>
+            <span class="c1"># index. Note that we avoid using ddf.to_parquet</span>
+            <span class="c1"># so that we can make sure the index is correct</span>
+            <span class="n">_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_df</span><span class="p">)</span>
+            <span class="n">_df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">RangeIndex</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">size</span> <span class="o">+</span> <span class="n">_len</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">size</span> <span class="o">+=</span> <span class="n">_len</span>
         <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="n">first_n</span><span class="p">:</span>
             <span class="n">_df</span> <span class="o">=</span> <span class="n">_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="o">-</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="n">first_n</span><span class="p">)]</span>
         <span class="n">_df</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">local_path</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">first_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;=</span> <span class="n">first_n</span><span class="p">:</span>
+            <span class="k">break</span>  <span class="c1"># Ignore any remaining files</span>
     <span class="k">return</span>
 
 
@@ -1271,7 +1280,7 @@
             <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="n">_add_row</span><span class="p">,</span> <span class="n">BlockIndex</span><span class="p">((</span><span class="n">df</span><span class="o">.</span><span class="n">npartitions</span><span class="p">,)),</span> <span class="n">first_row</span><span class="o">=</span><span class="n">null_row</span><span class="p">)</span>
             <span class="n">rel_path</span> <span class="o">=</span> <span class="s2">&quot;unique.</span><span class="si">%s</span><span class="s2">.parquet&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">))</span>
             <span class="n">out_path</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">base_path</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">])</span>
-            <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">first_n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">,</span> <span class="n">compute</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">_to_parquet_dask_eager</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">first_n</span><span class="o">=</span><span class="n">nlargest</span><span class="p">)</span>
 
             <span class="c1"># TODO: Delete temporary parquet file(s) now thet the final</span>
             <span class="c1"># uniques are written to disk? (May not want to wait on deletion)</span>
@@ -1324,7 +1333,8 @@
             <span class="n">df_null</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_null</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="n">df_write</span> <span class="o">=</span> <span class="n">df_null</span>
 
-    <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">df_write</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="c1"># Assume max_size was already taken into account</span>
+    <span class="n">_to_parquet_dask_eager</span><span class="p">(</span><span class="n">df_write</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
     <span class="k">del</span> <span class="n">df</span>
     <span class="k">del</span> <span class="n">df_write</span>
     <span class="k">return</span> <span class="n">path</span>
@@ -1449,7 +1459,7 @@
 
 <span class="k">def</span> <span class="nf">_groupby_to_disk</span><span class="p">(</span><span class="n">ddf</span><span class="p">,</span> <span class="n">write_func</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">col_groups</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;no column groups to aggregate&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">concat_groups</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">agg_list</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">set</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">agg_list</span><span class="p">)</span><span class="o">.</span><span class="n">issubset</span><span class="p">({</span><span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">}):</span>
@@ -1617,7 +1627,7 @@
                 <span class="n">_make_name</span><span class="p">(</span><span class="o">*</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">)</span>
-            <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">path</span><span class="p">,</span> <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">_to_parquet_dask_lazy</span><span class="p">(</span><span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">path</span><span class="p">)</span>
             <span class="c1"># Barrier-only task</span>
             <span class="n">dsk</span><span class="p">[(</span><span class="n">reduce_3_name</span><span class="p">,</span> <span class="n">c</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="k">lambda</span> <span class="n">keys</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">path</span><span class="p">,</span>
@@ -1630,7 +1640,7 @@
             <span class="k">assert</span> <span class="n">callable</span><span class="p">(</span><span class="n">write_func</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">write_func</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;_write_uniques&quot;</span><span class="p">:</span>
                 <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;tmp.uniques.</span><span class="si">{</span><span class="n">col_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">path</span><span class="p">,</span> <span class="n">compute</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">_to_parquet_dask_lazy</span><span class="p">(</span><span class="n">col_group_frames</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">path</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="c1"># Write + barrier task</span>
@@ -1677,7 +1687,7 @@
     <span class="n">path</span><span class="p">,</span>
     <span class="n">df</span><span class="p">,</span>
     <span class="n">cat_cache</span><span class="p">,</span>
-    <span class="n">na_sentinel</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">na_sentinel</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
     <span class="n">freq_threshold</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
     <span class="n">search_sorted</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">buckets</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1700,7 +1710,7 @@
 <span class="sd">    df : DataFrame</span>
 <span class="sd">    cat_cache :</span>
 <span class="sd">    na_sentinel : int</span>
-<span class="sd">        Sentinel for NA value. Defaults to -1.</span>
+<span class="sd">        Sentinel for NA value. Defaults to 0.</span>
 <span class="sd">    freq_threshold :  int</span>
 <span class="sd">        Categories with a count or frequency below this threshold will</span>
 <span class="sd">        be omitted from the encoding and corresponding data will be</span>
@@ -1839,7 +1849,6 @@
             <span class="n">labels</span> <span class="o">=</span> <span class="n">na_sentinel</span>
         <span class="c1"># no hashing</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">na_sentinel</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">if</span> <span class="n">use_collection</span><span class="p">:</span>
                 <span class="c1"># Manual broadcast merge</span>
                 <span class="n">merged_df</span> <span class="o">=</span> <span class="n">_concat</span><span class="p">(</span>
@@ -1964,7 +1973,7 @@
     <span class="n">idx_count</span> <span class="o">+=</span> <span class="n">cat_df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="c1"># save the new indexes in file</span>
     <span class="n">new_cat_file_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cat_file_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;unique.</span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2">.all.parquet&quot;</span>
-    <span class="n">_to_parquet_dask</span><span class="p">(</span><span class="n">cat_df</span><span class="p">,</span> <span class="n">new_cat_file_path</span><span class="p">,</span> <span class="n">write_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">_to_parquet_dask_eager</span><span class="p">(</span><span class="n">cat_df</span><span class="p">,</span> <span class="n">new_cat_file_path</span><span class="p">,</span> <span class="n">preserve_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">idx_count</span><span class="p">,</span> <span class="n">new_cat_file_path</span>
 
 
