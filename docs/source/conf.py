@@ -88,6 +88,7 @@ exclude_patterns = [
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "navigation_depth": 3,
+    "analytics_id": "G-NVJ1Y1YJHK",
 }
 html_show_sourcelink = False
 
@@ -116,6 +117,7 @@ smv_branch_whitelist = "^main$"
 smv_refs_override_suffix = "-docs"
 
 html_sidebars = {"**": ["versions.html"]}
+html_baseurl = "https://nvidia-merlin.github.io/NVTabular/main"
 
 autodoc_inherit_docstrings = False
 autodoc_default_options = {
