@@ -1905,7 +1905,7 @@ def _deprecate_tree_width(tree_width):
     # Warn user if tree_width is specified
     if tree_width is not None:
         warnings.warn(
-            "tree_width is now deprecated, and will be ignored. "
+            "The tree_width argument is now deprecated, and will be ignored. "
             "Please use split_out and split_every.",
             FutureWarning,
         )
