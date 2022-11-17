@@ -70,9 +70,11 @@ def test_example_01_getting_started():
         assert set(metrics.history.keys()) == set(
             [
                 "loss",
+                "loss_batch",
                 "regularization_loss",
                 "root_mean_squared_error",
                 "val_loss",
+                "val_loss_batch",
                 "val_regularization_loss",
                 "val_root_mean_squared_error",
             ]
