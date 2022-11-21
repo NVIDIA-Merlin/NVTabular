@@ -38,17 +38,13 @@ def _augment_schema(
     for col in sparse_names or []:
         cs = schema[col]
         properties = cs.properties
-        is_ragged = not sparse_as_dense
-        if sparse_max and col in sparse_max:
-            properties["value_count"] = {"min": sparse_max[col], "max": sparse_max[col]}
-            if sparse_max[col] == sparse_max[col]:
-                is_ragged = False
+        properties["value_count"] = {"min": 1, "max": sparse_max[col]}
         schema[col] = ColumnSchema(
             name=cs.name,
             tags=cs.tags,
             dtype=cs.dtype,
             is_list=True,
-            is_ragged=is_ragged,
+            is_ragged=not sparse_as_dense,
             properties=properties,
         )
 
