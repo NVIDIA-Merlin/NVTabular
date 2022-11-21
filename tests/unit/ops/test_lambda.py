@@ -21,6 +21,7 @@ from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
+from merlin import dtype
 from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
 
@@ -169,22 +170,25 @@ def test_lambdaop_schema_computation(cpu):
     ddf0 = dd.from_pandas(df0, npartitions=4)
     dataset = nvt.Dataset(ddf0, cpu=cpu)
 
-    dtype = np.float64
-    tags = [Tags.TARGET]
-    properties = {"prop1": True}
+    expected_dtype = np.float64
+    expected_tags = [Tags.TARGET]
+    expected_props = {"prop1": True}
 
     label = ColumnSelector(["c"])
     label_feature = label >> ops.LambdaOp(
-        lambda col: col.astype(dtype), dtype=dtype, tags=tags, properties=properties
+        lambda col: col.astype(expected_dtype),
+        dtype=expected_dtype,
+        tags=expected_tags,
+        properties=expected_props,
     )
     workflow = nvt.Workflow(label_feature)
     workflow.fit(dataset)
 
     output_schema = workflow.output_node.output_schema
 
-    assert output_schema["c"].dtype == dtype
-    assert output_schema["c"].tags == TagSet(tags)
-    assert output_schema["c"].properties == properties
+    assert output_schema["c"].dtype == dtype(expected_dtype)
+    assert output_schema["c"].tags == TagSet(expected_tags)
+    assert output_schema["c"].properties == expected_props
 
 
 @pytest.mark.parametrize("cpu", _CPU)
@@ -200,18 +204,20 @@ def test_lambdaop_dtype_propagation(cpu):
     ddf0 = dd.from_pandas(df0, npartitions=4)
     dataset = nvt.Dataset(ddf0, cpu=cpu)
 
-    dtype = np.float64
+    expected_dtype = np.float64
 
     label = ColumnSelector(["c"])
     label_feature = (
-        label >> ops.LambdaOp(lambda col: col.astype(dtype)) >> ops.Rename(postfix="_renamed")
+        label
+        >> ops.LambdaOp(lambda col: col.astype(expected_dtype))
+        >> ops.Rename(postfix="_renamed")
     )
     workflow = nvt.Workflow(label_feature)
     workflow.fit(dataset)
 
     output_schema = workflow.output_node.output_schema
 
-    assert output_schema["c_renamed"].dtype == dtype
+    assert output_schema["c_renamed"].dtype == dtype(expected_dtype)
 
 
 @pytest.mark.parametrize("cpu", _CPU)
@@ -243,4 +249,4 @@ def test_lambdaop_dtype_multi_op_propagation(cpu):
 
     output_schema = workflow.output_node.output_schema
 
-    assert output_schema["c_1st_2nd"].dtype == np.float64
+    assert output_schema["c_1st_2nd"].dtype == dtype(np.float64)
