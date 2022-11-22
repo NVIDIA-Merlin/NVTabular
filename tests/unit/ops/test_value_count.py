@@ -18,7 +18,7 @@ import pytest
 
 from merlin.core.dispatch import make_df
 from merlin.io import Dataset
-from merlin.schema import ColumnSchema, Tags
+from merlin.schema import ColumnSchema
 from nvtabular import Workflow
 from nvtabular.ops import ValueCount
 
@@ -59,7 +59,7 @@ def test_value_count_schema(values, expected_col_schema):
 
 
 def test_value_count_multiple_partitions():
-    df = make_df({"feature": ["1", "2", "3"], "session": [1, 1, 2]})
+    df = make_df({"feature": [[1, 2], [3]]})
     dataset = Dataset(df, npartitions=1)
 
     workflow = Workflow(["feature"] >> ValueCount())
@@ -70,9 +70,8 @@ def test_value_count_multiple_partitions():
     expected_col_schema = ColumnSchema(
         "feature",
         dtype=np.int64,
-        is_ragged=False,
-        tags=[Tags.LIST],
-        properties={"value_count": {"min": 2, "max": 2}},
+        is_ragged=True,
+        properties={"value_count": {"min": 1, "max": 2}},
     )
 
-    assert transformed.schema["feature"] == expected_col_schema.with_name("feature")
+    assert transformed.schema["feature"] == expected_col_schema
