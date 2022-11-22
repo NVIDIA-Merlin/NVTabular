@@ -39,7 +39,7 @@ jobs:
         tox -e lint
     - name: Run tests
       run: |
-        raw=$(git branch -r --contains ${{ github.ref }})
+        raw=$(git branch --show-current)
         branch=${raw/origin\/}
         if [[ $branch != "release"* ]]; then branch=main fi
         tox -e test-cpu -- $branch
