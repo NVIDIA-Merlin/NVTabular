@@ -16,7 +16,6 @@
 import dask.dataframe as dd
 import numpy as np
 
-from merlin import dtype
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema
 from nvtabular.ops.operator import ColumnSelector, Operator
@@ -52,7 +51,7 @@ class ReduceDtypeSize(StatOperator):
     @annotate("reduce_dtype_size_transform", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         for col_name, col_dtype in self.dtypes.items():
-            np_dtype = dtype.to("numpy", col_dtype)
+            np_dtype = col_dtype.to("numpy")
             df[col_name] = df[col_name].astype(np_dtype)
         return df
 
