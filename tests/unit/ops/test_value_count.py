@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
 import numpy as np
-from nvtabular import Workflow
-from nvtabular.ops import ValueCount
+import pytest
+
 from merlin.core.dispatch import make_df
 from merlin.io import Dataset
-from merlin.schema import ColumnSchema
+from merlin.schema import ColumnSchema, Tags
+from nvtabular import Workflow
+from nvtabular.ops import Categorify, Groupby, LambdaOp, ListSlice, Rename, ValueCount
 
 
 @pytest.mark.parametrize(
@@ -27,35 +28,61 @@ from merlin.schema import ColumnSchema
     [
         [
             [[1, 2, 3], [4, 5, 6]],
-            ColumnSchema("feature", dtype=np.int64, is_ragged=False, properties={"value_count": {"min": 3, "max": 3}})
+            ColumnSchema(
+                "feature",
+                dtype=np.int64,
+                is_ragged=False,
+                properties={"value_count": {"min": 3, "max": 3}},
+            ),
         ],
         [
             [[1, 2, 3], [4, 5], [6]],
-            ColumnSchema("feature", dtype=np.int64, is_ragged=True, properties={"value_count": {"min": 1, "max": 3}})
-        ]
-    ]
+            ColumnSchema(
+                "feature",
+                dtype=np.int64,
+                is_ragged=True,
+                properties={"value_count": {"min": 1, "max": 3}},
+            ),
+        ],
+    ],
 )
 def test_value_count_schema(values, expected_col_schema):
     df = make_df({"feature": values})
     dataset = Dataset(df)
-    
-    workflow = Workflow(["feature"] >> ValueCount())
+
+    workflow = Workflow(["feature"] >> ValueCount() >> LambdaOp(lambda x: x))
     workflow.fit(dataset)
-    
+
     transformed = workflow.transform(dataset)
 
     assert transformed.schema["feature"] == expected_col_schema.with_name("feature")
 
 
 def test_value_count_multiple_partitions():
-    df = make_df({"feature": [[1, 2], [3]]})
-    dataset = Dataset(df, npartitions=2)
-    
-    workflow = Workflow(["feature"] >> ValueCount())
+    df = make_df({"feature": ["1", "2", "3"], "session": [1, 1, 2]})
+    dataset = Dataset(df, npartitions=1)
+
+    list_features = (
+        ["feature"]
+        >> Categorify()
+        >> Groupby(groupby_cols=["session"])
+        >> Rename(lambda col_name: col_name.removesuffix("_list"))
+    )
+    outputs = (
+        list_features + (list_features["feature"] >> ListSlice(-2, pad=True))
+    ) >> ValueCount()
+
+    workflow = Workflow(outputs)
     workflow.fit(dataset)
-    
+
     transformed = workflow.transform(dataset)
-    
-    expected_col_schema = ColumnSchema("feature", dtype=np.int64, is_ragged=True, properties={"value_count": {"min": 1, "max": 2}})
+
+    expected_col_schema = ColumnSchema(
+        "feature",
+        dtype=np.int64,
+        is_ragged=False,
+        tags=[Tags.LIST],
+        properties={"value_count": {"min": 2, "max": 2}},
+    )
 
     assert transformed.schema["feature"] == expected_col_schema.with_name("feature")
