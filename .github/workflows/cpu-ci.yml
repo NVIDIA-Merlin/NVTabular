@@ -39,7 +39,10 @@ jobs:
         tox -e lint
     - name: Run tests
       run: |
-        tox -e test-cpu
+        raw=$(git branch -r --contains ${{ github.ref }})
+        branch=${raw/origin\/}
+        if [[ $branch != "release"* ]]; then branch=main fi
+        tox -e test-cpu -- $branch
     - name: Generate package for pypi
       run: |
         python setup.py sdist bdist_wheel
