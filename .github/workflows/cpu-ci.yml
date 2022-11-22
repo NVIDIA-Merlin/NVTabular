@@ -39,8 +39,10 @@ jobs:
         tox -e lint
     - name: Run tests
       run: |
-        raw=$(git branch --show-current)
+        raw="$(git branch -r --contains ${{ github.ref }})"
+        echo "RAW: $raw" 
         branch=${raw/origin\/}
+        echo "BRANCH: $branch" 
         if [[ $branch != "release"* ]]; then branch=main fi
         tox -e test-cpu -- $branch
     - name: Generate package for pypi
