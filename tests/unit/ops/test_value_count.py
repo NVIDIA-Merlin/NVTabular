@@ -20,7 +20,7 @@ from merlin.core.dispatch import make_df
 from merlin.io import Dataset
 from merlin.schema import ColumnSchema, Tags
 from nvtabular import Workflow
-from nvtabular.ops import Categorify, Groupby, LambdaOp, ListSlice, Rename, ValueCount
+from nvtabular.ops import ValueCount
 
 
 @pytest.mark.parametrize(
@@ -50,7 +50,7 @@ def test_value_count_schema(values, expected_col_schema):
     df = make_df({"feature": values})
     dataset = Dataset(df)
 
-    workflow = Workflow(["feature"] >> ValueCount() >> LambdaOp(lambda x: x))
+    workflow = Workflow(["feature"] >> ValueCount())
     workflow.fit(dataset)
 
     transformed = workflow.transform(dataset)
@@ -62,17 +62,7 @@ def test_value_count_multiple_partitions():
     df = make_df({"feature": ["1", "2", "3"], "session": [1, 1, 2]})
     dataset = Dataset(df, npartitions=1)
 
-    list_features = (
-        ["feature"]
-        >> Categorify()
-        >> Groupby(groupby_cols=["session"])
-        >> Rename(lambda col_name: col_name.removesuffix("_list"))
-    )
-    outputs = (
-        list_features + (list_features["feature"] >> ListSlice(-2, pad=True))
-    ) >> ValueCount()
-
-    workflow = Workflow(outputs)
+    workflow = Workflow(["feature"] >> ValueCount())
     workflow.fit(dataset)
 
     transformed = workflow.transform(dataset)
