@@ -28,7 +28,6 @@ import cudf  # noqa: E402
 
 import nvtabular.tools.data_gen as datagen  # noqa: E402
 from tests.conftest import get_cuda_cluster  # noqa: E402
-from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server  # noqa: E402
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
@@ -109,75 +108,6 @@ def test_optimize_criteo(tmpdir):
             "01-Download-Convert.ipynb",
         )
         _run_notebook(tmpdir, notebook_path, _nb_modify)
-
-
-def test_movielens_example(tmpdir):
-    _get_random_movielens_data(tmpdir, 10000, dataset="movie")
-    _get_random_movielens_data(tmpdir, 10000, dataset="ratings")
-    _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
-
-    triton_model_path = os.path.join(tmpdir, "models")
-    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
-    os.environ["MODEL_PATH"] = triton_model_path
-
-    notebook_path = os.path.join(
-        dirname(TEST_PATH),
-        "examples/getting-started-movielens/",
-        "02-ETL-with-NVTabular.ipynb",
-    )
-    _run_notebook(tmpdir, notebook_path)
-
-    def _modify_tf_nb(line):
-        return line.replace(
-            # don't require graphviz/pydot
-            "tf.keras.utils.plot_model(model)",
-            "# tf.keras.utils.plot_model(model)",
-        )
-
-    def _modify_tf_triton(line):
-        # models are already preloaded
-        line = line.replace("triton_client.load_model", "# triton_client.load_model")
-        line = line.replace("triton_client.unload_model", "# triton_client.unload_model")
-        return line
-
-    notebooks = []
-    try:
-        import torch  # noqa
-
-        notebooks.append("03-Training-with-PyTorch.ipynb")
-    except Exception:
-        pass
-    try:
-        import nvtabular.inference.triton  # noqa
-        import nvtabular.loader.tensorflow  # noqa
-
-        notebooks.append("03-Training-with-TF.ipynb")
-        has_tf = True
-
-    except Exception:
-        has_tf = False
-
-    for notebook in notebooks:
-        notebook_path = os.path.join(
-            dirname(TEST_PATH),
-            "examples/getting-started-movielens/",
-            notebook,
-        )
-        if notebook == "03-Training-with-TF.ipynb":
-            _run_notebook(tmpdir, notebook_path, transform=_modify_tf_nb)
-        else:
-            _run_notebook(tmpdir, notebook_path)
-
-    # test out the TF inference movielens notebook if appropriate
-    if has_tf and TRITON_SERVER_PATH:
-        notebook = "04-Triton-Inference-with-TF.ipynb"
-        notebook_path = os.path.join(
-            dirname(TEST_PATH),
-            "examples/getting-started-movielens/",
-            notebook,
-        )
-        with run_triton_server(triton_model_path):
-            _run_notebook(tmpdir, notebook_path, transform=_modify_tf_triton)
 
 
 def test_multigpu_dask_example(tmpdir):
