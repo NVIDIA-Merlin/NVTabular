@@ -8,20 +8,16 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        python-version: [3.8]
-        os: [ubuntu-latest]
+    runs-on: [ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
       - name: Install Ubuntu packages
         run: |
           sudo apt-get update -y
@@ -32,8 +28,12 @@ jobs:
       - name: Building docs (multiversion)
         run: |
           tox -e docs-multi
+      - name: Delete unnecessary files
+        run: |
+          find docs/build -name .doctrees -prune -exec rm -rf {} \;
+          find docs/build -name .buildinfo -exec rm {} \;
       - name: Upload HTML
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: html-build-artifact
           path: docs/build/html
@@ -45,7 +45,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: "gh-pages"
       - name: Initialize Git configuration
@@ -53,7 +53,7 @@ jobs:
           git config user.name docs-sched-rebuild
           git config user.email do-not-send-@github.com
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: html-build-artifact
       - name: Copy HTML directories
