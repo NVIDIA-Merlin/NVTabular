@@ -51,7 +51,7 @@ class ReduceDtypeSize(StatOperator):
     @annotate("reduce_dtype_size_transform", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         for col_name, col_dtype in self.dtypes.items():
-            np_dtype = col_dtype.to("numpy")
+            np_dtype = col_dtype.to_numpy
             df[col_name] = df[col_name].astype(np_dtype)
         return df
 
