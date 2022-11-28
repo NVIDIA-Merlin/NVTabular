@@ -87,7 +87,7 @@ exclude_patterns = [
 #
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
-    "navigation_depth": 3,
+    "navigation_depth": 2,
     "analytics_id": "G-NVJ1Y1YJHK",
 }
 html_copy_source = False
