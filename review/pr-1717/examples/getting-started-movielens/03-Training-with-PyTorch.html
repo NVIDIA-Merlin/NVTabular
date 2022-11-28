@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started MovieLens: Training with PyTorch &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/custom.css" type="text/css" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/examples/getting-started-movielens/03-Training-with-PyTorch.html" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Getting Started MovieLens: Serving a HugeCTR Model" href="04-Triton-Inference-with-HugeCTR.html" />
+    <link rel="prev" title="Getting Started MovieLens: Training with TensorFlow" href="03-Training-with-TF.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="banner">
+    <p class="banner">
+      Beginning in January 2023, versions for all NVIDIA Merlin projects
+      will change from semantic versioning like <code>4.0</code>
+      to calendar versioning like <code>23.01</code>.</p>
+  </div>
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Getting Started with MovieLens</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3"><a class="reference internal" href="02-ETL-with-NVTabular.html">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Train with PyTorch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Serve a HugeCTR Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Serve a TensorFlow Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">NVTabular Example Notebooks</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Getting Started with Movielens</a></li>
+      <li class="breadcrumb-item active">Getting Started MovieLens: Training with PyTorch</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="section" id="getting-started-movielens-training-with-pytorch">
+<h1>Getting Started MovieLens: Training with PyTorch<a class="headerlink" href="#getting-started-movielens-training-with-pytorch" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>We observed that PyTorch training pipelines can be slow as the dataloader is a bottleneck. The native dataloader in PyTorch randomly sample each item from the dataset, which is very slow. In our experiments, we are able to speed-up existing PyTorch pipelines using a highly optimized dataloader.<br><br></p>
+<p>Applying deep learning models to recommendation systems faces unique challenges in comparison to other domains, such as computer vision and natural language processing. The datasets and common model architectures have unique characteristics, which require custom solutions. Recommendation system datasets have terabytes in size with billion examples but each example is represented by only a few bytes. For example, the <a class="reference external" href="https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/">Criteo CTR dataset</a>, the largest publicly available dataset, is 1.3TB with 4 billion examples. The model architectures have normally large embedding tables for the users and items, which do not fit on a single GPU. You can read more in our <a class="reference external" href="https://medium.com/nvidia-merlin/why-isnt-your-recommender-system-training-faster-on-gpu-and-what-can-you-do-about-it-6cb44a711ad4">blogpost</a>.</p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>This notebook explains, how to use the NVTabular dataloader to accelerate PyTorch training.</p>
+<ol class="arabic simple">
+<li><p>Use <strong>NVTabular dataloader</strong> with PyTorch</p></li>
+<li><p>Leverage <strong>multi-hot encoded input features</strong></p></li>
+</ol>
+</div>
+<div class="section" id="movielens25m">
+<h3>MovieLens25M<a class="headerlink" href="#movielens25m" title="Permalink to this headline"></a></h3>
+<p>The <a class="reference external" href="https://grouplens.org/datasets/movielens/25m/">MovieLens25M</a> is a popular dataset for recommender systems and is used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well. For example, which genres a movie has. Although we may not improve state-of-the-art results with our neural network architecture, the purpose of this notebook is to explain how to integrate multi-hot categorical features into a neural network.</p>
+</div>
+</div>
+<div class="section" id="nvtabular-dataloader-for-pytorch">
+<h2>NVTabular dataloader for PyTorch<a class="headerlink" href="#nvtabular-dataloader-for-pytorch" title="Permalink to this headline"></a></h2>
+<p>We’ve identified that the dataloader is one bottleneck in deep learning recommender systems when training pipelines with PyTorch. The dataloader cannot prepare the next batch fast enough, so and therefore, the GPU is not utilized.</p>
+<p>As a result, we developed a highly customized tabular dataloader for accelerating existing pipelines in PyTorch.  NVTabular dataloader’s features are:</p>
+<ul class="simple">
+<li><p>removing bottleneck of item-by-item dataloading</p></li>
+<li><p>enabling larger than memory dataset by streaming from disk</p></li>
+<li><p>reading data directly into GPU memory and remove CPU-GPU communication</p></li>
+<li><p>preparing batch asynchronously in GPU to avoid CPU-GPU communication</p></li>
+<li><p>supporting commonly used .parquet format for efficient data format</p></li>
+<li><p>easy integration into existing PyTorch pipelines by using similar API than the native one</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># External dependencies
+import os
+import gc
+import glob
+
+import nvtabular as nvt
+</pre></div>
+</div>
+</div>
+</div>
+<p>We define our base directory, containing the data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>INPUT_DATA_DIR = os.environ.get(
+    &quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/movielens/data/&quot;)
+)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="defining-hyperparameters">
+<h3>Defining Hyperparameters<a class="headerlink" href="#defining-hyperparameters" title="Permalink to this headline"></a></h3>
+<p>First, we define the data schema and differentiate between single-hot and multi-hot categorical features. Note, that we do not have any numerical input features.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>BATCH_SIZE = 1024 * 32  # Batch Size
+CATEGORICAL_COLUMNS = [&quot;movieId&quot;, &quot;userId&quot;]  # Single-hot
+CATEGORICAL_MH_COLUMNS = [&quot;genres&quot;]  # Multi-hot
+NUMERIC_COLUMNS = []
+
+# Output from ETL-with-NVTabular
+TRAIN_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, &quot;train&quot;, &quot;*.parquet&quot;)))
+VALID_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, &quot;valid&quot;, &quot;*.parquet&quot;)))
+</pre></div>
+</div>
+</div>
+</div>
+<p>In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc = nvt.Workflow.load(os.path.join(INPUT_DATA_DIR, &quot;workflow&quot;))
+</pre></div>
+</div>
+</div>
+</div>
+<p>The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form <code class="docutils literal notranslate"><span class="pre">(cardinality,</span> <span class="pre">embedding_size)</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>({&#39;userId&#39;: (162542, 512), &#39;movieId&#39;: (56586, 512)}, {&#39;genres&#39;: (21, 16)})
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="initializing-nvtabular-dataloader-for-pytorch">
+<h3>Initializing NVTabular Dataloader for PyTorch<a class="headerlink" href="#initializing-nvtabular-dataloader-for-pytorch" title="Permalink to this headline"></a></h3>
+<p>We import PyTorch and the NVTabular dataloader for PyTorch.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import torch
+from nvtabular.loader.torch import TorchAsyncItr, DLDataLoader
+from nvtabular.framework_utils.torch.models import Model
+from nvtabular.framework_utils.torch.utils import process_epoch
+</pre></div>
+</div>
+</div>
+</div>
+<p>First, we take a look on our dataloader and how the data is represented as tensors. The NVTabular dataloader are initialized as usually and we specify both single-hot and multi-hot categorical features as cats. The dataloader will automatically recognize the single/multi-hot columns and represent them accordingly.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># TensorItrDataset returns a single batch of x_cat, x_cont, y.
+
+train_dataset = TorchAsyncItr(
+    nvt.Dataset(TRAIN_PATHS),
+    batch_size=BATCH_SIZE,
+    cats=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
+    conts=NUMERIC_COLUMNS,
+    labels=[&quot;rating&quot;],
+)
+train_loader = DLDataLoader(
+    train_dataset, batch_size=None, collate_fn=lambda x: x, pin_memory=False, num_workers=0
+)
+
+valid_dataset = TorchAsyncItr(
+    nvt.Dataset(VALID_PATHS),
+    batch_size=BATCH_SIZE,
+    cats=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
+    conts=NUMERIC_COLUMNS,
+    labels=[&quot;rating&quot;],
+)
+valid_loader = DLDataLoader(
+    valid_dataset, batch_size=None, collate_fn=lambda x: x, pin_memory=False, num_workers=0
+)
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s generate a batch and take a look on the input features.<br><br>
+The single-hot categorical features (<code class="docutils literal notranslate"><span class="pre">userId</span></code> and <code class="docutils literal notranslate"><span class="pre">movieId</span></code>) have a shape of <code class="docutils literal notranslate"><span class="pre">(32768,</span> <span class="pre">1)</span></code>, which is the batch size (as usually). For the multi-hot categorical feature <code class="docutils literal notranslate"><span class="pre">genres</span></code>, we receive two Tensors <code class="docutils literal notranslate"><span class="pre">genres__values</span></code> and <code class="docutils literal notranslate"><span class="pre">genres__nnzs</span></code>.<br><br></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">values</span></code> are the actual data, containing the genre IDs. Note that the Tensor has more values than the batch_size. The reason is, that one datapoint in the batch can contain more than one genre (multi-hot).<br></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nnzs</span></code> are a supporting Tensor, describing how many genres are associated with each datapoint in the batch.<br><br>
+For example,</p></li>
+<li><p>if the first two values in <code class="docutils literal notranslate"><span class="pre">nnzs</span></code> is <code class="docutils literal notranslate"><span class="pre">0</span></code>, <code class="docutils literal notranslate"><span class="pre">2</span></code>, then the first 2 values (0, 1) in <code class="docutils literal notranslate"><span class="pre">values</span></code> are associated with the first datapoint in the batch (movieId/userId).<br></p></li>
+<li><p>if the next value in <code class="docutils literal notranslate"><span class="pre">nnzs</span></code> is <code class="docutils literal notranslate"><span class="pre">6</span></code>, then the 3rd, 4th and 5th value in <code class="docutils literal notranslate"><span class="pre">values</span></code> are associated with the second datapoint in the batch (continuing after the previous value stopped).<br></p></li>
+<li><p>if the third value in <code class="docutils literal notranslate"><span class="pre">nnzs</span></code> is <code class="docutils literal notranslate"><span class="pre">7</span></code>, then the 6th value in <code class="docutils literal notranslate"><span class="pre">values</span></code> are associated with the third datapoint in the batch.</p></li>
+<li><p>and so on</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>batch = next(iter(train_loader))
+batch
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>({&#39;genres&#39;: (tensor([1, 6, 1,  ..., 4, 2, 6], device=&#39;cuda:0&#39;),
+   tensor([[    0],
+           [    2],
+           [    4],
+           ...,
+           [89409],
+           [89410],
+           [89412]], device=&#39;cuda:0&#39;)),
+  &#39;movieId&#39;: tensor([[  18],
+          [8649],
+          [5935],
+          ...,
+          [ 666],
+          [2693],
+          [ 643]], device=&#39;cuda:0&#39;),
+  &#39;userId&#39;: tensor([[105522],
+          [ 18041],
+          [   499],
+          ...,
+          [104270],
+          [    62],
+          [  2344]], device=&#39;cuda:0&#39;)},
+ tensor([1., 1., 1.,  ..., 1., 1., 0.], device=&#39;cuda:0&#39;))
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">X_cat_multihot</span></code> is a tuple of two Tensors. For the multi-hot categorical feature <code class="docutils literal notranslate"><span class="pre">genres</span></code>, we receive two Tensors <code class="docutils literal notranslate"><span class="pre">values</span></code> and <code class="docutils literal notranslate"><span class="pre">nnzs</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>X_cat_multihot = batch[0][&#39;genres&#39;]
+X_cat_multihot
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(tensor([1, 6, 1,  ..., 4, 2, 6], device=&#39;cuda:0&#39;),
+ tensor([[    0],
+         [    2],
+         [    4],
+         ...,
+         [89409],
+         [89410],
+         [89412]], device=&#39;cuda:0&#39;))
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>X_cat_multihot[0].shape
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>torch.Size([89414])
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>X_cat_multihot[1].shape
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>torch.Size([32768, 1])
+</pre></div>
+</div>
+</div>
+</div>
+<p>As each datapoint can have a different number of genres, it is more efficient to represent the genres as two flat tensors: One with the actual values (<code class="docutils literal notranslate"><span class="pre">values</span></code>) and one with the length for each datapoint (<code class="docutils literal notranslate"><span class="pre">nnzs</span></code>).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>del batch
+gc.collect()
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="defining-neural-network-architecture">
+<h3>Defining Neural Network Architecture<a class="headerlink" href="#defining-neural-network-architecture" title="Permalink to this headline"></a></h3>
+<p>We implemented a simple PyTorch architecture.</p>
+<ul class="simple">
+<li><p>Single-hot categorical features are fed into an Embedding Layer</p></li>
+<li><p>Each value of a multi-hot categorical features is fed into an Embedding Layer and the multiple Embedding outputs are combined via summing</p></li>
+<li><p>The output of the Embedding Layers are concatenated</p></li>
+<li><p>The concatenated layers are fed through multiple feed-forward layers (Dense Layers, BatchNorm with ReLU activations)</p></li>
+</ul>
+<p>You can see more details by checking out the implementation.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># ??Model
+</pre></div>
+</div>
+</div>
+</div>
+<p>We initialize the model. <code class="docutils literal notranslate"><span class="pre">EMBEDDING_TABLE_SHAPES</span></code> needs to be a Tuple representing the cardinality for single-hot and multi-hot input features.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES_TUPLE = (
+    {
+        CATEGORICAL_COLUMNS[0]: EMBEDDING_TABLE_SHAPES[CATEGORICAL_COLUMNS[0]],
+        CATEGORICAL_COLUMNS[1]: EMBEDDING_TABLE_SHAPES[CATEGORICAL_COLUMNS[1]],
+    },
+    {CATEGORICAL_MH_COLUMNS[0]: MH_EMBEDDING_TABLE_SHAPES[CATEGORICAL_MH_COLUMNS[0]]},
+)
+EMBEDDING_TABLE_SHAPES_TUPLE
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>({&#39;movieId&#39;: (56586, 512), &#39;userId&#39;: (162542, 512)}, {&#39;genres&#39;: (21, 16)})
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model = Model(
+    embedding_table_shapes=EMBEDDING_TABLE_SHAPES_TUPLE,
+    num_continuous=0,
+    emb_dropout=0.0,
+    layer_hidden_dims=[128, 128, 128],
+    layer_dropout_rates=[0.0, 0.0, 0.0],
+).to(&quot;cuda&quot;)
+model
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Model(
+  (initial_cat_layer): ConcatenatedEmbeddings(
+    (embedding_layers): ModuleList(
+      (0): Embedding(56586, 512)
+      (1): Embedding(162542, 512)
+    )
+    (dropout): Dropout(p=0.0, inplace=False)
+  )
+  (mh_cat_layer): MultiHotEmbeddings(
+    (embedding_layers): ModuleList(
+      (0): EmbeddingBag(21, 16, mode=sum)
+    )
+    (dropout): Dropout(p=0.0, inplace=False)
+  )
+  (initial_cont_layer): BatchNorm1d(0, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (layers): ModuleList(
+    (0): Sequential(
+      (0): Linear(in_features=1040, out_features=128, bias=True)
+      (1): ReLU(inplace=True)
+      (2): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (3): Dropout(p=0.0, inplace=False)
+    )
+    (1): Sequential(
+      (0): Linear(in_features=128, out_features=128, bias=True)
+      (1): ReLU(inplace=True)
+      (2): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (3): Dropout(p=0.0, inplace=False)
+    )
+    (2): Sequential(
+      (0): Linear(in_features=128, out_features=128, bias=True)
+      (1): ReLU(inplace=True)
+      (2): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (3): Dropout(p=0.0, inplace=False)
+    )
+  )
+  (output_layer): Linear(in_features=128, out_features=1, bias=True)
+)
+</pre></div>
+</div>
+</div>
+</div>
+<p>We initialize the optimizer.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+</pre></div>
+</div>
+</div>
+</div>
+<p>We use the <code class="docutils literal notranslate"><span class="pre">process_epoch</span></code> function to train and validate our model. It iterates over the dataset and calculates as usually the loss and optimizer step.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+from time import time
+EPOCHS = 1
+for epoch in range(EPOCHS):
+    start = time()
+    train_loss, y_pred, y = process_epoch(train_loader,
+                                          model,
+                                          train=True,
+                                          optimizer=optimizer)
+    valid_loss, y_pred, y = process_epoch(valid_loader,
+                                          model,
+                                          train=False)
+    print(f&quot;Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Valid loss: {valid_loss:.4f}.&quot;)
+t_final = time() - start
+total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed
+print(
+    f&quot;run_time: {t_final} - rows: {total_rows * EPOCHS} - epochs: {EPOCHS} - dl_thru: {(total_rows * EPOCHS) / t_final}&quot;
+)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Total batches: 610
+Total batches: 152
+Epoch 00. Train loss: 0.1944. Valid loss: 0.1696.
+run_time: 12.725089311599731 - rows: 2292 - epochs: 0 - dl_thru: 180.1166140272741
+CPU times: user 9.66 s, sys: 3.05 s, total: 12.7 s
+Wall time: 12.7 s
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="03-Training-with-TF.html" class="btn btn-neutral float-left" title="Getting Started MovieLens: Training with TensorFlow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="04-Triton-Inference-with-HugeCTR.html" class="btn btn-neutral float-right" title="Getting Started MovieLens: Serving a HugeCTR Model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+    <!-- Theme Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-NVJ1Y1YJHK', {
+          'anonymize_ip': false,
+      });
+    </script> 
+
+</body>
+</html>
