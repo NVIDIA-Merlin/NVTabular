@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advanced NVTabular workflow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <title>Advanced NVTabular Workflow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
       <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
@@ -23,7 +23,9 @@
         <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Running on multiple GPUs or on CPU" href="03-Running-on-multiple-GPUs-or-on-CPU.html" />
+    <link rel="prev" title="Getting Started with NVTabular: Process Tabular Data On GPU" href="01-Getting-started.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -49,11 +51,19 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="index.html">Example Notebooks</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#inventory">Inventory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -72,7 +82,8 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a></li>
-      <li class="breadcrumb-item active">Advanced NVTabular workflow</li>
+          <li class="breadcrumb-item"><a href="index.html">NVTabular Example Notebooks</a></li>
+      <li class="breadcrumb-item active">Advanced NVTabular Workflow</li>
       <li class="wy-breadcrumbs-aside">
       </li>
   </ul>
@@ -83,27 +94,27 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2022 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2022 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
 </div>
 <img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
 <div class="section" id="advanced-nvtabular-workflow">
-<h1>Advanced NVTabular workflow<a class="headerlink" href="#advanced-nvtabular-workflow" title="Permalink to this headline"></a></h1>
+<h1>Advanced NVTabular Workflow<a class="headerlink" href="#advanced-nvtabular-workflow" title="Permalink to this headline"></a></h1>
 <p>This notebook is created using the latest stable <a class="reference external" href="https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-tensorflow/tags">merlin-tensorflow</a> container.</p>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -122,11 +133,11 @@
 <h2>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">merlin.datasets.entertainment</span> <span class="kn">import</span> <span class="n">get_movielens</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
+from merlin.datasets.entertainment import get_movielens
 
-<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/merlin-framework/movielens/&quot;</span><span class="p">))</span>
-<span class="n">get_movielens</span><span class="p">(</span><span class="n">variant</span><span class="o">=</span><span class="s2">&quot;ml-1m&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">input_path</span><span class="p">);</span> <span class="c1">#noqa</span>
+input_path = os.environ.get(&quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/merlin-framework/movielens/&quot;))
+get_movielens(variant=&quot;ml-1m&quot;, path=input_path); #noqa
 </pre></div>
 </div>
 </div>
@@ -145,14 +156,14 @@
 <h2>Reading in the data<a class="headerlink" href="#reading-in-the-data" title="Permalink to this headline"></a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from merlin.core.dispatch import get_lib
 
-<span class="n">data</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s1">ml-1m/train.parquet&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+data = get_lib().read_parquet(f&#39;{input_path}ml-1m/train.parquet&#39;).sample(frac=1)
 
-<span class="n">train</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">600_000</span><span class="p">]</span>
-<span class="n">valid</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">600_000</span><span class="p">:]</span>
+train = data.iloc[:600_000]
+valid = data.iloc[600_000:]
 
-<span class="n">movies</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s1">ml-1m/movies_converted.parquet&#39;</span><span class="p">)</span>
+movies = get_lib().read_parquet(f&#39;{input_path}ml-1m/movies_converted.parquet&#39;)
 </pre></div>
 </div>
 </div>
@@ -160,7 +171,7 @@
 <p>From the provided <code class="docutils literal notranslate"><span class="pre">train</span></code> and <code class="docutils literal notranslate"><span class="pre">validation</span></code> sets we extract <code class="docutils literal notranslate"><span class="pre">userId</span></code>, <code class="docutils literal notranslate"><span class="pre">movieId</span></code> and <code class="docutils literal notranslate"><span class="pre">rating</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train.head()
 </pre></div>
 </div>
 </div>
@@ -232,7 +243,7 @@
 <p>We will also use the metadata contained in <code class="docutils literal notranslate"><span class="pre">movies</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>movies.head()
 </pre></div>
 </div>
 </div>
@@ -298,13 +309,13 @@
 <p>Let’s create <code class="docutils literal notranslate"><span class="pre">Merlin</span> <span class="pre">Dataset</span></code>s that we will be able to run through our workflow (a workflow defines the operations we would like performed on our data).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
-<span class="kn">from</span> <span class="nn">merlin.schema.tags</span> <span class="kn">import</span> <span class="n">Tags</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import nvtabular as nvt
+from merlin.schema.tags import Tags
 
-<span class="n">train_ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">valid_ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
+train_ds = nvt.Dataset(train, npartitions=2)
+valid_ds = nvt.Dataset(valid)
 
-<span class="n">train_ds</span><span class="p">,</span> <span class="n">valid_ds</span>
+train_ds, valid_ds
 </pre></div>
 </div>
 </div>
@@ -319,8 +330,8 @@
 <p>We have to remember though to shuffle the data so that all relevant records reside in a single partition. Otherwise, depending on the operations we chose to perform, the results of our workflow might be incorrect.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_ds</span><span class="o">.</span><span class="n">shuffle_by_keys</span><span class="p">(</span><span class="s1">&#39;userId&#39;</span><span class="p">)</span>
-<span class="n">valid_ds</span><span class="o">.</span><span class="n">shuffle_by_keys</span><span class="p">(</span><span class="s1">&#39;userId&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_ds.shuffle_by_keys(&#39;userId&#39;)
+valid_ds.shuffle_by_keys(&#39;userId&#39;)
 </pre></div>
 </div>
 </div>
@@ -334,7 +345,7 @@
 <p>The number of partitions hasn’t changed.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_ds</span><span class="o">.</span><span class="n">npartitions</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_ds.npartitions
 </pre></div>
 </div>
 </div>
@@ -353,7 +364,7 @@
 <p>Let us join it onto our data, making sure we only select the <code class="docutils literal notranslate"><span class="pre">genres</span></code> column.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">genres</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;movieId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">JoinExternal</span><span class="p">(</span><span class="n">movies</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s1">&#39;movieId&#39;</span><span class="p">,</span> <span class="n">columns_ext</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;movieId&#39;</span><span class="p">,</span> <span class="s1">&#39;genres&#39;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>genres = [&#39;movieId&#39;] &gt;&gt; nvt.ops.JoinExternal(movies, on=&#39;movieId&#39;, columns_ext=[&#39;movieId&#39;, &#39;genres&#39;])
 </pre></div>
 </div>
 </div>
@@ -361,7 +372,7 @@
 <p>The <code class="docutils literal notranslate"><span class="pre">genres</span></code> information is represented as a list of strings. In order for us to be able to use it for training an ML model we need to encode the strings as categories.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="p">[</span><span class="s1">&#39;genres&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>movies[&#39;genres&#39;].head()
 </pre></div>
 </div>
 </div>
@@ -383,7 +394,7 @@ Name: genres, dtype: list
 <p>Additionally, let’s treat the categories that appear infrequently as unknowns.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">genres</span> <span class="o">=</span> <span class="n">genres</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span><span class="n">freq_threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>genres = genres &gt;&gt; nvt.ops.Categorify(freq_threshold=10)
 </pre></div>
 </div>
 </div>
@@ -395,8 +406,8 @@ Name: genres, dtype: list
 <p>Here we will define our own function that will transform the <code class="docutils literal notranslate"><span class="pre">rating</span></code> column to <code class="docutils literal notranslate"><span class="pre">binary_rating</span></code>. We will output a value of False for any <code class="docutils literal notranslate"><span class="pre">rating</span></code> below 4 and a value of True for any rating of <code class="docutils literal notranslate"><span class="pre">4</span></code> or <code class="docutils literal notranslate"><span class="pre">5</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rating_to_binary</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">col</span> <span class="o">&gt;</span> <span class="mi">3</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def rating_to_binary(col):
+    return col &gt; 3
 </pre></div>
 </div>
 </div>
@@ -405,7 +416,7 @@ Name: genres, dtype: list
 <p>Here, <code class="docutils literal notranslate"><span class="pre">LambdaOp</span></code> takes in the <code class="docutils literal notranslate"><span class="pre">rating_to_binary</span></code> function and will apply it to the values in the <code class="docutils literal notranslate"><span class="pre">rating</span></code> column.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">binary_rating</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;rating&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">LambdaOp</span><span class="p">(</span><span class="n">rating_to_binary</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Rename</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;binary_rating&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>binary_rating = [&#39;rating&#39;] &gt;&gt; nvt.ops.LambdaOp(rating_to_binary) &gt;&gt; nvt.ops.Rename(name=&#39;binary_rating&#39;)
 </pre></div>
 </div>
 </div>
@@ -417,9 +428,9 @@ Name: genres, dtype: list
 <p>Running NVTabular operators on our data automatically tags the output columns. For instance, the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> operator we used above will tag the output columns as <code class="docutils literal notranslate"><span class="pre">Tags.CATEGORICAL</span></code>. Still, some information that can be useful down the road needs to be added by hand. This is true for instance for target information. Let’s add this information below.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">userId</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;userId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddTags</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">USER_ID</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">USER</span><span class="p">])</span>
-<span class="n">movieId</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;movieId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddTags</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">ITEM_ID</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">ITEM</span><span class="p">])</span>
-<span class="n">binary_rating</span> <span class="o">=</span> <span class="n">binary_rating</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddTags</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">TARGET</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">BINARY_CLASSIFICATION</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>userId = [&#39;userId&#39;] &gt;&gt; nvt.ops.Categorify() &gt;&gt; nvt.ops.AddTags(tags=[Tags.USER_ID, Tags.CATEGORICAL, Tags.USER])
+movieId = [&#39;movieId&#39;] &gt;&gt; nvt.ops.Categorify() &gt;&gt; nvt.ops.AddTags(tags=[Tags.ITEM_ID, Tags.CATEGORICAL, Tags.ITEM])
+binary_rating = binary_rating &gt;&gt; nvt.ops.AddTags(tags=[Tags.TARGET, Tags.BINARY_CLASSIFICATION])
 </pre></div>
 </div>
 </div>
@@ -431,7 +442,7 @@ Name: genres, dtype: list
 <p>We are now ready to create our workflow.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">userId</span> <span class="o">+</span> <span class="n">movieId</span> <span class="o">+</span> <span class="n">genres</span> <span class="o">+</span> <span class="n">binary_rating</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow = nvt.Workflow(userId + movieId + genres + binary_rating)
 </pre></div>
 </div>
 </div>
@@ -439,9 +450,9 @@ Name: genres, dtype: list
 <p>Let us now fit the <code class="docutils literal notranslate"><span class="pre">workflow</span></code> to our train set and transform the train and validation sets.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_transformed</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">train_ds</span><span class="p">)</span>
-<span class="n">valid_transformed</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_ds</span><span class="p">)</span>
-<span class="n">valid_transformed</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_transformed = workflow.fit_transform(train_ds)
+valid_transformed = workflow.transform(valid_ds)
+valid_transformed.compute().head()
 </pre></div>
 </div>
 </div>
@@ -518,7 +529,7 @@ Name: genres, dtype: list
 <p>Let us look at the schema.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_transformed.schema
 </pre></div>
 </div>
 </div>
@@ -648,23 +659,23 @@ Name: genres, dtype: list
 <p>We tell the model about the structure of our data by passing in the <code class="docutils literal notranslate"><span class="pre">Schema</span></code> (<code class="docutils literal notranslate"><span class="pre">train_transformed.schema</span></code> in the example below).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span>
-<span class="kn">import</span> <span class="nn">merlin.models.tf</span> <span class="k">as</span> <span class="nn">mm</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tensorflow
+import merlin.models.tf as mm
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">DLRMModel</span><span class="p">(</span>
-    <span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span>
-    <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
-    <span class="n">bottom_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">]),</span>
-    <span class="n">top_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">]),</span>
-    <span class="n">prediction_tasks</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">BinaryClassificationTask</span><span class="p">(</span><span class="s1">&#39;rating_binary&#39;</span><span class="p">)</span>
-<span class="p">)</span>
+model = mm.DLRMModel(
+    train_transformed.schema,
+    embedding_dim=64,
+    bottom_block=mm.MLPBlock([128, 64]),
+    top_block=mm.MLPBlock([128, 64, 32]),
+    prediction_tasks=mm.BinaryClassificationTask(&#39;rating_binary&#39;)
+)
 
-<span class="n">opt</span> <span class="o">=</span> <span class="n">tensorflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">opt</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+opt = tensorflow.optimizers.Adam(learning_rate=5e-3)
+model.compile(optimizer=opt)
+model.fit(train_transformed, validation_data=valid_transformed, batch_size=1024, epochs=5)
 
-<span class="n">model</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">1e-3</span>
-<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+model.optimizer.learning_rate = 1e-3
+model.fit(train_transformed, validation_data=valid_transformed, batch_size=1024, epochs=3)
 </pre></div>
 </div>
 </div>
@@ -707,23 +718,23 @@ Epoch 3/3
 <p>We can achieve all this by modifying the passed in schema using the <code class="docutils literal notranslate"><span class="pre">without</span></code> method.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span>
-<span class="kn">import</span> <span class="nn">merlin.models.tf</span> <span class="k">as</span> <span class="nn">mm</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tensorflow
+import merlin.models.tf as mm
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">DLRMModel</span><span class="p">(</span>
-    <span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">without</span><span class="p">(</span><span class="s1">&#39;genres&#39;</span><span class="p">),</span>   <span class="c1"># &lt;--- this is where we make the change</span>
-    <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
-    <span class="n">bottom_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">]),</span>
-    <span class="n">top_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">]),</span>
-    <span class="n">prediction_tasks</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">BinaryClassificationTask</span><span class="p">(</span><span class="s1">&#39;rating_binary&#39;</span><span class="p">)</span>
-<span class="p">)</span>
+model = mm.DLRMModel(
+    train_transformed.schema.without(&#39;genres&#39;),   # &lt;--- this is where we make the change
+    embedding_dim=64,
+    bottom_block=mm.MLPBlock([128, 64]),
+    top_block=mm.MLPBlock([128, 64, 32]),
+    prediction_tasks=mm.BinaryClassificationTask(&#39;rating_binary&#39;)
+)
 
-<span class="n">opt</span> <span class="o">=</span> <span class="n">tensorflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">opt</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+opt = tensorflow.optimizers.Adam(learning_rate=5e-3)
+model.compile(optimizer=opt)
+model.fit(train_transformed, validation_data=valid_transformed, batch_size=1024, epochs=5)
 
-<span class="n">model</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">1e-3</span>
-<span class="n">metrics</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+model.optimizer.learning_rate = 1e-3
+metrics = model.fit(train_transformed, validation_data=valid_transformed, batch_size=1024, epochs=3)
 </pre></div>
 </div>
 </div>
@@ -767,7 +778,10 @@ Epoch 3/3
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01-Getting-started.html" class="btn btn-neutral float-left" title="Getting Started with NVTabular: Process Tabular Data On GPU" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Running-on-multiple-GPUs-or-on-CPU.html" class="btn btn-neutral float-right" title="Running on multiple GPUs or on CPU" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 
