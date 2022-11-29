@@ -90,6 +90,7 @@ html_theme_options = {
     "navigation_depth": 3,
     "analytics_id": "G-NVJ1Y1YJHK",
 }
+html_copy_source = False
 html_show_sourcelink = False
 
 # Add any paths that contain custom static files (such as style sheets) here,
