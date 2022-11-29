@@ -1,0 +1,32 @@
+{
+  "filename": "index.rst",
+  "lineno": 7,
+  "status": "broken",
+  "code": 0,
+  "uri": "Introduction.html",
+  "info": ""
+}
+{
+  "filename": "examples/index.md",
+  "lineno": 20,
+  "status": "broken",
+  "code": 0,
+  "uri": "https://github.com/NVIDIA/NVTabular#installation",
+  "info": "Anchor 'installation' not found"
+}
+{
+  "filename": "resources/troubleshooting.md",
+  "lineno": 24,
+  "status": "broken",
+  "code": 0,
+  "uri": "https://github.com/rapidsai/cudf/pull/6796#issue-522934284",
+  "info": "Anchor 'issue-522934284' not found"
+}
+{
+  "filename": "resources/links.md",
+  "lineno": 24,
+  "status": "broken",
+  "code": 0,
+  "uri": "https://news.developer.nvidia.com/democratizing-deep-learning-recommenders-resources/?ncid=so-link-59588#cid=dl19_so-link_en-us",
+  "info": "Anchor 'cid=dl19_so-link_en-us' not found"
+}
