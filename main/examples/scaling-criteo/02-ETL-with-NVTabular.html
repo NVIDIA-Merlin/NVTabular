@@ -104,20 +104,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -169,27 +169,27 @@
 <p>We load the required libraries.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard Libraries</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">re</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Standard Libraries
+import os
+import re
+import shutil
+import warnings
 
-<span class="c1"># External Dependencies</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">numba</span>
-<span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
-<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+# External Dependencies
+import numpy as np
+import numba
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
 
-<span class="c1"># NVTabular</span>
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
-<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">Categorify</span><span class="p">,</span>
-    <span class="n">Clip</span><span class="p">,</span>
-    <span class="n">FillMissing</span><span class="p">,</span>
-    <span class="n">Normalize</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">pynvml_mem_size</span><span class="p">,</span> <span class="n">device_mem_size</span>
+# NVTabular
+import nvtabular as nvt
+from nvtabular.ops import (
+    Categorify,
+    Clip,
+    FillMissing,
+    Normalize,
+)
+from nvtabular.utils import pynvml_mem_size, device_mem_size
 </pre></div>
 </div>
 </div>
@@ -197,27 +197,27 @@
 <p>Once our data is ready, we’ll define some high level parameters to describe where our data is and what it “looks like” at a high level.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define some information about where to get our data</span>
-<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
-<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">BASE_DIR</span> <span class="o">+</span> <span class="s2">&quot;/converted/criteo&quot;</span><span class="p">)</span>
-<span class="n">OUTPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">BASE_DIR</span> <span class="o">+</span> <span class="s2">&quot;/test_dask/output&quot;</span><span class="p">)</span>
-<span class="n">stats_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/stats&quot;</span><span class="p">)</span>
-<span class="n">dask_workdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/workdir&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># define some information about where to get our data
+BASE_DIR = os.environ.get(&quot;BASE_DIR&quot;, &quot;/raid/data/criteo&quot;)
+INPUT_DATA_DIR = os.environ.get(&quot;INPUT_DATA_DIR&quot;, BASE_DIR + &quot;/converted/criteo&quot;)
+OUTPUT_DATA_DIR = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, BASE_DIR + &quot;/test_dask/output&quot;)
+stats_path = os.path.join(OUTPUT_DATA_DIR, &quot;test_dask/stats&quot;)
+dask_workdir = os.path.join(OUTPUT_DATA_DIR, &quot;test_dask/workdir&quot;)
 
-<span class="c1"># Make sure we have a clean worker space for Dask</span>
-<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">):</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
-<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
+# Make sure we have a clean worker space for Dask
+if os.path.isdir(dask_workdir):
+    shutil.rmtree(dask_workdir)
+os.makedirs(dask_workdir)
 
-<span class="c1"># Make sure we have a clean stats space for Dask</span>
-<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">stats_path</span><span class="p">):</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">stats_path</span><span class="p">)</span>
-<span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">stats_path</span><span class="p">)</span>
+# Make sure we have a clean stats space for Dask
+if os.path.isdir(stats_path):
+    shutil.rmtree(stats_path)
+os.mkdir(stats_path)
 
-<span class="c1"># Make sure we have a clean output path</span>
-<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">):</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">)</span>
-<span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">)</span>
+# Make sure we have a clean output path
+if os.path.isdir(OUTPUT_DATA_DIR):
+    shutil.rmtree(OUTPUT_DATA_DIR)
+os.mkdir(OUTPUT_DATA_DIR)
 </pre></div>
 </div>
 </div>
@@ -225,22 +225,22 @@
 <p>We use the last day as validation dataset and the remaining days as training dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;day_</span><span class="si">{}</span><span class="s2">.parquet&quot;</span>
-<span class="n">num_days</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
-    <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">)</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;[0-9]{1,2}&quot;</span><span class="p">),</span> <span class="n">i</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
-<span class="p">)</span>
-<span class="n">train_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">day</span><span class="p">))</span> <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_days</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
-<span class="n">valid_paths</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">day</span><span class="p">))</span> <span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_days</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_days</span><span class="p">)</span>
-<span class="p">]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fname = &quot;day_{}.parquet&quot;
+num_days = len(
+    [i for i in os.listdir(INPUT_DATA_DIR) if re.match(fname.format(&quot;[0-9]{1,2}&quot;), i) is not None]
+)
+train_paths = [os.path.join(INPUT_DATA_DIR, fname.format(day)) for day in range(num_days - 1)]
+valid_paths = [
+    os.path.join(INPUT_DATA_DIR, fname.format(day)) for day in range(num_days - 1, num_days)
+]
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">train_paths</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">valid_paths</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(train_paths)
+print(valid_paths)
 </pre></div>
 </div>
 </div>
@@ -257,48 +257,48 @@
 <p>Now we configure and deploy a Dask Cluster. Please, <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/d419a4da29cf372f1547edc536729b0733560a44/bench/examples/MultiGPUBench.md">read this document</a> to know how to set the parameters.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dask dashboard</span>
-<span class="n">dashboard_port</span> <span class="o">=</span> <span class="s2">&quot;8787&quot;</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Dask dashboard
+dashboard_port = &quot;8787&quot;
 
-<span class="c1"># Deploy a Single-Machine Multi-GPU Cluster</span>
-<span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;tcp&quot;</span>  <span class="c1"># &quot;tcp&quot; or &quot;ucx&quot;</span>
-<span class="k">if</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
-    <span class="n">NUM_GPUS</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">gpus</span><span class="p">)))</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">NUM_GPUS</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">NUM_GPUS</span><span class="p">])</span>  <span class="c1"># Delect devices to place workers</span>
-<span class="n">device_limit_frac</span> <span class="o">=</span> <span class="mf">0.7</span>  <span class="c1"># Spill GPU-Worker memory to host at this limit.</span>
-<span class="n">device_pool_frac</span> <span class="o">=</span> <span class="mf">0.8</span>
-<span class="n">part_mem_frac</span> <span class="o">=</span> <span class="mf">0.15</span>
+# Deploy a Single-Machine Multi-GPU Cluster
+protocol = &quot;tcp&quot;  # &quot;tcp&quot; or &quot;ucx&quot;
+if numba.cuda.is_available():
+    NUM_GPUS = list(range(len(numba.cuda.gpus)))
+else:
+    NUM_GPUS = []
+visible_devices = &quot;,&quot;.join([str(n) for n in NUM_GPUS])  # Delect devices to place workers
+device_limit_frac = 0.7  # Spill GPU-Worker memory to host at this limit.
+device_pool_frac = 0.8
+part_mem_frac = 0.15
 
-<span class="c1"># Use total device size to calculate args.device_limit_frac</span>
-<span class="n">device_size</span> <span class="o">=</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
-<span class="n">device_limit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">device_limit_frac</span> <span class="o">*</span> <span class="n">device_size</span><span class="p">)</span>
-<span class="n">device_pool_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">device_pool_frac</span> <span class="o">*</span> <span class="n">device_size</span><span class="p">)</span>
-<span class="n">part_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">part_mem_frac</span> <span class="o">*</span> <span class="n">device_size</span><span class="p">)</span>
+# Use total device size to calculate args.device_limit_frac
+device_size = device_mem_size(kind=&quot;total&quot;)
+device_limit = int(device_limit_frac * device_size)
+device_pool_size = int(device_pool_frac * device_size)
+part_size = int(part_mem_frac * device_size)
 
-<span class="c1"># Check if any device memory is already occupied</span>
-<span class="k">for</span> <span class="n">dev</span> <span class="ow">in</span> <span class="n">visible_devices</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">):</span>
-    <span class="n">fmem</span> <span class="o">=</span> <span class="n">pynvml_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;free&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dev</span><span class="p">))</span>
-    <span class="n">used</span> <span class="o">=</span> <span class="p">(</span><span class="n">device_size</span> <span class="o">-</span> <span class="n">fmem</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1e9</span>
-    <span class="k">if</span> <span class="n">used</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BEWARE - </span><span class="si">{</span><span class="n">used</span><span class="si">}</span><span class="s2"> GB is already occupied on device </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">dev</span><span class="p">)</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
+# Check if any device memory is already occupied
+for dev in visible_devices.split(&quot;,&quot;):
+    fmem = pynvml_mem_size(kind=&quot;free&quot;, index=int(dev))
+    used = (device_size - fmem) / 1e9
+    if used &gt; 1.0:
+        warnings.warn(f&quot;BEWARE - {used} GB is already occupied on device {int(dev)}!&quot;)
 
-<span class="n">cluster</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># (Optional) Specify existing scheduler port</span>
-<span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span>
-        <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
-        <span class="n">n_workers</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">visible_devices</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)),</span>
-        <span class="n">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="n">visible_devices</span><span class="p">,</span>
-        <span class="n">device_memory_limit</span><span class="o">=</span><span class="n">device_limit</span><span class="p">,</span>
-        <span class="n">local_directory</span><span class="o">=</span><span class="n">dask_workdir</span><span class="p">,</span>
-        <span class="n">dashboard_address</span><span class="o">=</span><span class="s2">&quot;:&quot;</span> <span class="o">+</span> <span class="n">dashboard_port</span><span class="p">,</span>
-        <span class="n">rmm_pool_size</span><span class="o">=</span><span class="p">(</span><span class="n">device_pool_size</span> <span class="o">//</span> <span class="mi">256</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span>
-    <span class="p">)</span>
+cluster = None  # (Optional) Specify existing scheduler port
+if cluster is None:
+    cluster = LocalCUDACluster(
+        protocol=protocol,
+        n_workers=len(visible_devices.split(&quot;,&quot;)),
+        CUDA_VISIBLE_DEVICES=visible_devices,
+        device_memory_limit=device_limit,
+        local_directory=dask_workdir,
+        dashboard_address=&quot;:&quot; + dashboard_port,
+        rmm_pool_size=(device_pool_size // 256) * 256
+    )
 
-<span class="c1"># Create the distributed client</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
-<span class="n">client</span>
+# Create the distributed client
+client = Client(cluster)
+client
 </pre></div>
 </div>
 </div>
@@ -334,19 +334,19 @@
 <p>One interesting thing worth pointing out is that we’re using <em>frequency thresholding</em> in our <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency (which we’ve set here to be 15 occurrences throughout the dataset) to the <em>same</em> index, keeping the model from overfitting to sparse signals.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define our dataset schema</span>
-<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;I&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">14</span><span class="p">)]</span>
-<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;C&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">27</span><span class="p">)]</span>
-<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
-<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># define our dataset schema
+CONTINUOUS_COLUMNS = [&quot;I&quot; + str(x) for x in range(1, 14)]
+CATEGORICAL_COLUMNS = [&quot;C&quot; + str(x) for x in range(1, 27)]
+LABEL_COLUMNS = [&quot;label&quot;]
+COLUMNS = CONTINUOUS_COLUMNS + CATEGORICAL_COLUMNS + LABEL_COLUMNS
 
-<span class="n">num_buckets</span> <span class="o">=</span> <span class="mi">10000000</span>
-<span class="n">categorify_op</span> <span class="o">=</span> <span class="n">Categorify</span><span class="p">(</span><span class="n">out_path</span><span class="o">=</span><span class="n">stats_path</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="n">num_buckets</span><span class="p">)</span>
-<span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">categorify_op</span>
-<span class="n">cont_features</span> <span class="o">=</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">FillMissing</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">Clip</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Normalize</span><span class="p">()</span>
-<span class="n">features</span> <span class="o">=</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+num_buckets = 10000000
+categorify_op = Categorify(out_path=stats_path, max_size=num_buckets)
+cat_features = CATEGORICAL_COLUMNS &gt;&gt; categorify_op
+cont_features = CONTINUOUS_COLUMNS &gt;&gt; FillMissing() &gt;&gt; Clip(min_value=0) &gt;&gt; Normalize()
+features = cat_features + cont_features + LABEL_COLUMNS
 
-<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+workflow = nvt.Workflow(features)
 </pre></div>
 </div>
 </div>
@@ -354,24 +354,24 @@
 <p>Now instantiate dataset iterators to loop through our dataset (which we couldn’t fit into GPU memory). We need to enforce the required HugeCTR data types, so we set them in a dictionary and give as an argument when creating our dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dict_dtypes = {}
 
-<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
-    <span class="n">dict_dtypes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span>
+for col in CATEGORICAL_COLUMNS:
+    dict_dtypes[col] = np.int64
 
-<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">CONTINUOUS_COLUMNS</span><span class="p">:</span>
-    <span class="n">dict_dtypes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+for col in CONTINUOUS_COLUMNS:
+    dict_dtypes[col] = np.float32
 
-<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">LABEL_COLUMNS</span><span class="p">:</span>
-    <span class="n">dict_dtypes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+for col in LABEL_COLUMNS:
+    dict_dtypes[col] = np.float32
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_paths</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="n">part_size</span><span class="p">)</span>
-<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid_paths</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="n">part_size</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_dataset = nvt.Dataset(train_paths, engine=&quot;parquet&quot;, part_size=part_size)
+valid_dataset = nvt.Dataset(valid_paths, engine=&quot;parquet&quot;, part_size=part_size)
 </pre></div>
 </div>
 </div>
@@ -379,10 +379,10 @@
 <p>Now run them through our workflows to collect statistics on the train set, then transform and save to parquet files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output_train_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train/&quot;</span><span class="p">)</span>
-<span class="n">output_valid_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid/&quot;</span><span class="p">)</span>
-<span class="o">!</span> mkdir -p <span class="nv">$output_train_dir</span>
-<span class="o">!</span> mkdir -p <span class="nv">$output_valid_dir</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output_train_dir = os.path.join(OUTPUT_DATA_DIR, &quot;train/&quot;)
+output_valid_dir = os.path.join(OUTPUT_DATA_DIR, &quot;valid/&quot;)
+! mkdir -p $output_train_dir
+! mkdir -p $output_valid_dir
 </pre></div>
 </div>
 </div>
@@ -390,8 +390,8 @@
 <p>For reference, let’s time it to see how long it takes…</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+workflow.fit(train_dataset)
 </pre></div>
 </div>
 </div>
@@ -404,18 +404,18 @@ Wall time: 1min 5s
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="c1"># Add &quot;write_hugectr_keyset=True&quot; to &quot;to_parquet&quot; if using this ETL Notebook for training with HugeCTR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+# Add &quot;write_hugectr_keyset=True&quot; to &quot;to_parquet&quot; if using this ETL Notebook for training with HugeCTR
 
-<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
-    <span class="n">output_files</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">NUM_GPUS</span><span class="p">),</span>
-    <span class="n">output_path</span><span class="o">=</span><span class="n">output_train_dir</span><span class="p">,</span>
-    <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_PARTITION</span><span class="p">,</span>
-    <span class="n">dtypes</span><span class="o">=</span><span class="n">dict_dtypes</span><span class="p">,</span>
-    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
-    <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
-    <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
-<span class="p">)</span>
+workflow.transform(train_dataset).to_parquet(
+    output_files=len(NUM_GPUS),
+    output_path=output_train_dir,
+    shuffle=nvt.io.Shuffle.PER_PARTITION,
+    dtypes=dict_dtypes,
+    cats=CATEGORICAL_COLUMNS,
+    conts=CONTINUOUS_COLUMNS,
+    labels=LABEL_COLUMNS,
+)
 </pre></div>
 </div>
 </div>
@@ -428,16 +428,16 @@ Wall time: 1min 59s
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="c1"># Add &quot;write_hugectr_keyset=True&quot; to &quot;to_parquet&quot; if using this ETL Notebook for training with HugeCTR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+# Add &quot;write_hugectr_keyset=True&quot; to &quot;to_parquet&quot; if using this ETL Notebook for training with HugeCTR
 
-<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
-    <span class="n">output_path</span><span class="o">=</span><span class="n">output_valid_dir</span><span class="p">,</span>
-    <span class="n">dtypes</span><span class="o">=</span><span class="n">dict_dtypes</span><span class="p">,</span>
-    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
-    <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
-    <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
-<span class="p">)</span>
+workflow.transform(valid_dataset).to_parquet(
+    output_path=output_valid_dir,
+    dtypes=dict_dtypes,
+    cats=CATEGORICAL_COLUMNS,
+    conts=CONTINUOUS_COLUMNS,
+    labels=LABEL_COLUMNS,
+)
 </pre></div>
 </div>
 </div>
@@ -451,7 +451,7 @@ Wall time: 5.17 s
 <p>In the next notebooks, we will train a deep learning model. Our training pipeline requires information about the data schema to define the neural network architecture. We will save the NVTabular workflow to disk so that we can restore it in the next notebooks.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow.save(os.path.join(OUTPUT_DATA_DIR, &quot;workflow&quot;))
 </pre></div>
 </div>
 </div>

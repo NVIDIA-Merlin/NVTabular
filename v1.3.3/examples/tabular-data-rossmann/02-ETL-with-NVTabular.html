@@ -106,20 +106,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -136,11 +136,11 @@
 <p>The following example will illustrate how to use NVTabular to preprocess and feature engineer the data for further training deep learning models. We provide notebooks for training neural networks in <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/03a-Training-with-TF.ipynb">TensorFlow</a>, <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/03b-Training-with-PyTorch.ipynb">PyTorch</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/04-Training-with-FastAI.ipynb">FastAI</a>. We’ll use a <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/lesson6-rossmann.ipynb">dataset built by FastAI</a> for solving the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Kaggle Rossmann Store Sales competition</a>. Some cuDF preprocessing is required to build the appropriate feature set, so make sure to run <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb">01-Download-Convert.ipynb</a> first before going through this notebook.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
+import json
+import nvtabular as nvt
 
-<span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">ops</span>
+from nvtabular import ops
 </pre></div>
 </div>
 </div>
@@ -153,56 +153,56 @@
 We use the data schema to define our pipeline.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/data/&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>DATA_DIR = os.environ.get(
+    &quot;OUTPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/data/&quot;)
+)
 
-<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;Store&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;DayOfWeek&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Year&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Month&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Day&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;StateHoliday&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;CompetitionMonthsOpen&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Promo2Weeks&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;StoreType&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Assortment&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;PromoInterval&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;CompetitionOpenSinceYear&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Promo2SinceYear&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;State&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Week&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Events&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Promo_fw&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Promo_bw&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;StateHoliday_fw&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;StateHoliday_bw&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;SchoolHoliday_fw&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;SchoolHoliday_bw&quot;</span><span class="p">,</span>
-<span class="p">]</span>
+CATEGORICAL_COLUMNS = [
+    &quot;Store&quot;,
+    &quot;DayOfWeek&quot;,
+    &quot;Year&quot;,
+    &quot;Month&quot;,
+    &quot;Day&quot;,
+    &quot;StateHoliday&quot;,
+    &quot;CompetitionMonthsOpen&quot;,
+    &quot;Promo2Weeks&quot;,
+    &quot;StoreType&quot;,
+    &quot;Assortment&quot;,
+    &quot;PromoInterval&quot;,
+    &quot;CompetitionOpenSinceYear&quot;,
+    &quot;Promo2SinceYear&quot;,
+    &quot;State&quot;,
+    &quot;Week&quot;,
+    &quot;Events&quot;,
+    &quot;Promo_fw&quot;,
+    &quot;Promo_bw&quot;,
+    &quot;StateHoliday_fw&quot;,
+    &quot;StateHoliday_bw&quot;,
+    &quot;SchoolHoliday_fw&quot;,
+    &quot;SchoolHoliday_bw&quot;,
+]
 
-<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;CompetitionDistance&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Max_TemperatureC&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Mean_TemperatureC&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Min_TemperatureC&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Max_Humidity&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Mean_Humidity&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Min_Humidity&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Max_Wind_SpeedKm_h&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Mean_Wind_SpeedKm_h&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;CloudCover&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;trend&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;trend_DE&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;AfterStateHoliday&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;BeforeStateHoliday&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Promo&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;SchoolHoliday&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Sales&quot;</span><span class="p">]</span>
+CONTINUOUS_COLUMNS = [
+    &quot;CompetitionDistance&quot;,
+    &quot;Max_TemperatureC&quot;,
+    &quot;Mean_TemperatureC&quot;,
+    &quot;Min_TemperatureC&quot;,
+    &quot;Max_Humidity&quot;,
+    &quot;Mean_Humidity&quot;,
+    &quot;Min_Humidity&quot;,
+    &quot;Max_Wind_SpeedKm_h&quot;,
+    &quot;Mean_Wind_SpeedKm_h&quot;,
+    &quot;CloudCover&quot;,
+    &quot;trend&quot;,
+    &quot;trend_DE&quot;,
+    &quot;AfterStateHoliday&quot;,
+    &quot;BeforeStateHoliday&quot;,
+    &quot;Promo&quot;,
+    &quot;SchoolHoliday&quot;,
+]
+LABEL_COLUMNS = [&quot;Sales&quot;]
 
-<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+COLUMNS = CATEGORICAL_COLUMNS + CONTINUOUS_COLUMNS + LABEL_COLUMNS
 </pre></div>
 </div>
 </div>
@@ -210,7 +210,7 @@ We use the data schema to define our pipeline.</p>
 <p>What files are available to train on in our data directory?</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span> ls <span class="nv">$DATA_DIR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>! ls $DATA_DIR
 </pre></div>
 </div>
 </div>
@@ -225,8 +225,8 @@ rossmann_predictions.csv  train.csv
 <p><code class="docutils literal notranslate"><span class="pre">train.csv</span></code> and <code class="docutils literal notranslate"><span class="pre">valid.csv</span></code> seem like good candidates, let’s use those.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.csv&quot;</span><span class="p">)</span>
-<span class="n">VALID_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.csv&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>TRAIN_PATH = os.path.join(DATA_DIR, &quot;train.csv&quot;)
+VALID_PATH = os.path.join(DATA_DIR, &quot;valid.csv&quot;)
 </pre></div>
 </div>
 </div>
@@ -244,7 +244,7 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cat_features = CATEGORICAL_COLUMNS &gt;&gt; ops.Categorify()
 </pre></div>
 </div>
 </div>
@@ -252,7 +252,7 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>We can visualize the calculation with <code class="docutils literal notranslate"><span class="pre">graphviz</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>(cat_features).graph
 </pre></div>
 </div>
 </div>
@@ -267,14 +267,14 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cont_features</span> <span class="o">=</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cont_features = CONTINUOUS_COLUMNS &gt;&gt; ops.FillMissing() &gt;&gt; ops.Normalize()
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cont_features</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>(cont_features).graph
 </pre></div>
 </div>
 </div>
@@ -284,14 +284,14 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>Finally, we need to apply the LogOp to the label/target column.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_feature</span> <span class="o">=</span> <span class="n">LABEL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">LogOp</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>label_feature = LABEL_COLUMNS &gt;&gt; ops.LogOp()
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>(label_feature).graph
 </pre></div>
 </div>
 </div>
@@ -301,7 +301,7 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>We can visualize the full workflow by concatenating the output <code class="docutils literal notranslate"><span class="pre">ColumnGroups</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>(cat_features + cont_features + label_feature).graph
 </pre></div>
 </div>
 </div>
@@ -314,7 +314,7 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>A NVTabular <code class="docutils literal notranslate"><span class="pre">workflow</span></code> orchastrates the pipelines. We initialize the NVTabular <code class="docutils literal notranslate"><span class="pre">workflow</span></code> with the output <code class="docutils literal notranslate"><span class="pre">ColumnGroups</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="n">label_feature</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc = nvt.Workflow(cat_features + cont_features + label_feature)
 </pre></div>
 </div>
 </div>
@@ -326,21 +326,21 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>NVTabular solves this by providing the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> class, which breaks a set of parquet or csv files into into a collection of <code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code> chunks that can fit in device memory.  Under the hood, the data decomposition corresponds to the construction of a <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">dask_cudf.DataFrame</a> object.  By representing our dataset as a lazily-evaluated <a class="reference external" href="https://dask.org/">Dask</a> collection, we can handle the calculation of complex global statistics (and later, can also iterate over the partitions while feeding data into a neural network).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATH</span><span class="p">)</span>
-<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">VALID_PATH</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_dataset = nvt.Dataset(TRAIN_PATH)
+valid_dataset = nvt.Dataset(VALID_PATH)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ross_pre/&quot;</span><span class="p">)</span>
-<span class="n">PREPROCESS_DIR_TRAIN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">)</span>
-<span class="n">PREPROCESS_DIR_VALID</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>PREPROCESS_DIR = os.path.join(DATA_DIR, &quot;ross_pre/&quot;)
+PREPROCESS_DIR_TRAIN = os.path.join(PREPROCESS_DIR, &quot;train&quot;)
+PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, &quot;valid&quot;)
 
-<span class="o">!</span> rm -rf <span class="nv">$PREPROCESS_DIR</span> # remove previous trials
-<span class="o">!</span> mkdir -p <span class="nv">$PREPROCESS_DIR_TRAIN</span>
-<span class="o">!</span> mkdir -p <span class="nv">$PREPROCESS_DIR_VALID</span>
+! rm -rf $PREPROCESS_DIR # remove previous trials
+! mkdir -p $PREPROCESS_DIR_TRAIN
+! mkdir -p $PREPROCESS_DIR_VALID
 </pre></div>
 </div>
 </div>
@@ -348,7 +348,7 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>Now that we have our datasets, we’ll apply our <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> to them and save the results out to parquet files for fast reading at train time. Similar to the <code class="docutils literal notranslate"><span class="pre">scikit</span> <span class="pre">learn</span></code> API, we collect the statistics of our train dataset with <code class="docutils literal notranslate"><span class="pre">.fit</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc.fit(train_dataset)
 </pre></div>
 </div>
 </div>
@@ -356,8 +356,8 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>We apply and transform our dataset with <code class="docutils literal notranslate"><span class="pre">.transform</span></code> and persist it to disk with <code class="docutils literal notranslate"><span class="pre">.to_parquet</span></code>. We want to shuffle our train dataset before storing to disk to provide more randomness during our deep learning training.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">nvt</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span><span class="p">)</span>
-<span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc.transform(train_dataset).to_parquet(PREPROCESS_DIR_TRAIN, shuffle=nvt.io.Shuffle.PER_WORKER)
+proc.transform(valid_dataset).to_parquet(PREPROCESS_DIR_VALID, shuffle=None)
 </pre></div>
 </div>
 </div>
@@ -365,7 +365,7 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>Then, we save the workflow to be used by the Triton export functions for inference.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc.save(os.path.join(DATA_DIR, &quot;workflow&quot;))
 </pre></div>
 </div>
 </div>
@@ -376,8 +376,8 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 <p>In the next steps, we will train a deep learning model with either TensorFlow, PyTorch or FastAI. Our training pipeline requires information about the data schema to define the neural network architecture. In addition, we store the embedding tables structure.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
-<span class="n">EMBEDDING_TABLE_SHAPES</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES
 </pre></div>
 </div>
 </div>
@@ -410,22 +410,22 @@ features = [<em>&lt;column name&gt;</em>, …] &gt;&gt; <em>&lt;op1&gt;</em> &gt
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
-    <span class="p">{</span>
-        <span class="s2">&quot;EMBEDDING_TABLE_SHAPES&quot;</span><span class="p">:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">,</span>
-        <span class="s2">&quot;CATEGORICAL_COLUMNS&quot;</span><span class="p">:</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
-        <span class="s2">&quot;CONTINUOUS_COLUMNS&quot;</span><span class="p">:</span> <span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
-        <span class="s2">&quot;LABEL_COLUMNS&quot;</span><span class="p">:</span> <span class="n">LABEL_COLUMNS</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="nb">open</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span> <span class="o">+</span> <span class="s2">&quot;/stats.json&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">),</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>json.dump(
+    {
+        &quot;EMBEDDING_TABLE_SHAPES&quot;: EMBEDDING_TABLE_SHAPES,
+        &quot;CATEGORICAL_COLUMNS&quot;: CATEGORICAL_COLUMNS,
+        &quot;CONTINUOUS_COLUMNS&quot;: CONTINUOUS_COLUMNS,
+        &quot;LABEL_COLUMNS&quot;: LABEL_COLUMNS,
+    },
+    open(PREPROCESS_DIR + &quot;/stats.json&quot;, &quot;w&quot;),
+)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR
 </pre></div>
 </div>
 </div>

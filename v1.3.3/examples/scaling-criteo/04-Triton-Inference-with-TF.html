@@ -108,20 +108,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -149,25 +149,25 @@
 <h3>Saving Ensemble Model for Triton Inference Server<a class="headerlink" href="#saving-ensemble-model-for-triton-inference-server" title="Permalink to this headline"></a></h3>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
 
-<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+import tensorflow as tf
+import nvtabular as nvt
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
-<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;test_dask/output&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>BASE_DIR = os.environ.get(&quot;BASE_DIR&quot;, &quot;/raid/data/criteo&quot;)
+input_path = os.environ.get(&quot;INPUT_DATA_DIR&quot;, os.path.join(BASE_DIR, &quot;test_dask/output&quot;))
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow = nvt.Workflow.load(os.path.join(input_path, &quot;workflow&quot;))
 </pre></div>
 </div>
 </div>
@@ -180,7 +180,7 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="s2">&quot;model.savedmodel&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model = tf.keras.models.load_model(os.path.join(input_path, &quot;model.savedmodel&quot;))
 </pre></div>
 </div>
 </div>
@@ -196,9 +196,9 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 <p>TensorFlow expect the Integer as <code class="docutils literal notranslate"><span class="pre">int32</span></code> datatype. Therefore, we need to define the NVTabular output datatypes to <code class="docutils literal notranslate"><span class="pre">int32</span></code> for categorical features.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">workflow</span><span class="o">.</span><span class="n">output_dtypes</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-    <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;C&quot;</span><span class="p">):</span>
-        <span class="n">workflow</span><span class="o">.</span><span class="n">output_dtypes</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;int32&quot;</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for key in workflow.output_dtypes.keys():
+    if key.startswith(&quot;C&quot;):
+        workflow.output_dtypes[key] = &quot;int32&quot;
 </pre></div>
 </div>
 </div>
@@ -206,14 +206,14 @@ To enable them in other operations, rebuild TensorFlow with the appropriate comp
 <p>NVTabular provides an easy function to deploy the ensemble model for Triton Inference Server.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.inference.triton</span> <span class="kn">import</span> <span class="n">export_tensorflow_ensemble</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from nvtabular.inference.triton import export_tensorflow_ensemble
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">export_tensorflow_ensemble</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="s2">&quot;criteo&quot;</span><span class="p">,</span> <span class="s2">&quot;/tmp/model/models/&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>export_tensorflow_ensemble(model, workflow, &quot;criteo&quot;, &quot;/tmp/model/models/&quot;, [&quot;label&quot;])
 </pre></div>
 </div>
 </div>
@@ -311,7 +311,7 @@ WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f06385
 <p>We can take a look on the generated files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>tree /tmp/model
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!tree /tmp/model
 </pre></div>
 </div>
 </div>
@@ -378,10 +378,10 @@ WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f06385
 <p>First, we restart this notebook to free the GPU memory.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># import IPython</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># import IPython
 
-<span class="c1"># app = IPython.Application.instance()</span>
-<span class="c1"># app.kernel.do_shutdown(True)</span>
+# app = IPython.Application.instance()
+# app.kernel.do_shutdown(True)
 </pre></div>
 </div>
 </div>
@@ -389,9 +389,9 @@ WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f06385
 <p>We define the BASE_DIR again.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
 
-<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/raid/data/criteo&quot;</span><span class="p">)</span>
+BASE_DIR = os.environ.get(&quot;BASE_DIR&quot;, &quot;/raid/data/criteo&quot;)
 </pre></div>
 </div>
 </div>
@@ -399,13 +399,13 @@ WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f06385
 <p>We connect to the Triton Inference Server.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">grpc_client</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tritonclient.grpc as grpc_client
 
-<span class="k">try</span><span class="p">:</span>
-    <span class="n">triton_client</span> <span class="o">=</span> <span class="n">grpc_client</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;client created.&quot;</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel creation failed: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+try:
+    triton_client = grpc_client.InferenceServerClient(url=&quot;localhost:8001&quot;, verbose=True)
+    print(&quot;client created.&quot;)
+except Exception as e:
+    print(&quot;channel creation failed: &quot; + str(e))
 </pre></div>
 </div>
 </div>
@@ -418,9 +418,9 @@ WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f06385
 <p>We deactivate warnings.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
 
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+warnings.filterwarnings(&quot;ignore&quot;)
 </pre></div>
 </div>
 </div>
@@ -428,7 +428,7 @@ WARNING:absl:&lt;keras.saving.saved_model.load.DenseFeatures object at 0x7f06385
 <p>We check if the server is alive.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">is_server_live</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>triton_client.is_server_live()
 </pre></div>
 </div>
 </div>
@@ -451,7 +451,7 @@ live: true
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">get_model_repository_index</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>triton_client.get_model_repository_index()
 </pre></div>
 </div>
 </div>
@@ -485,9 +485,9 @@ models {
 <p>We load the ensembled model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
 
-<span class="n">triton_client</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo&quot;</span><span class="p">)</span>
+triton_client.load_model(model_name=&quot;criteo&quot;)
 </pre></div>
 </div>
 </div>
@@ -509,17 +509,17 @@ Wall time: 41.9 s
 <p>Now, the models are loaded and we can create a sample request. We read an example <strong>raw batch</strong> for inference.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get dataframe library - cudf or pandas</span>
-<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Get dataframe library - cudf or pandas
+from merlin.core.dispatch import get_lib
 
-<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
+df_lib = get_lib()
 
-<span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
-<span class="n">batch_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;converted/criteo&quot;</span><span class="p">)</span>
-<span class="c1"># raise(ValueError(f&quot;{batch_path}&quot;))</span>
-<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">batch_path</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-<span class="n">batch</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="s2">&quot;label&quot;</span><span class="p">]]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+# read in the workflow (to get input/output schema to call triton with)
+batch_path = os.path.join(BASE_DIR, &quot;converted/criteo&quot;)
+# raise(ValueError(f&quot;{batch_path}&quot;))
+batch = df_lib.read_parquet(os.path.join(batch_path, &quot;*.parquet&quot;), num_rows=3)
+batch = batch[[x for x in batch.columns if x != &quot;label&quot;]]
+print(batch)
 </pre></div>
 </div>
 </div>
@@ -547,7 +547,7 @@ Wall time: 41.9 s
 <p>We prepare the batch for inference by using correct column names and data types. We use the same datatypes as defined in our dataframe.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">batch</span><span class="o">.</span><span class="n">dtypes</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>batch.dtypes
 </pre></div>
 </div>
 </div>
@@ -598,20 +598,20 @@ dtype: object
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">httpclient</span>
-<span class="kn">from</span> <span class="nn">tritonclient.utils</span> <span class="kn">import</span> <span class="n">np_to_triton_dtype</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tritonclient.grpc as httpclient
+from tritonclient.utils import np_to_triton_dtype
+import numpy as np
 
-<span class="n">inputs</span> <span class="o">=</span> <span class="p">[]</span>
+inputs = []
 
-<span class="n">col_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
-<span class="n">col_dtypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_names</span><span class="p">)</span>
+col_names = list(batch.columns)
+col_dtypes = [np.int32] * len(col_names)
 
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values_host</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">col_dtypes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">httpclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">(</span><span class="n">col_names</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">d</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np_to_triton_dtype</span><span class="p">(</span><span class="n">col_dtypes</span><span class="p">[</span><span class="n">i</span><span class="p">])))</span>
-    <span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_data_from_numpy</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+for i, col in enumerate(batch.columns):
+    d = batch[col].fillna(0).values_host.astype(col_dtypes[i])
+    d = d.reshape(len(d), 1)
+    inputs.append(httpclient.InferInput(col_names[i], d.shape, np_to_triton_dtype(col_dtypes[i])))
+    inputs[i].set_data_from_numpy(d)
 </pre></div>
 </div>
 </div>
@@ -619,15 +619,15 @@ dtype: object
 <p>We send the request to the triton server and collect the last output.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># placeholder variables for the output</span>
-<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">httpclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># placeholder variables for the output
+outputs = [httpclient.InferRequestedOutput(&quot;output&quot;)]
 
-<span class="c1"># build a client to connect to our server.</span>
-<span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
-<span class="c1"># make the request with tritonclient.http.InferInput object</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">triton_client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="s2">&quot;criteo&quot;</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
+# build a client to connect to our server.
+# This InferenceServerClient object is what we&#39;ll be using to talk to Triton.
+# make the request with tritonclient.http.InferInput object
+response = triton_client.infer(&quot;criteo&quot;, inputs, request_id=&quot;1&quot;, outputs=outputs)
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted softmax result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
+print(&quot;predicted softmax result:\n&quot;, response.as_numpy(&quot;output&quot;))
 </pre></div>
 </div>
 </div>
@@ -952,9 +952,9 @@ predicted softmax result:
 <p>Let’s unload the model. We need to unload each model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo&quot;</span><span class="p">)</span>
-<span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo_nvt&quot;</span><span class="p">)</span>
-<span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;criteo_tf&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>triton_client.unload_model(model_name=&quot;criteo&quot;)
+triton_client.unload_model(model_name=&quot;criteo_nvt&quot;)
+triton_client.unload_model(model_name=&quot;criteo_tf&quot;)
 </pre></div>
 </div>
 </div>

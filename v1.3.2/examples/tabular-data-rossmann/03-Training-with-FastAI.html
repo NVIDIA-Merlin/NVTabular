@@ -106,20 +106,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -135,11 +135,11 @@
 <p>In the previous notebooks (<a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb">01-Download-Convert.ipynb</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/02-ETL-with-NVTabular.ipynb">02-ETL-with-NVTabular.ipynb</a>), we downloaded, preprocessed and created features for the dataset. Now, we are ready to train our deep learning model on the dataset. In this notebook, we use <strong>FastAI</strong> with the NVTabular data loader for PyTorch to accelereate the training pipeline. FastAI uses PyTorch as a backend and we can combine the NVTabular data loader for PyTorch with the FastAI library.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">math</span>
-<span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
-<span class="kn">import</span> <span class="nn">glob</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
+import math
+import json
+import nvtabular as nvt
+import glob
 </pre></div>
 </div>
 </div>
@@ -151,10 +151,10 @@
 <p>This time, we only need to define our data directories. We can load the data schema from the NVTabular workflow.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/data/&quot;</span><span class="p">))</span>
-<span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ross_pre/&quot;</span><span class="p">)</span>
-<span class="n">PREPROCESS_DIR_TRAIN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">)</span>
-<span class="n">PREPROCESS_DIR_VALID</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>DATA_DIR = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/data/&quot;))
+PREPROCESS_DIR = os.path.join(DATA_DIR, &quot;ross_pre/&quot;)
+PREPROCESS_DIR_TRAIN = os.path.join(PREPROCESS_DIR, &quot;train&quot;)
+PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, &quot;valid&quot;)
 </pre></div>
 </div>
 </div>
@@ -162,7 +162,7 @@
 <p>What files are available to train on in our directories?</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR
 </pre></div>
 </div>
 </div>
@@ -174,7 +174,7 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR_TRAIN</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR_TRAIN
 </pre></div>
 </div>
 </div>
@@ -187,7 +187,7 @@ _file_list.txt				    _metadata.json
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$PREPROCESS_DIR_VALID</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR_VALID
 </pre></div>
 </div>
 </div>
@@ -201,17 +201,17 @@ _file_list.txt				    _metadata.json
 <p>We load the data schema and statistic information from <code class="docutils literal notranslate"><span class="pre">stats.json</span></code>. We created the file in the previous notebook <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">stats</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;stats.json&quot;</span><span class="p">),</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>stats = json.load(open(os.path.join(PREPROCESS_DIR, &quot;stats.json&quot;), &quot;r&quot;))
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;CATEGORICAL_COLUMNS&quot;</span><span class="p">]</span>
-<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;CONTINUOUS_COLUMNS&quot;</span><span class="p">]</span>
-<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;LABEL_COLUMNS&quot;</span><span class="p">]</span>
-<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>CATEGORICAL_COLUMNS = stats[&quot;CATEGORICAL_COLUMNS&quot;]
+CONTINUOUS_COLUMNS = stats[&quot;CONTINUOUS_COLUMNS&quot;]
+LABEL_COLUMNS = stats[&quot;LABEL_COLUMNS&quot;]
+COLUMNS = CATEGORICAL_COLUMNS + CONTINUOUS_COLUMNS + LABEL_COLUMNS
 </pre></div>
 </div>
 </div>
@@ -219,8 +219,8 @@ _file_list.txt				    _metadata.json
 <p>The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form <code class="docutils literal notranslate"><span class="pre">(cardinality,</span> <span class="pre">embedding_size)</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;EMBEDDING_TABLE_SHAPES&quot;</span><span class="p">]</span>
-<span class="n">EMBEDDING_TABLE_SHAPES</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES = stats[&quot;EMBEDDING_TABLE_SHAPES&quot;]
+EMBEDDING_TABLE_SHAPES
 </pre></div>
 </div>
 </div>
@@ -258,19 +258,19 @@ _file_list.txt				    _metadata.json
 <p>We’ll start by setting some universal hyperparameters for our model and optimizer. These settings will be shared across all of the frameworks that we explore below.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_DROPOUT_RATE</span> <span class="o">=</span> <span class="mf">0.04</span>
-<span class="n">DROPOUT_RATES</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">]</span>
-<span class="n">HIDDEN_DIMS</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">500</span><span class="p">]</span>
-<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">65536</span>
-<span class="n">LEARNING_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>
-<span class="n">EPOCHS</span> <span class="o">=</span> <span class="mi">25</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_DROPOUT_RATE = 0.04
+DROPOUT_RATES = [0.001, 0.01]
+HIDDEN_DIMS = [1000, 500]
+BATCH_SIZE = 65536
+LEARNING_RATE = 0.001
+EPOCHS = 25
 
-<span class="c1"># TODO: Calculate on the fly rather than recalling from previous analysis.</span>
-<span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">=</span> <span class="mf">38722.0</span>
-<span class="n">MAX_LOG_SALES_PREDICTION</span> <span class="o">=</span> <span class="mf">1.2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+# TODO: Calculate on the fly rather than recalling from previous analysis.
+MAX_SALES_IN_TRAINING_SET = 38722.0
+MAX_LOG_SALES_PREDICTION = 1.2 * math.log(MAX_SALES_IN_TRAINING_SET + 1.0)
 
-<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
-<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
+TRAIN_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_TRAIN, &quot;*.parquet&quot;)))
+VALID_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_VALID, &quot;*.parquet&quot;)))
 </pre></div>
 </div>
 </div>
@@ -283,9 +283,9 @@ _file_list.txt				    _metadata.json
 <p>AsyncTensorBatchDatasetItr maps a symbolic dataset object to <code class="docutils literal notranslate"><span class="pre">cat_features</span></code>, <code class="docutils literal notranslate"><span class="pre">cont_features</span></code>, <code class="docutils literal notranslate"><span class="pre">labels</span></code> PyTorch tenosrs by iterating through the dataset and concatenating the results.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">fastai</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import fastai
 
-<span class="n">fastai</span><span class="o">.</span><span class="n">__version__</span>
+fastai.__version__
 </pre></div>
 </div>
 </div>
@@ -297,41 +297,41 @@ _file_list.txt				    _metadata.json
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">TorchAsyncItr</span><span class="p">,</span> <span class="n">DLDataLoader</span>
-<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.utils</span> <span class="kn">import</span> <span class="n">FastaiTransform</span>
-<span class="kn">from</span> <span class="nn">fastai.tabular.data</span> <span class="kn">import</span> <span class="n">TabularDataLoaders</span>
-<span class="kn">from</span> <span class="nn">fastai.tabular.model</span> <span class="kn">import</span> <span class="n">TabularModel</span>
-<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">Learner</span>
-<span class="kn">from</span> <span class="nn">fastai.basics</span> <span class="kn">import</span> <span class="n">MSELossFlat</span>
-<span class="kn">from</span> <span class="nn">fastai.callback.progress</span> <span class="kn">import</span> <span class="n">ProgressCallback</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import torch
+from nvtabular.loader.torch import TorchAsyncItr, DLDataLoader
+from nvtabular.framework_utils.torch.utils import FastaiTransform
+from fastai.tabular.data import TabularDataLoaders
+from fastai.tabular.model import TabularModel
+from fastai.basics import Learner
+from fastai.basics import MSELossFlat
+from fastai.callback.progress import ProgressCallback
 
 
-<span class="k">def</span> <span class="nf">make_batched_dataloader</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
-    <span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
-    <span class="n">ds_batch_sets</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
-        <span class="n">dataset</span><span class="p">,</span>
-        <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
-        <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
-        <span class="n">conts</span><span class="o">=</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">,</span>
-        <span class="n">labels</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">DLDataLoader</span><span class="p">(</span><span class="n">ds_batch_sets</span><span class="p">,</span>
-                        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                        <span class="n">collate_fn</span><span class="o">=</span><span class="n">FastaiTransform</span><span class="p">(</span><span class="n">ds_batch_sets</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
-                        <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+def make_batched_dataloader(paths, columns, batch_size):
+    dataset = nvt.Dataset(paths)
+    ds_batch_sets = TorchAsyncItr(
+        dataset,
+        batch_size=batch_size,
+        cats=CATEGORICAL_COLUMNS,
+        conts=CONTINUOUS_COLUMNS,
+        labels=LABEL_COLUMNS,
+    )
+    return DLDataLoader(ds_batch_sets,
+                        batch_size=None,
+                        pin_memory=False,
+                        collate_fn=FastaiTransform(ds_batch_sets).transform,
+                        num_workers=0)
 
 
-<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">make_batched_dataloader</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="n">BATCH_SIZE</span><span class="p">)</span>
-<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">make_batched_dataloader</span><span class="p">(</span><span class="n">VALID_PATHS</span><span class="p">,</span> <span class="n">COLUMNS</span><span class="p">,</span> <span class="n">BATCH_SIZE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">)</span>
+train_dataset = make_batched_dataloader(TRAIN_PATHS, COLUMNS, BATCH_SIZE)
+valid_dataset = make_batched_dataloader(VALID_PATHS, COLUMNS, BATCH_SIZE * 4)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">databunch</span> <span class="o">=</span> <span class="n">TabularDataLoaders</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">valid_dataset</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>databunch = TabularDataLoaders(train_dataset, valid_dataset)
 </pre></div>
 </div>
 </div>
@@ -343,16 +343,16 @@ _file_list.txt				    _metadata.json
 <p>Using FastAI’s <code class="docutils literal notranslate"><span class="pre">TabularModel</span></code>, we can build an MLP under the hood by defining its high-level characteristics.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pt_model</span> <span class="o">=</span> <span class="n">TabularModel</span><span class="p">(</span>
-    <span class="n">emb_szs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
-    <span class="n">n_cont</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">CONTINUOUS_COLUMNS</span><span class="p">),</span>
-    <span class="n">out_sz</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-    <span class="n">layers</span><span class="o">=</span><span class="n">HIDDEN_DIMS</span><span class="p">,</span>
-    <span class="n">ps</span><span class="o">=</span><span class="n">DROPOUT_RATES</span><span class="p">,</span>
-    <span class="n">use_bn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">embed_p</span><span class="o">=</span><span class="n">EMBEDDING_DROPOUT_RATE</span><span class="p">,</span>
-    <span class="n">y_range</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">MAX_LOG_SALES_PREDICTION</span><span class="p">]),</span>
-<span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pt_model = TabularModel(
+    emb_szs=list(EMBEDDING_TABLE_SHAPES.values()),
+    n_cont=len(CONTINUOUS_COLUMNS),
+    out_sz=1,
+    layers=HIDDEN_DIMS,
+    ps=DROPOUT_RATES,
+    use_bn=True,
+    embed_p=EMBEDDING_DROPOUT_RATE,
+    y_range=torch.tensor([0.0, MAX_LOG_SALES_PREDICTION]),
+).cuda()
 </pre></div>
 </div>
 </div>
@@ -362,29 +362,29 @@ _file_list.txt				    _metadata.json
 <h3>fast.ai: Training<a class="headerlink" href="#fast-ai-training" title="Permalink to this headline"></a></h3>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fastai.torch_core</span> <span class="kn">import</span> <span class="n">flatten_check</span>
-<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from fastai.torch_core import flatten_check
+from time import time
 
 
-<span class="k">def</span> <span class="nf">exp_rmspe</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">targ</span><span class="p">):</span>
-    <span class="s2">&quot;Exp RMSE between `pred` and `targ`.&quot;</span>
-    <span class="n">pred</span><span class="p">,</span> <span class="n">targ</span> <span class="o">=</span> <span class="n">flatten_check</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">targ</span><span class="p">)</span>
-    <span class="n">pred</span><span class="p">,</span> <span class="n">targ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">targ</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-    <span class="n">pct_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">targ</span> <span class="o">-</span> <span class="n">pred</span><span class="p">)</span> <span class="o">/</span> <span class="n">targ</span>
-    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">pct_var</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+def exp_rmspe(pred, targ):
+    &quot;Exp RMSE between `pred` and `targ`.&quot;
+    pred, targ = flatten_check(pred, targ)
+    pred, targ = torch.exp(pred) - 1, torch.exp(targ) - 1
+    pct_var = (targ - pred) / targ
+    return torch.sqrt((pct_var ** 2).mean())
 
 
-<span class="n">loss_func</span> <span class="o">=</span> <span class="n">MSELossFlat</span><span class="p">()</span>
-<span class="n">learner</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span>
-    <span class="n">databunch</span><span class="p">,</span> <span class="n">pt_model</span><span class="p">,</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">loss_func</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">exp_rmspe</span><span class="p">],</span> <span class="n">cbs</span><span class="o">=</span><span class="n">ProgressCallback</span><span class="p">()</span>
-<span class="p">)</span>
-<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
-<span class="n">learner</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">EPOCHS</span><span class="p">,</span> <span class="n">LEARNING_RATE</span><span class="p">)</span>
-<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
-<span class="n">total_rows</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows_processed</span> <span class="o">+</span> <span class="n">valid_dataset</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows_processed</span>
-<span class="nb">print</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;run_time: </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">total_rows</span><span class="si">}</span><span class="s2"> - epochs: </span><span class="si">{</span><span class="n">EPOCHS</span><span class="si">}</span><span class="s2"> - dl_thru: </span><span class="si">{</span> <span class="p">(</span><span class="n">EPOCHS</span> <span class="o">*</span> <span class="n">total_rows</span><span class="p">)</span> <span class="o">/</span> <span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="p">)</span>
+loss_func = MSELossFlat()
+learner = Learner(
+    databunch, pt_model, loss_func=loss_func, metrics=[exp_rmspe], cbs=ProgressCallback()
+)
+start = time()
+learner.fit(EPOCHS, LEARNING_RATE)
+t_final = time() - start
+total_rows = train_dataset.dataset.num_rows_processed + valid_dataset.dataset.num_rows_processed
+print(
+    f&quot;run_time: {t_final} - rows: {total_rows} - epochs: {EPOCHS} - dl_thru: { (EPOCHS * total_rows) / t_final}&quot;
+)
 </pre></div>
 </div>
 </div>

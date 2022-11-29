@@ -105,20 +105,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -159,9 +159,9 @@
 <p>In this example, we will train a neural network with HugeCTR. We will use preprocessed datasets generated via NVTabular in <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code> notebook.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># External dependencies
+import os
+import nvtabular as nvt
 </pre></div>
 </div>
 </div>
@@ -169,13 +169,13 @@
 <p>We define our base directory, containing the data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># path to preprocessed data</span>
-<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># path to preprocessed data
+INPUT_DATA_DIR = os.environ.get(
+    &quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/movielens/data/&quot;)
+)
 
-<span class="c1"># path to save the models</span>
-<span class="n">MODEL_BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_BASE_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/&quot;</span><span class="p">))</span>
+# path to save the models
+MODEL_BASE_DIR = os.environ.get(&quot;MODEL_BASE_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/&quot;))
 </pre></div>
 </div>
 </div>
@@ -183,14 +183,14 @@
 <p>Let’s load our saved workflow from the <code class="docutils literal notranslate"><span class="pre">02-ETL-with-NVTabular</span></code> notebook.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow = nvt.Workflow.load(os.path.join(INPUT_DATA_DIR, &quot;workflow&quot;))
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span><span class="o">.</span><span class="n">output_dtypes</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow.output_dtypes
 </pre></div>
 </div>
 </div>
@@ -207,9 +207,9 @@
 <p>Let’s clear existing directory and create the output folders.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">MODEL_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;model/movielens_hugectr/&quot;</span><span class="p">)</span>
-<span class="o">!</span>rm -rf <span class="o">{</span>MODEL_DIR<span class="o">}</span>
-<span class="o">!</span>mkdir -p <span class="o">{</span>MODEL_DIR<span class="o">}</span><span class="s2">&quot;1&quot;</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>MODEL_DIR = os.path.join(INPUT_DATA_DIR, &quot;model/movielens_hugectr/&quot;)
+!rm -rf {MODEL_DIR}
+!mkdir -p {MODEL_DIR}&quot;1&quot;
 </pre></div>
 </div>
 </div>
@@ -310,10 +310,10 @@
 <p>We need the cardinalities of each categorical feature to assign as <code class="docutils literal notranslate"><span class="pre">slot_size_array</span></code> in the model below.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">get_embedding_sizes</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from nvtabular.ops import get_embedding_sizes
 
-<span class="n">embeddings</span> <span class="o">=</span> <span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+embeddings = get_embedding_sizes(workflow)
+print(embeddings)
 </pre></div>
 </div>
 </div>
@@ -326,105 +326,105 @@
 <p>We use <code class="docutils literal notranslate"><span class="pre">graph_to_json</span></code> to convert the model to a JSON configuration, required for the inference.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">hugectr</span>
-<span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>  <span class="c1"># noqa</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import hugectr
+from mpi4py import MPI  # noqa
 
-<span class="n">solver</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">CreateSolver</span><span class="p">(</span>
-    <span class="n">vvgpu</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">]],</span>
-    <span class="n">batchsize</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
-    <span class="n">batchsize_eval</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
-    <span class="n">max_eval_batches</span><span class="o">=</span><span class="mi">160</span><span class="p">,</span>
-    <span class="n">i64_input_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">use_mixed_precision</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">repeat_dataset</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">optimizer</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">CreateOptimizer</span><span class="p">(</span><span class="n">optimizer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Optimizer_t</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
-<span class="n">reader</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderParams</span><span class="p">(</span>
-    <span class="n">data_reader_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderType_t</span><span class="o">.</span><span class="n">Parquet</span><span class="p">,</span>
-    <span class="n">source</span><span class="o">=</span><span class="p">[</span><span class="n">INPUT_DATA_DIR</span> <span class="o">+</span> <span class="s2">&quot;train/_file_list.txt&quot;</span><span class="p">],</span>
-    <span class="n">eval_source</span><span class="o">=</span><span class="n">INPUT_DATA_DIR</span> <span class="o">+</span> <span class="s2">&quot;valid/_file_list.txt&quot;</span><span class="p">,</span>
-    <span class="n">check_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Check_t</span><span class="o">.</span><span class="n">Non</span><span class="p">,</span>
-    <span class="n">slot_size_array</span><span class="o">=</span><span class="p">[</span><span class="mi">162542</span><span class="p">,</span> <span class="mi">56586</span><span class="p">,</span> <span class="mi">21</span><span class="p">],</span>
-<span class="p">)</span>
+solver = hugectr.CreateSolver(
+    vvgpu=[[0]],
+    batchsize=2048,
+    batchsize_eval=2048,
+    max_eval_batches=160,
+    i64_input_key=True,
+    use_mixed_precision=False,
+    repeat_dataset=True,
+)
+optimizer = hugectr.CreateOptimizer(optimizer_type=hugectr.Optimizer_t.Adam)
+reader = hugectr.DataReaderParams(
+    data_reader_type=hugectr.DataReaderType_t.Parquet,
+    source=[INPUT_DATA_DIR + &quot;train/_file_list.txt&quot;],
+    eval_source=INPUT_DATA_DIR + &quot;valid/_file_list.txt&quot;,
+    check_type=hugectr.Check_t.Non,
+    slot_size_array=[162542, 56586, 21],
+)
 
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">hugectr</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">solver</span><span class="p">,</span> <span class="n">reader</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">)</span>
+model = hugectr.Model(solver, reader, optimizer)
 
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
-        <span class="n">label_dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">label_name</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
-        <span class="n">dense_dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-        <span class="n">dense_name</span><span class="o">=</span><span class="s2">&quot;dense&quot;</span><span class="p">,</span>
-        <span class="n">data_reader_sparse_param_array</span><span class="o">=</span><span class="p">[</span>
-            <span class="n">hugectr</span><span class="o">.</span><span class="n">DataReaderSparseParam</span><span class="p">(</span><span class="s2">&quot;data1&quot;</span><span class="p">,</span> <span class="n">nnz_per_slot</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">is_fixed_length</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">slot_num</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-        <span class="p">],</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">SparseEmbedding</span><span class="p">(</span>
-        <span class="n">embedding_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Embedding_t</span><span class="o">.</span><span class="n">LocalizedSlotSparseEmbeddingHash</span><span class="p">,</span>
-        <span class="n">workspace_size_per_gpu_in_mb</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-        <span class="n">embedding_vec_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-        <span class="n">combiner</span><span class="o">=</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span>
-        <span class="n">sparse_embedding_name</span><span class="o">=</span><span class="s2">&quot;sparse_embedding1&quot;</span><span class="p">,</span>
-        <span class="n">bottom_name</span><span class="o">=</span><span class="s2">&quot;data1&quot;</span><span class="p">,</span>
-        <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">Reshape</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sparse_embedding1&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reshape1&quot;</span><span class="p">],</span>
-        <span class="n">leading_dim</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">InnerProduct</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reshape1&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc1&quot;</span><span class="p">],</span>
-        <span class="n">num_output</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">ReLU</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc1&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu1&quot;</span><span class="p">],</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">InnerProduct</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu1&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc2&quot;</span><span class="p">],</span>
-        <span class="n">num_output</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">ReLU</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc2&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu2&quot;</span><span class="p">],</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">InnerProduct</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;relu2&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc3&quot;</span><span class="p">],</span>
-        <span class="n">num_output</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-    <span class="n">hugectr</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span>
-        <span class="n">layer_type</span><span class="o">=</span><span class="n">hugectr</span><span class="o">.</span><span class="n">Layer_t</span><span class="o">.</span><span class="n">BinaryCrossEntropyLoss</span><span class="p">,</span>
-        <span class="n">bottom_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fc3&quot;</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">],</span>
-        <span class="n">top_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
-    <span class="p">)</span>
-<span class="p">)</span>
+model.add(
+    hugectr.Input(
+        label_dim=1,
+        label_name=&quot;label&quot;,
+        dense_dim=0,
+        dense_name=&quot;dense&quot;,
+        data_reader_sparse_param_array=[
+            hugectr.DataReaderSparseParam(&quot;data1&quot;, nnz_per_slot=10, is_fixed_length=False, slot_num=3)
+        ],
+    )
+)
+model.add(
+    hugectr.SparseEmbedding(
+        embedding_type=hugectr.Embedding_t.LocalizedSlotSparseEmbeddingHash,
+        workspace_size_per_gpu_in_mb=200,
+        embedding_vec_size=16,
+        combiner=&quot;sum&quot;,
+        sparse_embedding_name=&quot;sparse_embedding1&quot;,
+        bottom_name=&quot;data1&quot;,
+        optimizer=optimizer,
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.Reshape,
+        bottom_names=[&quot;sparse_embedding1&quot;],
+        top_names=[&quot;reshape1&quot;],
+        leading_dim=48,
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.InnerProduct,
+        bottom_names=[&quot;reshape1&quot;],
+        top_names=[&quot;fc1&quot;],
+        num_output=128,
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.ReLU,
+        bottom_names=[&quot;fc1&quot;],
+        top_names=[&quot;relu1&quot;],
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.InnerProduct,
+        bottom_names=[&quot;relu1&quot;],
+        top_names=[&quot;fc2&quot;],
+        num_output=128,
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.ReLU,
+        bottom_names=[&quot;fc2&quot;],
+        top_names=[&quot;relu2&quot;],
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.InnerProduct,
+        bottom_names=[&quot;relu2&quot;],
+        top_names=[&quot;fc3&quot;],
+        num_output=1,
+    )
+)
+model.add(
+    hugectr.DenseLayer(
+        layer_type=hugectr.Layer_t.BinaryCrossEntropyLoss,
+        bottom_names=[&quot;fc3&quot;, &quot;label&quot;],
+        top_names=[&quot;loss&quot;],
+    )
+)
 </pre></div>
 </div>
 </div>
@@ -450,10 +450,10 @@
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
-<span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
-<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">eval_interval</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">snapshot</span><span class="o">=</span><span class="mi">1900</span><span class="p">)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">graph_to_json</span><span class="p">(</span><span class="n">graph_config_file</span><span class="o">=</span><span class="n">MODEL_DIR</span> <span class="o">+</span> <span class="s2">&quot;1/movielens.json&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model.compile()
+model.summary()
+model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)
+model.graph_to_json(graph_config_file=MODEL_DIR + &quot;1/movielens.json&quot;)
 </pre></div>
 </div>
 </div>
@@ -556,7 +556,7 @@ BinaryCrossEntropyLoss                  fc3                           loss
 <p>After training terminates, we can see that multiple <code class="docutils literal notranslate"><span class="pre">.model</span></code> files and folders are generated. We need to move them inside <code class="docutils literal notranslate"><span class="pre">1</span></code> folder under the <code class="docutils literal notranslate"><span class="pre">movielens_hugectr</span></code> folder.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>mv *.model <span class="o">{</span>MODEL_DIR<span class="o">}</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!mv *.model {MODEL_DIR}
 </pre></div>
 </div>
 </div>

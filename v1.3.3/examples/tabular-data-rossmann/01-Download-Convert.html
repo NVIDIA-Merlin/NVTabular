@@ -106,20 +106,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -130,26 +130,26 @@
 <p>Here we implement some feature engineering outlined by FastAI in <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/lesson6-rossmann.ipynb">their example solution</a> to the <a class="reference external" href="https://www.kaggle.com/c/rossmann-store-sales">Kaggle Rossmann Store Sales competition</a> using Rapids cuDF library (GPU DataFrame library). We’ve simplified some sections and left out some of the documentation to keep things neat, so feel free to consult the original preprocessing <a class="reference external" href="https://github.com/fastai/course-v3/blob/master/nbs/dl1/rossman_data_clean.ipynb">notebook</a> for explanations of the feature engineering going on.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
+import pandas as pd
 
-<span class="c1"># Get dataframe library - cudf or pandas</span>
-<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
-<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
+# Get dataframe library - cudf or pandas
+from merlin.core.dispatch import get_lib
+df_lib = get_lib()
 
-<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">download_file</span>
+from merlin.core.utils import download_file
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/rossmann/&quot;</span><span class="p">)</span>
-<span class="p">)</span>
-<span class="n">OUTPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/data/&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>INPUT_DATA_DIR = os.environ.get(
+    &quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/rossmann/&quot;)
+)
+OUTPUT_DATA_DIR = os.environ.get(
+    &quot;OUTPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/data/&quot;)
+)
 </pre></div>
 </div>
 </div>
@@ -157,11 +157,11 @@
 <p>The cell below will download the data into the <code class="docutils literal notranslate"><span class="pre">INPUT_DATA_DIR</span></code> if you do not have it already.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;rossmann.tgz&quot;</span><span class="p">)):</span>
-    <span class="n">download_file</span><span class="p">(</span>
-        <span class="s2">&quot;https://files.fast.ai/part2/lesson14/rossmann.tgz&quot;</span><span class="p">,</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;rossmann.tgz&quot;</span><span class="p">),</span>
-    <span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>if not os.path.isfile(os.path.join(INPUT_DATA_DIR, &quot;rossmann.tgz&quot;)):
+    download_file(
+        &quot;https://files.fast.ai/part2/lesson14/rossmann.tgz&quot;,
+        os.path.join(INPUT_DATA_DIR, &quot;rossmann.tgz&quot;),
+    )
 </pre></div>
 </div>
 </div>
@@ -175,17 +175,17 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Let’s read each csv file as a cudf dataframe.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">read_table</span><span class="p">(</span><span class="n">table_name</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">table_name</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def read_table(table_name):
+    return df_lib.read_csv(os.path.join(INPUT_DATA_DIR, f&quot;{table_name}.csv&quot;))
 
 
-<span class="n">train</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
-<span class="n">store</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;store&quot;</span><span class="p">)</span>
-<span class="n">store_states</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;store_states&quot;</span><span class="p">)</span>
-<span class="n">state_names</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;state_names&quot;</span><span class="p">)</span>
-<span class="n">googletrend</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;googletrend&quot;</span><span class="p">)</span>
-<span class="n">weather</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;weather&quot;</span><span class="p">)</span>
-<span class="n">test</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+train = read_table(&quot;train&quot;)
+store = read_table(&quot;store&quot;)
+store_states = read_table(&quot;store_states&quot;)
+state_names = read_table(&quot;state_names&quot;)
+googletrend = read_table(&quot;googletrend&quot;)
+weather = read_table(&quot;weather&quot;)
+test = read_table(&quot;test&quot;)
 </pre></div>
 </div>
 </div>
@@ -193,8 +193,8 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>StateHoliday column indicates a state holiday. Normally all stores, with few exceptions, are closed on state holidays. Note that all schools are closed on public holidays and weekends. Below, we turn state Holidays to booleans to make them more convenient for modeling.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">StateHoliday</span> <span class="o">=</span> <span class="n">train</span><span class="o">.</span><span class="n">StateHoliday</span> <span class="o">!=</span> <span class="s2">&quot;0&quot;</span>
-<span class="n">test</span><span class="o">.</span><span class="n">StateHoliday</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">StateHoliday</span> <span class="o">!=</span> <span class="s2">&quot;0&quot;</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train.StateHoliday = train.StateHoliday != &quot;0&quot;
+test.StateHoliday = test.StateHoliday != &quot;0&quot;
 </pre></div>
 </div>
 </div>
@@ -203,10 +203,10 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>We create a new data frame <code class="docutils literal notranslate"><span class="pre">trend_de</span></code> from the Google trends data that has a special category for the whole of the Germany.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">googletrend</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">googletrend</span><span class="o">.</span><span class="n">week</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; - &quot;</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">googletrend</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">googletrend</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
-<span class="n">googletrend</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">googletrend</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">googletrend</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;NI&quot;</span><span class="p">,</span> <span class="s2">&quot;HB,NI&quot;</span><span class="p">)</span>
-<span class="n">trend_de</span> <span class="o">=</span> <span class="n">googletrend</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">googletrend</span><span class="o">.</span><span class="n">file</span> <span class="o">==</span> <span class="s2">&quot;Rossmann_DE&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>googletrend[&quot;Date&quot;] = googletrend.week.str.split(&quot; - &quot;, expand=True)[0]
+googletrend[&quot;State&quot;] = googletrend.file.str.split(&quot;_&quot;, expand=True)[2]
+googletrend[&quot;State&quot;] = googletrend.State.where(googletrend[&quot;State&quot;] != &quot;NI&quot;, &quot;HB,NI&quot;)
+trend_de = googletrend.loc[googletrend.file == &quot;Rossmann_DE&quot;].copy()
 </pre></div>
 </div>
 </div>
@@ -214,16 +214,16 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>The following extracts particular date fields from a complete datetime for the purpose of constructing categoricals. When working with date-time features, you should always consider this feature extraction step. You can capture the trend/cyclical behavior as a function of time at any of these granularities by expanding your date-time into these additional fields. Here, we create <code class="docutils literal notranslate"><span class="pre">Day,</span> <span class="pre">Week,</span> <span class="pre">Month</span> <span class="pre">and</span> <span class="pre">Year</span></code> features, and add these to every table with a date field. Note that cudf currently does not have <code class="docutils literal notranslate"><span class="pre">dt.week</span></code> property, thus, we applied a custom method to create <code class="docutils literal notranslate"><span class="pre">Week</span></code> column.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">(</span><span class="n">weather</span><span class="p">,</span> <span class="n">googletrend</span><span class="p">,</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="n">trend_de</span><span class="p">):</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;datetime64[ns]&quot;</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Month&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Date</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Day&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Date</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">day</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Date</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;-01-01&quot;</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Week&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(((</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;datetime64[ns]&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span><span class="p">)</span> <span class="o">/</span> <span class="mi">7</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
-        <span class="s2">&quot;int16&quot;</span>
-    <span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Week&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Week</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;Week&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">53</span><span class="p">,</span> <span class="mi">52</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Date</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in (weather, googletrend, train, test, trend_de):
+    df[&quot;Date&quot;] = df[&quot;Date&quot;].astype(&quot;datetime64[ns]&quot;)
+    df[&quot;Month&quot;] = df.Date.dt.month
+    df[&quot;Day&quot;] = df.Date.dt.day
+    df[&quot;Year&quot;] = df.Date.dt.year.astype(str) + &quot;-01-01&quot;
+    df[&quot;Week&quot;] = (((df[&quot;Date&quot;] - df[&quot;Year&quot;].astype(&quot;datetime64[ns]&quot;)).dt.days) / 7).astype(
+        &quot;int16&quot;
+    ) + 1
+    df[&quot;Week&quot;] = df.Week.where(df[&quot;Week&quot;] != 53, 52)
+    df[&quot;Year&quot;] = df.Date.dt.year
 </pre></div>
 </div>
 </div>
@@ -231,15 +231,15 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>We will use the function below to perform left outer join operation. The suffixes argument describes the naming convention for duplicate fields.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">left_on</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-        <span class="n">right</span><span class="p">,</span>
-        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
-        <span class="n">left_on</span><span class="o">=</span><span class="n">left_on</span><span class="p">,</span>
-        <span class="n">right_on</span><span class="o">=</span><span class="n">right_on</span> <span class="ow">or</span> <span class="n">left_on</span><span class="p">,</span>
-        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">suffix</span> <span class="ow">or</span> <span class="s2">&quot;_y&quot;</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">df</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def merge(df, right, left_on, right_on=None, suffix=None):
+    df = df.merge(
+        right,
+        how=&quot;left&quot;,
+        left_on=left_on,
+        right_on=right_on or left_on,
+        suffixes=(&quot;&quot;, suffix or &quot;_y&quot;),
+    )
+    return df
 </pre></div>
 </div>
 </div>
@@ -247,12 +247,12 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>This function will be used to drop redundant or unwanted columns generated via join operations.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">drop_cols</span><span class="p">(</span><span class="n">gdf</span><span class="p">):</span>
-    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">gdf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_y&quot;</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">gdf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="n">gdf</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">gdf</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def drop_cols(gdf):
+    for c in gdf.columns:
+        if c.endswith(&quot;_y&quot;):
+            if c in gdf.columns:
+                gdf.drop(c, inplace=True, axis=1)
+    return gdf
 </pre></div>
 </div>
 </div>
@@ -260,46 +260,46 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Now we can outer join all of our data into a single dataframe that we will use to train our DL model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">weather</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">weather</span><span class="p">,</span> <span class="n">state_names</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="s2">&quot;StateName&quot;</span><span class="p">)</span>
-<span class="n">store</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">store_states</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">)</span>
-<span class="n">train_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>weather = merge(weather, state_names, &quot;file&quot;, right_on=&quot;StateName&quot;)
+store = merge(store, store_states, &quot;Store&quot;)
+train_df = merge(train, store, &quot;Store&quot;)
+test_df = merge(test, store, &quot;Store&quot;)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">googletrend</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Week&quot;</span><span class="p">])</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">test_df</span><span class="p">,</span> <span class="n">googletrend</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Week&quot;</span><span class="p">])</span>
-<span class="n">train</span> <span class="o">=</span> <span class="n">test</span> <span class="o">=</span> <span class="n">googletrend</span> <span class="o">=</span> <span class="kc">None</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_df = merge(train_df, googletrend, [&quot;State&quot;, &quot;Year&quot;, &quot;Week&quot;])
+test_df = merge(test_df, googletrend, [&quot;State&quot;, &quot;Year&quot;, &quot;Week&quot;])
+train = test = googletrend = None
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">trend_de</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Week&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Week&quot;</span><span class="p">],</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_DE&quot;</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">test_df</span><span class="p">,</span> <span class="n">trend_de</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Week&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Year&quot;</span><span class="p">,</span> <span class="s2">&quot;Week&quot;</span><span class="p">],</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_DE&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_df = merge(train_df, trend_de, [&quot;Year&quot;, &quot;Week&quot;], right_on=[&quot;Year&quot;, &quot;Week&quot;], suffix=&quot;_DE&quot;)
+test_df = merge(test_df, trend_de, [&quot;Year&quot;, &quot;Week&quot;], right_on=[&quot;Year&quot;, &quot;Week&quot;], suffix=&quot;_DE&quot;)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_df</span> <span class="o">=</span> <span class="n">drop_cols</span><span class="p">(</span><span class="n">train_df</span><span class="p">)</span>
-<span class="n">train_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">weather</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">],</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_y&quot;</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">drop_cols</span><span class="p">(</span><span class="n">test_df</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">test_df</span><span class="p">,</span> <span class="n">weather</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_df = drop_cols(train_df)
+train_df = merge(train_df, weather, [&quot;State&quot;, &quot;Date&quot;], right_on=[&quot;State&quot;, &quot;Date&quot;], suffix=&quot;_y&quot;)
+test_df = drop_cols(test_df)
+test_df = merge(test_df, weather, [&quot;State&quot;, &quot;Date&quot;], right_on=[&quot;State&quot;, &quot;Date&quot;])
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># drop the redundant columns with `_y` suffix.</span>
-<span class="n">train_df</span> <span class="o">=</span> <span class="n">drop_cols</span><span class="p">(</span><span class="n">train_df</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">drop_cols</span><span class="p">(</span><span class="n">test_df</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># drop the redundant columns with `_y` suffix.
+train_df = drop_cols(train_df)
+test_df = drop_cols(test_df)
 </pre></div>
 </div>
 </div>
@@ -307,11 +307,11 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Next we’ll fill in missing values to avoid complications with NA’s. Many models have problems when missing values are present, so it’s important to think about how to deal with them. Here, we are picking arbitrary signal values and filling the missing values with them.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">[</span><span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span><span class="p">]:</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionOpenSinceYear&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">CompetitionOpenSinceYear</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1900</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionOpenSinceMonth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">CompetitionOpenSinceMonth</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2SinceYear&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Promo2SinceYear</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1900</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2SinceWeek&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Promo2SinceWeek</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in [train_df, test_df]:
+    df[&quot;CompetitionOpenSinceYear&quot;] = df.CompetitionOpenSinceYear.fillna(1900).astype(&quot;int32&quot;)
+    df[&quot;CompetitionOpenSinceMonth&quot;] = df.CompetitionOpenSinceMonth.fillna(1).astype(&quot;int32&quot;)
+    df[&quot;Promo2SinceYear&quot;] = df.Promo2SinceYear.fillna(1900).astype(&quot;int32&quot;)
+    df[&quot;Promo2SinceWeek&quot;] = df.Promo2SinceWeek.fillna(1).astype(&quot;int32&quot;)
 </pre></div>
 </div>
 </div>
@@ -319,12 +319,12 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Next we’ll extract features “CompetitionOpenSince” and “CompetitionDaysOpen”.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">[</span><span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span><span class="p">]:</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;year&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionOpenSinceYear&quot;</span><span class="p">]</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;month&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionOpenSinceMonth&quot;</span><span class="p">]</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;day&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;15&quot;</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionOpenSince&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;year&quot;</span><span class="p">,</span> <span class="s2">&quot;month&quot;</span><span class="p">,</span> <span class="s2">&quot;day&quot;</span><span class="p">]])</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionDaysOpen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionOpenSince&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in [train_df, test_df]:
+    df[&quot;year&quot;] = df[&quot;CompetitionOpenSinceYear&quot;]
+    df[&quot;month&quot;] = df[&quot;CompetitionOpenSinceMonth&quot;]
+    df[&quot;day&quot;] = &quot;15&quot;
+    df[&quot;CompetitionOpenSince&quot;] = df_lib.to_datetime(df[[&quot;year&quot;, &quot;month&quot;, &quot;day&quot;]])
+    df[&quot;CompetitionDaysOpen&quot;] = (df[&quot;Date&quot;] - df[&quot;CompetitionOpenSince&quot;]).dt.days
 </pre></div>
 </div>
 </div>
@@ -332,9 +332,9 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Let’s replace some erroneous / outlying data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">[</span><span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span><span class="p">]:</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">CompetitionDaysOpen</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;CompetitionDaysOpen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">CompetitionOpenSinceYear</span> <span class="o">&lt;</span> <span class="mi">1990</span><span class="p">,</span> <span class="s2">&quot;CompetitionDaysOpen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in [train_df, test_df]:
+    df.loc[df.CompetitionDaysOpen &lt; 0, &quot;CompetitionDaysOpen&quot;] = 0
+    df.loc[df.CompetitionOpenSinceYear &lt; 1990, &quot;CompetitionDaysOpen&quot;] = 0
 </pre></div>
 </div>
 </div>
@@ -342,9 +342,9 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>We’ll now add “CompetitionMonthsOpen” field, limiting the maximum to two years to limit number of unique categories.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">[</span><span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span><span class="p">]:</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionMonthsOpen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;CompetitionDaysOpen&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">30</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">CompetitionMonthsOpen</span> <span class="o">&gt;</span> <span class="mi">24</span><span class="p">,</span> <span class="s2">&quot;CompetitionMonthsOpen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">24</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in [train_df, test_df]:
+    df[&quot;CompetitionMonthsOpen&quot;] = df[&quot;CompetitionDaysOpen&quot;] // 30
+    df.loc[df.CompetitionMonthsOpen &gt; 24, &quot;CompetitionMonthsOpen&quot;] = 24
 </pre></div>
 </div>
 </div>
@@ -352,49 +352,49 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Same process is applied for Promo dates. We’ll create “Promo2Days”  and “Promo2Weeks” fields, limiting the maximum to 25 weeks to limit number of unique categories.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">[</span><span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span><span class="p">]:</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2SinceYear_tmp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Promo2SinceYear</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;-01-01&quot;</span>
-    <span class="n">dt</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">Promo2SinceYear_tmp</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;%Y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int64&quot;</span><span class="p">)</span> <span class="o">//</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">9</span>
-    <span class="n">dt</span> <span class="o">+=</span> <span class="mi">7</span> <span class="o">*</span> <span class="mi">24</span> <span class="o">*</span> <span class="mi">3600</span> <span class="o">*</span> <span class="n">df</span><span class="o">.</span><span class="n">Promo2SinceWeek</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2Since&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">dt</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="mi">9</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2Days&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2Since&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in [train_df, test_df]:
+    df[&quot;Promo2SinceYear_tmp&quot;] = df.Promo2SinceYear.astype(str) + &quot;-01-01&quot;
+    dt = df_lib.to_datetime(df.Promo2SinceYear_tmp, format=&quot;%Y&quot;).astype(&quot;int64&quot;) // 10 ** 9
+    dt += 7 * 24 * 3600 * df.Promo2SinceWeek
+    df[&quot;Promo2Since&quot;] = df_lib.to_datetime(dt * 10 ** 9)
+    df[&quot;Promo2Days&quot;] = (df[&quot;Date&quot;] - df[&quot;Promo2Since&quot;]).dt.days
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="p">[</span><span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span><span class="p">]:</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Promo2Days</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Promo2Days&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Promo2SinceYear</span> <span class="o">&lt;</span> <span class="mi">1990</span><span class="p">,</span> <span class="s2">&quot;Promo2Days&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2Weeks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Promo2Days&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">7</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Promo2Weeks</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Promo2Weeks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Promo2Weeks</span> <span class="o">&gt;</span> <span class="mi">25</span><span class="p">,</span> <span class="s2">&quot;Promo2Weeks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">25</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for df in [train_df, test_df]:
+    df.loc[df.Promo2Days &lt; 0, &quot;Promo2Days&quot;] = 0
+    df.loc[df.Promo2SinceYear &lt; 1990, &quot;Promo2Days&quot;] = 0
+    df[&quot;Promo2Weeks&quot;] = df[&quot;Promo2Days&quot;] // 7
+    df.loc[df.Promo2Weeks &lt; 0, &quot;Promo2Weeks&quot;] = 0
+    df.loc[df.Promo2Weeks &gt; 25, &quot;Promo2Weeks&quot;] = 25
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">train_df</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_df</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>df = train_df.append(test_df, ignore_index=True)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># let&#39;s drop these dummy columns.</span>
-<span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s2">&quot;year&quot;</span><span class="p">,</span> <span class="s2">&quot;month&quot;</span><span class="p">,</span> <span class="s2">&quot;day&quot;</span><span class="p">,</span> <span class="s2">&quot;Promo2SinceYear_tmp&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">train_df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s2">&quot;year&quot;</span><span class="p">,</span> <span class="s2">&quot;month&quot;</span><span class="p">,</span> <span class="s2">&quot;day&quot;</span><span class="p">,</span> <span class="s2">&quot;Promo2SinceYear_tmp&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">test_df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s2">&quot;year&quot;</span><span class="p">,</span> <span class="s2">&quot;month&quot;</span><span class="p">,</span> <span class="s2">&quot;day&quot;</span><span class="p">,</span> <span class="s2">&quot;Promo2SinceYear_tmp&quot;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># let&#39;s drop these dummy columns.
+df.drop([&quot;year&quot;, &quot;month&quot;, &quot;day&quot;, &quot;Promo2SinceYear_tmp&quot;], inplace=True, axis=1)
+train_df.drop([&quot;year&quot;, &quot;month&quot;, &quot;day&quot;, &quot;Promo2SinceYear_tmp&quot;], inplace=True, axis=1)
+test_df.drop([&quot;year&quot;, &quot;month&quot;, &quot;day&quot;, &quot;Promo2SinceYear_tmp&quot;], inplace=True, axis=1)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># # cast SchoolHoliday to int32.</span>
-<span class="n">df</span><span class="p">[</span><span class="s2">&quot;SchoolHoliday&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;SchoolHoliday&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># # cast SchoolHoliday to int32.
+df[&quot;SchoolHoliday&quot;] = df[&quot;SchoolHoliday&quot;].astype(&quot;int32&quot;)
 </pre></div>
 </div>
 </div>
@@ -403,62 +403,62 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>This section is still not working as intended with cuDF, therefore we are converting the cudf df to pandas df to perform the <code class="docutils literal notranslate"><span class="pre">bfill</span></code> and <code class="docutils literal notranslate"><span class="pre">ffill</span></code> operations below. We can explain the code below by looking at School Holiday as an exp. <i>SchoolHoliday</i> column indicates if the (Store, Date) was affected by the closure of public schools. First every row of the dataframe is sorted in order of store and date. Then, we will add to the dataframe the days since seeing a School Holiday, and the days until another holiday.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ops: masking, ffill, bfill, timedelta</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Store&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">])</span>
-<span class="c1"># We convert cudf dataframe to the pandas df be able to do `bfill` and `ffill` operations below.</span>
-<span class="k">if</span> <span class="n">df_lib</span> <span class="o">==</span> <span class="n">pd</span><span class="p">:</span>
-    <span class="n">pdf</span> <span class="o">=</span> <span class="n">df</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">pdf</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># ops: masking, ffill, bfill, timedelta
+df = df.sort_values(by=[&quot;Store&quot;, &quot;Date&quot;])
+# We convert cudf dataframe to the pandas df be able to do `bfill` and `ffill` operations below.
+if df_lib == pd:
+    pdf = df
+else:
+    pdf = df.to_pandas()
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># first build a mask indicating where stores start and end</span>
-<span class="n">first_indices</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">Store</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span>
-<span class="n">last_indices</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">Store</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mi">1</span><span class="p">]))</span>
-<span class="n">last_indices</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">first_indices</span><span class="o">.</span><span class="n">index</span>
-<span class="n">idx_mask</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">first_indices</span> <span class="o">|</span> <span class="n">last_indices</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># first build a mask indicating where stores start and end
+first_indices = pdf.Store.diff() != 0
+last_indices = pdf.Store.diff().iloc[1:].append(pd.Series([1]))
+last_indices.index = first_indices.index
+idx_mask = ~(first_indices | last_indices)
 
-<span class="n">event_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;SchoolHoliday&quot;</span><span class="p">,</span> <span class="s2">&quot;StateHoliday&quot;</span><span class="p">,</span> <span class="s2">&quot;Promo&quot;</span><span class="p">]</span>
-<span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">event_fields</span><span class="p">:</span>
-    <span class="c1"># use the mask from above to mask save dates from the start and end</span>
-    <span class="c1"># of a given store&#39;s range, as well as all dates that have an event</span>
-    <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;tmp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">Date</span>
-    <span class="n">pdf</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">pdf</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">idx_mask</span><span class="p">,</span> <span class="s2">&quot;tmp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
-    <span class="c1"># then use ffill and bbfill to give the input to the time delta</span>
-    <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;After&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">tmp</span><span class="o">.</span><span class="n">ffill</span><span class="p">()</span>
-    <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;Before&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">tmp</span><span class="o">.</span><span class="n">bfill</span><span class="p">()</span>
+event_fields = [&quot;SchoolHoliday&quot;, &quot;StateHoliday&quot;, &quot;Promo&quot;]
+for field in event_fields:
+    # use the mask from above to mask save dates from the start and end
+    # of a given store&#39;s range, as well as all dates that have an event
+    pdf[&quot;tmp&quot;] = pdf.Date
+    pdf.loc[(pdf[field] == 0) &amp; idx_mask, &quot;tmp&quot;] = float(&quot;nan&quot;)
+    # then use ffill and bbfill to give the input to the time delta
+    pdf[&quot;After&quot; + field] = pdf.tmp.ffill()
+    pdf[&quot;Before&quot; + field] = pdf.tmp.bfill()
 
-    <span class="c1"># compute deltas between bfilled and ffilled dates and the current date</span>
-    <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;After&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;After&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;timedelta64[D]&quot;</span><span class="p">)</span>
-    <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;Before&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;Before&quot;</span> <span class="o">+</span> <span class="n">field</span><span class="p">]</span> <span class="o">-</span> <span class="n">pdf</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;timedelta64[D]&quot;</span><span class="p">)</span>
+    # compute deltas between bfilled and ffilled dates and the current date
+    pdf[&quot;After&quot; + field] = (pdf[&quot;Date&quot;] - pdf[&quot;After&quot; + field]).astype(&quot;timedelta64[D]&quot;)
+    pdf[&quot;Before&quot; + field] = (pdf[&quot;Before&quot; + field] - pdf[&quot;Date&quot;]).astype(&quot;timedelta64[D]&quot;)
 
-<span class="c1"># get rid of our dummy column</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;tmp&quot;</span><span class="p">])</span>
+# get rid of our dummy column
+pdf = pdf.drop(columns=[&quot;tmp&quot;])
 
-<span class="c1"># let&#39;s convert pandas back to cudf df</span>
-<span class="k">if</span> <span class="n">df_lib</span> <span class="o">==</span> <span class="n">pd</span><span class="p">:</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pdf</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">pdf</span><span class="p">)</span>
+# let&#39;s convert pandas back to cudf df
+if df_lib == pd:
+    df = pdf
+else:
+    df = df_lib.from_pandas(pdf)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pdf</span><span class="o">.</span><span class="n">dtypes</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;dtypes_none.csv&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pd.DataFrame(pdf.dtypes).to_csv(&quot;dtypes_none.csv&quot;)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Set the active index to Date.</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;Date&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Set the active index to Date.
+df = df.set_index(&quot;Date&quot;)
 </pre></div>
 </div>
 </div>
@@ -466,15 +466,15 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Next we’ll apply window calculations in cudf to calculate rolling quantities. Here, we’re sorting by date (sort_index()), grouping by Store column, and counting the number of events of interest (sum()) defined in columns in the following week (rolling()). We do the same in the opposite direction.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">event_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;SchoolHoliday&quot;</span><span class="p">,</span> <span class="s2">&quot;StateHoliday&quot;</span><span class="p">,</span> <span class="s2">&quot;Promo&quot;</span><span class="p">]</span>
-<span class="n">bwd</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;Store&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">event_fields</span><span class="p">]</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;Store&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-<span class="n">fwd</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;Store&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">event_fields</span><span class="p">]</span>
-    <span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;Store&quot;</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>event_fields = [&quot;SchoolHoliday&quot;, &quot;StateHoliday&quot;, &quot;Promo&quot;]
+bwd = df[[&quot;Store&quot;] + event_fields].sort_index().groupby(&quot;Store&quot;).rolling(7, min_periods=1).sum()
+fwd = (
+    df[[&quot;Store&quot;] + event_fields]
+    .sort_index(ascending=False)
+    .groupby(&quot;Store&quot;)
+    .rolling(7, min_periods=1)
+    .sum()
+)
 </pre></div>
 </div>
 </div>
@@ -482,16 +482,16 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Next we drop the Store indices grouped together in the window function.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">(</span><span class="n">bwd</span><span class="p">,</span> <span class="n">fwd</span><span class="p">):</span>
-    <span class="n">d</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;Store&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">d</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>for d in (bwd, fwd):
+    d.drop(&quot;Store&quot;, 2, inplace=True)
+    d.reset_index(inplace=True)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>df.reset_index(inplace=True)
 </pre></div>
 </div>
 </div>
@@ -499,28 +499,28 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Let’s merge these values onto the df, and drop the unwanted columns.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-    <span class="n">bwd</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_bw&quot;</span><span class="p">]</span>
-<span class="p">)</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-    <span class="n">fwd</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="s2">&quot;Store&quot;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_fw&quot;</span><span class="p">]</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>df = df.merge(
+    bwd, left_on=[&quot;Date&quot;, &quot;Store&quot;], right_on=[&quot;Date&quot;, &quot;Store&quot;], how=&quot;left&quot;, suffixes=[&quot;&quot;, &quot;_bw&quot;]
+)
+df = df.merge(
+    fwd, left_on=[&quot;Date&quot;, &quot;Store&quot;], right_on=[&quot;Date&quot;, &quot;Store&quot;], how=&quot;left&quot;, suffixes=[&quot;&quot;, &quot;_fw&quot;]
+)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Store&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Store&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">])</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">test_df</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Store&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">],</span> <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Store&quot;</span><span class="p">,</span> <span class="s2">&quot;Date&quot;</span><span class="p">])</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_df = merge(train_df, df, [&quot;Store&quot;, &quot;Date&quot;], right_on=[&quot;Store&quot;, &quot;Date&quot;])
+test_df = merge(test_df, df, [&quot;Store&quot;, &quot;Date&quot;], right_on=[&quot;Store&quot;, &quot;Date&quot;])
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_df</span> <span class="o">=</span> <span class="n">drop_cols</span><span class="p">(</span><span class="n">train_df</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">drop_cols</span><span class="p">(</span><span class="n">test_df</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_df = drop_cols(train_df)
+test_df = drop_cols(test_df)
 </pre></div>
 </div>
 </div>
@@ -528,19 +528,19 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Next, we are removing all instances where the store had zero sale / was closed, and we sort our training set by Date.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_df</span> <span class="o">=</span> <span class="n">train_df</span><span class="p">[</span><span class="n">train_df</span><span class="o">.</span><span class="n">Sales</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
-<span class="n">train_df</span> <span class="o">=</span> <span class="n">train_df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">train_df</span> <span class="o">=</span> <span class="n">train_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">test_df</span> <span class="o">=</span> <span class="n">test_df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_df = train_df[train_df.Sales != 0]
+train_df = train_df.sort_values(by=&quot;Date&quot;, ascending=True)
+train_df = train_df.reset_index(drop=True)
+test_df = test_df.reset_index(drop=True)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># determine a cut-off point to create a validation dataset.</span>
-<span class="n">cut</span> <span class="o">=</span> <span class="n">train_df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">][(</span><span class="n">train_df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">train_df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">][</span><span class="nb">len</span><span class="p">(</span><span class="n">test_df</span><span class="p">)])]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-<span class="n">cut</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># determine a cut-off point to create a validation dataset.
+cut = train_df[&quot;Date&quot;][(train_df[&quot;Date&quot;] == train_df[&quot;Date&quot;][len(test_df)])].index.max()
+cut
 </pre></div>
 </div>
 </div>
@@ -552,10 +552,10 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># split the train_df as training and validation data sets.</span>
-<span class="n">num_valid</span> <span class="o">=</span> <span class="n">cut</span>
-<span class="n">valid_df</span> <span class="o">=</span> <span class="n">train_df</span><span class="p">[</span><span class="o">-</span><span class="n">num_valid</span><span class="p">:]</span>
-<span class="n">train_df</span> <span class="o">=</span> <span class="n">train_df</span><span class="p">[:</span><span class="o">-</span><span class="n">num_valid</span><span class="p">]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># split the train_df as training and validation data sets.
+num_valid = cut
+valid_df = train_df[-num_valid:]
+train_df = train_df[:-num_valid]
 </pre></div>
 </div>
 </div>
@@ -563,18 +563,18 @@ untarring files: 100%|██████████| 8/8 [00:00&lt;00:00, 28.73
 <p>Let’s save our preprocessed files as csv files to be used in <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/rossmann/">Rossmann examples</a> for further preprocessing with NVTabular, then for model training and testing with PyT, TF and FastAI frameworks.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>mkdir -p <span class="nv">$OUTPUT_DATA_DIR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!mkdir -p $OUTPUT_DATA_DIR
 
-<span class="n">train_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train.csv&quot;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">valid_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.csv&quot;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">test_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;test.csv&quot;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+train_df.to_csv(os.path.join(OUTPUT_DATA_DIR, &quot;train.csv&quot;), index=False)
+valid_df.to_csv(os.path.join(OUTPUT_DATA_DIR, &quot;valid.csv&quot;), index=False)
+test_df.to_csv(os.path.join(OUTPUT_DATA_DIR, &quot;test.csv&quot;), index=False)
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls <span class="nv">$OUTPUT_DATA_DIR</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $OUTPUT_DATA_DIR
 </pre></div>
 </div>
 </div>

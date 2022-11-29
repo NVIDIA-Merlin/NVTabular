@@ -103,20 +103,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -150,24 +150,24 @@
 <h3>Step 1: Import Libraries and Cleanup Working Directories<a class="headerlink" href="#step-1-import-libraries-and-cleanup-working-directories" title="Permalink to this headline"></a></h3>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard Libraries</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Standard Libraries
+import os
+import shutil
 
-<span class="c1"># External Dependencies</span>
-<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
-<span class="kn">import</span> <span class="nn">cudf</span>
-<span class="kn">import</span> <span class="nn">dask_cudf</span>
-<span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
-<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
-<span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">delayed</span>
-<span class="kn">import</span> <span class="nn">rmm</span>
+# External Dependencies
+import cupy as cp
+import cudf
+import dask_cudf
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
+from dask.delayed import delayed
+import rmm
 
-<span class="c1"># NVTabular</span>
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
-<span class="kn">import</span> <span class="nn">nvtabular.ops</span> <span class="k">as</span> <span class="nn">ops</span>
-<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Shuffle</span>
-<span class="kn">from</span> <span class="nn">merlin.core.utils</span> <span class="kn">import</span> <span class="n">device_mem_size</span>
+# NVTabular
+import nvtabular as nvt
+import nvtabular.ops as ops
+from merlin.io import Shuffle
+from merlin.core.utils import device_mem_size
 </pre></div>
 </div>
 </div>
@@ -175,30 +175,30 @@
 <p>Note that it is often a good idea to set-aside (fast) dedicated disk space for Dask “workers” to spill data and write logging information. To make things simple, we will perform all IO within a single <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code> for this example. Make sure to reset this environment variable as desired.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Choose a &quot;fast&quot; root directory for this example</span>
-<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./basedir&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Choose a &quot;fast&quot; root directory for this example
+BASE_DIR = os.environ.get(&quot;BASE_DIR&quot;, &quot;./basedir&quot;)
 
-<span class="c1"># Define and clean our worker/output directories</span>
-<span class="n">dask_workdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;workdir&quot;</span><span class="p">)</span>
-<span class="n">demo_output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;demo_output&quot;</span><span class="p">)</span>
-<span class="n">demo_dataset_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;demo_dataset&quot;</span><span class="p">)</span>
+# Define and clean our worker/output directories
+dask_workdir = os.path.join(BASE_DIR, &quot;workdir&quot;)
+demo_output_path = os.path.join(BASE_DIR, &quot;demo_output&quot;)
+demo_dataset_path = os.path.join(BASE_DIR, &quot;demo_dataset&quot;)
 
-<span class="c1"># Ensure BASE_DIR exists</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">):</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">)</span>
+# Ensure BASE_DIR exists
+if not os.path.isdir(BASE_DIR):
+    os.mkdir(BASE_DIR)
 
-<span class="c1"># Make sure we have a clean worker space for Dask</span>
-<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">):</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
-<span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">dask_workdir</span><span class="p">)</span>
+# Make sure we have a clean worker space for Dask
+if os.path.isdir(dask_workdir):
+    shutil.rmtree(dask_workdir)
+os.mkdir(dask_workdir)
 
-<span class="c1"># Make sure we have a clean output path</span>
-<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">):</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">)</span>
-<span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">)</span>
+# Make sure we have a clean output path
+if os.path.isdir(demo_output_path):
+    shutil.rmtree(demo_output_path)
+os.mkdir(demo_output_path)
 
-<span class="c1"># Get device memory capacity</span>
-<span class="n">capacity</span> <span class="o">=</span> <span class="n">device_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
+# Get device memory capacity
+capacity = device_mem_size(kind=&quot;total&quot;)
 </pre></div>
 </div>
 </div>
@@ -211,24 +211,24 @@
 <p>For this example, we will assume that you want to perform preprocessing on a single machine with multiple GPUs. In this case, we can use <code class="docutils literal notranslate"><span class="pre">dask_cuda.LocalCUDACluster</span></code> to deploy a distributed cluster with each worker process being pinned to a distinct GPU. This class also provides our workers with mechanisms for device-to-host memory spilling (explained below), and (optionally) enables the use of NVLink and infiniband-based inter-process communication via UCX.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deploy a Single-Machine Multi-GPU Cluster</span>
-<span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;tcp&quot;</span>  <span class="c1"># &quot;tcp&quot; or &quot;ucx&quot;</span>
-<span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;0,1,2,3&quot;</span>  <span class="c1"># Delect devices to place workers</span>
-<span class="n">device_spill_frac</span> <span class="o">=</span> <span class="mf">0.9</span>  <span class="c1"># Spill GPU-Worker memory to host at this limit.</span>
-<span class="c1"># Reduce if spilling fails to prevent</span>
-<span class="c1"># device memory errors.</span>
-<span class="n">cluster</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># (Optional) Specify existing scheduler port</span>
-<span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span>
-        <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
-        <span class="n">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="n">visible_devices</span><span class="p">,</span>
-        <span class="n">local_directory</span><span class="o">=</span><span class="n">dask_workdir</span><span class="p">,</span>
-        <span class="n">device_memory_limit</span><span class="o">=</span><span class="n">capacity</span> <span class="o">*</span> <span class="n">device_spill_frac</span><span class="p">,</span>
-    <span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Deploy a Single-Machine Multi-GPU Cluster
+protocol = &quot;tcp&quot;  # &quot;tcp&quot; or &quot;ucx&quot;
+visible_devices = &quot;0,1,2,3&quot;  # Delect devices to place workers
+device_spill_frac = 0.9  # Spill GPU-Worker memory to host at this limit.
+# Reduce if spilling fails to prevent
+# device memory errors.
+cluster = None  # (Optional) Specify existing scheduler port
+if cluster is None:
+    cluster = LocalCUDACluster(
+        protocol=protocol,
+        CUDA_VISIBLE_DEVICES=visible_devices,
+        local_directory=dask_workdir,
+        device_memory_limit=capacity * device_spill_frac,
+    )
 
-<span class="c1"># Create the distributed client</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
-<span class="n">client</span>
+# Create the distributed client
+client = Client(cluster)
+client
 </pre></div>
 </div>
 </div>
@@ -268,15 +268,15 @@
 <p>Since allocating memory is often a performance bottleneck, it is usually a good idea to initialize a memory pool on each of our workers. When using a distributed cluster, we must use the <code class="docutils literal notranslate"><span class="pre">client.run</span></code> utility to make sure a function is exectuted on all available workers.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialize RMM pool on ALL workers</span>
-<span class="k">def</span> <span class="nf">_rmm_pool</span><span class="p">():</span>
-    <span class="n">rmm</span><span class="o">.</span><span class="n">reinitialize</span><span class="p">(</span>
-        <span class="n">pool_allocator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">initial_pool_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Use default size</span>
-    <span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Initialize RMM pool on ALL workers
+def _rmm_pool():
+    rmm.reinitialize(
+        pool_allocator=True,
+        initial_pool_size=None,  # Use default size
+    )
 
 
-<span class="n">client</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_rmm_pool</span><span class="p">)</span>
+client.run(_rmm_pool)
 </pre></div>
 </div>
 </div>
@@ -297,26 +297,26 @@
 <p>In order to illustrate the power of multi-GPU scaling, without requiring an excessive runtime, we can use the <code class="docutils literal notranslate"><span class="pre">cudf.datasets.timeseries</span></code> API to generate a largish (~20GB) toy dataset with Dask-CuDF.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
 
-<span class="c1"># Write a &quot;largish&quot; dataset (~20GB).</span>
-<span class="c1"># Change `write_count` and/or `freq` for larger or smaller dataset.</span>
-<span class="c1"># Avoid re-writing dataset if it already exists.</span>
-<span class="n">write_count</span> <span class="o">=</span> <span class="mi">25</span>
-<span class="n">freq</span> <span class="o">=</span> <span class="s2">&quot;1s&quot;</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">):</span>
+# Write a &quot;largish&quot; dataset (~20GB).
+# Change `write_count` and/or `freq` for larger or smaller dataset.
+# Avoid re-writing dataset if it already exists.
+write_count = 25
+freq = &quot;1s&quot;
+if not os.path.exists(demo_dataset_path):
 
-    <span class="k">def</span> <span class="nf">make_df</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
-        <span class="n">df</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">timeseries</span><span class="p">(</span>
-            <span class="n">start</span><span class="o">=</span><span class="s2">&quot;2000-01-01&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;2000-12-31&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">i</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;object&quot;</span><span class="p">)</span>
-        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uint8&quot;</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">df</span>
+    def make_df(freq, i):
+        df = cudf.datasets.timeseries(
+            start=&quot;2000-01-01&quot;, end=&quot;2000-12-31&quot;, freq=freq, seed=i
+        ).reset_index(drop=False)
+        df[&quot;name&quot;] = df[&quot;name&quot;].astype(&quot;object&quot;)
+        df[&quot;label&quot;] = cp.random.choice(cp.array([0, 1], dtype=&quot;uint8&quot;), len(df))
+        return df
 
-    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">delayed</span><span class="p">(</span><span class="n">make_df</span><span class="p">)(</span><span class="n">freq</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">write_count</span><span class="p">)]</span>
-    <span class="n">dask_cudf</span><span class="o">.</span><span class="n">from_delayed</span><span class="p">(</span><span class="n">dfs</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">,</span> <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="k">del</span> <span class="n">dfs</span>
+    dfs = [delayed(make_df)(freq, i) for i in range(write_count)]
+    dask_cudf.from_delayed(dfs).to_parquet(demo_dataset_path, write_index=False)
+    del dfs
 </pre></div>
 </div>
 </div>
@@ -354,10 +354,10 @@ Wall time: 3min 31s
 The <code class="docutils literal notranslate"><span class="pre">part_size</span></code> and <code class="docutils literal notranslate"><span class="pre">part_mem_fraction</span></code> options will be used to specify the desired maximum partition size <strong>after</strong> conversion to CuDF, not the partition size in parquet format (which may be compressed and/or dictionary encoded). For the “parquet” engine, these parameters do not result in the direct mapping of a file byte-range to a partition. Instead, the first row-group in the dataset is converted to a <code class="docutils literal notranslate"><span class="pre">cudf.DataFrame</span></code>, and the size of that DataFrame is used to estimate the number of contiguous row-groups to assign to each partition. In the current “parquet” engine implementation, row-groups stored in different files will always be mapped to different partitions.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="c1"># Create a Dataset</span>
-<span class="c1"># (`engine` argument optional if file names appended with `csv` or `parquet`)</span>
-<span class="n">ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;500MB&quot;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+# Create a Dataset
+# (`engine` argument optional if file names appended with `csv` or `parquet`)
+ds = nvt.Dataset(demo_dataset_path, engine=&quot;parquet&quot;, part_size=&quot;500MB&quot;)
 </pre></div>
 </div>
 </div>
@@ -371,7 +371,7 @@ Wall time: 2.88 s
 <p>Once your data is converted to a Dataset object, it can be converted to a <code class="docutils literal notranslate"><span class="pre">dask_cudf.DataFrame</span></code> using the <code class="docutils literal notranslate"><span class="pre">to_ddf</span></code> method. The wonderful thing about this DataFrame object, is that you are free to operate on it using a familiar CuDF/Pandas API.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ds</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ds.to_ddf().head()
 </pre></div>
 </div>
 </div>
@@ -455,10 +455,10 @@ Wall time: 2.88 s
 <p>Note that the output of a Dataset (a <code class="docutils literal notranslate"><span class="pre">ddf</span></code>) can be used to initialize a new Dataset. This means we can use Dask-CuDF to perform complex ETL on our data before we process it in a Workflow. For example, although NVTabular does not support global shuffling transformations (yet), these operations <strong>can</strong> be performed before (and/or after) a Workflow. The catch here is that operations requiring the global movement of data between partitions can require more device memory than available.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example of global shuffling outside an NVT Workflow</span>
-<span class="n">ddf</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">ddf</span><span class="p">)</span>
-<span class="n">ds</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Example of global shuffling outside an NVT Workflow
+ddf = ds.to_ddf().shuffle(&quot;id&quot;, ignore_index=True)
+ds = nvt.Dataset(ddf)
+ds.to_ddf()
 </pre></div>
 </div>
 </div>
@@ -553,10 +553,10 @@ Wall time: 2.88 s
 <p>Since global shuffling operations can lead to significant GPU-memory pressure, we will start with a simpler Dataset definition for this example.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">del</span> <span class="n">ds</span>
-<span class="k">del</span> <span class="n">ddf</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>del ds
+del ddf
 
-<span class="n">dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">demo_dataset_path</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_mem_fraction</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+dataset = nvt.Dataset(demo_dataset_path, engine=&quot;parquet&quot;, part_mem_fraction=0.1)
 </pre></div>
 </div>
 </div>
@@ -569,12 +569,12 @@ Wall time: 2.88 s
 <p>Now that we have our Dask cluster up and running, we can use the NVTabular API as usual. For NVTabular versions newer than <code class="docutils literal notranslate"><span class="pre">0.9.0</span></code>, the global <code class="docutils literal notranslate"><span class="pre">client</span></code> (created above) will be used automatically for multi-GPU (or CPU) execution.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cat_features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span>
-    <span class="n">out_path</span><span class="o">=</span><span class="n">demo_output_path</span><span class="p">,</span>  <span class="c1"># Path to write unique values used for encoding</span>
-<span class="p">)</span>
-<span class="n">cont_features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">ops</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cat_features = [&quot;name&quot;, &quot;id&quot;] &gt;&gt; ops.Categorify(
+    out_path=demo_output_path,  # Path to write unique values used for encoding
+)
+cont_features = [&quot;x&quot;, &quot;y&quot;] &gt;&gt; ops.Normalize()
 
-<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">cat_features</span> <span class="o">+</span> <span class="n">cont_features</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
+workflow = nvt.Workflow(cat_features + cont_features + [&quot;label&quot;, &quot;timestamp&quot;])
 </pre></div>
 </div>
 </div>
@@ -584,14 +584,14 @@ Wall time: 2.88 s
 <h3>Step 6: Apply our Workflow<a class="headerlink" href="#step-6-apply-our-workflow" title="Permalink to this headline"></a></h3>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="n">shuffle</span> <span class="o">=</span> <span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_WORKER</span>  <span class="c1"># Shuffle algorithm</span>
-<span class="n">out_files_per_proc</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># Number of output files per worker</span>
-<span class="n">workflow</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
-    <span class="n">output_path</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;processed&quot;</span><span class="p">),</span>
-    <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
-    <span class="n">out_files_per_proc</span><span class="o">=</span><span class="n">out_files_per_proc</span><span class="p">,</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+shuffle = Shuffle.PER_WORKER  # Shuffle algorithm
+out_files_per_proc = 8  # Number of output files per worker
+workflow.fit_transform(dataset).to_parquet(
+    output_path=os.path.join(demo_output_path, &quot;processed&quot;),
+    shuffle=shuffle,
+    out_files_per_proc=out_files_per_proc,
+)
 </pre></div>
 </div>
 </div>
@@ -624,7 +624,7 @@ It is important to recognize that multi-GPU and multi-node scaling is typically 
 <p>Now that we are done executing our Workflow, we can check the output data to confirm that everything is looking good.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;processed&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dask_cudf.read_parquet(os.path.join(demo_output_path, &quot;processed&quot;)).head()
 </pre></div>
 </div>
 </div>
@@ -711,10 +711,10 @@ It is important to recognize that multi-GPU and multi-node scaling is typically 
 <p>Instead of using to_parquet to persist your processed dataset to disk, it is also possible to get a dask dataframe from the transformed dataset and perform follow-up operations with the Dask-CuDF API. For example, if you want to convert the entire dataset into a <code class="docutils literal notranslate"><span class="pre">groupby</span></code> aggregation, you could do something like the following.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="n">ddf</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">()</span>
-<span class="n">ddf</span> <span class="o">=</span> <span class="n">ddf</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;name&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>  <span class="c1"># Optional follow-up processing</span>
-<span class="n">ddf</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;dask_output&quot;</span><span class="p">),</span> <span class="n">write_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+ddf = workflow.transform(dataset).to_ddf()
+ddf = ddf.groupby([&quot;name&quot;]).max()  # Optional follow-up processing
+ddf.to_parquet(os.path.join(demo_output_path, &quot;dask_output&quot;), write_index=False)
 </pre></div>
 </div>
 </div>
@@ -728,7 +728,7 @@ Wall time: 2.26 s
 <p>As always, we can use either <code class="docutils literal notranslate"><span class="pre">nvt.Dataset</span></code> or <code class="docutils literal notranslate"><span class="pre">dask_cudf</span></code> directly to read back our data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">demo_output_path</span><span class="p">,</span> <span class="s2">&quot;dask_output&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dask_cudf.read_parquet(os.path.join(demo_output_path, &quot;dask_output&quot;)).compute()
 </pre></div>
 </div>
 </div>

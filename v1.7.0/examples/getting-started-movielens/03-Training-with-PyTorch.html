@@ -105,20 +105,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
-<span class="c1">#</span>
-<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="c1"># you may not use this file except in compliance with the License.</span>
-<span class="c1"># You may obtain a copy of the License at</span>
-<span class="c1">#</span>
-<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="c1">#</span>
-<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
-<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="c1"># See the License for the specific language governing permissions and</span>
-<span class="c1"># limitations under the License.</span>
-<span class="c1"># ==============================================================================</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 </pre></div>
 </div>
 </div>
@@ -157,12 +157,12 @@
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">gc</span>
-<span class="kn">import</span> <span class="nn">glob</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># External dependencies
+import os
+import gc
+import glob
 
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+import nvtabular as nvt
 </pre></div>
 </div>
 </div>
@@ -170,9 +170,9 @@
 <p>We define our base directory, containing the data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>INPUT_DATA_DIR = os.environ.get(
+    &quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/movielens/data/&quot;)
+)
 </pre></div>
 </div>
 </div>
@@ -182,14 +182,14 @@
 <p>First, we define the data schema and differentiate between single-hot and multi-hot categorical features. Note, that we do not have any numerical input features.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">32</span>  <span class="c1"># Batch Size</span>
-<span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;userId&quot;</span><span class="p">]</span>  <span class="c1"># Single-hot</span>
-<span class="n">CATEGORICAL_MH_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;genres&quot;</span><span class="p">]</span>  <span class="c1"># Multi-hot</span>
-<span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="p">[]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>BATCH_SIZE = 1024 * 32  # Batch Size
+CATEGORICAL_COLUMNS = [&quot;movieId&quot;, &quot;userId&quot;]  # Single-hot
+CATEGORICAL_MH_COLUMNS = [&quot;genres&quot;]  # Multi-hot
+NUMERIC_COLUMNS = []
 
-<span class="c1"># Output from ETL-with-NVTabular</span>
-<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
-<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
+# Output from ETL-with-NVTabular
+TRAIN_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, &quot;train&quot;, &quot;*.parquet&quot;)))
+VALID_PATHS = sorted(glob.glob(os.path.join(INPUT_DATA_DIR, &quot;valid&quot;, &quot;*.parquet&quot;)))
 </pre></div>
 </div>
 </div>
@@ -197,7 +197,7 @@
 <p>In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc = nvt.Workflow.load(os.path.join(INPUT_DATA_DIR, &quot;workflow&quot;))
 </pre></div>
 </div>
 </div>
@@ -205,8 +205,8 @@
 <p>The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form <code class="docutils literal notranslate"><span class="pre">(cardinality,</span> <span class="pre">embedding_size)</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">,</span> <span class="n">MH_EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
-<span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">,</span> <span class="n">MH_EMBEDDING_TABLE_SHAPES</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES
 </pre></div>
 </div>
 </div>
@@ -222,10 +222,10 @@
 <p>We import PyTorch and the NVTabular dataloader for PyTorch.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">nvtabular.loader.torch</span> <span class="kn">import</span> <span class="n">TorchAsyncItr</span><span class="p">,</span> <span class="n">DLDataLoader</span>
-<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.models</span> <span class="kn">import</span> <span class="n">Model</span>
-<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.torch.utils</span> <span class="kn">import</span> <span class="n">process_epoch</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import torch
+from nvtabular.loader.torch import TorchAsyncItr, DLDataLoader
+from nvtabular.framework_utils.torch.models import Model
+from nvtabular.framework_utils.torch.utils import process_epoch
 </pre></div>
 </div>
 </div>
@@ -233,29 +233,29 @@
 <p>First, we take a look on our dataloader and how the data is represented as tensors. The NVTabular dataloader are initialized as usually and we specify both single-hot and multi-hot categorical features as cats. The dataloader will automatically recognize the single/multi-hot columns and represent them accordingly.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># TensorItrDataset returns a single batch of x_cat, x_cont, y.</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># TensorItrDataset returns a single batch of x_cat, x_cont, y.
 
-<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
-    <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">),</span>
-    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
-    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">,</span>
-    <span class="n">conts</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
-    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rating&quot;</span><span class="p">],</span>
-<span class="p">)</span>
-<span class="n">train_loader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span>
-    <span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span>
-<span class="p">)</span>
+train_dataset = TorchAsyncItr(
+    nvt.Dataset(TRAIN_PATHS),
+    batch_size=BATCH_SIZE,
+    cats=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
+    conts=NUMERIC_COLUMNS,
+    labels=[&quot;rating&quot;],
+)
+train_loader = DLDataLoader(
+    train_dataset, batch_size=None, collate_fn=lambda x: x, pin_memory=False, num_workers=0
+)
 
-<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">TorchAsyncItr</span><span class="p">(</span>
-    <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">VALID_PATHS</span><span class="p">),</span>
-    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
-    <span class="n">cats</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">,</span>
-    <span class="n">conts</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
-    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rating&quot;</span><span class="p">],</span>
-<span class="p">)</span>
-<span class="n">valid_loader</span> <span class="o">=</span> <span class="n">DLDataLoader</span><span class="p">(</span>
-    <span class="n">valid_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span>
-<span class="p">)</span>
+valid_dataset = TorchAsyncItr(
+    nvt.Dataset(VALID_PATHS),
+    batch_size=BATCH_SIZE,
+    cats=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
+    conts=NUMERIC_COLUMNS,
+    labels=[&quot;rating&quot;],
+)
+valid_loader = DLDataLoader(
+    valid_dataset, batch_size=None, collate_fn=lambda x: x, pin_memory=False, num_workers=0
+)
 </pre></div>
 </div>
 </div>
@@ -273,8 +273,8 @@ For example,</p></li>
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">train_loader</span><span class="p">))</span>
-<span class="n">batch</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>batch = next(iter(train_loader))
+batch
 </pre></div>
 </div>
 </div>
@@ -309,8 +309,8 @@ For example,</p></li>
 <p><code class="docutils literal notranslate"><span class="pre">X_cat_multihot</span></code> is a tuple of two Tensors. For the multi-hot categorical feature <code class="docutils literal notranslate"><span class="pre">genres</span></code>, we receive two Tensors <code class="docutils literal notranslate"><span class="pre">values</span></code> and <code class="docutils literal notranslate"><span class="pre">nnzs</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">X_cat_multihot</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;genres&#39;</span><span class="p">]</span>
-<span class="n">X_cat_multihot</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>X_cat_multihot = batch[0][&#39;genres&#39;]
+X_cat_multihot
 </pre></div>
 </div>
 </div>
@@ -329,7 +329,7 @@ For example,</p></li>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">X_cat_multihot</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>X_cat_multihot[0].shape
 </pre></div>
 </div>
 </div>
@@ -341,7 +341,7 @@ For example,</p></li>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">X_cat_multihot</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>X_cat_multihot[1].shape
 </pre></div>
 </div>
 </div>
@@ -354,8 +354,8 @@ For example,</p></li>
 <p>As each datapoint can have a different number of genres, it is more efficient to represent the genres as two flat tensors: One with the actual values (<code class="docutils literal notranslate"><span class="pre">values</span></code>) and one with the length for each datapoint (<code class="docutils literal notranslate"><span class="pre">nnzs</span></code>).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">del</span> <span class="n">batch</span>
-<span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>del batch
+gc.collect()
 </pre></div>
 </div>
 </div>
@@ -378,7 +378,7 @@ For example,</p></li>
 <p>You can see more details by checking out the implementation.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ??Model</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># ??Model
 </pre></div>
 </div>
 </div>
@@ -386,14 +386,14 @@ For example,</p></li>
 <p>We initialize the model. <code class="docutils literal notranslate"><span class="pre">EMBEDDING_TABLE_SHAPES</span></code> needs to be a Tuple representing the cardinality for single-hot and multi-hot input features.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES_TUPLE</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="p">{</span>
-        <span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
-        <span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span>
-    <span class="p">},</span>
-    <span class="p">{</span><span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">MH_EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">CATEGORICAL_MH_COLUMNS</span><span class="p">[</span><span class="mi">0</span><span class="p">]]},</span>
-<span class="p">)</span>
-<span class="n">EMBEDDING_TABLE_SHAPES_TUPLE</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES_TUPLE = (
+    {
+        CATEGORICAL_COLUMNS[0]: EMBEDDING_TABLE_SHAPES[CATEGORICAL_COLUMNS[0]],
+        CATEGORICAL_COLUMNS[1]: EMBEDDING_TABLE_SHAPES[CATEGORICAL_COLUMNS[1]],
+    },
+    {CATEGORICAL_MH_COLUMNS[0]: MH_EMBEDDING_TABLE_SHAPES[CATEGORICAL_MH_COLUMNS[0]]},
+)
+EMBEDDING_TABLE_SHAPES_TUPLE
 </pre></div>
 </div>
 </div>
@@ -405,14 +405,14 @@ For example,</p></li>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span>
-    <span class="n">embedding_table_shapes</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES_TUPLE</span><span class="p">,</span>
-    <span class="n">num_continuous</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-    <span class="n">emb_dropout</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-    <span class="n">layer_hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">],</span>
-    <span class="n">layer_dropout_rates</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
-<span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-<span class="n">model</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model = Model(
+    embedding_table_shapes=EMBEDDING_TABLE_SHAPES_TUPLE,
+    num_continuous=0,
+    emb_dropout=0.0,
+    layer_hidden_dims=[128, 128, 128],
+    layer_dropout_rates=[0.0, 0.0, 0.0],
+).to(&quot;cuda&quot;)
+model
 </pre></div>
 </div>
 </div>
@@ -461,7 +461,7 @@ For example,</p></li>
 <p>We initialize the optimizer.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 </pre></div>
 </div>
 </div>
@@ -469,24 +469,24 @@ For example,</p></li>
 <p>We use the <code class="docutils literal notranslate"><span class="pre">process_epoch</span></code> function to train and validate our model. It iterates over the dataset and calculates as usually the loss and optimizer step.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
-<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
-<span class="n">EPOCHS</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">EPOCHS</span><span class="p">):</span>
-    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
-    <span class="n">train_loss</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">process_epoch</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span>
-                                          <span class="n">model</span><span class="p">,</span>
-                                          <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                          <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">)</span>
-    <span class="n">valid_loss</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">process_epoch</span><span class="p">(</span><span class="n">valid_loader</span><span class="p">,</span>
-                                          <span class="n">model</span><span class="p">,</span>
-                                          <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">. Train loss: </span><span class="si">{</span><span class="n">train_loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">. Valid loss: </span><span class="si">{</span><span class="n">valid_loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
-<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
-<span class="n">total_rows</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">num_rows_processed</span> <span class="o">+</span> <span class="n">valid_dataset</span><span class="o">.</span><span class="n">num_rows_processed</span>
-<span class="nb">print</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;run_time: </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">total_rows</span> <span class="o">*</span> <span class="n">EPOCHS</span><span class="si">}</span><span class="s2"> - epochs: </span><span class="si">{</span><span class="n">EPOCHS</span><span class="si">}</span><span class="s2"> - dl_thru: </span><span class="si">{</span><span class="p">(</span><span class="n">total_rows</span> <span class="o">*</span> <span class="n">EPOCHS</span><span class="p">)</span> <span class="o">/</span> <span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+from time import time
+EPOCHS = 1
+for epoch in range(EPOCHS):
+    start = time()
+    train_loss, y_pred, y = process_epoch(train_loader,
+                                          model,
+                                          train=True,
+                                          optimizer=optimizer)
+    valid_loss, y_pred, y = process_epoch(valid_loader,
+                                          model,
+                                          train=False)
+    print(f&quot;Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Valid loss: {valid_loss:.4f}.&quot;)
+t_final = time() - start
+total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed
+print(
+    f&quot;run_time: {t_final} - rows: {total_rows * EPOCHS} - epochs: {EPOCHS} - dl_thru: {(total_rows * EPOCHS) / t_final}&quot;
+)
 </pre></div>
 </div>
 </div>
