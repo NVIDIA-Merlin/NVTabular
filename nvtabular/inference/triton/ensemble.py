@@ -22,6 +22,7 @@ import numpy as np
 import tritonclient.grpc.model_config_pb2 as model_config
 from google.protobuf import text_format
 
+from merlin import dtype as merlin_dtype
 from merlin.core.dispatch import is_string_dtype
 from merlin.schema import Tags
 from nvtabular import ColumnSelector
@@ -554,9 +555,7 @@ def export_pytorch_model(
     dims = last_layer.shape[0]
     dtype = last_layer.dtype
     config.output.append(
-        model_config.ModelOutput(
-            name="output", data_type=_convert_pytorch_dtype(dtype), dims=[-1, dims]
-        )
+        model_config.ModelOutput(name="output", data_type=_convert_dtype(dtype), dims=[-1, dims])
     )
 
     if sparse_max:
@@ -689,6 +688,7 @@ def _add_model_param(col_schema, paramclass, params, dims=None):
 
 def _convert_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
+    dtype = merlin_dtype(dtype)
     try:
         return dtype.to("triton")
     except ValueError:
@@ -700,35 +700,8 @@ def _convert_dtype(dtype):
         raise ValueError(f"Can't convert {dtype} to a Triton dtype")
 
 
-def _convert_pytorch_dtype(dtype):
-    """converts a dtype to the appropriate triton proto type"""
-
-    import torch
-
-    dtypes = {
-        torch.float64: model_config.TYPE_FP64,
-        torch.float32: model_config.TYPE_FP32,
-        torch.float16: model_config.TYPE_FP16,
-        torch.int64: model_config.TYPE_INT64,
-        torch.int32: model_config.TYPE_INT32,
-        torch.int16: model_config.TYPE_INT16,
-        torch.int8: model_config.TYPE_INT8,
-        torch.uint8: model_config.TYPE_UINT8,
-        torch.bool: model_config.TYPE_BOOL,
-    }
-
-    if is_string_dtype(dtype):
-        return model_config.TYPE_STRING
-    elif dtype in dtypes:
-        return dtypes[dtype]
-    else:
-        raise ValueError(f"Can't convert dtype {dtype})")
-
-
 def _convert_string2pytorch_dtype(dtype):
     """converts a dtype to the appropriate torch type"""
-
-    import torch
 
     if not isinstance(dtype, str):
         dtype_name = dtype.name
@@ -736,23 +709,18 @@ def _convert_string2pytorch_dtype(dtype):
         dtype_name = dtype
 
     dtypes = {
-        "TYPE_FP64": torch.float64,
-        "TYPE_FP32": torch.float32,
-        "TYPE_FP16": torch.float16,
-        "TYPE_INT64": torch.int64,
-        "TYPE_INT32": torch.int32,
-        "TYPE_INT16": torch.int16,
-        "TYPE_INT8": torch.int8,
-        "TYPE_UINT8": torch.uint8,
-        "TYPE_BOOL": torch.bool,
+        "TYPE_FP64": model_config.TYPE_FP64,
+        "TYPE_FP32": model_config.TYPE_FP32,
+        "TYPE_FP16": model_config.TYPE_FP16,
+        "TYPE_INT64": model_config.TYPE_INT64,
+        "TYPE_INT32": model_config.TYPE_INT32,
+        "TYPE_INT16": model_config.TYPE_INT16,
+        "TYPE_INT8": model_config.TYPE_INT8,
+        "TYPE_UINT8": model_config.TYPE_UINT8,
+        "TYPE_BOOL": model_config.TYPE_BOOL,
     }
 
-    if is_string_dtype(dtype):
-        return model_config.TYPE_STRING
-    elif dtype_name in dtypes:
-        return dtypes[dtype_name]
-    else:
-        raise ValueError(f"Can't convert dtype {dtype})")
+    return merlin_dtype(dtypes[dtype_name]).to("torch")
 
 
 def _triton_datatype_to_dtype(data_type):
