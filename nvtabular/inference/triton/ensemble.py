@@ -22,7 +22,7 @@ import numpy as np
 import tritonclient.grpc.model_config_pb2 as model_config
 from google.protobuf import text_format
 
-from merlin import dtype as merlin_dtype
+import merlin.dtypes as md
 from merlin.core.dispatch import is_string_dtype
 from merlin.schema import Tags
 from nvtabular import ColumnSelector
@@ -688,7 +688,7 @@ def _add_model_param(col_schema, paramclass, params, dims=None):
 
 def _convert_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
-    dtype = merlin_dtype(dtype)
+    dtype = md.dtype(dtype)
     try:
         return dtype.to("triton")
     except ValueError:
@@ -720,7 +720,7 @@ def _convert_string2pytorch_dtype(dtype):
         "TYPE_BOOL": model_config.TYPE_BOOL,
     }
 
-    return merlin_dtype(dtypes[dtype_name]).to("torch")
+    return md.dtype(dtypes[dtype_name]).to("torch")
 
 
 def _triton_datatype_to_dtype(data_type):

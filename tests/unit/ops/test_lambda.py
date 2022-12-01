@@ -20,8 +20,8 @@ import pytest
 from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
+import merlin.dtypes as md
 import nvtabular as nvt
-from merlin import dtype
 from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
 
@@ -186,7 +186,7 @@ def test_lambdaop_schema_computation(cpu):
 
     output_schema = workflow.output_node.output_schema
 
-    assert output_schema["c"].dtype == dtype(expected_dtype)
+    assert output_schema["c"].dtype == md.dtype(expected_dtype)
     assert output_schema["c"].tags == TagSet(expected_tags)
     assert output_schema["c"].properties == expected_props
 
@@ -217,7 +217,7 @@ def test_lambdaop_dtype_propagation(cpu):
 
     output_schema = workflow.output_node.output_schema
 
-    assert output_schema["c_renamed"].dtype == dtype(expected_dtype)
+    assert output_schema["c_renamed"].dtype == md.dtype(expected_dtype)
 
 
 @pytest.mark.parametrize("cpu", _CPU)
@@ -249,4 +249,4 @@ def test_lambdaop_dtype_multi_op_propagation(cpu):
 
     output_schema = workflow.output_node.output_schema
 
-    assert output_schema["c_1st_2nd"].dtype == dtype(np.float64)
+    assert output_schema["c_1st_2nd"].dtype == md.dtype(np.float64)
