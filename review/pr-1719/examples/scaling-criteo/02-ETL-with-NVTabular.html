@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scaling Criteo: ETL with NVTabular &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/custom.css" type="text/css" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/examples/scaling-criteo/02-ETL-with-NVTabular.html" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Scaling Criteo: Training with HugeCTR" href="03-Training-with-HugeCTR.html" />
+    <link rel="prev" title="Scaling Criteo: Download and Convert" href="01-Download-Convert.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="banner">
+    <p class="banner">
+      Beginning in January 2023, versions for all NVIDIA Merlin projects
+      will change from semantic versioning like <code>4.0</code>
+      to calendar versioning like <code>23.01</code>.</p>
+  </div>
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Scaling to Large Datasets with Criteo</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="01-Download-Convert.html">Download and Convert</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ETL with NVTabular</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-HugeCTR.html">Train with HugeCTR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="03-Training-with-TF.html">Train with TensorFlow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-HugeCTR.html">Serve a HugeCTR Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04-Triton-Inference-with-TF.html">Serve a TensorFlow Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../multi-gpu-movielens/index.html">Multi-GPU Example Notebooks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">NVTabular Example Notebooks</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Scaling to Large Datasets with Criteo</a></li>
+      <li class="breadcrumb-item active">Scaling Criteo: ETL with NVTabular</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="section" id="scaling-criteo-etl-with-nvtabular">
+<h1>Scaling Criteo: ETL with NVTabular<a class="headerlink" href="#scaling-criteo-etl-with-nvtabular" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the RAPIDS cuDF library.<br><br></p>
+<p><strong>In this notebook, we will show how to scale NVTabular to multi-GPUs and multiple nodes.</strong> Prerequisite is to be familiar with NVTabular and its API. You can read more NVTabular and its API in our <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/getting-started-movielens">Getting Started with Movielens notebooks</a>.<br><br></p>
+<p>The full <a class="reference external" href="https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/">Criteo 1TB Click Logs dataset</a> contains ~1.3 TB of uncompressed click logs containing over four billion samples spanning 24 days. In our benchmarks, we are able to preprocess and engineer features in <strong>13.8min with 1x NVIDIA A100 GPU and 1.9min with 8x NVIDIA A100 GPUs</strong>. This is a <strong>speed-up of 100x-10000x</strong> in comparison to different CPU versions, You can read more in our <a class="reference external" href="https://developer.nvidia.com/blog/announcing-the-nvtabular-open-beta-with-multi-gpu-support-and-new-data-loaders/">blog</a>.</p>
+<p>Our pipeline will be representative with most common preprocessing transformation for deep learning recommender models.</p>
+<ul class="simple">
+<li><p>Categorical input features are <code class="docutils literal notranslate"><span class="pre">Categorified</span></code> to be continuous integers (0, …, |C|) for the embedding layers</p></li>
+<li><p>Missing values of continuous input features are filled with 0. Afterwards the continuous features are clipped and normalized.</p></li>
+</ul>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we learn how to to scale ETLs with NVTabular</p>
+<ul class="simple">
+<li><p>Learn to use larger than GPU/host memory datasets</p></li>
+<li><p>Use multi-GPU or multi node for ETL</p></li>
+<li><p>Apply common deep learning ETL workflow</p></li>
+</ul>
+</div>
+<div class="section" id="multi-gpu-and-multi-node-scaling">
+<h3>Multi-GPU and multi-node scaling<a class="headerlink" href="#multi-gpu-and-multi-node-scaling" title="Permalink to this headline"></a></h3>
+<p>NVTabular is built on top off <a class="reference external" href="https://github.com/rapidsai/cudf/">RAPIDS.AI cuDF</a>, <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">dask_cudf</a> and <a class="reference external" href="https://dask.org/">dask</a>.<br><br>
+<strong>Dask</strong> is a task-based library for parallel scheduling and execution. Although it is certainly possible to use the task-scheduling machinery directly to implement customized parallel workflows (we do it in NVTabular), most users only interact with Dask through a Dask Collection API. The most popular “collection” API’s include:</p>
+<ul class="simple">
+<li><p>Dask DataFrame: Dask-based version of the Pandas DataFrame/Series API. Note that dask_cudf is just a wrapper around this collection module (dask.dataframe).</p></li>
+<li><p>Dask Array: Dask-based version of the NumPy array API</p></li>
+<li><p>Dask Bag: Similar to a Dask-based version of PyToolz or a Pythonic version of PySpark RDD</p></li>
+</ul>
+<p>For example, Dask DataFrame provides a convenient API for decomposing large Pandas (or cuDF) DataFrame/Series objects into a collection of DataFrame partitions.</p>
+<a class="reference internal image-reference" href="../../_images/dask-dataframe1.svg"><img alt="../../_images/dask-dataframe1.svg" src="../../_images/dask-dataframe1.svg" width="20%" /></a>
+<p>We use <strong>dask_cudf</strong> to process large datasets as a collection of cuDF dataframes instead of Pandas. CuDF is a GPU DataFrame library for loading, joining, aggregating, filtering, and otherwise manipulating data.
+<br><br>
+<strong>Dask enables easily to schedule tasks for multiple workers: multi-GPU or multi-node. We just need to initialize a Dask cluster (<code class="docutils literal notranslate"><span class="pre">LocalCUDACluster</span></code>) and NVTabular will use the cluster to execute the workflow.</strong></p>
+</div>
+</div>
+<div class="section" id="etl-with-nvtabular">
+<h2>ETL with NVTabular<a class="headerlink" href="#etl-with-nvtabular" title="Permalink to this headline"></a></h2>
+<p>Here we’ll show how to use NVTabular first as a preprocessing library to prepare the <a class="reference external" href="https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/">Criteo 1TB Click Logs dataset</a> dataset. The following notebooks can use the output to train a deep learning model.</p>
+<div class="section" id="data-prep">
+<h3>Data Prep<a class="headerlink" href="#data-prep" title="Permalink to this headline"></a></h3>
+<p>The previous notebook <a class="reference internal" href="01-Download-Convert.html"><span class="doc std std-doc">01-Download-Convert</span></a> converted the tsv data published by Criteo into the parquet format that our accelerated readers prefer. Accelerating these pipelines on new hardware like GPUs may require us to make new choices about the representations we use to store that data, and parquet represents a strong alternative.</p>
+<p>We load the required libraries.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Standard Libraries
+import os
+import re
+import shutil
+import warnings
+
+# External Dependencies
+import numpy as np
+import numba
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
+
+# NVTabular
+import nvtabular as nvt
+from nvtabular.ops import (
+    Categorify,
+    Clip,
+    FillMissing,
+    Normalize,
+)
+from nvtabular.utils import pynvml_mem_size, device_mem_size
+</pre></div>
+</div>
+</div>
+</div>
+<p>Once our data is ready, we’ll define some high level parameters to describe where our data is and what it “looks like” at a high level.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># define some information about where to get our data
+BASE_DIR = os.environ.get(&quot;BASE_DIR&quot;, &quot;/raid/data/criteo&quot;)
+INPUT_DATA_DIR = os.environ.get(&quot;INPUT_DATA_DIR&quot;, BASE_DIR + &quot;/converted/criteo&quot;)
+OUTPUT_DATA_DIR = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, BASE_DIR + &quot;/test_dask/output&quot;)
+stats_path = os.path.join(OUTPUT_DATA_DIR, &quot;test_dask/stats&quot;)
+dask_workdir = os.path.join(OUTPUT_DATA_DIR, &quot;test_dask/workdir&quot;)
+
+# Make sure we have a clean worker space for Dask
+if os.path.isdir(dask_workdir):
+    shutil.rmtree(dask_workdir)
+os.makedirs(dask_workdir)
+
+# Make sure we have a clean stats space for Dask
+if os.path.isdir(stats_path):
+    shutil.rmtree(stats_path)
+os.mkdir(stats_path)
+
+# Make sure we have a clean output path
+if os.path.isdir(OUTPUT_DATA_DIR):
+    shutil.rmtree(OUTPUT_DATA_DIR)
+os.mkdir(OUTPUT_DATA_DIR)
+</pre></div>
+</div>
+</div>
+</div>
+<p>We use the last day as validation dataset and the remaining days as training dataset.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fname = &quot;day_{}.parquet&quot;
+num_days = len(
+    [i for i in os.listdir(INPUT_DATA_DIR) if re.match(fname.format(&quot;[0-9]{1,2}&quot;), i) is not None]
+)
+train_paths = [os.path.join(INPUT_DATA_DIR, fname.format(day)) for day in range(num_days - 1)]
+valid_paths = [
+    os.path.join(INPUT_DATA_DIR, fname.format(day)) for day in range(num_days - 1, num_days)
+]
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(train_paths)
+print(valid_paths)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[&#39;/raid/criteo/tests/crit_int_pq/day_0.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_1.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_2.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_3.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_4.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_5.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_6.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_7.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_8.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_9.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_10.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_11.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_12.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_13.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_14.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_15.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_16.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_17.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_18.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_19.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_20.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_21.parquet&#39;, &#39;/raid/criteo/tests/crit_int_pq/day_22.parquet&#39;]
+[&#39;/raid/criteo/tests/crit_int_pq/day_23.parquet&#39;]
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="deploy-a-distributed-dask-cluster">
+<h3>Deploy a Distributed-Dask Cluster<a class="headerlink" href="#deploy-a-distributed-dask-cluster" title="Permalink to this headline"></a></h3>
+<p>Now we configure and deploy a Dask Cluster. Please, <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/d419a4da29cf372f1547edc536729b0733560a44/bench/examples/MultiGPUBench.md">read this document</a> to know how to set the parameters.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Dask dashboard
+dashboard_port = &quot;8787&quot;
+
+# Deploy a Single-Machine Multi-GPU Cluster
+protocol = &quot;tcp&quot;  # &quot;tcp&quot; or &quot;ucx&quot;
+if numba.cuda.is_available():
+    NUM_GPUS = list(range(len(numba.cuda.gpus)))
+else:
+    NUM_GPUS = []
+visible_devices = &quot;,&quot;.join([str(n) for n in NUM_GPUS])  # Delect devices to place workers
+device_limit_frac = 0.7  # Spill GPU-Worker memory to host at this limit.
+device_pool_frac = 0.8
+part_mem_frac = 0.15
+
+# Use total device size to calculate args.device_limit_frac
+device_size = device_mem_size(kind=&quot;total&quot;)
+device_limit = int(device_limit_frac * device_size)
+device_pool_size = int(device_pool_frac * device_size)
+part_size = int(part_mem_frac * device_size)
+
+# Check if any device memory is already occupied
+for dev in visible_devices.split(&quot;,&quot;):
+    fmem = pynvml_mem_size(kind=&quot;free&quot;, index=int(dev))
+    used = (device_size - fmem) / 1e9
+    if used &gt; 1.0:
+        warnings.warn(f&quot;BEWARE - {used} GB is already occupied on device {int(dev)}!&quot;)
+
+cluster = None  # (Optional) Specify existing scheduler port
+if cluster is None:
+    cluster = LocalCUDACluster(
+        protocol=protocol,
+        n_workers=len(visible_devices.split(&quot;,&quot;)),
+        CUDA_VISIBLE_DEVICES=visible_devices,
+        device_memory_limit=device_limit,
+        local_directory=dask_workdir,
+        dashboard_address=&quot;:&quot; + dashboard_port,
+        rmm_pool_size=(device_pool_size // 256) * 256
+    )
+
+# Create the distributed client
+client = Client(cluster)
+client
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><table style="border: 2px solid white;">
+<tr>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Client</h3>
+<ul style="text-align: left; list-style: none; margin: 0; padding: 0;">
+  <li><b>Scheduler: </b>tcp://127.0.0.1:40677</li>
+  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>
+</ul>
+</td>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Cluster</h3>
+<ul style="text-align: left; list-style:none; margin: 0; padding: 0;">
+  <li><b>Workers: </b>8</li>
+  <li><b>Cores: </b>8</li>
+  <li><b>Memory: </b>0.98 TiB</li>
+</ul>
+</td>
+</tr>
+</table></div></div>
+</div>
+<p>That’s it. We initialized our Dask cluster and NVTabular will execute the workflow on multiple GPUs. Similar, we could define a cluster with multiple nodes.</p>
+</div>
+<div class="section" id="defining-our-preprocessing-pipeline">
+<h3>Defining our Preprocessing Pipeline<a class="headerlink" href="#defining-our-preprocessing-pipeline" title="Permalink to this headline"></a></h3>
+<p>At this point, our data still isn’t in a form that’s ideal for consumption by neural networks. The most pressing issues are missing values and the fact that our categorical variables are still represented by random, discrete identifiers, and need to be transformed into contiguous indices that can be leveraged by a learned embedding. Less pressing, but still important for learning dynamics, are the distributions of our continuous variables, which are distributed across multiple orders of magnitude and are uncentered (i.e. E[x] != 0).</p>
+<p>We can fix these issues in a conscise and GPU-accelerated manner with an NVTabular <code class="docutils literal notranslate"><span class="pre">Workflow</span></code>. We explained the NVTabular API in <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/getting-started-movielens">Getting Started with Movielens notebooks</a> and hope you are familiar with the syntax.</p>
+<div class="section" id="frequency-thresholding">
+<h4>Frequency Thresholding<a class="headerlink" href="#frequency-thresholding" title="Permalink to this headline"></a></h4>
+<p>One interesting thing worth pointing out is that we’re using <em>frequency thresholding</em> in our <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> op. This handy functionality will map all categories which occur in the dataset with some threshold level of infrequency (which we’ve set here to be 15 occurrences throughout the dataset) to the <em>same</em> index, keeping the model from overfitting to sparse signals.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># define our dataset schema
+CONTINUOUS_COLUMNS = [&quot;I&quot; + str(x) for x in range(1, 14)]
+CATEGORICAL_COLUMNS = [&quot;C&quot; + str(x) for x in range(1, 27)]
+LABEL_COLUMNS = [&quot;label&quot;]
+COLUMNS = CONTINUOUS_COLUMNS + CATEGORICAL_COLUMNS + LABEL_COLUMNS
+
+num_buckets = 10000000
+categorify_op = Categorify(out_path=stats_path, max_size=num_buckets)
+cat_features = CATEGORICAL_COLUMNS &gt;&gt; categorify_op
+cont_features = CONTINUOUS_COLUMNS &gt;&gt; FillMissing() &gt;&gt; Clip(min_value=0) &gt;&gt; Normalize()
+features = cat_features + cont_features + LABEL_COLUMNS
+
+workflow = nvt.Workflow(features)
+</pre></div>
+</div>
+</div>
+</div>
+<p>Now instantiate dataset iterators to loop through our dataset (which we couldn’t fit into GPU memory). We need to enforce the required HugeCTR data types, so we set them in a dictionary and give as an argument when creating our dataset.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dict_dtypes = {}
+
+for col in CATEGORICAL_COLUMNS:
+    dict_dtypes[col] = np.int64
+
+for col in CONTINUOUS_COLUMNS:
+    dict_dtypes[col] = np.float32
+
+for col in LABEL_COLUMNS:
+    dict_dtypes[col] = np.float32
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_dataset = nvt.Dataset(train_paths, engine=&quot;parquet&quot;, part_size=part_size)
+valid_dataset = nvt.Dataset(valid_paths, engine=&quot;parquet&quot;, part_size=part_size)
+</pre></div>
+</div>
+</div>
+</div>
+<p>Now run them through our workflows to collect statistics on the train set, then transform and save to parquet files.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output_train_dir = os.path.join(OUTPUT_DATA_DIR, &quot;train/&quot;)
+output_valid_dir = os.path.join(OUTPUT_DATA_DIR, &quot;valid/&quot;)
+! mkdir -p $output_train_dir
+! mkdir -p $output_valid_dir
+</pre></div>
+</div>
+</div>
+</div>
+<p>For reference, let’s time it to see how long it takes…</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+workflow.fit(train_dataset)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 18.6 s, sys: 2.24 s, total: 20.8 s
+Wall time: 1min 5s
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+# Add &quot;write_hugectr_keyset=True&quot; to &quot;to_parquet&quot; if using this ETL Notebook for training with HugeCTR
+
+workflow.transform(train_dataset).to_parquet(
+    output_files=len(NUM_GPUS),
+    output_path=output_train_dir,
+    shuffle=nvt.io.Shuffle.PER_PARTITION,
+    dtypes=dict_dtypes,
+    cats=CATEGORICAL_COLUMNS,
+    conts=CONTINUOUS_COLUMNS,
+    labels=LABEL_COLUMNS,
+)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 4.76 s, sys: 2.3 s, total: 7.06 s
+Wall time: 1min 59s
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+# Add &quot;write_hugectr_keyset=True&quot; to &quot;to_parquet&quot; if using this ETL Notebook for training with HugeCTR
+
+workflow.transform(valid_dataset).to_parquet(
+    output_path=output_valid_dir,
+    dtypes=dict_dtypes,
+    cats=CATEGORICAL_COLUMNS,
+    conts=CONTINUOUS_COLUMNS,
+    labels=LABEL_COLUMNS,
+)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>CPU times: user 436 ms, sys: 140 ms, total: 576 ms
+Wall time: 5.17 s
+</pre></div>
+</div>
+</div>
+</div>
+<p>In the next notebooks, we will train a deep learning model. Our training pipeline requires information about the data schema to define the neural network architecture. We will save the NVTabular workflow to disk so that we can restore it in the next notebooks.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow.save(os.path.join(OUTPUT_DATA_DIR, &quot;workflow&quot;))
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01-Download-Convert.html" class="btn btn-neutral float-left" title="Scaling Criteo: Download and Convert" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Training-with-HugeCTR.html" class="btn btn-neutral float-right" title="Scaling Criteo: Training with HugeCTR" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+    <!-- Theme Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-NVJ1Y1YJHK', {
+          'anonymize_ip': false,
+      });
+    </script> 
+
+</body>
+</html>

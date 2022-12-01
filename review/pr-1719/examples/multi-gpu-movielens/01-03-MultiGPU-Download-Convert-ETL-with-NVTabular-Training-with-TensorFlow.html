@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-GPU Training with TensorFlow on MovieLens &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/custom.css" type="text/css" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/examples/multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.html" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Multi-GPU Scaling in NVTabular with Dask" href="../multi-gpu-toy-example/multi-gpu_dask.html" />
+    <link rel="prev" title="Multi-GPU Example Notebooks" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="banner">
+    <p class="banner">
+      Beginning in January 2023, versions for all NVIDIA Merlin projects
+      will change from semantic versioning like <code>4.0</code>
+      to calendar versioning like <code>23.01</code>.</p>
+  </div>
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#structure">Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#available-example-notebooks">Available Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started-movielens/index.html">Getting Started with MovieLens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scaling-criteo/index.html">Scaling to Large Datasets with Criteo</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Multi-GPU Example Notebooks</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Multi-GPU Training with TensorFlow on MovieLens</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi-gpu-toy-example/multi-gpu_dask.html">Multi-GPU Scaling in NVTabular with Dask</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">NVTabular Example Notebooks</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Multi-GPU Example Notebooks</a></li>
+      <li class="breadcrumb-item active">Multi-GPU Training with TensorFlow on MovieLens</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="section" id="multi-gpu-training-with-tensorflow-on-movielens">
+<h1>Multi-GPU Training with TensorFlow on MovieLens<a class="headerlink" href="#multi-gpu-training-with-tensorflow-on-movielens" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>NVIDIA Merlin is a open source framework to accelerate and scale end-to-end recommender system pipelines on GPU. In this notebook, we use NVTabular, Merlin’s ETL component, to scale feature engineering and pre-processing to multiple GPUs and then perform data-parallel distributed training of a neural network on multiple GPUs with TensorFlow, <a class="reference external" href="https://horovod.readthedocs.io/en/stable/">Horovod</a>, and <a class="reference external" href="https://developer.nvidia.com/nccl">NCCL</a>.</p>
+<p>The pre-requisites for this notebook are to be familiar with NVTabular and its API:</p>
+<ul class="simple">
+<li><p>You can read more about NVTabular, its API and specialized dataloaders in <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/examples/getting-started-movielens/index.html">Getting Started with Movielens notebooks</a>.</p></li>
+<li><p>You can read more about scaling NVTabular ETL in <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/examples/scaling-criteo/index.html">Scaling Criteo notebooks</a>.</p></li>
+</ul>
+<p><strong>In this notebook, we will focus only on the new information related to multi-GPU training, so please check out the other notebooks first (if you haven’t already.)</strong></p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we learn how to scale ETL and deep learning taining to multiple GPUs</p>
+<ul class="simple">
+<li><p>Learn to use larger than GPU/host memory datasets for ETL and training</p></li>
+<li><p>Use multi-GPU or multi node for ETL with NVTabular</p></li>
+<li><p>Use NVTabular dataloader to accelerate TensorFlow pipelines</p></li>
+<li><p>Scale TensorFlow training with Horovod</p></li>
+</ul>
+</div>
+<div class="section" id="dataset">
+<h3>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline"></a></h3>
+<p>In this notebook, we use the <a class="reference external" href="https://grouplens.org/datasets/movielens/25m/">MovieLens25M</a> dataset. It is popular for recommender systems and is used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well.</p>
+<p>Note: We are using the MovieLens 25M dataset in this example for simplicity, although the dataset is not large enough to require multi-GPU training. However, the functionality demonstrated in this notebook can be easily extended to scale recommender pipelines for larger datasets in the same way.</p>
+</div>
+<div class="section" id="tools">
+<h3>Tools<a class="headerlink" href="#tools" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://horovod.readthedocs.io/en/stable/">Horovod</a> is a distributed deep learning framework that provides tools for multi-GPU optimization.</p></li>
+<li><p>The <a class="reference external" href="https://developer.nvidia.com/nccl">NVIDIA Collective Communication Library (NCCL)</a> provides the underlying GPU-based implementations of the <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/operations.html#allgather">allgather</a> and <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/operations.html#allreduce">allreduce</a> cross-GPU communication operations.</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="download-and-convert">
+<h2>Download and Convert<a class="headerlink" href="#download-and-convert" title="Permalink to this headline"></a></h2>
+<p>First, we will download and convert the dataset to Parquet. This section is based on <a class="reference internal" href="../getting-started-movielens/01-Download-Convert.html"><span class="doc std std-doc">01-Download-Convert.ipynb</span></a>.</p>
+<div class="section" id="download">
+<h3>Download<a class="headerlink" href="#download" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># External dependencies
+import os
+import pathlib
+
+import cudf  # cuDF is an implementation of Pandas-like Dataframe on GPU
+
+from merlin.core.utils import download_file
+
+INPUT_DATA_DIR = os.environ.get(
+    &quot;INPUT_DATA_DIR&quot;, &quot;~/nvt-examples/multigpu-movielens/data/&quot;
+)
+BASE_DIR = pathlib.Path(INPUT_DATA_DIR).expanduser()
+zip_path = pathlib.Path(BASE_DIR, &quot;ml-25m.zip&quot;)
+download_file(
+    &quot;http://files.grouplens.org/datasets/movielens/ml-25m.zip&quot;, zip_path, redownload=False
+)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>downloading ml-25m.zip: 262MB [00:06, 41.9MB/s]                                                                                                                                            
+unzipping files: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 8/8 [00:04&lt;00:00,  1.74files/s]
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="convert">
+<h3>Convert<a class="headerlink" href="#convert" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>movies = cudf.read_csv(pathlib.Path(BASE_DIR, &quot;ml-25m&quot;, &quot;movies.csv&quot;))
+movies[&quot;genres&quot;] = movies[&quot;genres&quot;].str.split(&quot;|&quot;)
+movies = movies.drop(&quot;title&quot;, axis=1)
+movies.to_parquet(pathlib.Path(BASE_DIR, &quot;ml-25m&quot;, &quot;movies_converted.parquet&quot;))
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="split-into-train-and-validation-datasets">
+<h3>Split into train and validation datasets<a class="headerlink" href="#split-into-train-and-validation-datasets" title="Permalink to this headline"></a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ratings = cudf.read_csv(pathlib.Path(BASE_DIR, &quot;ml-25m&quot;, &quot;ratings.csv&quot;))
+ratings = ratings.drop(&quot;timestamp&quot;, axis=1)
+
+# shuffle the dataset
+ratings = ratings.sample(len(ratings), replace=False)
+# split the train_df as training and validation data sets.
+num_valid = int(len(ratings) * 0.2)
+train = ratings[:-num_valid]
+valid = ratings[-num_valid:]
+
+train.to_parquet(pathlib.Path(BASE_DIR, &quot;train.parquet&quot;))
+valid.to_parquet(pathlib.Path(BASE_DIR, &quot;valid.parquet&quot;))
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="etl-with-nvtabular">
+<h2>ETL with NVTabular<a class="headerlink" href="#etl-with-nvtabular" title="Permalink to this headline"></a></h2>
+<p>We finished downloading and converting the dataset. We will preprocess and engineer features with NVTabular on multiple GPUs. You can read more</p>
+<ul class="simple">
+<li><p>about NVTabular’s features and API in <a class="reference internal" href="../getting-started-movielens/02-ETL-with-NVTabular.html"><span class="doc std std-doc">getting-started-movielens/02-ETL-with-NVTabular.ipynb</span></a>.</p></li>
+<li><p>scaling NVTabular ETL to multiple GPUs <a class="reference internal" href="../scaling-criteo/02-ETL-with-NVTabular.html"><span class="doc std std-doc">scaling-criteo/02-ETL-with-NVTabular.ipynb</span></a>.</p></li>
+</ul>
+<div class="section" id="deploy-a-distributed-dask-cluster">
+<h3>Deploy a Distributed-Dask Cluster<a class="headerlink" href="#deploy-a-distributed-dask-cluster" title="Permalink to this headline"></a></h3>
+<p>This section is based on <a class="reference internal" href="../scaling-criteo/02-ETL-with-NVTabular.html"><span class="doc std std-doc">scaling-criteo/02-ETL-with-NVTabular.ipynb</span></a> and <a class="reference internal" href="../multi-gpu-toy-example/multi-gpu_dask.html"><span class="doc std std-doc">multi-gpu-toy-example/multi-gpu_dask.ipynb</span></a></p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Standard Libraries
+import shutil
+
+# External Dependencies
+import cupy as cp
+import numpy as np
+import cudf
+import dask_cudf
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
+from dask.utils import parse_bytes
+from dask.delayed import delayed
+import rmm
+
+# NVTabular
+import nvtabular as nvt
+import nvtabular.ops as ops
+from merlin.io import Shuffle
+from merlin.core.utils import device_mem_size
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># define some information about where to get our data
+input_path = pathlib.Path(BASE_DIR, &quot;converted&quot;, &quot;movielens&quot;)
+dask_workdir = pathlib.Path(BASE_DIR, &quot;test_dask&quot;, &quot;workdir&quot;)
+output_path = pathlib.Path(BASE_DIR, &quot;test_dask&quot;, &quot;output&quot;)
+stats_path = pathlib.Path(BASE_DIR, &quot;test_dask&quot;, &quot;stats&quot;)
+
+# Make sure we have a clean worker space for Dask
+if pathlib.Path.is_dir(dask_workdir):
+    shutil.rmtree(dask_workdir)
+dask_workdir.mkdir(parents=True)
+
+# Make sure we have a clean stats space for Dask
+if pathlib.Path.is_dir(stats_path):
+    shutil.rmtree(stats_path)
+stats_path.mkdir(parents=True)
+
+# Make sure we have a clean output path
+if pathlib.Path.is_dir(output_path):
+    shutil.rmtree(output_path)
+output_path.mkdir(parents=True)
+
+# Get device memory capacity
+capacity = device_mem_size(kind=&quot;total&quot;)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Deploy a Single-Machine Multi-GPU Cluster
+protocol = &quot;tcp&quot;  # &quot;tcp&quot; or &quot;ucx&quot;
+visible_devices = &quot;0,1&quot;  # Delect devices to place workers
+device_spill_frac = 0.5  # Spill GPU-Worker memory to host at this limit.
+# Reduce if spilling fails to prevent
+# device memory errors.
+cluster = None  # (Optional) Specify existing scheduler port
+if cluster is None:
+    cluster = LocalCUDACluster(
+        protocol=protocol,
+        CUDA_VISIBLE_DEVICES=visible_devices,
+        local_directory=dask_workdir,
+        device_memory_limit=capacity * device_spill_frac,
+    )
+
+# Create the distributed client
+client = Client(cluster)
+client
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><table style="border: 2px solid white;">
+<tr>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Client</h3>
+<ul style="text-align: left; list-style: none; margin: 0; padding: 0;">
+  <li><b>Scheduler: </b>tcp://127.0.0.1:37469</li>
+  <li><b>Dashboard: </b><a href='http://127.0.0.1:8787/status' target='_blank'>http://127.0.0.1:8787/status</a></li>
+</ul>
+</td>
+<td style="vertical-align: top; border: 0px solid white">
+<h3 style="text-align: left;">Cluster</h3>
+<ul style="text-align: left; list-style:none; margin: 0; padding: 0;">
+  <li><b>Workers: </b>2</li>
+  <li><b>Cores: </b>2</li>
+  <li><b>Memory: </b>125.84 GiB</li>
+</ul>
+</td>
+</tr>
+</table></div></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Initialize RMM pool on ALL workers
+def _rmm_pool():
+    rmm.reinitialize(
+        pool_allocator=True,
+        initial_pool_size=None,  # Use default size
+    )
+
+
+client.run(_rmm_pool)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;tcp://127.0.0.1:40789&#39;: None, &#39;tcp://127.0.0.1:43439&#39;: None}
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="defining-our-preprocessing-pipeline">
+<h3>Defining our Preprocessing Pipeline<a class="headerlink" href="#defining-our-preprocessing-pipeline" title="Permalink to this headline"></a></h3>
+<p>This subsection is based on <a class="reference internal" href="../getting-started-movielens/02-ETL-with-NVTabular.html"><span class="doc std std-doc">getting-started-movielens/02-ETL-with-NVTabular.ipynb</span></a>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>movies = cudf.read_parquet(pathlib.Path(BASE_DIR, &quot;ml-25m&quot;, &quot;movies_converted.parquet&quot;))
+joined = [&quot;userId&quot;, &quot;movieId&quot;] &gt;&gt; nvt.ops.JoinExternal(movies, on=[&quot;movieId&quot;])
+cat_features = joined &gt;&gt; nvt.ops.Categorify()
+ratings = nvt.ColumnSelector([&quot;rating&quot;]) &gt;&gt; nvt.ops.LambdaOp(lambda col: (col &gt; 3).astype(&quot;int8&quot;), dtype=np.int8)
+output = cat_features + ratings
+workflow = nvt.Workflow(output)
+!rm -rf $BASE_DIR/train
+!rm -rf $BASE_DIR/valid
+train_iter = nvt.Dataset([str(pathlib.Path(BASE_DIR, &quot;train.parquet&quot;))], part_size=&quot;100MB&quot;)
+valid_iter = nvt.Dataset([str(pathlib.Path(BASE_DIR, &quot;valid.parquet&quot;))], part_size=&quot;100MB&quot;)
+workflow.fit(train_iter)
+workflow.save(str(pathlib.Path(BASE_DIR, &quot;workflow&quot;)))
+shuffle = Shuffle.PER_WORKER  # Shuffle algorithm
+out_files_per_proc = 4  # Number of output files per worker
+workflow.transform(train_iter).to_parquet(
+    output_path=pathlib.Path(BASE_DIR, &quot;train&quot;),
+    shuffle=shuffle,
+    out_files_per_proc=out_files_per_proc,
+)
+workflow.transform(valid_iter).to_parquet(
+    output_path=pathlib.Path(BASE_DIR, &quot;valid&quot;),
+    shuffle=shuffle,
+    out_files_per_proc=out_files_per_proc,
+)
+
+client.shutdown()
+cluster.close()
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/distributed/worker.py:3560: UserWarning: Large object of size 1.90 MiB detected in task graph: 
+  (&quot;(&#39;read-parquet-d36dd514a8adc53a9a91115c9be1d852&#39; ... 1115c9be1d852&#39;)
+Consider scattering large objects ahead of time
+with client.scatter to reduce scheduler burden and 
+keep data on workers
+
+    future = client.submit(func, big_data)    # bad
+
+    big_future = client.scatter(big_data)     # good
+    future = client.submit(func, big_future)  # good
+  warnings.warn(
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="training-with-tensorflow-on-multigpus">
+<h2>Training with TensorFlow on multiGPUs<a class="headerlink" href="#training-with-tensorflow-on-multigpus" title="Permalink to this headline"></a></h2>
+<p>In this section, we will train a TensorFlow model with multi-GPU support. In the NVTabular v0.5 release, we added multi-GPU support for NVTabular dataloaders. We will modify the <a class="reference internal" href="../getting-started-movielens/03-Training-with-TF.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-TF.ipynb</span></a> to use multiple GPUs. Please review that notebook, if you have questions about the general functionality of the NVTabular dataloaders or the neural network architecture.</p>
+<div class="section" id="nvtabular-dataloader-for-tensorflow">
+<h3>NVTabular dataloader for TensorFlow<a class="headerlink" href="#nvtabular-dataloader-for-tensorflow" title="Permalink to this headline"></a></h3>
+<p>We’ve identified that the dataloader is one bottleneck in deep learning recommender systems when training pipelines with TensorFlow. The normal TensorFlow dataloaders cannot prepare the next training batches fast enough and therefore, the GPU is not fully utilized.</p>
+<p>We developed a highly customized tabular dataloader for accelerating existing pipelines in TensorFlow. In our experiments, we see a speed-up by 9x of the same training workflow with NVTabular dataloader. NVTabular dataloader’s features are:</p>
+<ul class="simple">
+<li><p>removing bottleneck of item-by-item dataloading</p></li>
+<li><p>enabling larger than memory dataset by streaming from disk</p></li>
+<li><p>reading data directly into GPU memory and remove CPU-GPU communication</p></li>
+<li><p>preparing batch asynchronously in GPU to avoid CPU-GPU communication</p></li>
+<li><p>supporting commonly used .parquet format</p></li>
+<li><p>easy integration into existing TensorFlow pipelines by using similar API - works with tf.keras models</p></li>
+<li><p><strong>supporting multi-GPU training with Horovod</strong></p></li>
+</ul>
+<p>You can find more information on the dataloaders in our <a class="reference external" href="https://medium.com/nvidia-merlin/training-deep-learning-based-recommender-systems-9x-faster-with-tensorflow-cc5a2572ea49">blogpost</a>.</p>
+</div>
+<div class="section" id="using-horovod-with-tensorflow-and-nvtabular">
+<h3>Using Horovod with Tensorflow and NVTabular<a class="headerlink" href="#using-horovod-with-tensorflow-and-nvtabular" title="Permalink to this headline"></a></h3>
+<p>The training script below is based on <a class="reference internal" href="../getting-started-movielens/03-Training-with-TF.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-TF.ipynb</span></a>, with a few important changes:</p>
+<ul class="simple">
+<li><p>We provide several additional parameters to the <code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code> class, including the total number of workers <code class="docutils literal notranslate"><span class="pre">hvd.size()</span></code>, the current worker’s id number <code class="docutils literal notranslate"><span class="pre">hvd.rank()</span></code>, and a function for generating random seeds <code class="docutils literal notranslate"><span class="pre">seed_fn()</span></code>.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+        <span class="o">...</span>
+        <span class="n">global_size</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span>
+        <span class="n">global_rank</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">(),</span>
+        <span class="n">seed_fn</span><span class="o">=</span><span class="n">seed_fn</span><span class="p">,</span>
+    <span class="p">)</span>
+
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>The seed function uses Horovod to collectively generate a random seed that’s shared by all workers so that they can each shuffle the dataset in a consistent way and select partitions to work on without overlap. The seed function is called by the dataloader during the shuffling process at the beginning of each epoch:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span> <span class="nf">seed_fn</span><span class="p">():</span>
+        <span class="n">min_int</span><span class="p">,</span> <span class="n">max_int</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="o">.</span><span class="n">limits</span>
+        <span class="n">max_rand</span> <span class="o">=</span> <span class="n">max_int</span> <span class="o">//</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+        <span class="c1"># Generate a seed fragment on each worker</span>
+        <span class="n">seed_fragment</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_rand</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="c1"># Aggregate seed fragments from all Horovod workers</span>
+        <span class="n">seed_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">seed_fragment</span><span class="p">)</span>
+        <span class="n">reduced_seed</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="n">seed_tensor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;shuffle_seed&quot;</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">hvd</span><span class="o">.</span><span class="n">mpi_ops</span><span class="o">.</span><span class="n">Sum</span><span class="p">)</span> 
+
+        <span class="k">return</span> <span class="n">reduced_seed</span> <span class="o">%</span> <span class="n">max_rand</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We wrap the TensorFlow optimizer with Horovod’s <code class="docutils literal notranslate"><span class="pre">DistributedOptimizer</span></code> class and scale the learning rate by the number of workers:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">opt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">hvd</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
+    <span class="n">opt</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedOptimizer</span><span class="p">(</span><span class="n">opt</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We wrap the TensorFlow gradient tape with Horovod’s <code class="docutils literal notranslate"><span class="pre">DistributedGradientTape</span></code> class:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+        <span class="o">...</span>
+    <span class="n">tape</span> <span class="o">=</span> <span class="n">hvd</span><span class="o">.</span><span class="n">DistributedGradientTape</span><span class="p">(</span><span class="n">tape</span><span class="p">,</span> <span class="n">sparse_as_dense</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>After the first batch, we broadcast the model and optimizer parameters to all workers with Horovod:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="c1"># Note: broadcast should be done after the first gradient step to</span>
+    <span class="c1"># ensure optimizer initialization.</span>
+    <span class="k">if</span> <span class="n">first_batch</span><span class="p">:</span>
+        <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_variables</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">variables</span><span class="p">,</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">hvd</span><span class="o">.</span><span class="n">broadcast_variables</span><span class="p">(</span><span class="n">opt</span><span class="o">.</span><span class="n">variables</span><span class="p">(),</span> <span class="n">root_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>We only save checkpoints from the first worker to avoid multiple workers trying to write to the same files:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">if</span> <span class="n">hvd</span><span class="o">.</span><span class="n">rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">checkpoint</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The rest of the script is the same as the MovieLens example in <a class="reference internal" href="../getting-started-movielens/03-Training-with-TF.html"><span class="doc std std-doc">getting-started-movielens/03-Training-with-TF.ipynb</span></a>. In order to run it with Horovod, we first need to write it to a file.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%writefile &#39;./tf_trainer.py&#39;
+
+# External dependencies
+import argparse
+import glob
+import os
+
+import cupy
+
+# we can control how much memory to give tensorflow with this environment variable
+# IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise
+# TF will have claimed all free GPU memory
+os.environ[&quot;TF_MEMORY_ALLOCATION&quot;] = &quot;0.3&quot;  # fraction of free memory
+
+import nvtabular as nvt  # noqa: E402 isort:skip
+from nvtabular.framework_utils.tensorflow import layers  # noqa: E402 isort:skip
+from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402 isort:skip
+
+import tensorflow as tf  # noqa: E402 isort:skip
+import horovod.tensorflow as hvd  # noqa: E402 isort:skip
+
+parser = argparse.ArgumentParser(description=&quot;Process some integers.&quot;)
+parser.add_argument(&quot;--dir_in&quot;, default=None, help=&quot;Input directory&quot;)
+parser.add_argument(&quot;--batch_size&quot;, default=None, help=&quot;batch size&quot;)
+parser.add_argument(&quot;--cats&quot;, default=None, help=&quot;categorical columns&quot;)
+parser.add_argument(&quot;--cats_mh&quot;, default=None, help=&quot;categorical multihot columns&quot;)
+parser.add_argument(&quot;--conts&quot;, default=None, help=&quot;continuous columns&quot;)
+parser.add_argument(&quot;--labels&quot;, default=None, help=&quot;continuous columns&quot;)
+args = parser.parse_args()
+
+
+BASE_DIR = args.dir_in or &quot;./data/&quot;
+BATCH_SIZE = int(args.batch_size or 16384)  # Batch Size
+CATEGORICAL_COLUMNS = args.cats or [&quot;movieId&quot;, &quot;userId&quot;]  # Single-hot
+CATEGORICAL_MH_COLUMNS = args.cats_mh or [&quot;genres&quot;]  # Multi-hot
+NUMERIC_COLUMNS = args.conts or []
+TRAIN_PATHS = sorted(
+    glob.glob(os.path.join(BASE_DIR, &quot;train/*.parquet&quot;))
+)  # Output from ETL-with-NVTabular
+hvd.init()
+
+# Seed with system randomness (or a static seed)
+cupy.random.seed(None)
+
+
+def seed_fn():
+    &quot;&quot;&quot;
+    Generate consistent dataloader shuffle seeds across workers
+
+    Reseeds each worker&#39;s dataloader each epoch to get fresh a shuffle
+    that&#39;s consistent across workers.
+    &quot;&quot;&quot;
+    min_int, max_int = tf.int32.limits
+    max_rand = max_int // hvd.size()
+
+    # Generate a seed fragment on each worker
+    seed_fragment = cupy.random.randint(0, max_rand).get()
+
+    # Aggregate seed fragments from all Horovod workers
+    seed_tensor = tf.constant(seed_fragment)
+    reduced_seed = hvd.allreduce(seed_tensor, name=&quot;shuffle_seed&quot;, op=hvd.mpi_ops.Sum)
+
+    return reduced_seed % max_rand
+
+
+proc = nvt.Workflow.load(os.path.join(BASE_DIR, &quot;workflow/&quot;))
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)
+
+train_dataset_tf = KerasSequenceLoader(
+    TRAIN_PATHS,  # you could also use a glob pattern
+    batch_size=BATCH_SIZE,
+    label_names=[&quot;rating&quot;],
+    cat_names=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
+    cont_names=NUMERIC_COLUMNS,
+    engine=&quot;parquet&quot;,
+    shuffle=True,
+    buffer_size=0.06,  # how many batches to load at once
+    parts_per_chunk=1,
+    global_size=hvd.size(),
+    global_rank=hvd.rank(),
+    seed_fn=seed_fn,
+)
+inputs = {}  # tf.keras.Input placeholders for each feature to be used
+emb_layers = []  # output of all embedding layers, which will be concatenated
+for col in CATEGORICAL_COLUMNS:
+    inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(1,))
+# Note that we need two input tensors for multi-hot categorical features
+for col in CATEGORICAL_MH_COLUMNS:
+    inputs[col] = \
+        (tf.keras.Input(name=f&quot;{col}__values&quot;, dtype=tf.int64, shape=(1,)),
+         tf.keras.Input(name=f&quot;{col}__nnzs&quot;, dtype=tf.int64, shape=(1,)))
+for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
+    emb_layers.append(
+        tf.feature_column.embedding_column(
+            tf.feature_column.categorical_column_with_identity(
+                col, EMBEDDING_TABLE_SHAPES[col][0]
+            ),  # Input dimension (vocab size)
+            EMBEDDING_TABLE_SHAPES[col][1],  # Embedding output dimension
+        )
+    )
+emb_layer = layers.DenseFeatures(emb_layers)
+x_emb_output = emb_layer(inputs)
+x = tf.keras.layers.Dense(128, activation=&quot;relu&quot;)(x_emb_output)
+x = tf.keras.layers.Dense(128, activation=&quot;relu&quot;)(x)
+x = tf.keras.layers.Dense(128, activation=&quot;relu&quot;)(x)
+x = tf.keras.layers.Dense(1, activation=&quot;sigmoid&quot;)(x)
+model = tf.keras.Model(inputs=inputs, outputs=x)
+loss = tf.losses.BinaryCrossentropy()
+opt = tf.keras.optimizers.SGD(0.01 * hvd.size())
+opt = hvd.DistributedOptimizer(opt)
+checkpoint_dir = &quot;./checkpoints&quot;
+checkpoint = tf.train.Checkpoint(model=model, optimizer=opt)
+
+
+@tf.function(experimental_relax_shapes=True)
+def training_step(examples, labels, first_batch):
+    with tf.GradientTape() as tape:
+        probs = model(examples, training=True)
+        loss_value = loss(labels, probs)
+    # Horovod: add Horovod Distributed GradientTape.
+    tape = hvd.DistributedGradientTape(tape, sparse_as_dense=True)
+    grads = tape.gradient(loss_value, model.trainable_variables)
+    opt.apply_gradients(zip(grads, model.trainable_variables))
+    # Horovod: broadcast initial variable states from rank 0 to all other processes.
+    # This is necessary to ensure consistent initialization of all workers when
+    # training is started with random weights or restored from a checkpoint.
+    #
+    # Note: broadcast should be done after the first gradient step to ensure optimizer
+    # initialization.
+    if first_batch:
+        hvd.broadcast_variables(model.variables, root_rank=0)
+        hvd.broadcast_variables(opt.variables(), root_rank=0)
+    return loss_value
+
+
+# Horovod: adjust number of steps based on number of GPUs.
+for batch, (examples, labels) in enumerate(train_dataset_tf):
+    loss_value = training_step(examples, labels, batch == 0)
+    if batch % 100 == 0 and hvd.local_rank() == 0:
+        print(&quot;Step #%d\tLoss: %.6f&quot; % (batch, loss_value))
+hvd.join()
+
+# Horovod: save checkpoints only on worker 0 to prevent other workers from
+# corrupting it.
+if hvd.rank() == 0:
+    checkpoint.save(checkpoint_dir)
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting ./tf_trainer.py
+</pre></div>
+</div>
+</div>
+</div>
+<p>We’ll also need a small wrapper script to check environment variables set by the Horovod runner to see which rank we’ll be assigned, in order to set CUDA_VISIBLE_DEVICES properly for each worker:</p>
+<div class="cell tag_flake8-noqa-cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%writefile &#39;./hvd_wrapper.sh&#39;
+
+#!/bin/bash
+
+# Get local process ID from OpenMPI or alternatively from SLURM
+if [ -z &quot;${CUDA_VISIBLE_DEVICES:-}&quot; ]; then
+    if [ -n &quot;${OMPI_COMM_WORLD_LOCAL_RANK:-}&quot; ]; then
+        LOCAL_RANK=&quot;${OMPI_COMM_WORLD_LOCAL_RANK}&quot;
+    elif [ -n &quot;${SLURM_LOCALID:-}&quot; ]; then
+        LOCAL_RANK=&quot;${SLURM_LOCALID}&quot;
+    fi
+    export CUDA_VISIBLE_DEVICES=${LOCAL_RANK}
+fi
+
+exec &quot;$@&quot;
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Overwriting ./hvd_wrapper.sh
+</pre></div>
+</div>
+</div>
+</div>
+<p>OpenMPI and Slurm are tools for running distributed computed jobs. In this example, we’re using OpenMPI, but depending on the environment you run distributed training jobs in, you may need to check slightly different environment variables to find the total number of workers (global size) and each process’s worker number (global rank.)</p>
+<p>Why do we have to check environment variables instead of using <code class="docutils literal notranslate"><span class="pre">hvd.rank()</span></code> and <code class="docutils literal notranslate"><span class="pre">hvd.local_rank()</span></code>? NVTabular does some GPU configuration when imported and needs to be imported before Horovod to avoid conflicts. We need to set GPU visibility before NVTabular is imported (when Horovod isn’t yet available) so that multiple processes don’t each try to configure all the GPUs, so as a workaround, we “cheat” and peek at environment variables set by horovodrun to decide which GPU each process should use.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!horovodrun -np 2 sh hvd_wrapper.sh python tf_trainer.py --dir_in $BASE_DIR --batch_size 16384
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2021-06-04 16:39:06.000313: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:08.979997: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:09.064191: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.138200: I tensorflow/compiler/jit/xla_cpu_device.cc:41] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.138376: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcuda.so.1
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139777: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,0]&lt;stderr&gt;:pciBusID: 0000:0b:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,0]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.91GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139823: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139907: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139949: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.139990: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140029: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140084: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140123: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.140169: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:10.144021: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.367414: I tensorflow/compiler/jit/xla_cpu_device.cc:41] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.367496: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcuda.so.1
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368324: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,1]&lt;stderr&gt;:pciBusID: 0000:42:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,1]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.92GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368347: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368396: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368424: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368451: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368475: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368512: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368537: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.368573: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:10.369841: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.730033: I tensorflow/compiler/jit/xla_gpu_device.cc:99] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.730907: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,1]&lt;stderr&gt;:pciBusID: 0000:42:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,1]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.92GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.730990: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731005: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731018: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731029: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731038: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731049: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731059: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.731078: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732312: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732350: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732473: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1287] Device interconnect StreamExecutor with strength 1 edge matrix:
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732487: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1293]      0 
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.732493: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1306] 0:   N 
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:11.734431: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1432] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 3352 MB memory) -&gt; physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:42:00.0, compute capability: 6.1)
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.821346: I tensorflow/compiler/jit/xla_gpu_device.cc:99] Not creating XLA devices, tf_xla_enable_xla_devices not set
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822270: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1746] Found device 0 with properties: 
+[1,0]&lt;stderr&gt;:pciBusID: 0000:0b:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+[1,0]&lt;stderr&gt;:coreClock: 1.582GHz coreCount: 28 deviceMemorySize: 10.91GiB deviceMemoryBandwidth: 451.17GiB/s
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822360: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822376: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822389: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822400: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcufft.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822411: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcurand.so.10
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822425: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusolver.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822434: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcusparse.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.822454: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudnn.so.8
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823684: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1888] Adding visible gpu devices: 0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823731: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcudart.so.11.0
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823868: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1287] Device interconnect StreamExecutor with strength 1 edge matrix:
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823881: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1293]      0 
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.823888: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1306] 0:   N 
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:11.825784: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1432] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 3352 MB memory) -&gt; physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:0b:00.0, compute capability: 6.1)
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.634485: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:116] None of the MLIR optimization passes are enabled (registered 2)
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.668915: I tensorflow/core/platform/profile_utils/cpu_utils.cc:112] CPU Frequency: 2993950000 Hz
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:17.694128: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:116] None of the MLIR optimization passes are enabled (registered 2)
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:17.703326: I tensorflow/core/platform/profile_utils/cpu_utils.cc:112] CPU Frequency: 2993950000 Hz
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.780825: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:17.810644: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublas.so.11
+[1,0]&lt;stderr&gt;:2021-06-04 16:39:17.984966: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,1]&lt;stderr&gt;:2021-06-04 16:39:18.012113: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library libcublasLt.so.11
+[1,0]&lt;stdout&gt;:Step #0	Loss: 0.695094
+[1,0]&lt;stdout&gt;:Step #100	Loss: 0.669580
+[1,0]&lt;stdout&gt;:Step #200	Loss: 0.661098
+[1,0]&lt;stdout&gt;:Step #300	Loss: 0.660680
+[1,0]&lt;stdout&gt;:Step #400	Loss: 0.658633
+[1,0]&lt;stdout&gt;:Step #500	Loss: 0.660251
+[1,0]&lt;stdout&gt;:Step #600	Loss: 0.657047
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Multi-GPU Example Notebooks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../multi-gpu-toy-example/multi-gpu_dask.html" class="btn btn-neutral float-right" title="Multi-GPU Scaling in NVTabular with Dask" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+    <!-- Theme Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-NVJ1Y1YJHK', {
+          'anonymize_ip': false,
+      });
+    </script> 
+
+</body>
+</html>
