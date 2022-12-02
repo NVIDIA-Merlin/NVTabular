@@ -9,24 +9,12 @@ Follow the instructions below to build the docs.
 
 ## Steps to follow:
 
-1. To build the docs, you need to install a developer environment:
+1. To build the docs, you need to install a developer environment and run `tox`:
 
    ```shell
    python3 -m vevn .venv
    source .venv/bin/activate
-   python -m pip install -r requirements.txt
-   python -m pip install -r requirements-dev.txt
-   ```
-
-   > If you add or change dependencies, review the `ci/build_and_test.sh` file
-   > and make a similar change to the `pip install` stanzas.
-
-   Alternatively, you might be able use a Conda environment. See the [installation instructions](https://github.com/NVIDIA/NVTabular).
-
-1. Build the documentation:
-
-   ```shell
-   make -C docs clean html
+   tox -e docs
    ```
 
    This runs Sphinx in your shell and outputs to `docs/build/html/`.
@@ -42,6 +30,40 @@ Follow the instructions below to build the docs.
    `https://localhost:8000`
 
    Check that your docs edits formatted correctly, and read well.
+
+## Checking for broken links
+
+1. Build the documentation, as described in the preceding section, but use the following command:
+
+   ```shell
+   tox -e docs -- linkcheck
+   ```
+
+1. Run the link-checking script:
+
+   ```shell
+   ./docs/check_for_broken_links.sh
+   ```
+
+If there are no broken links, then the script exits with `0`.
+
+If the script produces any output, cut and paste the `uri` value into your browser to confirm
+that the link is broken.
+
+```json
+{
+  "filename": "hugectr_core_features.md",
+  "lineno": 88,
+  "status": "broken",
+  "code": 0,
+  "uri": "https://github.com/NVIDIA-Merlin/Merlin/blob/main/docker/build-hadoop.sh",
+  "info": "404 Client Error: Not Found for url: https://github.com/NVIDIA-Merlin/Merlin/blob/main/docker/build-hadoop.sh"
+}
+```
+
+If the link is OK, and this is the case with many URLs that reference GitHub repository file headings,
+then cut and paste the JSON output and add it to `docs/false_positives.json`.
+Run the script again to confirm that the URL is no longer reported as a broken link.
 
 ## Decisions
 
@@ -65,7 +87,7 @@ Follow the instructions below to build the docs.
 * Add the file to the `docs/source/toc.yaml` file.  Keep in mind that notebooks are
   copied into the `docs/source/` directory, so the paths are relative to that location.
   Follow the pattern that is already established and you'll be fine.
-  
+
 ### Adding links
 
 TIP: When adding a link to a method or any heading that has underscores in it, repeat
