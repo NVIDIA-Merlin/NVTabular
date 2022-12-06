@@ -3,11 +3,3 @@
 
 # linting
 cpplint>=1.5
-codespell
-interrogate==1.5.0
-black==22.6.0
-flake8==3.9.2
-isort==5.10.1
-pylint==2.7.4
-bandit==1.7.4
-flake8-nb==0.5.2
