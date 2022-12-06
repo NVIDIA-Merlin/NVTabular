@@ -78,13 +78,16 @@ To use these Docker containers, you'll first need to install the [NVIDIA Contain
 
 ### Notebook Examples and Tutorials
 
-We provide a [collection of examples, use cases, and tutorials](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples) as Jupyter notebooks covering:
-
-* Feature engineering and preprocessing with NVTabular
+We provide a [collection of examples](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples) to demonstrate feature engineering with NVTabular as Jupyter notebooks:
+* Introduction to NVTabular's High-Level API
 * Advanced workflows with NVTabular
-* Scaling to multi-GPU and multi-node systems
-* Integrating NVTabular with HugeCTR
-* Deploying to inference with Triton
+* NVTabular on CPU
+* Scaling NVTabular to multi-GPU systems
+
+In addition, NVTabular is used in many of our examples in other Merlin libraries:
+- [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples)
+- [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/main/examples)
+- [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples)
 
 ### Feedback and Support
 

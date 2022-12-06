@@ -2,18 +2,18 @@ Accelerated Training with HugeCTR
 =================================
 
 A real-world production model serves hundreds of millions of users,
-which contains embedding tables with up to 100GB to 1TB in size. Training deep 
+which contains embedding tables with up to 100GB to 1TB in size. Training deep
 learning recommender system models with such large embedding tables can be challenging
 as they do not fit into the memory of a single GPU.
 
-To combat that challenge, we’ve developed HugeCTR, which is an open-source deep learning framework that is a highly optimized library
+To combat that challenge, we developed HugeCTR, which is an open-source deep learning framework that is a highly optimized library
 written in CUDA C++, specifically for recommender systems. It supports
 an optimized dataloader and is able to scale embedding tables using
-multiple GPUs and nodes. As a result, there’s no embedding table size
+multiple GPUs and nodes. As a result, there is no embedding table size
 limitation. HugeCTR also offers the following:
 
 -  Model oversubscription for training embedding tables with
-   single nodes that don’t fit within the GPU or CPU memory (only
+   single nodes that don't fit within the GPU or CPU memory (only
    required embeddings are prefetched from a parameter server per
    batch).
 -  Asynchronous and multithreaded data pipelines.
@@ -126,6 +126,5 @@ When training is accelerated with HugeCTR, the following happens:
            metrics = sess.evaluation()
            print("[HUGECTR][INFO] iter: {}, {}".format(i, metrics))
 
-Additional examples can be found `here`_.
-
-.. _here: https://github.com/NVIDIA/NVTabular/tree/main/examples/hugectr
+For more information, refer to the `HugeCTR documentation <https://nvidia-merlin.github.io/HugeCTR/main/hugectr_user_guide.html>`_
+or the `HugeCTR repository <https://github.com/NVIDIA-Merlin/HugeCTR>`_ on GitHub.
