@@ -100,7 +100,7 @@ following happens:
    dataloader.
 
   .. code:: python
-  
+
     history = model.fit(train_dataset_tf, epochs=5)
 
 **Note**: If using the NVTabular dataloader for the validation dataset,
@@ -112,5 +112,6 @@ a callback can be used for it.
     validation_callback = KerasSequenceValidater(valid_dataset_tf)
     history = model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=5)
 
-You can find additional examples in our repository such as
-`MovieLens <../examples/getting-started-movielens/>`__.
+You can find additional `examples`_ in our repository.
+
+.. _examples: ../examples/

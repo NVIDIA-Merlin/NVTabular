@@ -59,8 +59,9 @@ To run NVTabular on the cloud using GCP, do the following:
     * **Boot Disk**: Ubuntu version 18.04
     * **Storage**: Local 8xSSD-NVMe
 
-2. [Install the appropriate NVIDIA drivers and CUDA](https://cloud.google.com/compute/docs/gpus/install-drivers-gpu#ubuntu-driver-steps) by running the following commands:
-   ```
+2. Install the NVIDIA drivers and CUDA by running the following commands:
+
+   ```shell
    curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
    sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
    sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
@@ -70,8 +71,12 @@ To run NVTabular on the cloud using GCP, do the following:
    nvidia-smi # Check installation
    ```
 
+   > For more information, refer to [Install GPU drivers](https://cloud.google.com/compute/docs/gpus/install-drivers-gpu)
+   > in the Google Cloud documentation.
+
 3. [Install Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) by running the following commands:
-   ```
+
+   ```shell
    distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
       && curl -s -L https://nvidia-merlin.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
       && curl -s -L https://nvidia-merlin.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
@@ -82,7 +87,8 @@ To run NVTabular on the cloud using GCP, do the following:
    ```
 
 4. Configure the storage as RAID 0 by running the following commands:
-   ```
+
+   ```shell
    sudo mdadm --create --verbose /dev/md0 --level=0 --name=MY_RAID --raid-devices=2 /dev/nvme0n1 /dev/nvme0n2
    sudo mkfs.ext4 -L MY_RAID /dev/md0
    sudo mkdir -p /mnt/raid
@@ -94,7 +100,8 @@ To run NVTabular on the cloud using GCP, do the following:
    ```
 
 5. Run the container by running the following command:
-   ```
+
+   ```shell
    docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
    ```
 
@@ -179,12 +186,12 @@ conda activate nvtabular
 8. Install additional packages, such as TensorFlow or PyTorch
 
 ```
-pip install tensorflow-gpu 
+pip install tensorflow-gpu
 pip install torch
 pip install graphviz
 ```
 
-9. Install Transformer4Rec, torchmetrics and ipykernel 
+9. Install Transformer4Rec, torchmetrics and ipykernel
 
 ```
 conda install -y -c nvidia -c rapidsai -c numba -c conda-forge transformers4rec
@@ -197,6 +204,6 @@ conda install -y torchmetrics ipykernel
 python -m ipykernel install --user --name=nvtabular
 ```
 
-11. You can switch in jupyter lab and run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens). 
+11. You can switch in jupyter lab and run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens).
 
 This workflow enables NVTabular ETL and training with TensorFlow or Pytorch. Deployment with Triton Inference Server will follow soon.
