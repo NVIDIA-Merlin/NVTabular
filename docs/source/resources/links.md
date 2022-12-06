@@ -16,7 +16,7 @@ Talks
 Blog posts
 ----------
 
-We frequently post updates on [our blog](https://medium.com/nvidia-merlin) and on the [NVIDIA Developer News](https://news.developer.nvidia.com/tag/recommendation-systems/).
+We frequently post updates on [our blog](https://medium.com/nvidia-merlin) and on the [NVIDIA Developer Technical Blog](https://developer.nvidia.com/blog?r=1&tags=&categories=recommendation-systems).
 
 Some highlights:
 
