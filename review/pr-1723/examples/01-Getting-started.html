@@ -23,7 +23,9 @@
         <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Advanced NVTabular Workflow" href="02-Advanced-NVTabular-workflow.html" />
+    <link rel="prev" title="NVTabular Example Notebooks" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -49,11 +51,19 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="index.html">Example Notebooks</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#inventory">Inventory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -72,6 +82,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">NVTabular Example Notebooks</a></li>
       <li class="breadcrumb-item active">Getting Started with NVTabular: Process Tabular Data On GPU</li>
       <li class="wy-breadcrumbs-aside">
       </li>
@@ -124,11 +135,10 @@
 </ul>
 </div>
 </div>
-</div>
 <div class="section" id="downloading-the-dataset">
-<h1>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h1>
+<h2>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h2>
 <div class="section" id="movielens25m">
-<h2>MovieLens25M<a class="headerlink" href="#movielens25m" title="Permalink to this headline"></a></h2>
+<h3>MovieLens25M<a class="headerlink" href="#movielens25m" title="Permalink to this headline"></a></h3>
 <p>The <a class="reference external" href="https://grouplens.org/datasets/movielens/25m/">MovieLens25M</a> is a popular dataset for recommender systems and is widely used in academic publications. The dataset contains 25M movie ratings for 62,000 movies given by 162,000 users. Many projects use only the user/item/rating information of MovieLens, but the original dataset provides metadata for the movies, as well. For example, which genres a movie has.</p>
 <p>To streamline obtaining data, we will use a function from Merlin Models.</p>
 <div class="cell docutils container">
@@ -252,9 +262,9 @@ valid = get_lib().read_parquet(f&#39;{input_path}ml-1m/valid.parquet&#39;)
 </div>
 </div>
 <div class="section" id="processing-the-dataset-with-nvtabular">
-<h1>Processing the dataset with NVTabular<a class="headerlink" href="#processing-the-dataset-with-nvtabular" title="Permalink to this headline"></a></h1>
+<h2>Processing the dataset with NVTabular<a class="headerlink" href="#processing-the-dataset-with-nvtabular" title="Permalink to this headline"></a></h2>
 <div class="section" id="defining-the-workflow">
-<h2>Defining the workflow<a class="headerlink" href="#defining-the-workflow" title="Permalink to this headline"></a></h2>
+<h3>Defining the workflow<a class="headerlink" href="#defining-the-workflow" title="Permalink to this headline"></a></h3>
 <p>Before we can leverage <code class="docutils literal notranslate"><span class="pre">NVTabular</span></code>, we need to convert our data to a <code class="docutils literal notranslate"><span class="pre">Merlin</span> <span class="pre">Dataset</span></code>.</p>
 <p>We achieve this by passing the <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> to the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> constructor.</p>
 <div class="cell docutils container">
@@ -300,7 +310,7 @@ train_ds, valid_ds
 </div>
 <p>Let us also add our target to the set of returned columns.</p>
 <p>Additionally, we tag the <code class="docutils literal notranslate"><span class="pre">rating</span></code> column with appropriate tags. This will allow other components of the Merlin Framework to use this information and minimize the code we will have to write to perform complex operations such as training or serving a Deep Learning model.</p>
-<p>If you would like to learn more about using <code class="docutils literal notranslate"><span class="pre">Tags</span></code>, please take a look at <a class="reference external" href="https://github.com/NVIDIA-Merlin/models/blob/main/examples/02-Merlin-Models-and-NVTabular-integration.ipynb">this notebook</a>.</p>
+<p>If you would like to learn more about using <code class="docutils literal notranslate"><span class="pre">Tags</span></code>, take a look at the <a class="reference external" href="https://nvidia-merlin.github.io/models/main/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> notebook in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output += [&#39;rating&#39;] &gt;&gt; nvt.ops.AddMetadata(tags=[Tags.REGRESSION, Tags.TARGET])
@@ -318,7 +328,7 @@ train_ds, valid_ds
 </div>
 </div>
 <div class="section" id="applying-the-workflow-to-the-train-and-validation-sets">
-<h2>Applying the workflow to the train and validation sets<a class="headerlink" href="#applying-the-workflow-to-the-train-and-validation-sets" title="Permalink to this headline"></a></h2>
+<h3>Applying the workflow to the train and validation sets<a class="headerlink" href="#applying-the-workflow-to-the-train-and-validation-sets" title="Permalink to this headline"></a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">NVTabular</span></code> follows the familiar <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> API. We can fit the workflow to our train set and subsequently use it to transform our validation dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -425,12 +435,12 @@ valid_transformed = nvt.Dataset(&#39;valid&#39;, engine=&#39;parquet&#39;)
 </div></div></div>
 </div>
 <p>Let’s finish off this notebook with training a DLRM (a Deep Learning Recommendation Model introduced in <a class="reference external" href="https://arxiv.org/abs/1906.00091">Deep Learning Recommendation Model for Personalization and Recommendation Systems</a>) on our preprocessed data.</p>
-<p>To learn more about the integration between NVTabular and Merlin Models, please see this <a class="reference external" href="https://github.com/NVIDIA-Merlin/models/blob/main/examples/02-Merlin-Models-and-NVTabular-integration.ipynb">example</a> in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
+<p>To learn more about the integration between NVTabular and Merlin Models, please see the <a class="reference external" href="https://nvidia-merlin.github.io/models/main/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
 </div>
 </div>
 <div class="section" id="training-a-dlrm-model">
-<h1>Training a DLRM model<a class="headerlink" href="#training-a-dlrm-model" title="Permalink to this headline"></a></h1>
-<p>We define the DLRM model, whose prediction task is a binary classification. From the <code class="docutils literal notranslate"><span class="pre">schema</span></code>, the categorical features are identified (and embedded) and the target column is also automatically inferred, because of the schema tags. We talk more about the schema in the next <span class="xref myst">example notebook (02)</span>,</p>
+<h2>Training a DLRM model<a class="headerlink" href="#training-a-dlrm-model" title="Permalink to this headline"></a></h2>
+<p>We define the DLRM model, whose prediction task is a binary classification. From the <code class="docutils literal notranslate"><span class="pre">schema</span></code>, the categorical features are identified (and embedded) and the target column is also automatically inferred, because of the schema tags. We talk more about the schema in the next example notebook, <a class="reference internal" href="02-Advanced-NVTabular-workflow.html"><span class="doc std std-doc">Advanced NVTabular Workflow</span></a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tensorflow
@@ -485,6 +495,7 @@ Epoch 3/3
 </div>
 </div>
 </div>
+</div>
 <div class="section" id="conclusion">
 <h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this headline"></a></h2>
 <p>NVTabular exposes operators tailored for processing tabular data at scale with machine learning best practices baked into the library. It tightly integrates with the rest of the Merlin Framework to streamline model construction, training and serving.</p>
@@ -498,7 +509,10 @@ Epoch 3/3
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="NVTabular Example Notebooks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02-Advanced-NVTabular-workflow.html" class="btn btn-neutral float-right" title="Advanced NVTabular Workflow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 
