@@ -23,7 +23,9 @@
         <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Documentation" href="../api.html" />
+    <link rel="prev" title="Advanced NVTabular Workflow" href="02-Advanced-NVTabular-workflow.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -49,11 +51,19 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="index.html">Example Notebooks</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#inventory">Inventory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
 </ul>
@@ -72,6 +82,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">NVTabular Example Notebooks</a></li>
       <li class="breadcrumb-item active">Running on multiple GPUs or on CPU</li>
       <li class="wy-breadcrumbs-aside">
       </li>
@@ -118,9 +129,8 @@
 </ul>
 </div>
 </div>
-</div>
 <div class="section" id="downloading-the-dataset">
-<h1>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h1>
+<h2>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
@@ -148,10 +158,10 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 </div>
 </div>
 <div class="section" id="running-on-multiple-gpus">
-<h1>Running on multiple-GPUs<a class="headerlink" href="#running-on-multiple-gpus" title="Permalink to this headline"></a></h1>
+<h2>Running on multiple-GPUs<a class="headerlink" href="#running-on-multiple-gpus" title="Permalink to this headline"></a></h2>
 <div class="section" id="multi-gpu-and-multi-node-scaling">
-<h2>Multi-GPU and multi-node scaling<a class="headerlink" href="#multi-gpu-and-multi-node-scaling" title="Permalink to this headline"></a></h2>
-<p>NVTabular is built on top off <a class="reference external" href="https://github.com/rapidsai/cudf/">RAPIDS.AI cuDF</a>, <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">dask_cudf</a> and <a class="reference external" href="https://dask.org/">dask</a>.<br><br>
+<h3>Multi-GPU and multi-node scaling<a class="headerlink" href="#multi-gpu-and-multi-node-scaling" title="Permalink to this headline"></a></h3>
+<p>NVTabular is built on top off <a class="reference external" href="https://github.com/rapidsai/cudf/">RAPIDS.AI cuDF</a>, <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/">dask_cudf</a> and <a class="reference external" href="https://dask.org/">dask</a>.<br><br>
 <strong>Dask</strong> is a task-based library for parallel scheduling and execution. Although it is certainly possible to use the task-scheduling machinery directly to implement customized parallel workflows (we do it in NVTabular), most users only interact with Dask through a Dask Collection API. The most popular “collection” API’s include:</p>
 <ul class="simple">
 <li><p>Dask DataFrame: Dask-based version of the Pandas DataFrame/Series API. Note that dask_cudf is just a wrapper around this collection module (dask.dataframe).</p></li>
@@ -163,6 +173,7 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 <p>We use <strong>dask_cudf</strong> to process large datasets as a collection of cuDF dataframes instead of Pandas. CuDF is a GPU DataFrame library for loading, joining, aggregating, filtering, and otherwise manipulating data.
 <br><br>
 <strong>Dask enables easily to schedule tasks for multiple workers: multi-GPU or multi-node. We just need to initialize a Dask cluster (<code class="docutils literal notranslate"><span class="pre">LocalCUDACluster</span></code>) and NVTabular will use the cluster to execute the workflow.</strong></p>
+</div>
 </div>
 <div class="section" id="starting-a-dask-cluster">
 <h2>Starting a dask cluster<a class="headerlink" href="#starting-a-dask-cluster" title="Permalink to this headline"></a></h2>
@@ -623,9 +634,8 @@ example_workflow.transform(valid).to_parquet(&#39;valid&#39;)
 </div>
 </div>
 </div>
-</div>
 <div class="section" id="running-on-cpu">
-<h1>Running on CPU<a class="headerlink" href="#running-on-cpu" title="Permalink to this headline"></a></h1>
+<h2>Running on CPU<a class="headerlink" href="#running-on-cpu" title="Permalink to this headline"></a></h2>
 <p>How do we run the workflow only on the CPU? To do so, we create our Datasets and specify that they should be backed by the CPU. Neither GPU memory, nor GPU processing, will be utilized.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -660,14 +670,18 @@ example_workflow.transform(valid)
 <p><code class="docutils literal notranslate"><span class="pre">nvt.Dataset(...,</span> <span class="pre">cpu=True)</span></code></p>
 </div>
 <div class="section" id="summary">
-<h1>Summary<a class="headerlink" href="#summary" title="Permalink to this headline"></a></h1>
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline"></a></h2>
 <p>NVTabular works seamlessly across a variety of settings. NVTabular operators can be run on the CPU and scale to accommodate multi-GPU or multi-node clusters with minimum amount of configuration required.</p>
+</div>
 </div>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02-Advanced-NVTabular-workflow.html" class="btn btn-neutral float-left" title="Advanced NVTabular Workflow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../api.html" class="btn btn-neutral float-right" title="API Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 

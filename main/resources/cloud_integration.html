@@ -60,13 +60,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Additional Resources</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="support_matrix.html">Support Matrix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="architecture.html">Architecture</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Cloud Integration</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#amazon-web-services">Amazon Web Services</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#google-cloud-platform">Google Cloud Platform</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#databricks">Databricks</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#aws-sagemaker">AWS SageMaker</a></li>
-</ul>
-</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Cloud Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="links.html">Presentations and Blog Posts</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
@@ -158,42 +152,46 @@
 <li><p><strong>Storage</strong>: Local 8xSSD-NVMe</p></li>
 </ul>
 </li>
-<li><p><a class="reference external" href="https://cloud.google.com/compute/docs/gpus/install-drivers-gpu#ubuntu-driver-steps">Install the appropriate NVIDIA drivers and CUDA</a> by running the following commands:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">curl</span> <span class="o">-</span><span class="n">O</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">download</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">compute</span><span class="o">/</span><span class="n">cuda</span><span class="o">/</span><span class="n">repos</span><span class="o">/</span><span class="n">ubuntu1804</span><span class="o">/</span><span class="n">x86_64</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">ubuntu1804</span><span class="o">.</span><span class="n">pin</span>
-<span class="n">sudo</span> <span class="n">mv</span> <span class="n">cuda</span><span class="o">-</span><span class="n">ubuntu1804</span><span class="o">.</span><span class="n">pin</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">apt</span><span class="o">/</span><span class="n">preferences</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">cuda</span><span class="o">-</span><span class="n">repository</span><span class="o">-</span><span class="n">pin</span><span class="o">-</span><span class="mi">600</span>
-<span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">key</span> <span class="n">adv</span> <span class="o">--</span><span class="n">fetch</span><span class="o">-</span><span class="n">keys</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">developer</span><span class="o">.</span><span class="n">download</span><span class="o">.</span><span class="n">nvidia</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">compute</span><span class="o">/</span><span class="n">cuda</span><span class="o">/</span><span class="n">repos</span><span class="o">/</span><span class="n">ubuntu1804</span><span class="o">/</span><span class="n">x86_64</span><span class="o">/</span><span class="mi">7</span><span class="n">fa2af80</span><span class="o">.</span><span class="n">pub</span>
-<span class="n">sudo</span> <span class="n">add</span><span class="o">-</span><span class="n">apt</span><span class="o">-</span><span class="n">repository</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /&quot;</span>
-<span class="n">sudo</span> <span class="n">apt</span> <span class="o">-</span><span class="n">y</span> <span class="n">update</span>
-<span class="n">sudo</span> <span class="n">apt</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">cuda</span>
-<span class="n">nvidia</span><span class="o">-</span><span class="n">smi</span> <span class="c1"># Check installation</span>
+<li><p>Install the NVIDIA drivers and CUDA by running the following commands:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+sudo add-apt-repository <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /&quot;</span>
+sudo apt -y update
+sudo apt -y install cuda
+nvidia-smi <span class="c1"># Check installation</span>
 </pre></div>
 </div>
+<blockquote>
+<div><p>For more information, refer to <a class="reference external" href="https://cloud.google.com/compute/docs/gpus/install-drivers-gpu">Install GPU drivers</a>
+in the Google Cloud documentation.</p>
+</div></blockquote>
 </li>
 <li><p><a class="reference external" href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html">Install Docker</a> by running the following commands:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
-   &amp;&amp; curl -s -L https://nvidia-merlin.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
-   &amp;&amp; curl -s -L https://nvidia-merlin.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">distribution</span><span class="o">=</span><span class="k">$(</span>. /etc/os-release<span class="p">;</span><span class="nb">echo</span> <span class="nv">$ID$VERSION_ID</span><span class="k">)</span> <span class="se">\</span>
+   <span class="o">&amp;&amp;</span> curl -s -L https://nvidia-merlin.github.io/nvidia-docker/gpgkey <span class="p">|</span> sudo apt-key add - <span class="se">\</span>
+   <span class="o">&amp;&amp;</span> curl -s -L https://nvidia-merlin.github.io/nvidia-docker/<span class="nv">$distribution</span>/nvidia-docker.list <span class="p">|</span> sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 sudo apt-get -y update
 sudo apt-get install -y nvidia-docker2
 sudo systemctl restart docker
-sudo docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi # Check Installation
+sudo docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi <span class="c1"># Check Installation</span>
 </pre></div>
 </div>
 </li>
 <li><p>Configure the storage as RAID 0 by running the following commands:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">mdadm</span> <span class="o">--</span><span class="n">create</span> <span class="o">--</span><span class="n">verbose</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span> <span class="o">--</span><span class="n">level</span><span class="o">=</span><span class="mi">0</span> <span class="o">--</span><span class="n">name</span><span class="o">=</span><span class="n">MY_RAID</span> <span class="o">--</span><span class="n">raid</span><span class="o">-</span><span class="n">devices</span><span class="o">=</span><span class="mi">2</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">nvme0n1</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">nvme0n2</span>
-<span class="n">sudo</span> <span class="n">mkfs</span><span class="o">.</span><span class="n">ext4</span> <span class="o">-</span><span class="n">L</span> <span class="n">MY_RAID</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">md0</span>
-<span class="n">sudo</span> <span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
-<span class="n">sudo</span> <span class="n">mount</span> <span class="n">LABEL</span><span class="o">=</span><span class="n">MY_RAID</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
-<span class="n">sudo</span> <span class="n">chmod</span> <span class="o">-</span><span class="n">R</span> <span class="mi">777</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>sudo mdadm --create --verbose /dev/md0 --level<span class="o">=</span><span class="m">0</span> --name<span class="o">=</span>MY_RAID --raid-devices<span class="o">=</span><span class="m">2</span> /dev/nvme0n1 /dev/nvme0n2
+sudo mkfs.ext4 -L MY_RAID /dev/md0
+sudo mkdir -p /mnt/raid
+sudo mount <span class="nv">LABEL</span><span class="o">=</span>MY_RAID /mnt/raid
+sudo chmod -R <span class="m">777</span> /mnt/raid
 
 <span class="c1"># Copy data to RAID</span>
-<span class="n">cp</span> <span class="o">-</span><span class="n">r</span> <span class="n">data</span><span class="o">/</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span><span class="o">/</span><span class="n">data</span><span class="o">/</span>
+cp -r data/ /mnt/raid/data/
 </pre></div>
 </div>
 </li>
 <li><p>Run the container by running the following command:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">--</span><span class="n">rm</span> <span class="o">-</span><span class="n">it</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8888</span><span class="p">:</span><span class="mi">8888</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8797</span><span class="p">:</span><span class="mi">8787</span> <span class="o">-</span><span class="n">p</span> <span class="mi">8796</span><span class="p">:</span><span class="mi">8786</span> <span class="o">--</span><span class="n">ipc</span><span class="o">=</span><span class="n">host</span> <span class="o">--</span><span class="n">cap</span><span class="o">-</span><span class="n">add</span> <span class="n">SYS_PTRACE</span> <span class="o">-</span><span class="n">v</span> <span class="o">/</span><span class="n">mnt</span><span class="o">/</span><span class="n">raid</span><span class="p">:</span><span class="o">/</span><span class="n">raid</span> <span class="n">nvcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">nvidia</span><span class="o">/</span><span class="n">nvtabular</span><span class="p">:</span><span class="mf">0.3</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>docker run --gpus all --rm -it -p <span class="m">8888</span>:8888 -p <span class="m">8797</span>:8787 -p <span class="m">8796</span>:8786 --ipc<span class="o">=</span>host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
 </pre></div>
 </div>
 </li>
@@ -269,7 +267,7 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
 <ol class="arabic simple" start="8">
 <li><p>Install additional packages, such as TensorFlow or PyTorch</p></li>
 </ol>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">tensorflow</span><span class="o">-</span><span class="n">gpu</span> 
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">tensorflow</span><span class="o">-</span><span class="n">gpu</span>
 <span class="n">pip</span> <span class="n">install</span> <span class="n">torch</span>
 <span class="n">pip</span> <span class="n">install</span> <span class="n">graphviz</span>
 </pre></div>
