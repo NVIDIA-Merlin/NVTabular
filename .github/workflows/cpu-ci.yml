@@ -34,9 +34,6 @@ jobs:
         python -m pip install --upgrade pip setuptools==59.4.0 wheel tox pybind11
         python -m pip uninstall protobuf -y
         python -m pip install --no-binary=protobuf protobuf
-    - name: Lint with flake8, black, isort, interrogate, codespell
-      run: |
-        tox -e lint
     - name: Run tests
       run: |
         ref_type=${{ github.ref_type }}
