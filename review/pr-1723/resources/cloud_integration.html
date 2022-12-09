@@ -58,10 +58,10 @@
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Additional Resources</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="support_matrix.html">Support Matrix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="architecture.html">Architecture</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Cloud Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://developer.nvidia.com/nvidia-merlin/nvtabular">developer.nvidia.com page</a></li>
 <li class="toctree-l2"><a class="reference internal" href="links.html">Presentations and Blog Posts</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
 </ul>
@@ -94,12 +94,14 @@
              
   <div class="section" id="cloud-integration">
 <h1>Cloud Integration<a class="headerlink" href="#cloud-integration" title="Permalink to this headline"></a></h1>
-<p>You can run NVTabular on the cloud using:</p>
+<div class="contents local topic" id="contents">
 <ul class="simple">
-<li><p><a class="reference internal" href="#amazon-web-services"><span class="std std-doc">Amazon Web Services (AWS)</span></a></p></li>
-<li><p><a class="reference internal" href="#google-cloud-platform"><span class="std std-doc">Google Cloud Platform (GCP)</span></a></p></li>
-<li><p><a class="reference internal" href="#databricks"><span class="std std-doc">Databricks</span></a></p></li>
+<li><p><a class="reference internal" href="#amazon-web-services" id="id1">Amazon Web Services</a></p></li>
+<li><p><a class="reference internal" href="#google-cloud-platform" id="id2">Google Cloud Platform</a></p></li>
+<li><p><a class="reference internal" href="#databricks" id="id3">Databricks</a></p></li>
+<li><p><a class="reference internal" href="#aws-sagemaker" id="id4">AWS SageMaker</a></p></li>
 </ul>
+</div>
 <div class="section" id="amazon-web-services">
 <h2>Amazon Web Services<a class="headerlink" href="#amazon-web-services" title="Permalink to this headline"></a></h2>
 <p>Amazon Web Services (AWS) offers <a class="reference external" href="https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing">EC2 instances with NVIDIA GPU support</a>. NVTabular can be used with 1x, 4x, or 8x GPU instances or multiple nodes. We’re using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Check out the $/h for this instance type and adjust the type.</p>
