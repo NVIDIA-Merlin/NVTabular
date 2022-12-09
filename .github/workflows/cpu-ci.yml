@@ -50,6 +50,10 @@ jobs:
     - name: Generate package for pypi
       run: |
         python setup.py sdist bdist_wheel
+    - name: Check package doesn't contain any URLs in require_dist
+      run: |
+        pip install pkginfo
+        pkginfo -f requires_dist dist/*.whl | grep --invert-match git+http
     - name: Upload pypi artifacts to github
       uses: actions/upload-artifact@v3
       with:
