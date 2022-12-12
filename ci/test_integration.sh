@@ -29,11 +29,3 @@ cd /nvtabular/
 container=$1
 config="-rsx --devices $2"
 
-# Run tests for training containers
-pytest $config tests/integration/test_criteo.py
-pytest $config tests/integration/test_movielens.py
-
-# Run tests for specific containers
-if [ "$container" == "merlin-hugectr" ]; then
-  pytest $config tests/integration/test_nvt_hugectr.py
-fi
