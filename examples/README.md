@@ -11,6 +11,7 @@ In this library, we provide a collection of Jupyter notebooks, which demonstrate
 - [Running on multiple GPUs or on CPU](03-Running-on-multiple-GPUs-or-on-CPU.ipynb): Run NVTabular in different environments, such as multi-GPU or CPU-only mode.
 
 In addition, NVTabular is used in many of our examples in other Merlin libraries. You can explore more complex processing pipelines in following examples:
+
 - [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples)
 - [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/main/examples)
 - [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples)
