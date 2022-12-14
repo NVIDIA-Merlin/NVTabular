@@ -30,7 +30,7 @@ except ImportError:
 import pandas as pd
 
 from merlin.dag import Graph
-from merlin.dag.executors import DaskExecutor
+from merlin.dag.executors import DaskExecutor, LocalExecutor
 from merlin.io import Dataset
 from merlin.schema import Schema
 from nvtabular.ops import StatOperator
@@ -248,6 +248,12 @@ class Workflow:
             base_dataset=dataset.base_dataset,
             schema=self.output_schema,
         )
+
+    def _transform_df(self, df):
+        if not self.graph.output_schema:
+            raise ValueError("no output schema")
+
+        return LocalExecutor().transform(df, self.output_node, self.output_dtypes)
 
     def save(self, path):
         """Save this workflow to disk
