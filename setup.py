@@ -79,7 +79,6 @@ def read_requirements(req_path, filename):
 install_requires = read_requirements("requirements", "base.txt")
 extras_require = {
     "gpu": read_requirements("requirements", "gpu.txt"),
-    "docs": read_requirements("requirements", "docs.txt"),
 }
 
 with open("README.md", encoding="utf8") as readme_file:
