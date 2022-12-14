@@ -109,6 +109,7 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     zip_safe=False,
+    python_requires=">=3.8",
     install_requires=requirements["cpu"],
     extras_require={
         **requirements,
