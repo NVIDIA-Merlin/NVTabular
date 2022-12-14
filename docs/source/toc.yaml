@@ -9,12 +9,12 @@ subtrees:
       - file: examples/index.md
         title: Example Notebooks
         entries:
-        - file: examples/01-Getting-started.ipynb
-          title: Getting Started with NVTabular
-        - file: examples/02-Advanced-NVTabular-workflow.ipynb
-          title: Advanced NVTabular Workflow
-        - file: examples/03-Running-on-multiple-GPUs-or-on-CPU.ipynb
-          title: Run on multi-GPU or CPU-only
+          - file: examples/01-Getting-started.ipynb
+            title: Getting Started with NVTabular
+          - file: examples/02-Advanced-NVTabular-workflow.ipynb
+            title: Advanced NVTabular Workflow
+          - file: examples/03-Running-on-multiple-GPUs-or-on-CPU.ipynb
+            title: Run on multi-GPU or CPU-only
       - file: api
         title: API Documentation
       - file: resources/index
