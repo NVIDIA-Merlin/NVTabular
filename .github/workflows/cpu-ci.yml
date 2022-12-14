@@ -50,12 +50,9 @@ jobs:
     - name: Generate package for pypi
       run: |
         python setup.py sdist bdist_wheel
-    - name: Check package doesn't contain any URLs in require_dist
+    - name: Check package distribution is valid
       run: |
-        pip install pkginfo
-        pkginfo -f requires_dist dist/*.whl \
-          | grep "@" \
-          && (echo "::error Found direct reference(s) in package requires_dist ( https://peps.python.org/pep-0440/#direct-references ). Please use only normal version specifiers."; exit 1)
+        ci/check_dist.sh
     - name: Upload pypi artifacts to github
       uses: actions/upload-artifact@v3
       with:
