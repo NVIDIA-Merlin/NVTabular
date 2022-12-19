@@ -540,6 +540,51 @@ def test_categorify_max_size(max_emb_size):
     assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
 
 
+def test_categorify_max_size_combo():
+    df = dispatch.make_df(
+        {
+            "Author": [
+                "User_A",
+                None,
+                "User_B",
+                "User_C",
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_D",
+                "User_F",
+                "User_F",
+            ],
+            "Engaging_User": [
+                "User_B",
+                None,
+                "User_A",
+                "User_D",
+                "User_B",
+                None,
+                "User_A",
+                "User_D",
+                "User_N",
+                "User_F",
+                "User_E",
+            ],
+        }
+    )
+
+    cat_names = [["Author", "Engaging_User"]]
+    dataset = nvt.Dataset(df)
+    max_emb_size = 4
+    cat_features = cat_names >> ops.Categorify(max_size=max_emb_size, encode_type="combo")
+    processor = nvt.Workflow(cat_features)
+    processor.fit(dataset)
+
+    # Check that unique.*.parquet makes sense
+    df_unique = pd.read_parquet("./categories/unique.Author_Engaging_User.parquet")
+    assert len(df_unique) == max_emb_size
+    assert df_unique["Author_Engaging_User_size"].sum() == len(df)
+
+
 def test_categorify_single_table():
     df = dispatch.make_df(
         {
@@ -664,7 +709,7 @@ def test_categorify_max_size_null_iloc_check():
     # read back the unique categories
     unique_C2 = pd.read_parquet("./categories/unique.C2.parquet")
     assert str(unique_C2["C2"].iloc[0]) in ["<NA>", "nan"]
-    assert unique_C2["C2_size"].iloc[0] == 0
+    assert unique_C2["C2_size"].iloc[0] == 5
 
 
 @pytest.mark.parametrize("cpu", _CPU)

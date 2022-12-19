@@ -1071,6 +1071,7 @@ def _combo_encode(df, name_size_multi: str, col_selector: ColumnSelector, option
     # Combo-encoding utility (used by _write_uniques)
 
     # Account for max_size and num_buckets
+    add_nulls = 0
     if options.max_size:
         max_emb_size = options.max_size
         if isinstance(options.max_size, dict):
@@ -1082,16 +1083,19 @@ def _combo_encode(df, name_size_multi: str, col_selector: ColumnSelector, option
                 raise NotImplementedError(
                     "Cannot specify num_buckets as a dictionary for 'combo' encoding."
                 )
-            nlargest = max_emb_size - options.num_buckets - 1
+            nlargest = max_emb_size - options.num_buckets
         else:
-            nlargest = max_emb_size - 1
+            nlargest = max_emb_size
 
         if nlargest <= 0:
             raise ValueError("`nlargest` cannot be 0 or negative")
 
         if nlargest < len(df):
-            # sort based on count (name_size_multi column)
-            df = df.nlargest(n=nlargest, columns=name_size_multi)
+            # df should already be sorted by `name_size_multi`.
+            # Must update `add_nulls` to include the rows
+            # that will now be included in the null mapping
+            add_nulls = df[nlargest:][name_size_multi].sum()
+            df = df[:nlargest]
 
     # Deal with nulls
     has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
@@ -1102,7 +1106,8 @@ def _combo_encode(df, name_size_multi: str, col_selector: ColumnSelector, option
         null_data[name_size_multi] = [0]
         null_df = type(df)(null_data)
         df = _concat([null_df, df], ignore_index=True)
-
+    if add_nulls:
+        df.at[0, name_size_multi] += add_nulls
     return df
 
 
@@ -1137,8 +1142,11 @@ def _joint_encode(df, col_selector: ColumnSelector, options: FitOptions):
             if nlargest < len(df) and name_size in df:
                 # remove NAs from column, we have na count from above.
                 df = df.dropna()  # TODO: This seems dangerous - Check this
-                # sort based on count (name_size column)
-                df = df.nlargest(n=nlargest, columns=name_size)
+                # df should already be sorted by `name_size`.
+                # Must update `null_size` to include the rows
+                # that will now be included in the null mapping
+                null_size += df[nlargest:][name_size].sum()
+                df = df[:nlargest]
                 new_cols[col] = _concat(
                     [nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
