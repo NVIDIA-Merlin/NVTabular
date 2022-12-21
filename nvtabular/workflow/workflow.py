@@ -255,13 +255,17 @@ class Workflow:
 
         return LocalExecutor().transform(df, self.output_node, self.output_dtypes)
 
-    def save(self, path):
+    def save(self, path, modules_byvalue=[]):
         """Save this workflow to disk
 
         Parameters
         ----------
         path: str
             The path to save the workflow to
+        modules_byvalue:
+            A list of modules that should be serialized by value — this 
+            should include any modules that will not be available on
+            the host where this workflow is ultimately deserialized.
         """
         # avoid a circular import getting the version
         from nvtabular import __version__ as nvt_version
@@ -289,6 +293,10 @@ class Workflow:
                 },
                 o,
             )
+
+        # direct cloudpickle to serialize selected modules by value
+        for m in modules_byvalue:
+            cloudpickle.register_pickle_by_value(m)
 
         # dump out the full workflow (graph/stats/operators etc) using cloudpickle
         with fs.open(fs.sep.join([path, "workflow.pkl"]), "wb") as o:
