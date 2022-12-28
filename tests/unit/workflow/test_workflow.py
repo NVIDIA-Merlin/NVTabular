@@ -669,25 +669,30 @@ def test_workflow_saved_schema(tmpdir):
         assert node.input_schema is not None
         assert node.output_schema is not None
 
+
 def test_workflow_infer_modules_byvalue(tmp_path):
     module_fn = tmp_path / "not_a_real_module.py"
     sys.path.append(str(tmp_path))
 
     with open(module_fn, "w") as module_f:
         module_f.write("def identity(col):\n    return col")
-    
+
     import not_a_real_module
 
     f_0 = not_a_real_module.identity
-    f_1 = lambda x: not_a_real_module.identity(x)
-    f_2 = lambda x: f_0(x)
+    f_1 = lambda x: not_a_real_module.identity(x)  # noqa
+    f_2 = lambda x: f_0(x)  # noqa
 
     try:
-        for fn, f in {"not_a_real_module.identity" : f_0, 
-                      "lambda x: not_a_real_module.identity(x)" : f_1, 
-                      "lambda x: f_0(x)" : f_2}.items():
-            assert(not_a_real_module in Workflow._getmodules([f]), f"inferred module dependencies from {fn}")
-    
+        for fn, f in {
+            "not_a_real_module.identity": f_0,
+            "lambda x: not_a_real_module.identity(x)": f_1,
+            "lambda x: f_0(x)": f_2,
+        }.items():
+            assert not_a_real_module in Workflow._getmodules(
+                [f]
+            ), f"inferred module dependencies from {fn}"
+
     finally:
         sys.path.pop()
         del sys.modules["not_a_real_module"]
@@ -699,12 +704,10 @@ def test_workflow_explicit_modules_byvalue(tmp_path):
 
     with open(module_fn, "w") as module_f:
         module_f.write("def identity(col):\n    return col")
-    
+
     import not_a_real_module
 
-    wf = nvt.Workflow(
-        ["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity)
-    )
+    wf = nvt.Workflow(["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity))
 
     wf.save(str(tmp_path / "identity-workflow"), modules_byvalue=[not_a_real_module])
 
@@ -714,18 +717,17 @@ def test_workflow_explicit_modules_byvalue(tmp_path):
 
     Workflow.load(str(tmp_path / "identity-workflow"))
 
+
 def test_workflow_auto_infer_modules_byvalue(tmp_path):
     module_fn = tmp_path / "not_a_real_module.py"
     sys.path.append(str(tmp_path))
 
     with open(module_fn, "w") as module_f:
         module_f.write("def identity(col):\n    return col")
-    
+
     import not_a_real_module
 
-    wf = nvt.Workflow(
-        ["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity)
-    )
+    wf = nvt.Workflow(["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity))
 
     wf.save(str(tmp_path / "identity-workflow"), modules_byvalue="auto")
 
@@ -734,4 +736,3 @@ def test_workflow_auto_infer_modules_byvalue(tmp_path):
     os.unlink(str(tmp_path / "not_a_real_module.py"))
 
     Workflow.load(str(tmp_path / "identity-workflow"))
-

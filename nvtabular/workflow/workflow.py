@@ -19,8 +19,8 @@ import json
 import logging
 import sys
 import time
-import warnings
 import types
+import warnings
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
@@ -33,11 +33,11 @@ except ImportError:
 import pandas as pd
 
 from merlin.dag import Graph
-from merlin.dag.node import iter_nodes
 from merlin.dag.executors import DaskExecutor, LocalExecutor
+from merlin.dag.node import iter_nodes
 from merlin.io import Dataset
 from merlin.schema import Schema
-from nvtabular.ops import StatOperator, LambdaOp
+from nvtabular.ops import LambdaOp, StatOperator
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
@@ -262,12 +262,12 @@ class Workflow:
     @classmethod
     def _getmodules(cls, fs):
         """
-        Returns an imprecise but useful approximation of the list of modules 
-        necessary to execute a given list of functions.  This approximation is 
+        Returns an imprecise but useful approximation of the list of modules
+        necessary to execute a given list of functions.  This approximation is
         sound (all modules listed are required by the supplied functions) but not
         necessarily complete (not all modules required will necessarily be returned).
 
-        For function literals (lambda expressions), this returns 
+        For function literals (lambda expressions), this returns
             1. the names of every module referenced in the lambda expression, e.g.,
                `m` for `lambda x: m.f(x)` and
             2. the names of the declaring module for every function referenced in
@@ -286,10 +286,12 @@ class Workflow:
             exclusions = exclusions | sys.stdlib_module_names
 
         for f in fs:
-            if f.__name__ == '<lambda>':
-                closurevars = inspect.getclosurevars(f)
-                for vars in [inspect.getclosurevars(f).globals, inspect.getclosurevars(f).nonlocals]:
-                    for name, val in vars.items():
+            if f.__name__ == "<lambda>":
+                for closurevars in [
+                    inspect.getclosurevars(f).globals,
+                    inspect.getclosurevars(f).nonlocals,
+                ]:
+                    for name, val in closurevars.items():
                         print(f"{name} = {val}")
                         if isinstance(val, types.ModuleType):
                             result.add(val)
@@ -312,12 +314,12 @@ class Workflow:
         path: str
             The path to save the workflow to
         modules_byvalue:
-            A list of modules that should be serialized by value. This 
+            A list of modules that should be serialized by value. This
             should include any modules that will not be available on
             the host where this workflow is ultimately deserialized.
-            
-            In lieu of an explicit list, pass None to serialize all modules 
-            by reference or pass "auto" to use a heuristic to infer which 
+
+            In lieu of an explicit list, pass None to serialize all modules
+            by reference or pass "auto" to use a heuristic to infer which
             modules to serialize by value.
         """
         # avoid a circular import getting the version
@@ -352,13 +354,17 @@ class Workflow:
             modules_byvalue = []
         elif modules_byvalue == "auto":
             l_nodes = self.graph.get_nodes_by_op_type(
-              list(iter_nodes([self.graph.output_node])), LambdaOp)
-            
+                list(iter_nodes([self.graph.output_node])), LambdaOp
+            )
+
             try:
                 modules_byvalue = Workflow._getmodules([ln.op.f for ln in l_nodes])
             except RuntimeError as ex:
-                warnings.warn(f"Failed to automatically infer modules to serialize by value.  Reason given was \"{str(ex)}\"")
-            
+                warnings.warn(
+                    "Failed to automatically infer modules to serialize by value. "
+                    f'Reason given was "{str(ex)}"'
+                )
+
         try:
             for m in modules_byvalue:
                 if isinstance(m, types.ModuleType):
@@ -366,7 +372,9 @@ class Workflow:
                 elif isinstance(m, str) and m in sys.modules:
                     cloudpickle.register_pickle_by_value(sys.modules[m])
         except RuntimeError as ex:
-            warnings.warn(f"Failed to register modules to serialize by value.  Reason given was \"{str(ex)}\"")
+            warnings.warn(
+                f'Failed to register modules to serialize by value.  Reason given was "{str(ex)}"'
+            )
 
         # dump out the full workflow (graph/stats/operators etc) using cloudpickle
         with fs.open(fs.sep.join([path, "workflow.pkl"]), "wb") as o:
