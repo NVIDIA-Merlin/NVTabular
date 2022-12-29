@@ -157,9 +157,7 @@ class TritonPythonModel:
 
                 # Call forward function to get the predictions
                 # Forward function should return a dict with the "predictions" bucket
-                out = self.model(input_dict, training=False)
-                # Get the predictions from the out
-                pred = out
+                pred = self.model(input_dict, training=False)
                 if pred is None:
                     raise KeyError(
                         "output of the forward function should have a bucket named as predictions"
