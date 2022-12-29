@@ -158,11 +158,11 @@ class TritonPythonModel:
                 # Call forward function to get the predictions
                 # Forward function should return a dict with the "predictions" bucket
                 out = self.model(input_dict, training=False)
-                if not isinstance(out, dict):
-                    raise ValueError("output of the forward function should be a dict")
+                # if not isinstance(out, dict):
+                # raise ValueError("output of the forward function should be a dict")
 
                 # Get the predictions from the out
-                pred = out.get("predictions")
+                pred = out
                 if pred is None:
                     raise KeyError(
                         "output of the forward function should have a bucket named as predictions"
