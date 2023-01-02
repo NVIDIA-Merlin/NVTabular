@@ -108,12 +108,12 @@
 
 
 <div class="viewcode-block" id="Operator"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator">[docs]</a><span class="k">class</span> <span class="nc">Operator</span><span class="p">(</span><span class="n">BaseOperator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for all operator classes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="Operator.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Transform the dataframe by applying this operator to the set of input columns</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transform the dataframe by applying this operator to the set of input columns</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        -----------</span>
@@ -132,7 +132,7 @@
 <div class="viewcode-block" id="Operator.inference_initialize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.inference_initialize">[docs]</a>    <span class="k">def</span> <span class="nf">inference_initialize</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">model_config</span><span class="p">:</span> <span class="nb">dict</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Operator</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;Configures this operator for use in inference. May return a different operator to use</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Configures this operator for use in inference. May return a different operator to use</span>
 <span class="sd">        instead of the one configured for use during training&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="kc">None</span></div>
 

@@ -118,7 +118,7 @@
 
 
 <div class="viewcode-block" id="TargetEncoding"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding">[docs]</a><span class="k">class</span> <span class="nc">TargetEncoding</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Target encoding is a common feature-engineering technique for</span>
 <span class="sd">    categorical columns in tabular datasets. For each categorical group,</span>
 <span class="sd">    the mean of a continuous target column is calculated, and the</span>
@@ -502,7 +502,7 @@
 
 
 <span class="k">def</span> <span class="nf">_add_fold</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">kfold</span><span class="p">,</span> <span class="n">fold_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Deterministically computes a &#39;__fold__&#39; column, given an optional</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Deterministically computes a &#39;__fold__&#39; column, given an optional</span>
 <span class="sd">    random seed&quot;&quot;&quot;</span>
     <span class="n">typ</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min_scalar_type</span><span class="p">(</span><span class="n">kfold</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fold_seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

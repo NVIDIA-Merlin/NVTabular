@@ -129,7 +129,7 @@
 
 
 <div class="viewcode-block" id="Workflow"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow">[docs]</a><span class="k">class</span> <span class="nc">Workflow</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The Workflow class applies a graph of operations onto a dataset, letting you transform</span>
 <span class="sd">    datasets to do feature engineering and preprocessing operations. This class follows an API</span>
 <span class="sd">    similar to Transformers in sklearn: we first ``fit`` the workflow by calculating statistics</span>
@@ -160,7 +160,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">DaskExecutor</span><span class="p">(</span><span class="n">client</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Workflow.transform"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Transforms the dataset by applying the graph of operators to it. Requires the ``fit``</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transforms the dataset by applying the graph of operators to it. Requires the ``fit``</span>
 <span class="sd">        method to have already been called, or calculated statistics to be loaded from disk</span>
 
 <span class="sd">        This method returns a Dataset object, with the transformations lazily loaded. None</span>
@@ -180,7 +180,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_impl</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Workflow.fit_schema"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit_schema">[docs]</a>    <span class="k">def</span> <span class="nf">fit_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Fits the schema onto the workflow, computing the Schema for each node in the Workflow Graph</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fits the schema onto the workflow, computing the Schema for each node in the Workflow Graph</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -219,7 +219,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">_input_columns</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Workflow.remove_inputs"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.remove_inputs">[docs]</a>    <span class="k">def</span> <span class="nf">remove_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_cols</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Removes input columns from the workflow.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes input columns from the workflow.</span>
 
 <span class="sd">        This is useful for the case of inference where you might need to remove label columns</span>
 <span class="sd">        from the processed set.</span>
@@ -242,7 +242,7 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
 <div class="viewcode-block" id="Workflow.fit"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Calculates statistics for this workflow on the input dataset</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates statistics for this workflow on the input dataset</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        -----------</span>
@@ -297,7 +297,7 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
 <div class="viewcode-block" id="Workflow.fit_transform"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit_transform">[docs]</a>    <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Convenience method to both fit the workflow and transform the dataset in a single</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convenience method to both fit the workflow and transform the dataset in a single</span>
 <span class="sd">        call. Equivalent to calling ``workflow.fit(dataset)`` followed by</span>
 <span class="sd">        ``workflow.transform(dataset)``</span>
 
@@ -341,7 +341,7 @@
         <span class="k">return</span> <span class="n">LocalExecutor</span><span class="p">()</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_node</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_dtypes</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Workflow.save"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Save this workflow to disk</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save this workflow to disk</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -381,7 +381,7 @@
 
 <div class="viewcode-block" id="Workflow.load"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.load">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Load up a saved workflow object from disk</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load up a saved workflow object from disk</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -438,7 +438,7 @@
         <span class="k">return</span> <span class="n">workflow</span></div>
 
 <div class="viewcode-block" id="Workflow.clear_stats"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.clear_stats">[docs]</a>    <span class="k">def</span> <span class="nf">clear_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Removes calculated statistics from each node in the workflow graph</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes calculated statistics from each node in the workflow graph</span>
 
 <span class="sd">        See Also</span>
 <span class="sd">        --------</span>

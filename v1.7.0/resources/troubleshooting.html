@@ -132,7 +132,7 @@ issue</a>.</p>
 <p>The row group <strong>memory</strong> size of the parquet files should be smaller than the <strong>part_size</strong> that
 you set for the NVTabular dataset such as <code class="docutils literal notranslate"><span class="pre">nvt.Dataset(TRAIN_DIR,</span> <span class="pre">engine=&quot;parquet&quot;,</span> <span class="pre">part_size=&quot;1000MB&quot;)</span></code>. To determine how much memory a row group will hold, you can slice your dataframe to a specific number of rows and use the following function to get the memory usage in bytes. You can then set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size that is close to 128MB is recommended.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_memory_usage</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;this function is a workaround for obtaining memory usage lists</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;this function is a workaround for obtaining memory usage lists</span>
 <span class="sd">    in cudf0.16. This can be deleted and replaced with `df.memory_usage(deep= True, index=True).sum()`</span>
 <span class="sd">    when using cudf 0.17, which has been fixed as noted on https://github.com/rapidsai/cudf/pull/6549)&quot;&quot;&quot;</span>
     <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>

@@ -121,7 +121,7 @@
 
 
 <div class="viewcode-block" id="ColumnSimilarity"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ColumnSimilarity.html#nvtabular.ops.ColumnSimilarity">[docs]</a><span class="k">class</span> <span class="nc">ColumnSimilarity</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculates the similarity between two columns using tf-idf, cosine or</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the similarity between two columns using tf-idf, cosine or</span>
 <span class="sd">    inner product as the distance metric. For each row, this calculates the distance</span>
 <span class="sd">    between the two columns by looking up features for those columns in a sparse matrix,</span>
 <span class="sd">    and then computing the distance between the rows of the feature matrices.</span>
@@ -228,7 +228,7 @@
 
 
 <span class="k">def</span> <span class="nf">row_wise_inner_product</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">a_features</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">b_features</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Computes the similarity between two columns, by computing the inner product</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the similarity between two columns, by computing the inner product</span>
 <span class="sd">    along two sparse feature matrices . Both a_features and b_features are</span>
 <span class="sd">    required to be in canonical CSR format.</span>
 

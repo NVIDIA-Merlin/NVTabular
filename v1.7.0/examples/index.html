@@ -101,11 +101,11 @@ Each example provides additional information about NVTabular’s features.</p>
 <ol class="arabic">
 <li><p>Use the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/conda/environments">environment files</a> that have been provided to install the CUDA Toolkit (11.0 or 11.2).</p></li>
 <li><p>Clone the NVTabular repo and run the following commands from the root directory:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda env create -f<span class="o">=</span>conda/environments/nvtabular_dev_cuda11.2.yml
-conda activate nvtabular_dev_11.2
-python -m ipykernel install --user --name<span class="o">=</span>nvt
-pip install -e .
-jupyter notebook
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="o">=</span>conda/environments/nvtabular_dev_cuda11.2.yml
+conda<span class="w"> </span>activate<span class="w"> </span>nvtabular_dev_11.2
+python<span class="w"> </span>-m<span class="w"> </span>ipykernel<span class="w"> </span>install<span class="w"> </span>--user<span class="w"> </span>--name<span class="o">=</span>nvt
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+jupyter<span class="w"> </span>notebook
 </pre></div>
 </div>
 <p>When opening a notebook, be sure to select <code class="docutils literal notranslate"><span class="pre">nvt</span></code> from the <code class="docutils literal notranslate"><span class="pre">Kernel-&gt;Change</span> <span class="pre">Kernel</span></code> menu.</p>
@@ -157,7 +157,7 @@ Depending on which example you want to run, you should use any one of these Dock
 <p>To run the example notebooks using Docker containers, do the following:</p>
 <ol class="arabic">
 <li><p>Pull the container by running the following command:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker run --gpus all --rm -it -p <span class="m">8888</span>:8888 -p <span class="m">8797</span>:8787 -p <span class="m">8796</span>:8786 --ipc<span class="o">=</span>host &lt;docker container&gt; /bin/bash
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span>-p<span class="w"> </span><span class="m">8888</span>:8888<span class="w"> </span>-p<span class="w"> </span><span class="m">8797</span>:8787<span class="w"> </span>-p<span class="w"> </span><span class="m">8796</span>:8786<span class="w"> </span>--ipc<span class="o">=</span>host<span class="w"> </span>&lt;docker<span class="w"> </span>container&gt;<span class="w"> </span>/bin/bash
 </pre></div>
 </div>
 <p><strong>NOTES</strong>:</p>
@@ -174,14 +174,14 @@ Your shell prompt should look similar to the following example:</p>
 </div>
 </li>
 <li><p>Start the jupyter-lab server by running the following command:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>jupyter-lab --allow-root --ip<span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>jupyter-lab<span class="w"> </span>--allow-root<span class="w"> </span>--ip<span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span>
 </pre></div>
 </div>
 <p>View the messages in your terminal to identify the URL for JupyterLab.
 The messages in your terminal show similar lines to the following example:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Or copy and paste one of these URLs:
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Or<span class="w"> </span>copy<span class="w"> </span>and<span class="w"> </span>paste<span class="w"> </span>one<span class="w"> </span>of<span class="w"> </span>these<span class="w"> </span>URLs:
 http://2efa5b50b909:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
-or http://127.0.0.1:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+or<span class="w"> </span>http://127.0.0.1:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
 </pre></div>
 </div>
 </li>
