@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'nvcr.io/nvstaging/merlin/merlin-ci-runner-wrapper'
-            label 'merlin_gpu'
+            label 'merlin_gpu_gcp || merlin_gpu'
             registryCredentialsId 'jawe-nvcr-io'
             registryUrl 'https://nvcr.io'
             args "--runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all --shm-size '256m'"
