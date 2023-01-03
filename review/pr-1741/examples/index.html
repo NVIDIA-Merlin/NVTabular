@@ -121,9 +121,9 @@ Depending on which example you want to run, you should use any one of these Dock
 <p>To run the example notebooks using Docker containers, perform the following steps:</p>
 <ol class="arabic">
 <li><p>Pull and start the container by running the following command:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>docker run --gpus all --rm -it <span class="se">\</span>
-  -p <span class="m">8888</span>:8888 -p <span class="m">8797</span>:8787 -p <span class="m">8796</span>:8786 --ipc<span class="o">=</span>host <span class="se">\</span>
-  &lt;docker container&gt; /bin/bash
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="m">8888</span>:8888<span class="w"> </span>-p<span class="w"> </span><span class="m">8797</span>:8787<span class="w"> </span>-p<span class="w"> </span><span class="m">8796</span>:8786<span class="w"> </span>--ipc<span class="o">=</span>host<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>&lt;docker<span class="w"> </span>container&gt;<span class="w"> </span>/bin/bash
 </pre></div>
 </div>
 <p>The container opens a shell when the run command execution is completed.
@@ -133,14 +133,14 @@ Your shell prompt should look similar to the following example:</p>
 </div>
 </li>
 <li><p>Start the JupyterLab server by running the following command:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>jupyter-lab --allow-root --ip<span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>jupyter-lab<span class="w"> </span>--allow-root<span class="w"> </span>--ip<span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span>
 </pre></div>
 </div>
 <p>View the messages in your terminal to identify the URL for JupyterLab.
 The messages in your terminal show similar lines to the following example:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Or copy and paste one of these URLs:
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Or<span class="w"> </span>copy<span class="w"> </span>and<span class="w"> </span>paste<span class="w"> </span>one<span class="w"> </span>of<span class="w"> </span>these<span class="w"> </span>URLs:
 http://2efa5b50b909:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
-or http://127.0.0.1:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+or<span class="w"> </span>http://127.0.0.1:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
 </pre></div>
 </div>
 </li>
