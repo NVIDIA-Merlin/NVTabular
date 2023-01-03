@@ -10,6 +10,27 @@ build-backend = "setuptools.build_meta"
 [tool.black]
 line-length = 100
 
+[tool.ruff]
+exclude = [
+    'build',
+    '.eggs',
+    '*_pb2.py',
+]
+ignore = ['B905']
+line-length = 100
+select = [
+	'A', 'B', 'E', 'F', 'N', 'Q', 'S', 'W', 'C4', 'T10',
+	'BLE', 'DTZ', 'PGH', 'PLC', 'PLE', 'PLR', 'PLW', 'SIM', 'TID', 'YTT',
+	'RUF100'
+]
+
+[tool.ruff.per-file-ignores]
+"examples/criteo_benchmark.py" = ['E402']
+"examples/dataloader_bench.py" = ['E402']
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
 [tool.isort]
 use_parentheses = true
 multi_line_output = 3

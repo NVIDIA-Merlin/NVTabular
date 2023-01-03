@@ -15,14 +15,16 @@ repos:
     rev: 22.6.0
     hooks:
     - id: black
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.0.208'
+    hooks:
+      - id: ruff
+        # Respect `exclude` and `extend-exclude` settings.
+        args: ["--force-exclude"]  
   - repo: https://github.com/pycqa/pylint
     rev: v2.14.1
     hooks:
     - id: pylint
-  - repo: https://github.com/pycqa/flake8
-    rev: 3.9.2
-    hooks:
-    - id: flake8
   # notebooks
   - repo: https://github.com/s-weigand/flake8-nb
     rev: v0.5.2
