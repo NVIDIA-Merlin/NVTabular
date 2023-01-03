@@ -5,14 +5,14 @@ repos:
     hooks:
       - id: absolufy-imports
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.10.1
+    rev: 5.11.4
     hooks:
     - id: isort
       additional_dependencies: [toml]
       exclude: examples/.*
   # code style
   - repo: https://github.com/python/black
-    rev: 22.6.0
+    rev: 22.12.0
     hooks:
     - id: black
   - repo: https://github.com/charliermarsh/ruff-pre-commit
@@ -22,7 +22,7 @@ repos:
         # Respect `exclude` and `extend-exclude` settings.
         args: ["--force-exclude"]  
   - repo: https://github.com/pycqa/pylint
-    rev: v2.14.1
+    rev: v2.15.9
     hooks:
     - id: pylint
   # notebooks
@@ -40,7 +40,7 @@ repos:
       exclude: ^(docs|bench|examples|tests|setup.py|versioneer.py)
       args: [--config=pyproject.toml]
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.1
+    rev: v2.2.2
     hooks:
     - id: codespell
       exclude: .github/.*
