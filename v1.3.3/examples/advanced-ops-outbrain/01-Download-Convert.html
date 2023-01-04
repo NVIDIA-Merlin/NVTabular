@@ -99,20 +99,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
 </pre></div>
 </div>
 </div>
@@ -124,11 +124,11 @@
 <p>Outbrain dataset was published in <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction">Kaggle Outbrain click prediction</a> competition, where the ‘Kagglers’ were challenged to predict on which ads and other forms of sponsored content its global users would click. One of  the top finishers’ preprocessing and feature engineering pipeline is taken into consideration here, and this pipeline was restructured using NVTabular and cuDF.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 
-# Get dataframe library - cudf or pandas
-from merlin.core.dispatch import get_lib, random_uniform, reinitialize
-df_lib = get_lib()
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span><span class="p">,</span> <span class="n">random_uniform</span><span class="p">,</span> <span class="n">reinitialize</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -139,7 +139,7 @@ df_lib = get_lib()
 <p>First, you need to <a class="reference external" href="https://www.kaggle.com/c/outbrain-click-prediction/data">download</a> the Kaggle Outbrain click prediction challenge and set DATA_BUCKET_FOLDER with the dataset path.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>DATA_BUCKET_FOLDER = os.environ.get(&quot;INPUT_DATA_DIR&quot;, &quot;~/nvt-examples/outbrain/data/&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;~/nvt-examples/outbrain/data/&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -147,8 +147,8 @@ df_lib = get_lib()
 <p>The OUTPUT_BUCKET_FOLDER is the folder where the preprocessed dataset will be saved.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>OUTPUT_BUCKET_FOLDER = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, &quot;./outbrain-preprocessed/&quot;)
-os.makedirs(OUTPUT_BUCKET_FOLDER, exist_ok=True)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -159,37 +159,37 @@ os.makedirs(OUTPUT_BUCKET_FOLDER, exist_ok=True)
 <p>Here, we merge the component tables of our dataset into a single data frame, using <a class="reference external" href="https://github.com/rapidsai/cudf">cuDF</a>, which is a GPU DataFrame library for loading, joining, aggregating, filtering, and otherwise manipulating data. We do this because NVTabular applies a workflow to a single table. We also re-initialize managed memory. <code class="docutils literal notranslate"><span class="pre">rmm.reinitialize()</span></code> provides an easy way to initialize RMM (RAPIDS Memory Manager) with specific memory resource options across multiple devices. The reason we re-initialize managed memory here is to allow us to perform memory intensive merge operation. Note that dask-cudf can also be used here.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># use managed memory for device memory allocation
-reinitialize(managed_memory=True)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># use managed memory for device memory allocation</span>
+<span class="n">reinitialize</span><span class="p">(</span><span class="n">managed_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-# Alias for read_csv
-read_csv = df_lib.read_csv
+<span class="c1"># Alias for read_csv</span>
+<span class="n">read_csv</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span>
 
-# Merge all the CSV files together
-documents_meta = read_csv(DATA_BUCKET_FOLDER + &quot;documents_meta.csv&quot;, na_values=[&quot;\\N&quot;, &quot;&quot;])
-merged = (
-    read_csv(DATA_BUCKET_FOLDER + &quot;clicks_train.csv&quot;, na_values=[&quot;\\N&quot;, &quot;&quot;])
-    .merge(
-        read_csv(DATA_BUCKET_FOLDER + &quot;events.csv&quot;, na_values=[&quot;\\N&quot;, &quot;&quot;]),
-        on=&quot;display_id&quot;,
-        how=&quot;left&quot;,
-        suffixes=(&quot;&quot;, &quot;_event&quot;),
-    )
-    .merge(
-        read_csv(DATA_BUCKET_FOLDER + &quot;promoted_content.csv&quot;, na_values=[&quot;\\N&quot;, &quot;&quot;]),
-        on=&quot;ad_id&quot;,
-        how=&quot;left&quot;,
-        suffixes=(&quot;&quot;, &quot;_promo&quot;),
-    )
-    .merge(documents_meta, on=&quot;document_id&quot;, how=&quot;left&quot;)
-    .merge(
-        documents_meta,
-        left_on=&quot;document_id_promo&quot;,
-        right_on=&quot;document_id&quot;,
-        how=&quot;left&quot;,
-        suffixes=(&quot;&quot;, &quot;_promo&quot;),
-    )
-)
+<span class="c1"># Merge all the CSV files together</span>
+<span class="n">documents_meta</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_meta.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">])</span>
+<span class="n">merged</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;clicks_train.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;events.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">]),</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;display_id&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_event&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;promoted_content.csv&quot;</span><span class="p">,</span> <span class="n">na_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">N&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">]),</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;ad_id&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_promo&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">documents_meta</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">documents_meta</span><span class="p">,</span>
+        <span class="n">left_on</span><span class="o">=</span><span class="s2">&quot;document_id_promo&quot;</span><span class="p">,</span>
+        <span class="n">right_on</span><span class="o">=</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;_promo&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -200,19 +200,19 @@ merged = (
 <p>We use a time-stratified sample to create a validation set that is more recent, and save both our train and validation sets to parquet files to be read by NVTabular. Note that you should run the cell below only once, then save your <code class="docutils literal notranslate"><span class="pre">train</span></code> and <code class="docutils literal notranslate"><span class="pre">valid</span></code> data frames as parquet files. If you want to rerun this notebook you might end up with a different train-validation split each time because samples are drawn from a uniform distribution.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Do a stratified split of the merged dataset into a training/validation dataset
-merged[&quot;day_event&quot;] = (merged[&quot;timestamp&quot;] / 1000 / 60 / 60 / 24).astype(int)
-random_state = df_lib.Series(random_uniform(size=len(merged)))
-valid_set, train_set = merged.scatter_by_map(
-    ((merged.day_event &lt;= 10) &amp; (random_state &gt; 0.2)).astype(int)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Do a stratified split of the merged dataset into a training/validation dataset</span>
+<span class="n">merged</span><span class="p">[</span><span class="s2">&quot;day_event&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">merged</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span> <span class="o">/</span> <span class="mi">60</span> <span class="o">/</span> <span class="mi">60</span> <span class="o">/</span> <span class="mi">24</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">random_state</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">random_uniform</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">merged</span><span class="p">)))</span>
+<span class="n">valid_set</span><span class="p">,</span> <span class="n">train_set</span> <span class="o">=</span> <span class="n">merged</span><span class="o">.</span><span class="n">scatter_by_map</span><span class="p">(</span>
+    <span class="p">((</span><span class="n">merged</span><span class="o">.</span><span class="n">day_event</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">random_state</span> <span class="o">&gt;</span> <span class="mf">0.2</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_set.head()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_set</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -368,18 +368,18 @@ valid_set, train_set = merged.scatter_by_map(
 <p>We save the dataset to disk.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_filename = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;train_gdf.parquet&quot;)
-valid_filename = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid_gdf.parquet&quot;)
-train_set.to_parquet(train_filename, compression=None)
-valid_set.to_parquet(valid_filename, compression=None)
-merged = train_set = valid_set = None
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train_gdf.parquet&quot;</span><span class="p">)</span>
+<span class="n">valid_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid_gdf.parquet&quot;</span><span class="p">)</span>
+<span class="n">train_set</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">train_filename</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">valid_set</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">valid_filename</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">merged</span> <span class="o">=</span> <span class="n">train_set</span> <span class="o">=</span> <span class="n">valid_set</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>reinitialize(managed_memory=False)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">reinitialize</span><span class="p">(</span><span class="n">managed_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>

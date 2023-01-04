@@ -99,20 +99,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2020 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2020 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
 </pre></div>
 </div>
 </div>
@@ -142,16 +142,16 @@
 <p>Note: The model-repository path is <code class="docutils literal notranslate"><span class="pre">/model/nvt-examples/models/</span></code>. The models haven’t been loaded, yet. Below, we will request the Triton server to load the saved ensemble model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># External dependencies
-import os
-from time import time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
 
-# Get dataframe library - cudf or pandas
-from merlin.core.dispatch import get_lib
-df_lib = get_lib()
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 
-import tritonclient.grpc as grpcclient
-import nvtabular.inference.triton as nvt_triton
+<span class="kn">import</span> <span class="nn">tritonclient.grpc</span> <span class="k">as</span> <span class="nn">grpcclient</span>
+<span class="kn">import</span> <span class="nn">nvtabular.inference.triton</span> <span class="k">as</span> <span class="nn">nvt_triton</span>
 </pre></div>
 </div>
 </div>
@@ -159,10 +159,10 @@ import nvtabular.inference.triton as nvt_triton
 <p>We define our base directory, containing the data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># path to preprocessed data
-INPUT_DATA_DIR = os.environ.get(
-    &quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/movielens/data/&quot;)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># path to preprocessed data</span>
+<span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/movielens/data/&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -170,9 +170,9 @@ INPUT_DATA_DIR = os.environ.get(
 <p>Let’s deactivate the warnings before sending requests.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
 
-warnings.filterwarnings(&quot;ignore&quot;)
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -184,13 +184,13 @@ warnings.filterwarnings(&quot;ignore&quot;)
 <p>Let’s connect to the Triton Inference Server. Use Triton’s ready endpoint to verify that the server and the models are ready for inference. Replace localhost with your host ip address.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tritonhttpclient
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tritonhttpclient</span>
 
-try:
-    triton_client = tritonhttpclient.InferenceServerClient(url=&quot;localhost:8000&quot;, verbose=True)
-    print(&quot;client created.&quot;)
-except Exception as e:
-    print(&quot;channel creation failed: &quot; + str(e))
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">triton_client</span> <span class="o">=</span> <span class="n">tritonhttpclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;localhost:8000&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;client created.&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel creation failed: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -206,9 +206,9 @@ except Exception as e:
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import warnings
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
 
-warnings.filterwarnings(&quot;ignore&quot;)
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -222,7 +222,7 @@ warnings.filterwarnings(&quot;ignore&quot;)
 <p>We check if the server is alive.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>triton_client.is_server_live()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">is_server_live</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -243,7 +243,7 @@ movielens_nvt: NVTabular <br>
 movielens_tf: TensorFlow model</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>triton_client.get_model_repository_index()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">get_model_repository_index</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -262,9 +262,9 @@ bytearray(b&#39;[{&quot;name&quot;:&quot;movielens&quot;},{&quot;name&quot;:&quo
 <p>We load the ensemble model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
-triton_client.load_model(model_name=&quot;movielens&quot;)
+<span class="n">triton_client</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -323,11 +323,11 @@ Wall time: 9.09 s
 <p>Let’s read the raw validation set, and send 3 rows of <code class="docutils literal notranslate"><span class="pre">userId</span></code> and <code class="docutils literal notranslate"><span class="pre">movieId</span></code> as input to the saved NVTabular model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># read in the workflow (to get input/output schema to call triton with)
-batch = df_lib.read_parquet(
-    os.path.join(INPUT_DATA_DIR, &quot;valid.parquet&quot;), num_rows=3, columns=[&quot;userId&quot;, &quot;movieId&quot;]
-)
-print(batch)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -342,20 +342,20 @@ print(batch)
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>inputs = nvt_triton.convert_df_to_triton_input([&quot;userId&quot;, &quot;movieId&quot;], batch, grpcclient.InferInput)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span> <span class="o">=</span> <span class="n">nvt_triton</span><span class="o">.</span><span class="n">convert_df_to_triton_input</span><span class="p">([</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">,</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">)</span>
 
-outputs = [
-    grpcclient.InferRequestedOutput(col)
-    for col in [&quot;userId&quot;, &quot;movieId&quot;, &quot;genres__nnzs&quot;, &quot;genres__values&quot;]
-]
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__nnzs&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__values&quot;</span><span class="p">]</span>
+<span class="p">]</span>
 
-MODEL_NAME_NVT = os.environ.get(&quot;MODEL_NAME_NVT&quot;, &quot;movielens_nvt&quot;)
+<span class="n">MODEL_NAME_NVT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_NVT&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens_nvt&quot;</span><span class="p">)</span>
 
-with grpcclient.InferenceServerClient(&quot;localhost:8001&quot;) as client:
-    response = client.infer(MODEL_NAME_NVT, inputs, request_id=&quot;1&quot;, outputs=outputs)
+<span class="k">with</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">MODEL_NAME_NVT</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
 
-for col in [&quot;userId&quot;, &quot;movieId&quot;, &quot;genres__nnzs&quot;, &quot;genres__values&quot;]:
-    print(col, response.as_numpy(col), response.as_numpy(col).shape)
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__nnzs&quot;</span><span class="p">,</span> <span class="s2">&quot;genres__values&quot;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="n">col</span><span class="p">),</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -385,29 +385,29 @@ genres__values [[ 9]
 <p>We will do the same, but this time we directly read in first 3 rows of the the raw <code class="docutils literal notranslate"><span class="pre">valid.parquet</span></code> file with cuDF.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># read in the workflow (to get input/output schema to call triton with)
-batch = df_lib.read_parquet(
-    os.path.join(INPUT_DATA_DIR, &quot;valid.parquet&quot;), num_rows=3, columns=[&quot;userId&quot;, &quot;movieId&quot;]
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">),</span> <span class="n">num_rows</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">]</span>
+<span class="p">)</span>
 
-print(&quot;raw data:\n&quot;, batch, &quot;\n&quot;)
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;raw data:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# convert the batch to a triton inputs
-inputs = nvt_triton.convert_df_to_triton_input([&quot;userId&quot;, &quot;movieId&quot;], batch, grpcclient.InferInput)
+<span class="c1"># convert the batch to a triton inputs</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">nvt_triton</span><span class="o">.</span><span class="n">convert_df_to_triton_input</span><span class="p">([</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">,</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">)</span>
 
-# placeholder variables for the output
-outputs = [grpcclient.InferRequestedOutput(&quot;output&quot;)]
+<span class="c1"># placeholder variables for the output</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">grpcclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)]</span>
 
-MODEL_NAME_ENSEMBLE = os.environ.get(&quot;MODEL_NAME_ENSEMBLE&quot;, &quot;movielens&quot;)
+<span class="n">MODEL_NAME_ENSEMBLE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_ENSEMBLE&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
 
-# build a client to connect to our server.
-# This InferenceServerClient object is what we&#39;ll be using to talk to Triton.
-# make the request with tritonclient.grpc.InferInput object
+<span class="c1"># build a client to connect to our server.</span>
+<span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
+<span class="c1"># make the request with tritonclient.grpc.InferInput object</span>
 
-with grpcclient.InferenceServerClient(&quot;localhost:8001&quot;) as client:
-    response = client.infer(MODEL_NAME_ENSEMBLE, inputs, request_id=&quot;1&quot;, outputs=outputs)
+<span class="k">with</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">MODEL_NAME_ENSEMBLE</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
 
-print(&quot;predicted sigmoid result:\n&quot;, response.as_numpy(&quot;output&quot;))
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted sigmoid result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -429,34 +429,34 @@ predicted sigmoid result:
 <p>Let’s send request for a larger batch size and measure the total run time and throughput.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># read in the workflow (to get input/output schema to call triton with)
-batch_size = 64
-batch = df_lib.read_parquet(
-    os.path.join(INPUT_DATA_DIR, &quot;valid.parquet&quot;),
-    num_rows=batch_size,
-    columns=[&quot;userId&quot;, &quot;movieId&quot;],
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># read in the workflow (to get input/output schema to call triton with)</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">64</span>
+<span class="n">batch</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">INPUT_DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;valid.parquet&quot;</span><span class="p">),</span>
+    <span class="n">num_rows</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span>
+<span class="p">)</span>
 
-start = time()
-# convert the batch to a triton inputs
-inputs = nvt_triton.convert_df_to_triton_input([&quot;userId&quot;, &quot;movieId&quot;], batch, grpcclient.InferInput)
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+<span class="c1"># convert the batch to a triton inputs</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">nvt_triton</span><span class="o">.</span><span class="n">convert_df_to_triton_input</span><span class="p">([</span><span class="s2">&quot;userId&quot;</span><span class="p">,</span> <span class="s2">&quot;movieId&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">,</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferInput</span><span class="p">)</span>
 
-# placeholder variables for the output
-outputs = [grpcclient.InferRequestedOutput(&quot;output&quot;)]
+<span class="c1"># placeholder variables for the output</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">grpcclient</span><span class="o">.</span><span class="n">InferRequestedOutput</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)]</span>
 
-MODEL_NAME_ENSEMBLE = os.environ.get(&quot;MODEL_NAME_ENSEMBLE&quot;, &quot;movielens&quot;)
+<span class="n">MODEL_NAME_ENSEMBLE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_ENSEMBLE&quot;</span><span class="p">,</span> <span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
 
-# build a client to connect to our server.
-# This InferenceServerClient object is what we&#39;ll be using to talk to Triton.
-# make the request with tritonclient.grpc.InferInput object
+<span class="c1"># build a client to connect to our server.</span>
+<span class="c1"># This InferenceServerClient object is what we&#39;ll be using to talk to Triton.</span>
+<span class="c1"># make the request with tritonclient.grpc.InferInput object</span>
 
-with grpcclient.InferenceServerClient(&quot;localhost:8001&quot;) as client:
-    response = client.infer(MODEL_NAME_ENSEMBLE, inputs, request_id=&quot;1&quot;, outputs=outputs)
+<span class="k">with</span> <span class="n">grpcclient</span><span class="o">.</span><span class="n">InferenceServerClient</span><span class="p">(</span><span class="s2">&quot;localhost:8001&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">MODEL_NAME_ENSEMBLE</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span>
 
-t_final = time() - start
-print(&quot;predicted sigmoid result:\n&quot;, response.as_numpy(&quot;output&quot;), &quot;\n&quot;)
+<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;predicted sigmoid result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">as_numpy</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">),</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
-print(f&quot;run_time(sec): {t_final} - rows: {batch_size} - inference_thru: {batch_size / t_final}&quot;)
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;run_time(sec): </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2"> - inference_thru: </span><span class="si">{</span><span class="n">batch_size</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -535,9 +535,9 @@ run_time(sec): 0.057904958724975586 - rows: 64 - inference_thru: 1105.2594010812
 <p>Let’s unload all the models.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>triton_client.unload_model(model_name=&quot;movielens&quot;)
-triton_client.unload_model(model_name=&quot;movielens_nvt&quot;)
-triton_client.unload_model(model_name=&quot;movielens_tf&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens&quot;</span><span class="p">)</span>
+<span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens_nvt&quot;</span><span class="p">)</span>
+<span class="n">triton_client</span><span class="o">.</span><span class="n">unload_model</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;movielens_tf&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>

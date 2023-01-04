@@ -98,20 +98,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
 </pre></div>
 </div>
 </div>
@@ -145,28 +145,28 @@
 <h2>RecSys2020 Challenge<a class="headerlink" href="#id1" title="Permalink to this headline"></a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># External Dependencies
-import os
-import time
-import glob
-import gc
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># External Dependencies</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">gc</span>
 
-import cupy as cp  # CuPy is an implementation of NumPy-compatible multi-dimensional array on GPU
-import cudf  # cuDF is an implementation of Pandas-like Dataframe on GPU
-import dask  # dask is an open-source library to nateively scale Python on multiple workers/nodes
-import dask_cudf  # dask_cudf uses dask to scale cuDF dataframes on multiple workers/nodes
+<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>  <span class="c1"># CuPy is an implementation of NumPy-compatible multi-dimensional array on GPU</span>
+<span class="kn">import</span> <span class="nn">cudf</span>  <span class="c1"># cuDF is an implementation of Pandas-like Dataframe on GPU</span>
+<span class="kn">import</span> <span class="nn">dask</span>  <span class="c1"># dask is an open-source library to nateively scale Python on multiple workers/nodes</span>
+<span class="kn">import</span> <span class="nn">dask_cudf</span>  <span class="c1"># dask_cudf uses dask to scale cuDF dataframes on multiple workers/nodes</span>
 
-import numpy as np
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-# NVTabular is the core library, we will use here for feature engineering/preprocessing on GPU
-import nvtabular as nvt
-import xgboost as xgb
+<span class="c1"># NVTabular is the core library, we will use here for feature engineering/preprocessing on GPU</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">import</span> <span class="nn">xgboost</span> <span class="k">as</span> <span class="nn">xgb</span>
 
-# More dask / dask_cluster related libraries to scale NVTabular
-from dask_cuda import LocalCUDACluster
-from dask.distributed import Client
+<span class="c1"># More dask / dask_cluster related libraries to scale NVTabular</span>
+<span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
 
-from nvtabular.ops import Categorify, DifferenceLag, FillMissing, JoinGroupby, Rename
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">Categorify</span><span class="p">,</span> <span class="n">DifferenceLag</span><span class="p">,</span> <span class="n">FillMissing</span><span class="p">,</span> <span class="n">JoinGroupby</span><span class="p">,</span> <span class="n">Rename</span>
 </pre></div>
 </div>
 </div>
@@ -175,7 +175,7 @@ from nvtabular.ops import Categorify, DifferenceLag, FillMissing, JoinGroupby, R
 <p>We ran this example with 2x Quadro GV100 GPUs with each having 32GB of GPU memory. NVTabular used a single GPU whereas XGBoost trained with two GPUs.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>time_total_start = time.time()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_total_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -183,8 +183,8 @@ from nvtabular.ops import Categorify, DifferenceLag, FillMissing, JoinGroupby, R
 <p>We define our input directory containing the data, and output directory to save the processed files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>INPUT_DATA_DIR = os.environ.get(&quot;INPUT_DATA_DIR&quot;, &quot;/dataset/&quot;)
-OUTPUT_DIR = os.environ.get(&quot;OUTPUT_DIR&quot;, &quot;./&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;/dataset/&quot;</span><span class="p">)</span>
+<span class="n">OUTPUT_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -192,9 +192,9 @@ OUTPUT_DIR = os.environ.get(&quot;OUTPUT_DIR&quot;, &quot;./&quot;)
 <p>First, we initialize our local cuda cluster.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cluster = LocalCUDACluster(protocol=&quot;tcp&quot;)
-client = Client(cluster)
-client
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="s2">&quot;tcp&quot;</span><span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="n">client</span>
 </pre></div>
 </div>
 </div>
@@ -231,36 +231,36 @@ client
 <p>First, we define the column names in the original .tsv file. The .tsv file has no header and we need to specify the names.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>features = [
-    # Tweet Features
-    &quot;text_tokens&quot;,
-    &quot;hashtags&quot;,
-    &quot;tweet_id&quot;,
-    &quot;media&quot;,
-    &quot;links&quot;,
-    &quot;domains&quot;,
-    &quot;tweet_type&quot;,
-    &quot;language&quot;,
-    &quot;timestamp&quot;,
-    # Engaged With User Features
-    &quot;a_user_id&quot;,
-    &quot;a_follower_count&quot;,
-    &quot;a_following_count&quot;,
-    &quot;a_is_verified&quot;,
-    &quot;a_account_creation&quot;,
-    &quot;b_user_id&quot;,
-    # Engaging User Features
-    &quot;b_follower_count&quot;,
-    &quot;b_following_count&quot;,
-    &quot;b_is_verified&quot;,
-    &quot;b_account_creation&quot;,
-    &quot;b_follows_a&quot;,
-    # Engagement Features
-    &quot;reply&quot;,  # Target Reply
-    &quot;retweet&quot;,  # Target Retweet
-    &quot;retweet_comment&quot;,  # Target Retweet with comment
-    &quot;like&quot;,  # Target Like
-]
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="c1"># Tweet Features</span>
+    <span class="s2">&quot;text_tokens&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;hashtags&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tweet_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;media&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;links&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;domains&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;language&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span>
+    <span class="c1"># Engaged With User Features</span>
+    <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_follower_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_following_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_is_verified&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_account_creation&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_user_id&quot;</span><span class="p">,</span>
+    <span class="c1"># Engaging User Features</span>
+    <span class="s2">&quot;b_follower_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_following_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_is_verified&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_account_creation&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_follows_a&quot;</span><span class="p">,</span>
+    <span class="c1"># Engagement Features</span>
+    <span class="s2">&quot;reply&quot;</span><span class="p">,</span>  <span class="c1"># Target Reply</span>
+    <span class="s2">&quot;retweet&quot;</span><span class="p">,</span>  <span class="c1"># Target Retweet</span>
+    <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span>  <span class="c1"># Target Retweet with comment</span>
+    <span class="s2">&quot;like&quot;</span><span class="p">,</span>  <span class="c1"># Target Like</span>
+<span class="p">]</span>
 </pre></div>
 </div>
 </div>
@@ -272,20 +272,20 @@ client
 </ol>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def splitmedia(col):
-    if col.shape[0] == 0:
-        return col
-    else:
-        return (
-            col.str.split(&quot;\t&quot;, expand=True)[0].fillna(&quot;&quot;)
-            + &quot;_&quot;
-            + col.str.split(&quot;\t&quot;, expand=True)[1].fillna(&quot;&quot;)
-        )
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">splitmedia</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">col</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="s2">&quot;_&quot;</span>
+            <span class="o">+</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
 
 
-def count_token(col, token):
-    not_null = col.isnull() == 0
-    return ((col.str.count(token) + 1) * not_null).fillna(0)
+<span class="k">def</span> <span class="nf">count_token</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
+    <span class="n">not_null</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="p">((</span><span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">token</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">not_null</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -294,11 +294,11 @@ def count_token(col, token):
 We count the number of tokens in the columns hashtags, domains, links. We use the <code class="docutils literal notranslate"><span class="pre">count_token</span></code> helper function in a <code class="docutils literal notranslate"><span class="pre">lambda</span></code> function. Finally, we rename the column names to avoid duplicated names.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>count_features = (
-    nvt.ColumnGroup([&quot;hashtags&quot;, &quot;domains&quot;, &quot;links&quot;])
-    &gt;&gt; (lambda col: count_token(col, &quot;\t&quot;))
-    &gt;&gt; Rename(postfix=&quot;_count_t&quot;)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">count_features</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;hashtags&quot;</span><span class="p">,</span> <span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">])</span>
+    <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">count_token</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">))</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_count_t&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -306,7 +306,7 @@ We count the number of tokens in the columns hashtags, domains, links. We use th
 <p>We apply splitmedia function to split the media.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>split_media = nvt.ColumnGroup([&quot;media&quot;]) &gt;&gt; (lambda col: splitmedia(col))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">split_media</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;media&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">splitmedia</span><span class="p">(</span><span class="n">col</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -316,9 +316,9 @@ We count the number of tokens in the columns hashtags, domains, links. We use th
 Before we can apply <code class="docutils literal notranslate"><span class="pre">Categorify</span></code>, we need to fill na/missing values in the columns <code class="docutils literal notranslate"><span class="pre">hashtags</span></code>, <code class="docutils literal notranslate"><span class="pre">domains</span></code> and <code class="docutils literal notranslate"><span class="pre">links</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>multihot_filled = [&quot;hashtags&quot;, &quot;domains&quot;, &quot;links&quot;] &gt;&gt; FillMissing()
-cat_columns = [&quot;language&quot;, &quot;tweet_type&quot;, &quot;tweet_id&quot;, &quot;a_user_id&quot;, &quot;b_user_id&quot;]
-cat_features = split_media + multihot_filled + cat_columns &gt;&gt; Categorify(out_path=OUTPUT_DIR)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multihot_filled</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hashtags&quot;</span><span class="p">,</span> <span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">FillMissing</span><span class="p">()</span>
+<span class="n">cat_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_id&quot;</span><span class="p">,</span> <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;b_user_id&quot;</span><span class="p">]</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">split_media</span> <span class="o">+</span> <span class="n">multihot_filled</span> <span class="o">+</span> <span class="n">cat_columns</span> <span class="o">&gt;&gt;</span> <span class="n">Categorify</span><span class="p">(</span><span class="n">out_path</span><span class="o">=</span><span class="n">OUTPUT_DIR</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -326,8 +326,8 @@ cat_features = split_media + multihot_filled + cat_columns &gt;&gt; Categorify(o
 <p>We want to fill na/missing values in the label columns as well.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>label_name = [&quot;reply&quot;, &quot;retweet&quot;, &quot;retweet_comment&quot;, &quot;like&quot;]
-label_name_feature = label_name &gt;&gt; nvt.ops.FillMissing()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_name</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
+<span class="n">label_name_feature</span> <span class="o">=</span> <span class="n">label_name</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">FillMissing</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -335,11 +335,11 @@ label_name_feature = label_name &gt;&gt; nvt.ops.FillMissing()
 <p>We extract the weekday from the timestamp.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>weekday = (
-    nvt.ColumnGroup([&quot;timestamp&quot;])
-    &gt;&gt; (lambda col: cudf.to_datetime(col, unit=&quot;s&quot;).dt.weekday)
-    &gt;&gt; nvt.ops.Rename(postfix=&quot;_wd&quot;)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">weekday</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
+    <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">cudf</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">weekday</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_wd&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -347,8 +347,8 @@ label_name_feature = label_name &gt;&gt; nvt.ops.FillMissing()
 <p>We can visualize our pipeline.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output = count_features + cat_features + label_name_feature + weekday
-(output).graph
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">count_features</span> <span class="o">+</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">label_name_feature</span> <span class="o">+</span> <span class="n">weekday</span>
+<span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
 </div>
@@ -358,8 +358,8 @@ label_name_feature = label_name &gt;&gt; nvt.ops.FillMissing()
 <p>Our calculation workflow looks correct. But we want to keep columns, which are not used in our pipeline (for <code class="docutils literal notranslate"><span class="pre">a_follower_count</span></code> or <code class="docutils literal notranslate"><span class="pre">b_follows_a</span></code>. Therefore, we include all columns in features, which are not part of our pipeline (except of <code class="docutils literal notranslate"><span class="pre">text_tokens</span></code>).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>remaining_columns = [x for x in features if x not in (output.columns + [&quot;text_tokens&quot;])]
-remaining_columns
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">remaining_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">features</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">columns</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">])]</span>
+<span class="n">remaining_columns</span>
 </pre></div>
 </div>
 </div>
@@ -381,7 +381,7 @@ remaining_columns
 <p>We initialize our NVTabular workflow.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc = nvt.Workflow(output + remaining_columns)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span> <span class="o">+</span> <span class="n">remaining_columns</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -389,14 +389,14 @@ remaining_columns
 <p>We initialize a nvt.Dataset. The engine is <code class="docutils literal notranslate"><span class="pre">csv</span></code> as the <code class="docutils literal notranslate"><span class="pre">.tsv</span></code> file has a similar structure. The <code class="docutils literal notranslate"><span class="pre">.tsv</span></code> file uses the special character <code class="docutils literal notranslate"><span class="pre">\x01</span></code> to separate columns. There is no header in the file and we define column names with the parameter <code class="docutils literal notranslate"><span class="pre">names</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>trains_itrs = nvt.Dataset(
-    INPUT_DATA_DIR + &quot;training.tsv&quot;,
-    header=None,
-    names=features,
-    engine=&quot;csv&quot;,
-    sep=&quot;\x01&quot;,
-    part_size=&quot;1GB&quot;,
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">trains_itrs</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+    <span class="n">INPUT_DATA_DIR</span> <span class="o">+</span> <span class="s2">&quot;training.tsv&quot;</span><span class="p">,</span>
+    <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">names</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+    <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;1GB&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -404,11 +404,11 @@ remaining_columns
 <p>First, we collect the training dataset statistics.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
-time_preproc_start = time.time()
-proc.fit(trains_itrs)
-time_preproc = time.time() - time_preproc_start
+<span class="n">time_preproc_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">trains_itrs</span><span class="p">)</span>
+<span class="n">time_preproc</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_preproc_start</span>
 </pre></div>
 </div>
 </div>
@@ -423,39 +423,39 @@ Wall time: 3min 12s
 We define the output datatypes for continuous columns to save memory. We can define the output datatypes as a dict and parse it to the <code class="docutils literal notranslate"><span class="pre">to_parquet</span></code> function.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dict_dtypes = {}
-for col in label_name + [
-    &quot;media&quot;,
-    &quot;language&quot;,
-    &quot;tweet_type&quot;,
-    &quot;tweet_id&quot;,
-    &quot;a_user_id&quot;,
-    &quot;b_user_id&quot;,
-    &quot;hashtags&quot;,
-    &quot;domains&quot;,
-    &quot;links&quot;,
-    &quot;timestamp&quot;,
-    &quot;a_follower_count&quot;,
-    &quot;a_following_count&quot;,
-    &quot;a_account_creation&quot;,
-    &quot;b_follower_count&quot;,
-    &quot;b_following_count&quot;,
-    &quot;b_account_creation&quot;,
-]:
-    dict_dtypes[col] = np.uint32
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">label_name</span> <span class="o">+</span> <span class="p">[</span>
+    <span class="s2">&quot;media&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;language&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tweet_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_user_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;hashtags&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;domains&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;links&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_follower_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_following_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_account_creation&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_follower_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_following_count&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_account_creation&quot;</span><span class="p">,</span>
+<span class="p">]:</span>
+    <span class="n">dict_dtypes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
-time_preproc_start = time.time()
-proc.transform(trains_itrs).to_parquet(
-    output_path=OUTPUT_DIR + &quot;preprocess/&quot;, dtypes=dict_dtypes, out_files_per_proc=10
-)
-time_preproc += time.time() - time_preproc_start
+<span class="n">time_preproc_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">trains_itrs</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;preprocess/&quot;</span><span class="p">,</span> <span class="n">dtypes</span><span class="o">=</span><span class="n">dict_dtypes</span><span class="p">,</span> <span class="n">out_files_per_proc</span><span class="o">=</span><span class="mi">10</span>
+<span class="p">)</span>
+<span class="n">time_preproc</span> <span class="o">+=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_preproc_start</span>
 </pre></div>
 </div>
 </div>
@@ -473,26 +473,26 @@ Wall time: 4min 40s
 <p>We split the training data by time into a train and validation set. The first 5 days are train and the last 2 days are for validation. We use the weekday for it. The first day of the dataset is a Thursday (weekday id = 3) and the last day is Wednesday (weekday id = 2). Therefore, we split the weekday ids 1 and 2 into the validation set.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
-time_split_start = time.time()
+<span class="n">time_split_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
-df = dask_cudf.read_parquet(os.path.join(OUTPUT_DIR, &quot;preprocess/*.parquet&quot;))
-if &quot;text_tokens&quot; in list(df.columns):
-    df = df.drop(&quot;text_tokens&quot;, axis=1)
-VALID_DOW = [1, 2]
+<span class="n">df</span> <span class="o">=</span> <span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="s2">&quot;preprocess/*.parquet&quot;</span><span class="p">))</span>
+<span class="k">if</span> <span class="s2">&quot;text_tokens&quot;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">VALID_DOW</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
 
-valid = df[df[&quot;timestamp_wd&quot;].isin(VALID_DOW)].reset_index(drop=True)
-train = df[~df[&quot;timestamp_wd&quot;].isin(VALID_DOW)].reset_index(drop=True)
-train = train.sort_values([&quot;b_user_id&quot;, &quot;timestamp&quot;]).reset_index(drop=True)
-valid = valid.sort_values([&quot;b_user_id&quot;, &quot;timestamp&quot;]).reset_index(drop=True)
-train.to_parquet(OUTPUT_DIR + &quot;nv_train/&quot;)
-valid.to_parquet(OUTPUT_DIR + &quot;nv_valid/&quot;)
-time_split = time.time() - time_split_start
+<span class="n">valid</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp_wd&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">VALID_DOW</span><span class="p">)]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="o">~</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp_wd&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">VALID_DOW</span><span class="p">)]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">train</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s2">&quot;b_user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">valid</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s2">&quot;b_user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">train</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_train/&quot;</span><span class="p">)</span>
+<span class="n">valid</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_valid/&quot;</span><span class="p">)</span>
+<span class="n">time_split</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_split_start</span>
 
-del train
-del valid
-gc.collect()
+<span class="k">del</span> <span class="n">train</span>
+<span class="k">del</span> <span class="n">valid</span>
+<span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -513,11 +513,11 @@ Wall time: 31.5 s
 <p>We count encode the columns <em>media</em>, <em>tweet_type</em>, <em>language</em>, <em>a_user_id</em>, <em>b_user_id</em>. CountEncoding is explained <a class="reference external" href="https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_4_CountEncoding.ipynb">here</a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>count_encode = (
-    [&quot;media&quot;, &quot;tweet_type&quot;, &quot;language&quot;, &quot;a_user_id&quot;, &quot;b_user_id&quot;]
-    &gt;&gt; Rename(postfix=&quot;_c&quot;)
-    &gt;&gt; JoinGroupby(cont_cols=[&quot;reply&quot;], stats=[&quot;count&quot;], out_path=&quot;./&quot;)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">count_encode</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;media&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span> <span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;b_user_id&quot;</span><span class="p">]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_c&quot;</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">JoinGroupby</span><span class="p">(</span><span class="n">cont_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">],</span> <span class="n">stats</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">],</span> <span class="n">out_path</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -525,9 +525,9 @@ Wall time: 31.5 s
 <p>We transform timestamp to datetime type.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>datetime = nvt.ColumnGroup([&quot;timestamp&quot;]) &gt;&gt; (
-    lambda col: cudf.to_datetime(col.astype(&quot;int32&quot;), unit=&quot;s&quot;)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">datetime</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&gt;&gt;</span> <span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">cudf</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">),</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -537,9 +537,9 @@ We extract minute from datetime.<br>
 We extract seconds from datetime</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>hour = datetime &gt;&gt; (lambda col: col.dt.hour) &gt;&gt; Rename(postfix=&quot;_hour&quot;)
-minute = datetime &gt;&gt; (lambda col: col.dt.minute) &gt;&gt; Rename(postfix=&quot;_minute&quot;)
-seconds = datetime &gt;&gt; (lambda col: col.dt.second) &gt;&gt; Rename(postfix=&quot;_second&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hour</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_hour&quot;</span><span class="p">)</span>
+<span class="n">minute</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">minute</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_minute&quot;</span><span class="p">)</span>
+<span class="n">seconds</span> <span class="o">=</span> <span class="n">datetime</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">second</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_second&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -547,12 +547,12 @@ seconds = datetime &gt;&gt; (lambda col: col.dt.second) &gt;&gt; Rename(postfix=
 <p>We difference encode <em>b_follower_count, b_following_count, language</em> grouped by <em>b_user_id</em>. DifferenceEncoding is explained <a class="reference external" href="https://github.com/rapidsai/tdeeplearning/blob/main/RecSys2020Tutorial/05_2_TimeSeries_Differences.ipynb">here</a>. First, we need to transform the datatype to float32 to prevent overflow/underflow. After DifferenceEncoding, we want to fill NaN values with 0.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>diff_lag = (
-    nvt.ColumnGroup([&quot;b_follower_count&quot;, &quot;b_following_count&quot;, &quot;language&quot;])
-    &gt;&gt; (lambda col: col.astype(&quot;float32&quot;))
-    &gt;&gt; DifferenceLag(partition_cols=[&quot;b_user_id&quot;], shift=[1, -1])
-    &gt;&gt; FillMissing(fill_val=0)
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">diff_lag</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;b_follower_count&quot;</span><span class="p">,</span> <span class="s2">&quot;b_following_count&quot;</span><span class="p">,</span> <span class="s2">&quot;language&quot;</span><span class="p">])</span>
+    <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">))</span>
+    <span class="o">&gt;&gt;</span> <span class="n">DifferenceLag</span><span class="p">(</span><span class="n">partition_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;b_user_id&quot;</span><span class="p">],</span> <span class="n">shift</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="o">&gt;&gt;</span> <span class="n">FillMissing</span><span class="p">(</span><span class="n">fill_val</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -560,8 +560,8 @@ seconds = datetime &gt;&gt; (lambda col: col.dt.second) &gt;&gt; Rename(postfix=
 <p>We need to transform the LABEL_COLUMNS into boolean (0/1) targets.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>LABEL_COLUMNS = [&quot;reply&quot;, &quot;retweet&quot;, &quot;retweet_comment&quot;, &quot;like&quot;]
-labels = nvt.ColumnGroup(LABEL_COLUMNS) &gt;&gt; (lambda col: (col &gt; 0).astype(&quot;int8&quot;))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnGroup</span><span class="p">(</span><span class="n">LABEL_COLUMNS</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="p">(</span><span class="n">col</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -569,19 +569,19 @@ labels = nvt.ColumnGroup(LABEL_COLUMNS) &gt;&gt; (lambda col: (col &gt; 0).astyp
 <p>We apply TargetEncoding with kfold of 5 and smoothing of 20. TargetEncoding is explained in <a class="reference external" href="https://medium.com/rapids-ai/target-encoding-with-rapids-cuml-do-more-with-your-categorical-data-8c762c79e784">here</a> and <a class="reference external" href="https://github.com/rapidsai/deeplearning/blob/main/RecSys2020Tutorial/03_3_TargetEncoding.ipynb">here</a></p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>target_encode = [
-    &quot;media&quot;,
-    &quot;tweet_type&quot;,
-    &quot;language&quot;,
-    &quot;a_user_id&quot;,
-    &quot;b_user_id&quot;,
-    [&quot;domains&quot;, &quot;language&quot;, &quot;b_follows_a&quot;, &quot;tweet_type&quot;, &quot;media&quot;, &quot;a_is_verified&quot;],
-] &gt;&gt; nvt.ops.TargetEncoding(
-    labels,
-    kfold=5,
-    p_smooth=20,
-    out_dtype=&quot;float32&quot;,
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">target_encode</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;media&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;language&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_user_id&quot;</span><span class="p">,</span>
+    <span class="p">[</span><span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;b_follows_a&quot;</span><span class="p">,</span> <span class="s2">&quot;tweet_type&quot;</span><span class="p">,</span> <span class="s2">&quot;media&quot;</span><span class="p">,</span> <span class="s2">&quot;a_is_verified&quot;</span><span class="p">],</span>
+<span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">TargetEncoding</span><span class="p">(</span>
+    <span class="n">labels</span><span class="p">,</span>
+    <span class="n">kfold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">p_smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">out_dtype</span><span class="o">=</span><span class="s2">&quot;float32&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -589,8 +589,8 @@ labels = nvt.ColumnGroup(LABEL_COLUMNS) &gt;&gt; (lambda col: (col &gt; 0).astyp
 <p>We visualize our NVTabular workflow.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output = count_encode + hour + minute + seconds + diff_lag + labels + target_encode
-(output).graph
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">count_encode</span> <span class="o">+</span> <span class="n">hour</span> <span class="o">+</span> <span class="n">minute</span> <span class="o">+</span> <span class="n">seconds</span> <span class="o">+</span> <span class="n">diff_lag</span> <span class="o">+</span> <span class="n">labels</span> <span class="o">+</span> <span class="n">target_encode</span>
+<span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
 </div>
@@ -600,10 +600,10 @@ labels = nvt.ColumnGroup(LABEL_COLUMNS) &gt;&gt; (lambda col: (col &gt; 0).astyp
 <p>We want to keep all columns of the input dataset. Therefore, we extract all column names from the first input parquet file.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>df_tmp = cudf.read_parquet(OUTPUT_DIR + &quot;/nv_train/part.0.parquet&quot;)
-all_input_columns = df_tmp.columns
-del df_tmp
-gc.collect()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_tmp</span> <span class="o">=</span> <span class="n">cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;/nv_train/part.0.parquet&quot;</span><span class="p">)</span>
+<span class="n">all_input_columns</span> <span class="o">=</span> <span class="n">df_tmp</span><span class="o">.</span><span class="n">columns</span>
+<span class="k">del</span> <span class="n">df_tmp</span>
+<span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -615,8 +615,8 @@ gc.collect()
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>remaining_columns = [x for x in all_input_columns if x not in (output.columns + [&quot;text_tokens&quot;])]
-remaining_columns
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">remaining_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">all_input_columns</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">columns</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;text_tokens&quot;</span><span class="p">])]</span>
+<span class="n">remaining_columns</span>
 </pre></div>
 </div>
 </div>
@@ -651,7 +651,7 @@ remaining_columns
 <p>We initialize our NVTabular workflow and add the “remaining” columns to it.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>proc = nvt.Workflow(output + remaining_columns)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">proc</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span> <span class="o">+</span> <span class="n">remaining_columns</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -659,12 +659,12 @@ remaining_columns
 <p>We initialize the train and valid as NVTabular datasets.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_dataset = nvt.Dataset(
-    glob.glob(OUTPUT_DIR + &quot;nv_train/*.parquet&quot;), engine=&quot;parquet&quot;, part_size=&quot;2GB&quot;
-)
-valid_dataset = nvt.Dataset(
-    glob.glob(OUTPUT_DIR + &quot;nv_valid/*.parquet&quot;), engine=&quot;parquet&quot;, part_size=&quot;2GB&quot;
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+    <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_train/*.parquet&quot;</span><span class="p">),</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;2GB&quot;</span>
+<span class="p">)</span>
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+    <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_valid/*.parquet&quot;</span><span class="p">),</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="n">part_size</span><span class="o">=</span><span class="s2">&quot;2GB&quot;</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -672,11 +672,11 @@ valid_dataset = nvt.Dataset(
 <p>We collect statistics from our train dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
-time_fe_start = time.time()
-proc.fit(train_dataset)
-time_fe = time.time() - time_fe_start
+<span class="n">time_fe_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
+<span class="n">time_fe</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_fe_start</span>
 </pre></div>
 </div>
 </div>
@@ -690,9 +690,9 @@ Wall time: 42.3 s
 <p>The columns <em>a_is_verified</em>, <em>b_is_verified</em> and <em>b_follows_a</em> have the datatype boolean. XGBoost does not support boolean datatypes and we need convert them to int8. We can define the output datatypes as a dict and parse it to the <code class="docutils literal notranslate"><span class="pre">.to_parquet</span></code> function.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dict_dtypes = {}
-for col in [&quot;a_is_verified&quot;, &quot;b_is_verified&quot;, &quot;b_follows_a&quot;]:
-    dict_dtypes[col] = np.int8
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dict_dtypes</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;a_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_follows_a&quot;</span><span class="p">]:</span>
+    <span class="n">dict_dtypes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span>
 </pre></div>
 </div>
 </div>
@@ -700,16 +700,16 @@ for col in [&quot;a_is_verified&quot;, &quot;b_is_verified&quot;, &quot;b_follow
 <p>We apply the transformation to the train and valid datasets.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
 
-time_fe_start = time.time()
-proc.transform(train_dataset).to_parquet(
-    output_path=OUTPUT_DIR + &quot;nv_train_fe/&quot;, dtypes=dict_dtypes
-)
-proc.transform(valid_dataset).to_parquet(
-    output_path=OUTPUT_DIR + &quot;nv_valid_fe/&quot;, dtypes=dict_dtypes
-)
-time_fe += time.time() - time_fe_start
+<span class="n">time_fe_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_train_fe/&quot;</span><span class="p">,</span> <span class="n">dtypes</span><span class="o">=</span><span class="n">dict_dtypes</span>
+<span class="p">)</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">OUTPUT_DIR</span> <span class="o">+</span> <span class="s2">&quot;nv_valid_fe/&quot;</span><span class="p">,</span> <span class="n">dtypes</span><span class="o">=</span><span class="n">dict_dtypes</span>
+<span class="p">)</span>
+<span class="n">time_fe</span> <span class="o">+=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_fe_start</span>
 </pre></div>
 </div>
 </div>
@@ -726,15 +726,15 @@ Wall time: 1min 20s
 <p>After the preprocessing and feature engineering is done, we can train a model to predict our targets. We load our datasets with <code class="docutils literal notranslate"><span class="pre">dask_cudf</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train = dask_cudf.read_parquet(os.path.join(OUTPUT_DIR, &quot;nv_train_fe/*.parquet&quot;))
-valid = dask_cudf.read_parquet(os.path.join(OUTPUT_DIR, &quot;nv_valid_fe/*.parquet&quot;))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span> <span class="o">=</span> <span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="s2">&quot;nv_train_fe/*.parquet&quot;</span><span class="p">))</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">dask_cudf</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="s2">&quot;nv_valid_fe/*.parquet&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train[[&quot;a_is_verified&quot;, &quot;b_is_verified&quot;, &quot;b_follows_a&quot;]].dtypes
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="p">[[</span><span class="s2">&quot;a_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_is_verified&quot;</span><span class="p">,</span> <span class="s2">&quot;b_follows_a&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">dtypes</span>
 </pre></div>
 </div>
 </div>
@@ -750,25 +750,25 @@ dtype: object
 <p>Some columns are only used for feature engineering. Therefore, we define the columns we want to ignore for training.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>dont_use = [
-    &quot;__null_dask_index__&quot;,
-    &quot;text_tokens&quot;,
-    &quot;timestamp&quot;,
-    &quot;a_account_creation&quot;,
-    &quot;b_account_creation&quot;,
-    &quot;hashtags&quot;,
-    &quot;tweet_id&quot;,
-    &quot;links&quot;,
-    &quot;domains&quot;,
-    &quot;a_user_id&quot;,
-    &quot;b_user_id&quot;,
-    &quot;timestamp_wd&quot;,
-    &quot;timestamp_to_datetime&quot;,
-    &quot;a_following_count_a_ff_rate&quot;,
-    &quot;b_following_count_b_ff_rate&quot;,
-]
-dont_use = [x for x in train.columns if x in dont_use]
-label_names = [&quot;reply&quot;, &quot;retweet&quot;, &quot;retweet_comment&quot;, &quot;like&quot;]
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dont_use</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;__null_dask_index__&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;text_tokens&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_account_creation&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_account_creation&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;hashtags&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tweet_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;links&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;domains&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_user_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_user_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timestamp_wd&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timestamp_to_datetime&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_following_count_a_ff_rate&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;b_following_count_b_ff_rate&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">dont_use</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">train</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">dont_use</span><span class="p">]</span>
+<span class="n">label_names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;reply&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet&quot;</span><span class="p">,</span> <span class="s2">&quot;retweet_comment&quot;</span><span class="p">,</span> <span class="s2">&quot;like&quot;</span><span class="p">]</span>
 </pre></div>
 </div>
 </div>
@@ -778,25 +778,25 @@ label_names = [&quot;reply&quot;, &quot;retweet&quot;, &quot;retweet_comment&quo
 We sample the training dataset to 10% of the size and drop all columns, which we do not want to use.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>SAMPLE_RATIO = 0.1
-SEED = 1
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAMPLE_RATIO</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="n">SEED</span> <span class="o">=</span> <span class="mi">1</span>
 
-if SAMPLE_RATIO &lt; 1.0:
-    train[&quot;sample&quot;] = train[&quot;tweet_id&quot;].map_partitions(lambda cudf_df: cudf_df.hash_encode(stop=10))
-    print(len(train))
+<span class="k">if</span> <span class="n">SAMPLE_RATIO</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+    <span class="n">train</span><span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span><span class="p">[</span><span class="s2">&quot;tweet_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="k">lambda</span> <span class="n">cudf_df</span><span class="p">:</span> <span class="n">cudf_df</span><span class="o">.</span><span class="n">hash_encode</span><span class="p">(</span><span class="n">stop</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train</span><span class="p">))</span>
 
-    train = train[train[&quot;sample&quot;] &lt; 10 * SAMPLE_RATIO]
-    (train,) = dask.persist(train)
-    print(len(train))
+    <span class="n">train</span> <span class="o">=</span> <span class="n">train</span><span class="p">[</span><span class="n">train</span><span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">SAMPLE_RATIO</span><span class="p">]</span>
+    <span class="p">(</span><span class="n">train</span><span class="p">,)</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train</span><span class="p">))</span>
 
 
-Y_train = train[label_names]
-(Y_train,) = dask.persist(Y_train)
+<span class="n">Y_train</span> <span class="o">=</span> <span class="n">train</span><span class="p">[</span><span class="n">label_names</span><span class="p">]</span>
+<span class="p">(</span><span class="n">Y_train</span><span class="p">,)</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">Y_train</span><span class="p">)</span>
 
-train = train.drop([&quot;sample&quot;] + label_names + dont_use, axis=1)
-(train,) = dask.persist(train)
+<span class="n">train</span> <span class="o">=</span> <span class="n">train</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">label_names</span> <span class="o">+</span> <span class="n">dont_use</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">(</span><span class="n">train</span><span class="p">,)</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
 
-print(&quot;Using %i features&quot; % (train.shape[1]))
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using </span><span class="si">%i</span><span class="s2"> features&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">train</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
 </pre></div>
 </div>
 </div>
@@ -811,21 +811,21 @@ Using 51 features
 <p>Similar to the training dataset, our experiments show that 35% of our validation dataset is enough to get a good estimate of the performance metric. 35% of the validation dataset has a similar size as the test set of the RecSys2020 competition.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>SAMPLE_RATIO = 0.35
-SEED = 1
-if SAMPLE_RATIO &lt; 1.0:
-    print(len(valid))
-    valid[&quot;sample&quot;] = valid[&quot;tweet_id&quot;].map_partitions(lambda cudf_df: cudf_df.hash_encode(stop=10))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAMPLE_RATIO</span> <span class="o">=</span> <span class="mf">0.35</span>
+<span class="n">SEED</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="k">if</span> <span class="n">SAMPLE_RATIO</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">))</span>
+    <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="s2">&quot;tweet_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map_partitions</span><span class="p">(</span><span class="k">lambda</span> <span class="n">cudf_df</span><span class="p">:</span> <span class="n">cudf_df</span><span class="o">.</span><span class="n">hash_encode</span><span class="p">(</span><span class="n">stop</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
 
-    valid = valid[valid[&quot;sample&quot;] &lt; 10 * SAMPLE_RATIO]
-    (valid,) = dask.persist(valid)
-    print(len(valid))
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="n">valid</span><span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">SAMPLE_RATIO</span><span class="p">]</span>
+    <span class="p">(</span><span class="n">valid</span><span class="p">,)</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid</span><span class="p">))</span>
 
-Y_valid = valid[label_names]
-(Y_valid,) = dask.persist(Y_valid)
+<span class="n">Y_valid</span> <span class="o">=</span> <span class="n">valid</span><span class="p">[</span><span class="n">label_names</span><span class="p">]</span>
+<span class="p">(</span><span class="n">Y_valid</span><span class="p">,)</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">Y_valid</span><span class="p">)</span>
 
-valid = valid.drop([&quot;sample&quot;] + label_names + dont_use, axis=1)
-(valid,) = dask.persist(valid)
+<span class="n">valid</span> <span class="o">=</span> <span class="n">valid</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">label_names</span> <span class="o">+</span> <span class="n">dont_use</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">(</span><span class="n">valid</span><span class="p">,)</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -839,18 +839,18 @@ valid = valid.drop([&quot;sample&quot;] + label_names + dont_use, axis=1)
 <p>We initialize our XGBoost parameter.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;XGB Version&quot;, xgb.__version__)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;XGB Version&quot;</span><span class="p">,</span> <span class="n">xgb</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
 
-xgb_parms = {
-    &quot;max_depth&quot;: 8,
-    &quot;learning_rate&quot;: 0.1,
-    &quot;subsample&quot;: 0.8,
-    &quot;colsample_bytree&quot;: 0.3,
-    &quot;eval_metric&quot;: &quot;logloss&quot;,
-    &quot;objective&quot;: &quot;binary:logistic&quot;,
-    &quot;tree_method&quot;: &quot;gpu_hist&quot;,
-    &quot;predictor&quot;: &quot;gpu_predictor&quot;,
-}
+<span class="n">xgb_parms</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;max_depth&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="s2">&quot;subsample&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+    <span class="s2">&quot;colsample_bytree&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="s2">&quot;eval_metric&quot;</span><span class="p">:</span> <span class="s2">&quot;logloss&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="s2">&quot;binary:logistic&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tree_method&quot;</span><span class="p">:</span> <span class="s2">&quot;gpu_hist&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;predictor&quot;</span><span class="p">:</span> <span class="s2">&quot;gpu_predictor&quot;</span><span class="p">,</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </div>
@@ -862,7 +862,7 @@ xgb_parms = {
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train, valid = dask.persist(train, valid)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -877,39 +877,39 @@ xgb_parms = {
 <p>We train 4x XGBoost models for 300 rounds on a GPU.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
-time_train_start = time.time()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="n">time_train_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
-NROUND = 300
-VERBOSE_EVAL = 50
-preds = []
-for i in range(4):
+<span class="n">NROUND</span> <span class="o">=</span> <span class="mi">300</span>
+<span class="n">VERBOSE_EVAL</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
 
-    name = label_names[i]
-    print(&quot;#&quot; * 25)
-    print(&quot;###&quot;, name)
-    print(&quot;#&quot; * 25)
+    <span class="n">name</span> <span class="o">=</span> <span class="n">label_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;#&quot;</span> <span class="o">*</span> <span class="mi">25</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;###&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;#&quot;</span> <span class="o">*</span> <span class="mi">25</span><span class="p">)</span>
 
-    start = time.time()
-    print(&quot;Creating DMatrix...&quot;)
-    dtrain = xgb.dask.DaskDMatrix(client, data=train, label=Y_train.iloc[:, i])
-    print(&quot;Took %.1f seconds&quot; % (time.time() - start))
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating DMatrix...&quot;</span><span class="p">)</span>
+    <span class="n">dtrain</span> <span class="o">=</span> <span class="n">xgb</span><span class="o">.</span><span class="n">dask</span><span class="o">.</span><span class="n">DaskDMatrix</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">train</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">Y_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Took </span><span class="si">%.1f</span><span class="s2"> seconds&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
 
-    start = time.time()
-    print(&quot;Training...&quot;)
-    model = xgb.dask.train(
-        client, xgb_parms, dtrain=dtrain, num_boost_round=NROUND, verbose_eval=VERBOSE_EVAL
-    )
-    print(&quot;Took %.1f seconds&quot; % (time.time() - start))
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training...&quot;</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">xgb</span><span class="o">.</span><span class="n">dask</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+        <span class="n">client</span><span class="p">,</span> <span class="n">xgb_parms</span><span class="p">,</span> <span class="n">dtrain</span><span class="o">=</span><span class="n">dtrain</span><span class="p">,</span> <span class="n">num_boost_round</span><span class="o">=</span><span class="n">NROUND</span><span class="p">,</span> <span class="n">verbose_eval</span><span class="o">=</span><span class="n">VERBOSE_EVAL</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Took </span><span class="si">%.1f</span><span class="s2"> seconds&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
 
-    start = time.time()
-    print(&quot;Predicting...&quot;)
-    preds.append(xgb.dask.predict(client, model, valid))
-    print(&quot;Took %.1f seconds&quot; % (time.time() - start))
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Predicting...&quot;</span><span class="p">)</span>
+    <span class="n">preds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xgb</span><span class="o">.</span><span class="n">dask</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">valid</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Took </span><span class="si">%.1f</span><span class="s2"> seconds&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
 
-    del model, dtrain
+    <span class="k">del</span> <span class="n">model</span><span class="p">,</span> <span class="n">dtrain</span>
 
-time_train = time.time() - time_train_start
+<span class="n">time_train</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_train_start</span>
 </pre></div>
 </div>
 </div>
@@ -973,15 +973,15 @@ Wall time: 1min 14s
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>yvalid = Y_valid[label_names].values.compute()
-oof = cp.array([i.values.compute() for i in preds]).T
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">yvalid</span> <span class="o">=</span> <span class="n">Y_valid</span><span class="p">[</span><span class="n">label_names</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+<span class="n">oof</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">preds</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>yvalid.shape
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">yvalid</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
 </div>
 </div>
@@ -994,67 +994,67 @@ oof = cp.array([i.values.compute() for i in preds]).T
 <p>The hosts of the RecSys2020 competition provide code for calculating the performance metric <code class="docutils literal notranslate"><span class="pre">PRAUC</span></code> and <code class="docutils literal notranslate"><span class="pre">RCE</span></code>. We optimized the code to speed up the calculation, as well. Using cuDF / cupy, we calculate the performance metric on the GPU.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from sklearn.metrics import auc
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">auc</span>
 
 
-def precision_recall_curve(y_true, y_pred):
-    y_true = y_true.astype(&quot;float32&quot;)
-    ids = cp.argsort(-y_pred)
-    y_true = y_true[ids]
-    y_pred = y_pred[ids]
-    y_pred = cp.flip(y_pred, axis=0)
+<span class="k">def</span> <span class="nf">precision_recall_curve</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="n">y_true</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">)</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">y_pred</span><span class="p">)</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="n">y_true</span><span class="p">[</span><span class="n">ids</span><span class="p">]</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">y_pred</span><span class="p">[</span><span class="n">ids</span><span class="p">]</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
-    acc_one = cp.cumsum(y_true)
-    sum_one = cp.sum(y_true)
+    <span class="n">acc_one</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span>
+    <span class="n">sum_one</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span>
 
-    precision = cp.flip(acc_one / cp.cumsum(cp.ones(len(y_true))), axis=0)
-    precision[:-1] = precision[1:]
-    precision[-1] = 1.0
+    <span class="n">precision</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">acc_one</span> <span class="o">/</span> <span class="n">cp</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_true</span><span class="p">))),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">precision</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">precision</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">precision</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
 
-    recall = cp.flip(acc_one / sum_one, axis=0)
-    recall[:-1] = recall[1:]
-    recall[-1] = 0
-    n = (recall == 1).sum()
+    <span class="n">recall</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">acc_one</span> <span class="o">/</span> <span class="n">sum_one</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">recall</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">recall</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">recall</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="n">recall</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
 
-    return precision[n - 1 :], recall[n - 1 :], y_pred[n:]
-
-
-def compute_prauc(pred, gt):
-    prec, recall, thresh = precision_recall_curve(gt, pred)
-    recall, prec = cp.asnumpy(recall), cp.asnumpy(prec)
-
-    prauc = auc(recall, prec)
-    return prauc
+    <span class="k">return</span> <span class="n">precision</span><span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:],</span> <span class="n">recall</span><span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:],</span> <span class="n">y_pred</span><span class="p">[</span><span class="n">n</span><span class="p">:]</span>
 
 
-def log_loss(y_true, y_pred, eps=1e-7, normalize=True, sample_weight=None):
-    y_true = y_true.astype(&quot;int32&quot;)
-    y_pred = cp.clip(y_pred, eps, 1 - eps)
-    if y_pred.ndim == 1:
-        y_pred = cp.expand_dims(y_pred, axis=1)
-    if y_pred.shape[1] == 1:
-        y_pred = cp.hstack([1 - y_pred, y_pred])
+<span class="k">def</span> <span class="nf">compute_prauc</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">gt</span><span class="p">):</span>
+    <span class="n">prec</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">thresh</span> <span class="o">=</span> <span class="n">precision_recall_curve</span><span class="p">(</span><span class="n">gt</span><span class="p">,</span> <span class="n">pred</span><span class="p">)</span>
+    <span class="n">recall</span><span class="p">,</span> <span class="n">prec</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">asnumpy</span><span class="p">(</span><span class="n">recall</span><span class="p">),</span> <span class="n">cp</span><span class="o">.</span><span class="n">asnumpy</span><span class="p">(</span><span class="n">prec</span><span class="p">)</span>
 
-    y_pred /= cp.sum(y_pred, axis=1, keepdims=True)
-    loss = -cp.log(y_pred)[cp.arange(y_pred.shape[0]), y_true]
-    return _weighted_sum(loss, sample_weight, normalize).item()
+    <span class="n">prauc</span> <span class="o">=</span> <span class="n">auc</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span> <span class="n">prec</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">prauc</span>
 
 
-def _weighted_sum(sample_score, sample_weight, normalize):
-    if normalize:
-        return cp.average(sample_score, weights=sample_weight)
-    elif sample_weight is not None:
-        return cp.dot(sample_score, sample_weight)
-    else:
-        return sample_score.sum()
+<span class="k">def</span> <span class="nf">log_loss</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sample_weight</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="n">y_true</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">)</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">eps</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">eps</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">y_pred</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">y_pred</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">])</span>
+
+    <span class="n">y_pred</span> <span class="o">/=</span> <span class="n">cp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">cp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)[</span><span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">y_pred</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">y_true</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">_weighted_sum</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">sample_weight</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
 
 
-def compute_rce_fast(pred, gt):
-    cross_entropy = log_loss(gt, pred)
-    yt = cp.mean(gt).item()
-    # cross_entropy and yt are single numbers (no arrays) and using CPU is fast
-    strawman_cross_entropy = -(yt * np.log(yt) + (1 - yt) * np.log(1 - yt))
-    return (1.0 - cross_entropy / strawman_cross_entropy) * 100.0
+<span class="k">def</span> <span class="nf">_weighted_sum</span><span class="p">(</span><span class="n">sample_score</span><span class="p">,</span> <span class="n">sample_weight</span><span class="p">,</span> <span class="n">normalize</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">normalize</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cp</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">sample_score</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">sample_weight</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">sample_weight</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">sample_score</span><span class="p">,</span> <span class="n">sample_weight</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sample_score</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">compute_rce_fast</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">gt</span><span class="p">):</span>
+    <span class="n">cross_entropy</span> <span class="o">=</span> <span class="n">log_loss</span><span class="p">(</span><span class="n">gt</span><span class="p">,</span> <span class="n">pred</span><span class="p">)</span>
+    <span class="n">yt</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">gt</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+    <span class="c1"># cross_entropy and yt are single numbers (no arrays) and using CPU is fast</span>
+    <span class="n">strawman_cross_entropy</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">yt</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">yt</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">yt</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">yt</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">cross_entropy</span> <span class="o">/</span> <span class="n">strawman_cross_entropy</span><span class="p">)</span> <span class="o">*</span> <span class="mf">100.0</span>
 </pre></div>
 </div>
 </div>
@@ -1062,13 +1062,13 @@ def compute_rce_fast(pred, gt):
 <p>Finally, we calculate the performance metric PRAUC and RCE for each target.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>txt = &quot;&quot;
-for i in range(4):
-    prauc = compute_prauc(oof[:, i], yvalid[:, i])
-    rce = compute_rce_fast(oof[:, i], yvalid[:, i]).item()
-    txt_ = f&quot;{label_names[i]:20} PRAUC:{prauc:.5f} RCE:{rce:.5f}&quot;
-    print(txt_)
-    txt += txt_ + &quot;\n&quot;
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">txt</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+    <span class="n">prauc</span> <span class="o">=</span> <span class="n">compute_prauc</span><span class="p">(</span><span class="n">oof</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">yvalid</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span>
+    <span class="n">rce</span> <span class="o">=</span> <span class="n">compute_rce_fast</span><span class="p">(</span><span class="n">oof</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">yvalid</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+    <span class="n">txt_</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">20</span><span class="si">}</span><span class="s2"> PRAUC:</span><span class="si">{</span><span class="n">prauc</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2"> RCE:</span><span class="si">{</span><span class="n">rce</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">txt_</span><span class="p">)</span>
+    <span class="n">txt</span> <span class="o">+=</span> <span class="n">txt_</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
 </pre></div>
 </div>
 </div>
@@ -1083,19 +1083,19 @@ like                 PRAUC:0.76676 RCE:23.75791
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>time_total = time.time() - time_total_start
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_total</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_total_start</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print(&quot;Total time: {:.2f}s&quot;.format(time_total))
-print()
-print(&quot;1. Preprocessing:       {:.2f}s&quot;.format(time_preproc))
-print(&quot;2. Splitting:           {:.2f}s&quot;.format(time_split))
-print(&quot;3. Feature engineering: {:.2f}s&quot;.format(time_fe))
-print(&quot;4. Training:            {:.2f}s&quot;.format(time_train))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total time: </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_total</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;1. Preprocessing:       </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_preproc</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;2. Splitting:           </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_split</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;3. Feature engineering: </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_fe</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;4. Training:            </span><span class="si">{:.2f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_train</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>

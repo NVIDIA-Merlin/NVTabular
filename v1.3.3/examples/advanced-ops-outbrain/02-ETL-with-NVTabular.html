@@ -99,20 +99,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
 </pre></div>
 </div>
 </div>
@@ -133,27 +133,27 @@
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
-import glob
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">glob</span>
 
-import cupy
+<span class="kn">import</span> <span class="nn">cupy</span>
 
-# Get dataframe library - cudf or pandas
-from merlin.core.dispatch import get_lib
-df_lib = get_lib()
+<span class="c1"># Get dataframe library - cudf or pandas</span>
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+<span class="n">df_lib</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span>
 
-import nvtabular as nvt
-from merlin.io import Shuffle
-from nvtabular.ops import (
-    FillMedian,
-    Categorify,
-    LogOp,
-    TargetEncoding,
-    Rename,
-)
-from nvtabular.ops.column_similarity import ColumnSimilarity
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Shuffle</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FillMedian</span><span class="p">,</span>
+    <span class="n">Categorify</span><span class="p">,</span>
+    <span class="n">LogOp</span><span class="p">,</span>
+    <span class="n">TargetEncoding</span><span class="p">,</span>
+    <span class="n">Rename</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops.column_similarity</span> <span class="kn">import</span> <span class="n">ColumnSimilarity</span>
 
-from nvtabular import ColumnGroup
+<span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">ColumnGroup</span>
 </pre></div>
 </div>
 </div>
@@ -161,8 +161,8 @@ from nvtabular import ColumnGroup
 <p>First, we set where the dataset should be saved once processed (OUTPUT_BUCKET_FOLDER), as well as where the dataset originally resides (DATA_BUCKET_FOLDER).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>DATA_BUCKET_FOLDER = os.environ.get(&quot;INPUT_DATA_DIR&quot;, &quot;~/nvt-examples/outbrain/data&quot;)
-OUTPUT_BUCKET_FOLDER = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, &quot;./outbrain-preprocessed/&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;~/nvt-examples/outbrain/data&quot;</span><span class="p">)</span>
+<span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -170,8 +170,8 @@ OUTPUT_BUCKET_FOLDER = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, &quot;./outbr
 <p>Let’s read our saved train and valid datasets.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_filename = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;train_gdf.parquet&quot;)
-valid_filename = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid_gdf.parquet&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train_gdf.parquet&quot;</span><span class="p">)</span>
+<span class="n">valid_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid_gdf.parquet&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -182,10 +182,10 @@ valid_filename = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid_gdf.parquet&quot
 <p>Let’s create the output directories to store the preprocessed parquet files.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output_train_dir = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;train/&quot;)
-output_valid_dir = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid/&quot;)
-! mkdir -p $output_train_dir
-! mkdir -p $output_valid_dir
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output_train_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/&quot;</span><span class="p">)</span>
+<span class="n">output_valid_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/&quot;</span><span class="p">)</span>
+<span class="o">!</span><span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$output_train_dir</span>
+<span class="o">!</span><span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$output_valid_dir</span>
 </pre></div>
 </div>
 </div>
@@ -193,27 +193,27 @@ output_valid_dir = os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid/&quot;)
 <p>We read in three more cudf data frames, <i>documents categories</i>, <i>topics</i>, and <i>entities</i>, and use them to create sparse matrices in cupy. We will use these later to calculate cosine similarity between event document (landing page context) and ad document profile vectors (TF-IDF), i.e., how close in profile an ad is to the page that it is being displayed.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Alias for read_csv
-read_csv = df_lib.read_csv
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Alias for read_csv</span>
+<span class="n">read_csv</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_csv</span>
 
-documents_categories_cudf = read_csv(DATA_BUCKET_FOLDER + &quot;documents_categories.csv&quot;)
-documents_topics_cudf = read_csv(DATA_BUCKET_FOLDER + &quot;documents_topics.csv&quot;)
-documents_entities_cudf = read_csv(DATA_BUCKET_FOLDER + &quot;documents_entities.csv&quot;)
-
-
-# read in document categories/topics/entities as cupy sparse matrices
-def df_to_coo(df, row=&quot;document_id&quot;, col=None, data=&quot;confidence_level&quot;):
-    return cupy.sparse.coo_matrix((df[data].values, (df[row].values, df[col].values)))
+<span class="n">documents_categories_cudf</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_categories.csv&quot;</span><span class="p">)</span>
+<span class="n">documents_topics_cudf</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_topics.csv&quot;</span><span class="p">)</span>
+<span class="n">documents_entities_cudf</span> <span class="o">=</span> <span class="n">read_csv</span><span class="p">(</span><span class="n">DATA_BUCKET_FOLDER</span> <span class="o">+</span> <span class="s2">&quot;documents_entities.csv&quot;</span><span class="p">)</span>
 
 
-categories = df_to_coo(documents_categories_cudf, col=&quot;category_id&quot;)
-topics = df_to_coo(documents_topics_cudf, col=&quot;topic_id&quot;)
-documents_entities_cudf[&quot;entity_id&quot;] = (
-    documents_entities_cudf[&quot;entity_id&quot;].astype(&quot;category&quot;).cat.codes
-)
-entities = df_to_coo(documents_entities_cudf, col=&quot;entity_id&quot;)
+<span class="c1"># read in document categories/topics/entities as cupy sparse matrices</span>
+<span class="k">def</span> <span class="nf">df_to_coo</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="s2">&quot;confidence_level&quot;</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">cupy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">coo_matrix</span><span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="n">data</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)))</span>
 
-documents_categories_cudf = documents_topics_cudf = documents_entities_cudf = None
+
+<span class="n">categories</span> <span class="o">=</span> <span class="n">df_to_coo</span><span class="p">(</span><span class="n">documents_categories_cudf</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;category_id&quot;</span><span class="p">)</span>
+<span class="n">topics</span> <span class="o">=</span> <span class="n">df_to_coo</span><span class="p">(</span><span class="n">documents_topics_cudf</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;topic_id&quot;</span><span class="p">)</span>
+<span class="n">documents_entities_cudf</span><span class="p">[</span><span class="s2">&quot;entity_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">documents_entities_cudf</span><span class="p">[</span><span class="s2">&quot;entity_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span>
+<span class="p">)</span>
+<span class="n">entities</span> <span class="o">=</span> <span class="n">df_to_coo</span><span class="p">(</span><span class="n">documents_entities_cudf</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="s2">&quot;entity_id&quot;</span><span class="p">)</span>
+
+<span class="n">documents_categories_cudf</span> <span class="o">=</span> <span class="n">documents_topics_cudf</span> <span class="o">=</span> <span class="n">documents_entities_cudf</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 </div>
@@ -239,68 +239,68 @@ documents_categories_cudf = documents_topics_cudf = documents_entities_cudf = No
 <p>Below, we create a custom operator that calculates the time difference between a specified time column (either publish_time or publish_time_promo) and timestamp. This is used to calculate <i>time elapsed since publication</i> between the landing page and the ad.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># To save disk space, the timestamps in the entire dataset are relative to the first time in the dataset.
-# To recover the actual epoch time of the visit, we add 1465876799998 to the timestamp.
-TIMESTAMP_DELTA = 1465876799998
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># To save disk space, the timestamps in the entire dataset are relative to the first time in the dataset.</span>
+<span class="c1"># To recover the actual epoch time of the visit, we add 1465876799998 to the timestamp.</span>
+<span class="n">TIMESTAMP_DELTA</span> <span class="o">=</span> <span class="mi">1465876799998</span>
 
-from nvtabular.ops import Operator
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">Operator</span>
 
 
-class DaysSincePublished(Operator):
-    def transform(self, columns, gdf):
-        for column in columns.names:
-            col = gdf[column]
-            col.loc[col == &quot;&quot;] = None
-            col = col.astype(&quot;datetime64[ns]&quot;)
-            timestamp = (gdf[&quot;timestamp&quot;] + TIMESTAMP_DELTA).astype(&quot;datetime64[ms]&quot;)
-            delta = (timestamp - col).dt.days
-            gdf[column + &quot;_since_published&quot;] = delta * (delta &gt;= 0) * (delta &lt;= 10 * 365)
-        return gdf
+<span class="k">class</span> <span class="nc">DaysSincePublished</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">gdf</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+            <span class="n">col</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">col</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;datetime64[ns]&quot;</span><span class="p">)</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="p">(</span><span class="n">gdf</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">TIMESTAMP_DELTA</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;datetime64[ms]&quot;</span><span class="p">)</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span>
+            <span class="n">gdf</span><span class="p">[</span><span class="n">column</span> <span class="o">+</span> <span class="s2">&quot;_since_published&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta</span> <span class="o">*</span> <span class="p">(</span><span class="n">delta</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">delta</span> <span class="o">&lt;=</span> <span class="mi">10</span> <span class="o">*</span> <span class="mi">365</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">gdf</span>
 
-    def output_column_names(self, columns):
-        return nvt.ColumnSelector([column + &quot;_since_published&quot; for column in columns.names])
+    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ColumnSelector</span><span class="p">([</span><span class="n">column</span> <span class="o">+</span> <span class="s2">&quot;_since_published&quot;</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="p">])</span>
 
-    @property
-    def dependencies(self):
-        return [&quot;timestamp&quot;]
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># geo processing: apply two different lambda operators to the ‘geo_location’ column, and
-# extract the country/state from the geo_location value. The geo_location column
-# looks something like &quot;US&gt;CA&gt;12345&quot;, so we&#39;re using string slicing to pull out the country
-# and the country+state then
-geo_location = ColumnGroup([&quot;geo_location&quot;])
-country = geo_location &gt;&gt; (lambda col: col.str.slice(0, 2)) &gt;&gt; Rename(postfix=&quot;_country&quot;)
-state = geo_location &gt;&gt; (lambda col: col.str.slice(0, 5)) &gt;&gt; Rename(postfix=&quot;_state&quot;)
-geo_features = geo_location + country + state
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># geo processing: apply two different lambda operators to the ‘geo_location’ column, and</span>
+<span class="c1"># extract the country/state from the geo_location value. The geo_location column</span>
+<span class="c1"># looks something like &quot;US&gt;CA&gt;12345&quot;, so we&#39;re using string slicing to pull out the country</span>
+<span class="c1"># and the country+state then</span>
+<span class="n">geo_location</span> <span class="o">=</span> <span class="n">ColumnGroup</span><span class="p">([</span><span class="s2">&quot;geo_location&quot;</span><span class="p">])</span>
+<span class="n">country</span> <span class="o">=</span> <span class="n">geo_location</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_country&quot;</span><span class="p">)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">geo_location</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="n">col</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span> <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_state&quot;</span><span class="p">)</span>
+<span class="n">geo_features</span> <span class="o">=</span> <span class="n">geo_location</span> <span class="o">+</span> <span class="n">country</span> <span class="o">+</span> <span class="n">state</span>
 
-# categoricals processing: categorify certain input columns as well as the geo features
-cats = ColumnGroup(
-    [
-        &quot;ad_id&quot;,
-        &quot;document_id&quot;,
-        &quot;platform&quot;,
-        &quot;document_id_promo&quot;,
-        &quot;campaign_id&quot;,
-        &quot;advertiser_id&quot;,
-        &quot;source_id&quot;,
-        &quot;publisher_id&quot;,
-        &quot;source_id_promo&quot;,
-        &quot;publisher_id_promo&quot;,
-    ]
-)
-cat_features = geo_features + cats &gt;&gt; Categorify()
+<span class="c1"># categoricals processing: categorify certain input columns as well as the geo features</span>
+<span class="n">cats</span> <span class="o">=</span> <span class="n">ColumnGroup</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="s2">&quot;ad_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;document_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;platform&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;document_id_promo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;campaign_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;advertiser_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;publisher_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;source_id_promo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;publisher_id_promo&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+<span class="n">cat_features</span> <span class="o">=</span> <span class="n">geo_features</span> <span class="o">+</span> <span class="n">cats</span> <span class="o">&gt;&gt;</span> <span class="n">Categorify</span><span class="p">()</span>
 
-# Apply TargetEncoding to certain categoricals with kfold of 5 and smoothing of 20
-te_features = cats &gt;&gt; TargetEncoding(&quot;clicked&quot;, kfold=5, p_smooth=20)
+<span class="c1"># Apply TargetEncoding to certain categoricals with kfold of 5 and smoothing of 20</span>
+<span class="n">te_features</span> <span class="o">=</span> <span class="n">cats</span> <span class="o">&gt;&gt;</span> <span class="n">TargetEncoding</span><span class="p">(</span><span class="s2">&quot;clicked&quot;</span><span class="p">,</span> <span class="n">kfold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">p_smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
-# process dates using the ‘DaysSincePublished’ custom operator
-dates = [&quot;publish_time&quot;, &quot;publish_time_promo&quot;]
-date_features = dates &gt;&gt; DaysSincePublished() &gt;&gt; FillMedian() &gt;&gt; LogOp()
+<span class="c1"># process dates using the ‘DaysSincePublished’ custom operator</span>
+<span class="n">dates</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;publish_time&quot;</span><span class="p">,</span> <span class="s2">&quot;publish_time_promo&quot;</span><span class="p">]</span>
+<span class="n">date_features</span> <span class="o">=</span> <span class="n">dates</span> <span class="o">&gt;&gt;</span> <span class="n">DaysSincePublished</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">FillMedian</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">LogOp</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -308,8 +308,8 @@ date_features = dates &gt;&gt; DaysSincePublished() &gt;&gt; FillMedian() &gt;&g
 <p>Let’s visualize our calculation graph with the column groups we used and created so far.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>features = date_features + cat_features + te_features + &quot;clicked&quot;
-features.graph
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="n">date_features</span> <span class="o">+</span> <span class="n">cat_features</span> <span class="o">+</span> <span class="n">te_features</span> <span class="o">+</span> <span class="s2">&quot;clicked&quot;</span>
+<span class="n">features</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
 </div>
@@ -321,30 +321,30 @@ features.graph
 <p>Note that we rename the column names to avoid duplicated column names.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sim_features_categ = (
-    [[&quot;document_id&quot;, &quot;document_id_promo&quot;]]
-    &gt;&gt; ColumnSimilarity(categories, metric=&quot;tfidf&quot;, on_device=False)
-    &gt;&gt; Rename(postfix=&quot;_categories&quot;)
-)
-sim_features_topics = (
-    [[&quot;document_id&quot;, &quot;document_id_promo&quot;]]
-    &gt;&gt; ColumnSimilarity(topics, metric=&quot;tfidf&quot;, on_device=False)
-    &gt;&gt; Rename(postfix=&quot;_topics&quot;)
-)
-sim_features_entities = (
-    [[&quot;document_id&quot;, &quot;document_id_promo&quot;]]
-    &gt;&gt; ColumnSimilarity(entities, metric=&quot;tfidf&quot;, on_device=False)
-    &gt;&gt; Rename(postfix=&quot;_entities&quot;)
-)
-sim_features = sim_features_categ + sim_features_topics + sim_features_entities
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sim_features_categ</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[[</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="s2">&quot;document_id_promo&quot;</span><span class="p">]]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">ColumnSimilarity</span><span class="p">(</span><span class="n">categories</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_categories&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">sim_features_topics</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[[</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="s2">&quot;document_id_promo&quot;</span><span class="p">]]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">ColumnSimilarity</span><span class="p">(</span><span class="n">topics</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_topics&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">sim_features_entities</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">[[</span><span class="s2">&quot;document_id&quot;</span><span class="p">,</span> <span class="s2">&quot;document_id_promo&quot;</span><span class="p">]]</span>
+    <span class="o">&gt;&gt;</span> <span class="n">ColumnSimilarity</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="o">&gt;&gt;</span> <span class="n">Rename</span><span class="p">(</span><span class="n">postfix</span><span class="o">=</span><span class="s2">&quot;_entities&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">sim_features</span> <span class="o">=</span> <span class="n">sim_features_categ</span> <span class="o">+</span> <span class="n">sim_features_topics</span> <span class="o">+</span> <span class="n">sim_features_entities</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># The workflow is created with the output node of the graph
-workflow = nvt.Workflow(features + sim_features)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># The workflow is created with the output node of the graph</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">features</span> <span class="o">+</span> <span class="n">sim_features</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -352,11 +352,11 @@ workflow = nvt.Workflow(features + sim_features)
 <p>We then create an NVTabular Dataset object both for train and validation sets. We calculate statistics for this workflow on the input dataset, i.e. on our training set, using the <code class="docutils literal notranslate"><span class="pre">workflow.fit()</span></code> method so that our <i>Workflow</i> can use these stats to transform any given input. When our <i>Workflow</i> transforms our datasets and, we also save the results out to parquet files for fast reading at train time.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_dataset = nvt.Dataset(train_filename)
-valid_dataset = nvt.Dataset(valid_filename)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train_filename</span><span class="p">)</span>
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid_filename</span><span class="p">)</span>
 
-# Calculate statistics on the training set
-workflow.fit(train_dataset)
+<span class="c1"># Calculate statistics on the training set</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -371,12 +371,12 @@ workflow.fit(train_dataset)
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># use the calculated statistics to transform the train/valid datasets
-# and write out each as parquet
-workflow.transform(train_dataset).to_parquet(
-    output_path=output_train_dir, shuffle=Shuffle.PER_PARTITION, out_files_per_proc=5
-)
-workflow.transform(valid_dataset).to_parquet(output_path=output_valid_dir)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># use the calculated statistics to transform the train/valid datasets</span>
+<span class="c1"># and write out each as parquet</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">output_train_dir</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">Shuffle</span><span class="o">.</span><span class="n">PER_PARTITION</span><span class="p">,</span> <span class="n">out_files_per_proc</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="n">output_valid_dir</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -385,7 +385,7 @@ workflow.transform(valid_dataset).to_parquet(output_path=output_valid_dir)
 <p>In the next notebooks, we will train a deep learning model. Our training pipeline requires information about the data schema to define the neural network architecture. We will save the NVTabular workflow to disk so that we can restore it in the next notebooks.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow.save(os.path.join(OUTPUT_BUCKET_FOLDER, &quot;workflow&quot;))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -395,17 +395,17 @@ workflow.transform(valid_dataset).to_parquet(output_path=output_valid_dir)
 <h2>Reviewing processed data<a class="headerlink" href="#reviewing-processed-data" title="Permalink to this headline"></a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>TRAIN_PATHS = sorted(glob.glob(os.path.join(OUTPUT_BUCKET_FOLDER, &quot;train/*.parquet&quot;)))
-VALID_PATHS = sorted(glob.glob(os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid/*.parquet&quot;)))
-TRAIN_PATHS, VALID_PATHS
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">TRAIN_PATHS</span><span class="p">,</span> <span class="n">VALID_PATHS</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>df = df_lib.read_parquet(TRAIN_PATHS[0])
-df.head()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">df_lib</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">TRAIN_PATHS</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>

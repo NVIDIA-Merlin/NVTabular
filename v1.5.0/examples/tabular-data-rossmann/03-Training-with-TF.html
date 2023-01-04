@@ -99,20 +99,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
 </pre></div>
 </div>
 </div>
@@ -128,10 +128,10 @@
 <p>In the previous notebooks (<a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/01-Download-Convert.ipynb">01-Download-Convert.ipynb</a> and <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/99-applying-to-other-tabular-data-problems-rossmann/02-ETL-with-NVTabular.ipynb">02-ETL-with-NVTabular.ipynb</a>), we downloaded, preprocessed and created features for the dataset. Now, we are ready to train our deep learning model on the dataset. In this notebook, we use <strong>TensorFlow</strong> with the NVTabular data loader for TensorFlow to accelereate the training pipeline.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
-import math
-import json
-import glob
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">glob</span>
 </pre></div>
 </div>
 </div>
@@ -143,10 +143,10 @@ import glob
 <p>This time, we only need to define our data directories. We can load the data schema from the NVTabular workflow.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>DATA_DIR = os.environ.get(&quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/data/&quot;))
-PREPROCESS_DIR = os.path.join(DATA_DIR, &quot;ross_pre/&quot;)
-PREPROCESS_DIR_TRAIN = os.path.join(PREPROCESS_DIR, &quot;train&quot;)
-PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, &quot;valid&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/data/&quot;</span><span class="p">))</span>
+<span class="n">PREPROCESS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;ross_pre/&quot;</span><span class="p">)</span>
+<span class="n">PREPROCESS_DIR_TRAIN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">)</span>
+<span class="n">PREPROCESS_DIR_VALID</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span><span class="p">,</span> <span class="s2">&quot;valid&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -154,7 +154,7 @@ PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, &quot;valid&quot;)
 <p>What files are available to train on in our directories?</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls<span class="w"> </span><span class="nv">$PREPROCESS_DIR</span>
 </pre></div>
 </div>
 </div>
@@ -166,7 +166,7 @@ PREPROCESS_DIR_VALID = os.path.join(PREPROCESS_DIR, &quot;valid&quot;)
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR_TRAIN
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls<span class="w"> </span><span class="nv">$PREPROCESS_DIR_TRAIN</span>
 </pre></div>
 </div>
 </div>
@@ -179,7 +179,7 @@ _file_list.txt				    _metadata.json
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>!ls $PREPROCESS_DIR_VALID
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>ls<span class="w"> </span><span class="nv">$PREPROCESS_DIR_VALID</span>
 </pre></div>
 </div>
 </div>
@@ -193,17 +193,17 @@ _file_list.txt				    _metadata.json
 <p>We load the data schema and statistic information from <code class="docutils literal notranslate"><span class="pre">stats.json</span></code>. We created the file in the previous notebook <code class="docutils literal notranslate"><span class="pre">rossmann-store-sales-feature-engineering</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>stats = json.load(open(PREPROCESS_DIR + &quot;/stats.json&quot;, &quot;r&quot;))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">stats</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">PREPROCESS_DIR</span> <span class="o">+</span> <span class="s2">&quot;/stats.json&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>CATEGORICAL_COLUMNS = stats[&quot;CATEGORICAL_COLUMNS&quot;]
-CONTINUOUS_COLUMNS = stats[&quot;CONTINUOUS_COLUMNS&quot;]
-LABEL_COLUMNS = stats[&quot;LABEL_COLUMNS&quot;]
-COLUMNS = CATEGORICAL_COLUMNS + CONTINUOUS_COLUMNS + LABEL_COLUMNS
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;CATEGORICAL_COLUMNS&quot;</span><span class="p">]</span>
+<span class="n">CONTINUOUS_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;CONTINUOUS_COLUMNS&quot;</span><span class="p">]</span>
+<span class="n">LABEL_COLUMNS</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;LABEL_COLUMNS&quot;</span><span class="p">]</span>
+<span class="n">COLUMNS</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">+</span> <span class="n">CONTINUOUS_COLUMNS</span> <span class="o">+</span> <span class="n">LABEL_COLUMNS</span>
 </pre></div>
 </div>
 </div>
@@ -211,8 +211,8 @@ COLUMNS = CATEGORICAL_COLUMNS + CONTINUOUS_COLUMNS + LABEL_COLUMNS
 <p>The embedding table shows the cardinality of each categorical variable along with its associated embedding size. Each entry is of the form <code class="docutils literal notranslate"><span class="pre">(cardinality,</span> <span class="pre">embedding_size)</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_TABLE_SHAPES = stats[&quot;EMBEDDING_TABLE_SHAPES&quot;]
-EMBEDDING_TABLE_SHAPES
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;EMBEDDING_TABLE_SHAPES&quot;</span><span class="p">]</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span>
 </pre></div>
 </div>
 </div>
@@ -251,19 +251,19 @@ EMBEDDING_TABLE_SHAPES
 <p>If you’re interested in contributing to NVTabular, feel free to take this challenge on and submit a pull request if successful. 12% RMSPE is achievable using the Novograd optimizer, but we know of no Novograd implementation for TensorFlow that supports sparse gradients, and so we are not including that solution below.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>EMBEDDING_DROPOUT_RATE = 0.04
-DROPOUT_RATES = [0.001, 0.01]
-HIDDEN_DIMS = [1000, 500]
-BATCH_SIZE = 65536
-LEARNING_RATE = 0.001
-EPOCHS = 25
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">EMBEDDING_DROPOUT_RATE</span> <span class="o">=</span> <span class="mf">0.04</span>
+<span class="n">DROPOUT_RATES</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">]</span>
+<span class="n">HIDDEN_DIMS</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">500</span><span class="p">]</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">65536</span>
+<span class="n">LEARNING_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">EPOCHS</span> <span class="o">=</span> <span class="mi">25</span>
 
-# TODO: Calculate on the fly rather than recalling from previous analysis.
-MAX_SALES_IN_TRAINING_SET = 38722.0
-MAX_LOG_SALES_PREDICTION = 1.2 * math.log(MAX_SALES_IN_TRAINING_SET + 1.0)
+<span class="c1"># TODO: Calculate on the fly rather than recalling from previous analysis.</span>
+<span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">=</span> <span class="mf">38722.0</span>
+<span class="n">MAX_LOG_SALES_PREDICTION</span> <span class="o">=</span> <span class="mf">1.2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">MAX_SALES_IN_TRAINING_SET</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
 
-TRAIN_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_TRAIN, &quot;*.parquet&quot;)))
-VALID_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_VALID, &quot;*.parquet&quot;)))
+<span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_TRAIN</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">PREPROCESS_DIR_VALID</span><span class="p">,</span> <span class="s2">&quot;*.parquet&quot;</span><span class="p">)))</span>
 </pre></div>
 </div>
 </div>
@@ -277,48 +277,48 @@ VALID_PATHS = sorted(glob.glob(os.path.join(PREPROCESS_DIR_VALID, &quot;*.parque
 <p><code class="docutils literal notranslate"><span class="pre">KerasSequenceLoader</span></code> wraps a lightweight iterator around a <code class="docutils literal notranslate"><span class="pre">dataset</span></code> object to handle chunking, shuffling, and application of any workflows (which can be applied online as a preprocessing step). For column names, can use either a list of string names or a list of TensorFlow <code class="docutils literal notranslate"><span class="pre">feature_columns</span></code> that will be used to feed the network</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tensorflow as tf
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
-# we can control how much memory to give tensorflow with this environment variable
-# IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise
-# it&#39;s too late and TF will have claimed all free GPU memory
-os.environ[&quot;TF_MEMORY_ALLOCATION&quot;] = &quot;8192&quot;  # explicit MB
-os.environ[&quot;TF_MEMORY_ALLOCATION&quot;] = &quot;0.5&quot;  # fraction of free memory
-from nvtabular.loader.tensorflow import KerasSequenceLoader, KerasSequenceValidater
-
-
-# cheap wrapper to keep things some semblance of neat
-def make_categorical_embedding_column(name, dictionary_size, embedding_dim):
-    return tf.feature_column.embedding_column(
-        tf.feature_column.categorical_column_with_identity(name, dictionary_size), embedding_dim
-    )
+<span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
+<span class="c1"># IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise</span>
+<span class="c1"># it&#39;s too late and TF will have claimed all free GPU memory</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_MEMORY_ALLOCATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;8192&quot;</span>  <span class="c1"># explicit MB</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_MEMORY_ALLOCATION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0.5&quot;</span>  <span class="c1"># fraction of free memory</span>
+<span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span><span class="p">,</span> <span class="n">KerasSequenceValidater</span>
 
 
-# instantiate our columns
-categorical_columns = [
-    make_categorical_embedding_column(name, *EMBEDDING_TABLE_SHAPES[name])
-    for name in CATEGORICAL_COLUMNS
-]
-continuous_columns = [tf.feature_column.numeric_column(name, (1,)) for name in CONTINUOUS_COLUMNS]
+<span class="c1"># cheap wrapper to keep things some semblance of neat</span>
+<span class="k">def</span> <span class="nf">make_categorical_embedding_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dictionary_size</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dictionary_size</span><span class="p">),</span> <span class="n">embedding_dim</span>
+    <span class="p">)</span>
 
-# feed them to our datasets
-train_dataset = KerasSequenceLoader(
-    TRAIN_PATHS,  # you could also use a glob pattern
-    feature_columns=categorical_columns + continuous_columns,
-    batch_size=BATCH_SIZE,
-    label_names=LABEL_COLUMNS,
-    shuffle=True,
-    buffer_size=0.06,  # amount of data, as a fraction of GPU memory, to load at once
-)
 
-valid_dataset = KerasSequenceLoader(
-    VALID_PATHS,  # you could also use a glob pattern
-    feature_columns=categorical_columns + continuous_columns,
-    batch_size=BATCH_SIZE * 4,
-    label_names=LABEL_COLUMNS,
-    shuffle=False,
-    buffer_size=0.06,  # amount of data, as a fraction of GPU memory, to load at once
-)
+<span class="c1"># instantiate our columns</span>
+<span class="n">categorical_columns</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">make_categorical_embedding_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span>
+<span class="p">]</span>
+<span class="n">continuous_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">CONTINUOUS_COLUMNS</span><span class="p">]</span>
+
+<span class="c1"># feed them to our datasets</span>
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">TRAIN_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">feature_columns</span><span class="o">=</span><span class="n">categorical_columns</span> <span class="o">+</span> <span class="n">continuous_columns</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>  <span class="c1"># amount of data, as a fraction of GPU memory, to load at once</span>
+<span class="p">)</span>
+
+<span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">VALID_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">feature_columns</span><span class="o">=</span><span class="n">categorical_columns</span> <span class="o">+</span> <span class="n">continuous_columns</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="n">LABEL_COLUMNS</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>  <span class="c1"># amount of data, as a fraction of GPU memory, to load at once</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -329,42 +329,42 @@ valid_dataset = KerasSequenceLoader(
 <p>Using Keras, we can define the layers of our model and their parameters explicitly. Here, for the sake of consistency, we’ll mimic fast.ai’s <a class="reference external" href="https://docs.fast.ai/tabular.learner.html">TabularModel</a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># DenseFeatures layer needs a dictionary of {feature_name: input}
-categorical_inputs = {}
-for column_name in CATEGORICAL_COLUMNS:
-    categorical_inputs[column_name] = tf.keras.Input(name=column_name, shape=(1,), dtype=tf.int64)
-categorical_embedding_layer = tf.keras.layers.DenseFeatures(categorical_columns)
-categorical_x = categorical_embedding_layer(categorical_inputs)
-categorical_x = tf.keras.layers.Dropout(EMBEDDING_DROPOUT_RATE)(categorical_x)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># DenseFeatures layer needs a dictionary of {feature_name: input}</span>
+<span class="n">categorical_inputs</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
+    <span class="n">categorical_inputs</span><span class="p">[</span><span class="n">column_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="n">categorical_embedding_layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">DenseFeatures</span><span class="p">(</span><span class="n">categorical_columns</span><span class="p">)</span>
+<span class="n">categorical_x</span> <span class="o">=</span> <span class="n">categorical_embedding_layer</span><span class="p">(</span><span class="n">categorical_inputs</span><span class="p">)</span>
+<span class="n">categorical_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">EMBEDDING_DROPOUT_RATE</span><span class="p">)(</span><span class="n">categorical_x</span><span class="p">)</span>
 
-# Just concatenating continuous, so can use a list
-continuous_inputs = []
-for column_name in CONTINUOUS_COLUMNS:
-    continuous_inputs.append(tf.keras.Input(name=column_name, shape=(1,), dtype=tf.float64))
-continuous_embedding_layer = tf.keras.layers.Concatenate(axis=1)
-continuous_x = continuous_embedding_layer(continuous_inputs)
-continuous_x = tf.keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.1)(continuous_x)
+<span class="c1"># Just concatenating continuous, so can use a list</span>
+<span class="n">continuous_inputs</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CONTINUOUS_COLUMNS</span><span class="p">:</span>
+    <span class="n">continuous_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+<span class="n">continuous_embedding_layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Concatenate</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">continuous_x</span> <span class="o">=</span> <span class="n">continuous_embedding_layer</span><span class="p">(</span><span class="n">continuous_inputs</span><span class="p">)</span>
+<span class="n">continuous_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)(</span><span class="n">continuous_x</span><span class="p">)</span>
 
-# concatenate and build MLP
-x = tf.keras.layers.Concatenate(axis=1)([categorical_x, continuous_x])
-for dim, dropout_rate in zip(HIDDEN_DIMS, DROPOUT_RATES):
-    x = tf.keras.layers.Dense(dim, activation=&quot;relu&quot;)(x)
-    x = tf.keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.1)(x)
-    x = tf.keras.layers.Dropout(dropout_rate)(x)
-x = tf.keras.layers.Dense(1, activation=&quot;linear&quot;)(x)
+<span class="c1"># concatenate and build MLP</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Concatenate</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)([</span><span class="n">categorical_x</span><span class="p">,</span> <span class="n">continuous_x</span><span class="p">])</span>
+<span class="k">for</span> <span class="n">dim</span><span class="p">,</span> <span class="n">dropout_rate</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">HIDDEN_DIMS</span><span class="p">,</span> <span class="n">DROPOUT_RATES</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">dropout_rate</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
 
-# TODO: Initialize model weights to fix saturation issues.
-# For now, we&#39;ll just scale the output of our model directly before
-# hitting the sigmoid.
-x = 0.1 * x
+<span class="c1"># TODO: Initialize model weights to fix saturation issues.</span>
+<span class="c1"># For now, we&#39;ll just scale the output of our model directly before</span>
+<span class="c1"># hitting the sigmoid.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">x</span>
 
-x = MAX_LOG_SALES_PREDICTION * tf.keras.activations.sigmoid(x)
+<span class="n">x</span> <span class="o">=</span> <span class="n">MAX_LOG_SALES_PREDICTION</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">activations</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
-# combine all our inputs into a single list
-# (note that you can still use .fit, .predict, etc. on a dict
-# that maps input tensor names to input values)
-inputs = list(categorical_inputs.values()) + continuous_inputs
-tf_model = tf.keras.Model(inputs=inputs, outputs=x)
+<span class="c1"># combine all our inputs into a single list</span>
+<span class="c1"># (note that you can still use .fit, .predict, etc. on a dict</span>
+<span class="c1"># that maps input tensor names to input values)</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">categorical_inputs</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="n">continuous_inputs</span>
+<span class="n">tf_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -374,37 +374,37 @@ tf_model = tf.keras.Model(inputs=inputs, outputs=x)
 <h3>TensorFlow: Training<a class="headerlink" href="#tensorflow-training" title="Permalink to this headline"></a></h3>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def rmspe_tf(y_true, y_pred):
-    # map back into &quot;true&quot; space by undoing transform
-    y_true = tf.exp(y_true) - 1
-    y_pred = tf.exp(y_pred) - 1
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rmspe_tf</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+    <span class="c1"># map back into &quot;true&quot; space by undoing transform</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
-    percent_error = (y_true - y_pred) / y_true
-    return tf.sqrt(tf.reduce_mean(percent_error ** 2))
+    <span class="n">percent_error</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_true</span> <span class="o">-</span> <span class="n">y_pred</span><span class="p">)</span> <span class="o">/</span> <span class="n">y_true</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">percent_error</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
-from time import time
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
 
-optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
-tf_model.compile(optimizer, &quot;mse&quot;, metrics=[rmspe_tf])
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">LEARNING_RATE</span><span class="p">)</span>
+<span class="n">tf_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="s2">&quot;mse&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">rmspe_tf</span><span class="p">])</span>
 
-validation_callback = KerasSequenceValidater(valid_dataset)
-start = time()
-history = tf_model.fit(
-    train_dataset,
-    callbacks=[validation_callback],
-    epochs=EPOCHS,
-)
-t_final = time() - start
-total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed
-print(
-    f&quot;run_time: {t_final} - rows: {total_rows} - epochs: {EPOCHS} - dl_thru: { (EPOCHS * total_rows) / t_final}&quot;
-)
+<span class="n">validation_callback</span> <span class="o">=</span> <span class="n">KerasSequenceValidater</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">)</span>
+<span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+<span class="n">history</span> <span class="o">=</span> <span class="n">tf_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">train_dataset</span><span class="p">,</span>
+    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">validation_callback</span><span class="p">],</span>
+    <span class="n">epochs</span><span class="o">=</span><span class="n">EPOCHS</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">t_final</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+<span class="n">total_rows</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">num_rows_processed</span> <span class="o">+</span> <span class="n">valid_dataset</span><span class="o">.</span><span class="n">num_rows_processed</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;run_time: </span><span class="si">{</span><span class="n">t_final</span><span class="si">}</span><span class="s2"> - rows: </span><span class="si">{</span><span class="n">total_rows</span><span class="si">}</span><span class="s2"> - epochs: </span><span class="si">{</span><span class="n">EPOCHS</span><span class="si">}</span><span class="s2"> - dl_thru: </span><span class="si">{</span><span class="w"> </span><span class="p">(</span><span class="n">EPOCHS</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">total_rows</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">t_final</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -493,16 +493,16 @@ Wall time: 1min 19s
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from nvtabular.inference.triton import export_tensorflow_ensemble
-import nvtabular
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.inference.triton</span> <span class="kn">import</span> <span class="n">export_tensorflow_ensemble</span>
+<span class="kn">import</span> <span class="nn">nvtabular</span>
 
-BASE_DIR = os.environ.get(&quot;BASE_DIR&quot;, os.path.expanduser(&quot;~/nvt-examples/&quot;))
-MODEL_NAME_ENSEMBLE = os.environ.get(&quot;MODEL_NAME_ENSEMBLE&quot;, &quot;rossmann&quot;)
-# model path to save the models
-MODEL_PATH = os.path.join(BASE_DIR, &quot;models/&quot;)
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;BASE_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/nvt-examples/&quot;</span><span class="p">))</span>
+<span class="n">MODEL_NAME_ENSEMBLE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MODEL_NAME_ENSEMBLE&quot;</span><span class="p">,</span> <span class="s2">&quot;rossmann&quot;</span><span class="p">)</span>
+<span class="c1"># model path to save the models</span>
+<span class="n">MODEL_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span> <span class="s2">&quot;models/&quot;</span><span class="p">)</span>
 
-workflow = nvtabular.Workflow.load(os.path.join(DATA_DIR, &quot;workflow&quot;))
-export_tensorflow_ensemble(tf_model, workflow, MODEL_NAME_ENSEMBLE, MODEL_PATH, LABEL_COLUMNS)
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">nvtabular</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
+<span class="n">export_tensorflow_ensemble</span><span class="p">(</span><span class="n">tf_model</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">MODEL_NAME_ENSEMBLE</span><span class="p">,</span> <span class="n">MODEL_PATH</span><span class="p">,</span> <span class="n">LABEL_COLUMNS</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>

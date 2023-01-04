@@ -99,20 +99,20 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2021 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2021 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
 </pre></div>
 </div>
 </div>
@@ -131,25 +131,25 @@ This notebook explains, how to use the NVTabular dataloader to accelerate Tensor
 </ul>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
-import tensorflow as tf
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 
-# we can control how much memory to give tensorflow with this environment variable
-# IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise
-# TF will have claimed all free GPU memory
-# os.environ[&#39;TF_MEMORY_ALLOCATION&#39;] = &quot;0.8&quot; # fraction of free memory
+<span class="c1"># we can control how much memory to give tensorflow with this environment variable</span>
+<span class="c1"># IMPORTANT: make sure you do this before you initialize TF&#39;s runtime, otherwise</span>
+<span class="c1"># TF will have claimed all free GPU memory</span>
+<span class="c1"># os.environ[&#39;TF_MEMORY_ALLOCATION&#39;] = &quot;0.8&quot; # fraction of free memory</span>
 
-from nvtabular.loader.tensorflow import KerasSequenceLoader, KerasSequenceValidater
-from nvtabular.framework_utils.tensorflow import layers
+<span class="kn">from</span> <span class="nn">nvtabular.loader.tensorflow</span> <span class="kn">import</span> <span class="n">KerasSequenceLoader</span><span class="p">,</span> <span class="n">KerasSequenceValidater</span>
+<span class="kn">from</span> <span class="nn">nvtabular.framework_utils.tensorflow</span> <span class="kn">import</span> <span class="n">layers</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import glob
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">glob</span>
 
-import nvtabular as nvt
+<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
 </pre></div>
 </div>
 </div>
@@ -157,7 +157,7 @@ import nvtabular as nvt
 <p>First, we set where the parquet datasets were saved once processed (OUTPUT_BUCKET_FOLDER).</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>OUTPUT_BUCKET_FOLDER = os.environ.get(&quot;OUTPUT_DATA_DIR&quot;, &quot;./outbrain-preprocessed/&quot;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">OUTPUT_BUCKET_FOLDER</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="s2">&quot;./outbrain-preprocessed/&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -165,7 +165,7 @@ import nvtabular as nvt
 <p>In the previous notebook, we used NVTabular for ETL and stored the workflow to disk. We can load the NVTabular workflow to extract important metadata for our training pipeline.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow = nvt.Workflow.load(os.path.join(OUTPUT_BUCKET_FOLDER, &quot;workflow&quot;))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;workflow&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -173,12 +173,12 @@ import nvtabular as nvt
 <p>EMBEDDING_TABLE_SHAPES defines the size of the embedding tables that our model will use to map categorical outputs from NVTabular into numeric dense inputs.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from nvtabular.ops import get_embedding_sizes
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">get_embedding_sizes</span>
 
-EMBEDDING_TABLE_SHAPES = {
-    column: (shape[0], min(shape[1], 16)) for column, shape in get_embedding_sizes(workflow).items()
-}
-EMBEDDING_TABLE_SHAPES
+<span class="n">EMBEDDING_TABLE_SHAPES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">column</span><span class="p">:</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">min</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">get_embedding_sizes</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<span class="p">}</span>
+<span class="n">EMBEDDING_TABLE_SHAPES</span>
 </pre></div>
 </div>
 </div>
@@ -203,40 +203,40 @@ EMBEDDING_TABLE_SHAPES
 <p>We select define categorical and numerical features that are processed and generated via the NVTabular workflow to train our W&amp;D TF model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>CATEGORICAL_COLUMNS = [
-    &quot;geo_location&quot;,
-    &quot;geo_location_country&quot;,
-    &quot;geo_location_state&quot;,
-    &quot;ad_id&quot;,
-    &quot;document_id&quot;,
-    &quot;platform&quot;,
-    &quot;document_id_promo&quot;,
-    &quot;campaign_id&quot;,
-    &quot;advertiser_id&quot;,
-    &quot;source_id&quot;,
-    &quot;publisher_id&quot;,
-    &quot;source_id_promo&quot;,
-    &quot;publisher_id_promo&quot;,
-]
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">CATEGORICAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;geo_location&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;geo_location_country&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;geo_location_state&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ad_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;platform&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id_promo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;campaign_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;advertiser_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publisher_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_id_promo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publisher_id_promo&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>NUMERIC_COLUMNS = [
-    &quot;document_id_document_id_promo_sim_categories&quot;,
-    &quot;document_id_document_id_promo_sim_topics&quot;,
-    &quot;document_id_document_id_promo_sim_entities&quot;,
-    &quot;publish_time_since_published&quot;,
-    &quot;publish_time_promo_since_published&quot;,
-    &quot;TE_ad_id_clicked&quot;,
-    &quot;TE_document_id_promo_clicked&quot;,
-    &quot;TE_campaign_id_clicked&quot;,
-    &quot;TE_advertiser_id_clicked&quot;,
-    &quot;TE_source_id_clicked&quot;,
-    &quot;TE_publisher_id_clicked&quot;,
-]
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">NUMERIC_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;document_id_document_id_promo_sim_categories&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id_document_id_promo_sim_topics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;document_id_document_id_promo_sim_entities&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publish_time_since_published&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publish_time_promo_since_published&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_ad_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_document_id_promo_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_campaign_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_advertiser_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_source_id_clicked&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TE_publisher_id_clicked&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 </pre></div>
 </div>
 </div>
@@ -247,40 +247,40 @@ EMBEDDING_TABLE_SHAPES
 <p>We create tensorflow feature columns corresponding to each feature of the model input. If you’re using NVTabular with TensorFlow feature_columns, you should only be using <code class="docutils literal notranslate"><span class="pre">tf.feature_column.categorical_column_with_identity</span></code> for categorical features, since any other transformation (categorification and/or hashing) should be handled in NVTabular on the GPU. This feature column is passed to the wide portion of the model. If a categorical column corresponds to an embedding table, it is wrapped with an embedding_column feature_column, if it does not correspond to an embedding table, it is wrapped as an indicator column. The wrapped column is passed to the deep portion of the model. Continuous columns are passed to both the wide and deep portions of the model after being encapsulated as a <code class="docutils literal notranslate"><span class="pre">numeric_column</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def get_feature_columns():
-    wide_columns, deep_columns = [], []
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_feature_columns</span><span class="p">():</span>
+    <span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
 
-    for column_name in CATEGORICAL_COLUMNS:
-        if (
-            column_name in EMBEDDING_TABLE_SHAPES
-        ):  # Changing hashing to identity + adding modulo to dataloader
-            categorical_column = tf.feature_column.categorical_column_with_identity(
-                column_name, num_buckets=EMBEDDING_TABLE_SHAPES[column_name][0]
-            )
-        else:
-            raise ValueError(f&quot;Unexpected categorical column found {column_name}&quot;)
+    <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">CATEGORICAL_COLUMNS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">column_name</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span>
+        <span class="p">):</span>  <span class="c1"># Changing hashing to identity + adding modulo to dataloader</span>
+            <span class="n">categorical_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">categorical_column_with_identity</span><span class="p">(</span>
+                <span class="n">column_name</span><span class="p">,</span> <span class="n">num_buckets</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">column_name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected categorical column found </span><span class="si">{</span><span class="n">column_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        if column_name in EMBEDDING_TABLE_SHAPES:
-            wrapped_column = tf.feature_column.embedding_column(
-                categorical_column,
-                dimension=EMBEDDING_TABLE_SHAPES[column_name][1],
-                combiner=&quot;mean&quot;,
-            )
-        else:
-            wrapped_column = tf.feature_column.indicator_column(categorical_column)
+        <span class="k">if</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">:</span>
+            <span class="n">wrapped_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">embedding_column</span><span class="p">(</span>
+                <span class="n">categorical_column</span><span class="p">,</span>
+                <span class="n">dimension</span><span class="o">=</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">column_name</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">combiner</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">wrapped_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">indicator_column</span><span class="p">(</span><span class="n">categorical_column</span><span class="p">)</span>
 
-        wide_columns.append(categorical_column)
-        deep_columns.append(wrapped_column)
+        <span class="n">wide_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">categorical_column</span><span class="p">)</span>
+        <span class="n">deep_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wrapped_column</span><span class="p">)</span>
 
-    numerics = [
-        tf.feature_column.numeric_column(column_name, shape=(1,), dtype=tf.float32)
-        for column_name in NUMERIC_COLUMNS
-    ]
+    <span class="n">numerics</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">feature_column</span><span class="o">.</span><span class="n">numeric_column</span><span class="p">(</span><span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">NUMERIC_COLUMNS</span>
+    <span class="p">]</span>
 
-    wide_columns.extend(numerics)
-    deep_columns.extend(numerics)
+    <span class="n">wide_columns</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">numerics</span><span class="p">)</span>
+    <span class="n">deep_columns</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">numerics</span><span class="p">)</span>
 
-    return wide_columns, deep_columns
+    <span class="k">return</span> <span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span>
 </pre></div>
 </div>
 </div>
@@ -288,8 +288,8 @@ EMBEDDING_TABLE_SHAPES
 <p>Next, we define the layer shape and dropout probability for the deep portion of the model.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>deep_hidden_units = [1024, 512, 256]
-deep_dropout = 0.1
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">deep_hidden_units</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">256</span><span class="p">]</span>
+<span class="n">deep_dropout</span> <span class="o">=</span> <span class="mf">0.1</span>
 </pre></div>
 </div>
 </div>
@@ -297,68 +297,68 @@ deep_dropout = 0.1
 <p>An input is created for each feature column, with a datatype of either tf.float32 for continuous values, or tf.int32 for categorical values. To implement the wide model, for categorical inputs, we embed them to a dimension of one, and sum them with the results of applying a dense layer with output dimension one, effectively weighting and summing each of the inputs. For the deep model, we embed our categorical columns according to the feature columns we defined earlier, and concatenate the newly dense features with our dense continuous features, which we pass to our deep model, which by default is a 5 layer MLP with internal dimension of 1024 neurons for each layer.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>wide_columns, deep_columns = get_feature_columns()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_columns</span><span class="p">,</span> <span class="n">deep_columns</span> <span class="o">=</span> <span class="n">get_feature_columns</span><span class="p">()</span>
 
-wide_weighted_outputs = []  # a list of (batch_size, 1) contributors to the linear weighted sum
-numeric_dense_inputs = []  # NumericColumn inputs; to be concatenated and then fed to a dense layer
-wide_columns_dict = {}  # key : column
-deep_columns_dict = {}  # key : column
-features = {}  # tf.keras.Input placeholders for each feature to be used
+<span class="n">wide_weighted_outputs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># a list of (batch_size, 1) contributors to the linear weighted sum</span>
+<span class="n">numeric_dense_inputs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># NumericColumn inputs; to be concatenated and then fed to a dense layer</span>
+<span class="n">wide_columns_dict</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># key : column</span>
+<span class="n">deep_columns_dict</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># key : column</span>
+<span class="n">features</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># tf.keras.Input placeholders for each feature to be used</span>
 
-# construct input placeholders for wide features
-for col in wide_columns:
-    features[col.key] = tf.keras.Input(
-        shape=(1,),
-        batch_size=None,
-        name=col.key,
-        dtype=tf.float32 if col.key in NUMERIC_COLUMNS else tf.int32,
-        sparse=False,
-    )
-    wide_columns_dict[col.key] = col
-for col in deep_columns:
-    is_embedding_column = &quot;key&quot; not in dir(col)
-    key = col.categorical_column.key if is_embedding_column else col.key
+<span class="c1"># construct input placeholders for wide features</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">wide_columns</span><span class="p">:</span>
+    <span class="n">features</span><span class="p">[</span><span class="n">col</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+        <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">col</span><span class="o">.</span><span class="n">key</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">key</span> <span class="ow">in</span> <span class="n">NUMERIC_COLUMNS</span> <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
+        <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">wide_columns_dict</span><span class="p">[</span><span class="n">col</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
+<span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">deep_columns</span><span class="p">:</span>
+    <span class="n">is_embedding_column</span> <span class="o">=</span> <span class="s2">&quot;key&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">categorical_column</span><span class="o">.</span><span class="n">key</span> <span class="k">if</span> <span class="n">is_embedding_column</span> <span class="k">else</span> <span class="n">col</span><span class="o">.</span><span class="n">key</span>
 
-    if key not in features:
-        features[key] = tf.keras.Input(
-            shape=(1,),
-            batch_size=None,
-            name=key,
-            dtype=tf.float32 if col.key in NUMERIC_COLUMNS else tf.int32,
-            sparse=False,
-        )
-    deep_columns_dict[key] = col
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+        <span class="n">features</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,),</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">key</span> <span class="ow">in</span> <span class="n">NUMERIC_COLUMNS</span> <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
+            <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">deep_columns_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
 
-for key in wide_columns_dict:
-    if key in EMBEDDING_TABLE_SHAPES:
-        wide_weighted_outputs.append(
-            tf.keras.layers.Flatten()(
-                tf.keras.layers.Embedding(EMBEDDING_TABLE_SHAPES[key][0], 1, input_length=1)(
-                    features[key]
-                )
-            )
-        )
-    else:
-        numeric_dense_inputs.append(features[key])
+<span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">wide_columns_dict</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">:</span>
+        <span class="n">wide_weighted_outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Flatten</span><span class="p">()(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Embedding</span><span class="p">(</span><span class="n">EMBEDDING_TABLE_SHAPES</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">input_length</span><span class="o">=</span><span class="mi">1</span><span class="p">)(</span>
+                    <span class="n">features</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">numeric_dense_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">features</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
 
-categorical_output_contrib = tf.keras.layers.add(wide_weighted_outputs, name=&quot;categorical_output&quot;)
-numeric_dense_tensor = tf.keras.layers.concatenate(numeric_dense_inputs, name=&quot;numeric_dense&quot;)
-deep_columns = list(deep_columns_dict.values())
+<span class="n">categorical_output_contrib</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">wide_weighted_outputs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;categorical_output&quot;</span><span class="p">)</span>
+<span class="n">numeric_dense_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">numeric_dense_inputs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;numeric_dense&quot;</span><span class="p">)</span>
+<span class="n">deep_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">deep_columns_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
-dnn = layers.DenseFeatures(deep_columns, name=&quot;deep_embedded&quot;)(features)
-for unit_size in deep_hidden_units:
-    dnn = tf.keras.layers.Dense(units=unit_size, activation=&quot;relu&quot;)(dnn)
-    dnn = tf.keras.layers.Dropout(rate=deep_dropout)(dnn)
-    dnn = tf.keras.layers.BatchNormalization(momentum=0.999)(dnn)
-dnn = tf.keras.layers.Dense(units=1)(dnn)
-dnn_model = tf.keras.Model(inputs=features, outputs=dnn)
-linear_output = categorical_output_contrib + tf.keras.layers.Dense(1)(numeric_dense_tensor)
+<span class="n">dnn</span> <span class="o">=</span> <span class="n">layers</span><span class="o">.</span><span class="n">DenseFeatures</span><span class="p">(</span><span class="n">deep_columns</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;deep_embedded&quot;</span><span class="p">)(</span><span class="n">features</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">unit_size</span> <span class="ow">in</span> <span class="n">deep_hidden_units</span><span class="p">:</span>
+    <span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">unit_size</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+    <span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">rate</span><span class="o">=</span><span class="n">deep_dropout</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+    <span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">momentum</span><span class="o">=</span><span class="mf">0.999</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+<span class="n">dnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="mi">1</span><span class="p">)(</span><span class="n">dnn</span><span class="p">)</span>
+<span class="n">dnn_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">dnn</span><span class="p">)</span>
+<span class="n">linear_output</span> <span class="o">=</span> <span class="n">categorical_output_contrib</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">)(</span><span class="n">numeric_dense_tensor</span><span class="p">)</span>
 
-linear_model = tf.keras.Model(inputs=features, outputs=linear_output)
+<span class="n">linear_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">linear_output</span><span class="p">)</span>
 
-wide_and_deep_model = tf.keras.experimental.WideDeepModel(
-    linear_model, dnn_model, activation=&quot;sigmoid&quot;
-)
+<span class="n">wide_and_deep_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">WideDeepModel</span><span class="p">(</span>
+    <span class="n">linear_model</span><span class="p">,</span> <span class="n">dnn_model</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;sigmoid&quot;</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -368,38 +368,38 @@ wide_and_deep_model = tf.keras.experimental.WideDeepModel(
 <p>Now that our data is preprocessed and saved out, we can leverage datasets to read through the preprocessed parquet files in an online fashion to train neural networks.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>TRAIN_PATHS = sorted(glob.glob(os.path.join(OUTPUT_BUCKET_FOLDER, &quot;train/*.parquet&quot;)))
-VALID_PATHS = sorted(glob.glob(os.path.join(OUTPUT_BUCKET_FOLDER, &quot;valid/*.parquet&quot;)))
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">TRAIN_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;train/*.parquet&quot;</span><span class="p">)))</span>
+<span class="n">VALID_PATHS</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OUTPUT_BUCKET_FOLDER</span><span class="p">,</span> <span class="s2">&quot;valid/*.parquet&quot;</span><span class="p">)))</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_dataset_tf = KerasSequenceLoader(
-    TRAIN_PATHS,  # you could also use a glob pattern
-    batch_size=131072,
-    label_names=[&quot;clicked&quot;],
-    cat_names=CATEGORICAL_COLUMNS,
-    cont_names=NUMERIC_COLUMNS,
-    engine=&quot;parquet&quot;,
-    shuffle=True,
-    buffer_size=0.06,  # how many batches to load at once
-    parts_per_chunk=1,
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">TRAIN_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">131072</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clicked&quot;</span><span class="p">],</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>  <span class="c1"># how many batches to load at once</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
 
-valid_dataset_tf = KerasSequenceLoader(
-    VALID_PATHS,  # you could also use a glob pattern
-    batch_size=131072,
-    label_names=[&quot;clicked&quot;],
-    cat_names=CATEGORICAL_COLUMNS,
-    cont_names=NUMERIC_COLUMNS,
-    engine=&quot;parquet&quot;,
-    shuffle=False,
-    buffer_size=0.06,
-    parts_per_chunk=1,
-)
-validation_callback = KerasSequenceValidater(valid_dataset_tf)
+<span class="n">valid_dataset_tf</span> <span class="o">=</span> <span class="n">KerasSequenceLoader</span><span class="p">(</span>
+    <span class="n">VALID_PATHS</span><span class="p">,</span>  <span class="c1"># you could also use a glob pattern</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">131072</span><span class="p">,</span>
+    <span class="n">label_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clicked&quot;</span><span class="p">],</span>
+    <span class="n">cat_names</span><span class="o">=</span><span class="n">CATEGORICAL_COLUMNS</span><span class="p">,</span>
+    <span class="n">cont_names</span><span class="o">=</span><span class="n">NUMERIC_COLUMNS</span><span class="p">,</span>
+    <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
+    <span class="n">parts_per_chunk</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">validation_callback</span> <span class="o">=</span> <span class="n">KerasSequenceValidater</span><span class="p">(</span><span class="n">valid_dataset_tf</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -407,11 +407,11 @@ validation_callback = KerasSequenceValidater(valid_dataset_tf)
 <p>The wide portion of the model is optimized using the <i>Follow The Regularized Leader (FTRL)</i> algorithm, while the deep portion of the model is optimized using <i>Adam</i> optimizer.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>wide_optimizer = tf.keras.optimizers.Ftrl(
-    learning_rate=0.1,
-)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Ftrl</span><span class="p">(</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+<span class="p">)</span>
 
-deep_optimizer = tf.keras.optimizers.Adam(learning_rate=0.2)
+<span class="n">deep_optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -419,13 +419,13 @@ deep_optimizer = tf.keras.optimizers.Adam(learning_rate=0.2)
 <p>Finally, we compile our model with our dual optimizers and binary cross-entropy loss, and train our model for 10 epochs.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>wide_and_deep_model.compile(
-    optimizer=[wide_optimizer, deep_optimizer],
-    loss=&quot;binary_crossentropy&quot;,
-    metrics=[tf.keras.metrics.BinaryAccuracy(), tf.keras.metrics.AUC()],
-    experimental_run_tf_function=False,
-)
-history = wide_and_deep_model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=5)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">wide_and_deep_model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="p">[</span><span class="n">wide_optimizer</span><span class="p">,</span> <span class="n">deep_optimizer</span><span class="p">],</span>
+    <span class="n">loss</span><span class="o">=</span><span class="s2">&quot;binary_crossentropy&quot;</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">BinaryAccuracy</span><span class="p">(),</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">()],</span>
+    <span class="n">experimental_run_tf_function</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">history</span> <span class="o">=</span> <span class="n">wide_and_deep_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_dataset_tf</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">validation_callback</span><span class="p">],</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
