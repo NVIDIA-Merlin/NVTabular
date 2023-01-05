@@ -349,6 +349,9 @@ class Workflow:
                 o,
             )
 
+        # track existing by-value modules
+        preexisting_modules_byvalue = set(cloudpickle.list_registry_pickle_by_value())
+
         # direct cloudpickle to serialize selected modules by value
         if modules_byvalue is None:
             modules_byvalue = []
@@ -376,9 +379,22 @@ class Workflow:
                 f'Failed to register modules to serialize by value.  Reason given was "{str(ex)}"'
             )
 
-        # dump out the full workflow (graph/stats/operators etc) using cloudpickle
-        with fs.open(fs.sep.join([path, "workflow.pkl"]), "wb") as o:
-            cloudpickle.dump(self, o)
+        try:
+            # dump out the full workflow (graph/stats/operators etc) using cloudpickle
+            with fs.open(fs.sep.join([path, "workflow.pkl"]), "wb") as o:
+                cloudpickle.dump(self, o)
+        finally:
+            # return all modules that we set to serialize by value to by-reference
+            # (i.e., retain modules that were set to serialize by value before this invocation)
+
+            for m in modules_byvalue:
+                if isinstance(m, types.ModuleType):
+                    if m.__name__ not in preexisting_modules_byvalue:
+                     cloudpickle.unregister_pickle_by_value(m)
+                elif isinstance(m, str) and m in sys.modules:
+                    if m not in preexisting_modules_byvalue:
+                        cloudpickle.unregister_pickle_by_value(sys.modules[m])
+
 
     @classmethod
     def load(cls, path, client=None) -> "Workflow":
