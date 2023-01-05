@@ -434,6 +434,9 @@
                 <span class="n">o</span><span class="p">,</span>
             <span class="p">)</span>
 
+        <span class="c1"># track existing by-value modules</span>
+        <span class="n">preexisting_modules_byvalue</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">cloudpickle</span><span class="o">.</span><span class="n">list_registry_pickle_by_value</span><span class="p">())</span>
+
         <span class="c1"># direct cloudpickle to serialize selected modules by value</span>
         <span class="k">if</span> <span class="n">modules_byvalue</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">modules_byvalue</span> <span class="o">=</span> <span class="p">[]</span>
@@ -461,9 +464,22 @@
                 <span class="sa">f</span><span class="s1">&#39;Failed to register modules to serialize by value.  Reason given was &quot;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
             <span class="p">)</span>
 
-        <span class="c1"># dump out the full workflow (graph/stats/operators etc) using cloudpickle</span>
-        <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;workflow.pkl&quot;</span><span class="p">]),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">o</span><span class="p">:</span>
-            <span class="n">cloudpickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># dump out the full workflow (graph/stats/operators etc) using cloudpickle</span>
+            <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;workflow.pkl&quot;</span><span class="p">]),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">cloudpickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># return all modules that we set to serialize by value to by-reference</span>
+            <span class="c1"># (i.e., retain modules that were set to serialize by value before this invocation)</span>
+
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules_byvalue</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">preexisting_modules_byvalue</span><span class="p">:</span>
+                     <span class="n">cloudpickle</span><span class="o">.</span><span class="n">unregister_pickle_by_value</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">m</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">preexisting_modules_byvalue</span><span class="p">:</span>
+                        <span class="n">cloudpickle</span><span class="o">.</span><span class="n">unregister_pickle_by_value</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">m</span><span class="p">])</span></div>
+
 
 <div class="viewcode-block" id="Workflow.load"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.load">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
