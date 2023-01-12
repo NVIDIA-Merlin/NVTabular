@@ -257,6 +257,7 @@ def test_groupby_column_names_containing_aggregations(cpu):
 
     assert new_gdf is not None
 
+
 def test_groupby_column_names_when_grouping_and_outputting_same_column():
     purchases = make_df(
         {
