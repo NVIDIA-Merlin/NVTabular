@@ -123,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default="report.csv", dest="output")
     args = parser.parse_args()
 
-    batch_sizes = [2 ** x for x in range(3, 16)]
+    batch_sizes = [2**x for x in range(3, 16)]
     dfs = []
     for batch_size in batch_sizes:
         data = run_perf_analyzer(

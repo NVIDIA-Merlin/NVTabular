@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-from .embedding import DenseFeatures, LinearFeatures
-from .interaction import DotProductInteraction
-from .outer_product import XDeepFmOuterProduct
+from nvtabular.framework_utils.tensorflow.layers.embedding import DenseFeatures, LinearFeatures
+from nvtabular.framework_utils.tensorflow.layers.interaction import DotProductInteraction
+from nvtabular.framework_utils.tensorflow.layers.outer_product import XDeepFmOuterProduct
 
 __all__ = ["LinearFeatures", "DenseFeatures", "DotProductInteraction", "XDeepFmOuterProduct"]

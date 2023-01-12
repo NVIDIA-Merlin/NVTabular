@@ -87,14 +87,17 @@ exclude_patterns = [
 #
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
-    "navigation_depth": 3,
+    "navigation_depth": 2,
+    "analytics_id": "G-NVJ1Y1YJHK",
 }
+html_copy_source = False
 html_show_sourcelink = False
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ["_static"]
+html_css_files = ["css/custom.css"]
 
 source_suffix = [".rst", ".md"]
 
@@ -116,6 +119,7 @@ smv_branch_whitelist = "^main$"
 smv_refs_override_suffix = "-docs"
 
 html_sidebars = {"**": ["versions.html"]}
+html_baseurl = "https://nvidia-merlin.github.io/NVTabular/main"
 
 autodoc_inherit_docstrings = False
 autodoc_default_options = {

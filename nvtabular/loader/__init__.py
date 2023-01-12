@@ -17,9 +17,10 @@
 import warnings
 
 warnings.warn(
-    "The `nvtabular.loader` module has moved to `merlin.models.loader`. "
+    "The `nvtabular.loader` module has moved to a new repository, "
+    "at https://github.com/NVIDIA-Merlin/dataloader .  "
     "Support for importing from `nvtabular.loader` is deprecated, "
     "and will be removed in a future version. Please update "
-    "your imports to refer to `merlin.models.loader`.",
+    "your imports to refer to `merlinloader`.",
     DeprecationWarning,
 )

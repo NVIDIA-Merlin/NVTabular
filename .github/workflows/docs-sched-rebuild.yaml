@@ -8,46 +8,32 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        python-version: [3.8]
-        os: [ubuntu-latest]
+    runs-on: [ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
       - name: Install Ubuntu packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y protobuf-compiler pandoc
+          sudo apt-get install -y protobuf-compiler
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools==59.4.0 wheel
-          python -m pip install nvidia-pyindex
-          python -m pip install -r requirements.txt pybind11
-          python -m pip install -r requirements-dev.txt
-          python -m pip uninstall protobuf -y
-          python -m pip install --no-binary=protobuf protobuf
-          python -m pip install tritonclient[all]
-          python -m pip install torch tensorflow-cpu
-          python -m pip install numpy==1.20.3
-      - name: Build
-        run: |
-          python setup.py develop --user
-      - name: Report the versions to build
-        run: |
-          sphinx-multiversion --dump-metadata docs/source docs/build/html | jq "keys"
+          python -m pip install --upgrade pip setuptools==59.4.0 wheel tox
       - name: Building docs (multiversion)
         run: |
-          sphinx-multiversion docs/source docs/build/html
+          tox -e docs-multi
+      - name: Delete unnecessary files
+        run: |
+          find docs/build -name .doctrees -prune -exec rm -rf {} \;
+          find docs/build -name .buildinfo -exec rm {} \;
       - name: Upload HTML
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: html-build-artifact
           path: docs/build/html
@@ -59,7 +45,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: "gh-pages"
       - name: Initialize Git configuration
@@ -67,7 +53,7 @@ jobs:
           git config user.name docs-sched-rebuild
           git config user.email do-not-send-@github.com
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: html-build-artifact
       - name: Copy HTML directories

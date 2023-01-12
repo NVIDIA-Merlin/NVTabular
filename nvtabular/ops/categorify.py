@@ -40,9 +40,8 @@ from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullabl
 from merlin.core.utils import device_mem_size, run_on_worker
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
-
-from .operator import ColumnSelector, Operator
-from .stat_operator import StatOperator
+from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.stat_operator import StatOperator
 
 
 class Categorify(StatOperator):
@@ -222,7 +221,7 @@ class Categorify(StatOperator):
         #
         #   (2) Multi-column "Joint" encoding (there are multi-column groups
         #       in `columns` and `encode_type="joint"`).  Still a
-        #       1-to-1 transofrmation of categorical columns.  However,
+        #       1-to-1 transformation of categorical columns.  However,
         #       we concatenate column groups to determine uniques (rather
         #       than getting uniques of each categorical column separately).
         #
@@ -653,7 +652,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
 
 
 def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
-    return n_cat, min(max(minimum_size, round(1.6 * n_cat ** 0.56)), maximum_size)
+    return n_cat, min(max(minimum_size, round(1.6 * n_cat**0.56)), maximum_size)
 
 
 def _make_name(*args, sep="_"):
@@ -759,7 +758,8 @@ def _top_level_groupby(df, options: FitOptions):
             df_gb = type(df)()
             ignore_index = True
             df_gb[cat_col_selector_str] = _concat(
-                [df[col] for col in cat_col_selector.names], ignore_index
+                [_maybe_flatten_list_column(col, df)[col] for col in cat_col_selector.names],
+                ignore_index,
             )
             cat_col_selector = ColumnSelector([cat_col_selector_str])
         else:
@@ -796,9 +796,7 @@ def _top_level_groupby(df, options: FitOptions):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf/pd support)
-        if is_list_col(cat_col_selector, df_gb):
-            # handle list columns by encoding the list values
-            df_gb = dispatch.flatten_list_column(df_gb[cat_col_selector.names[0]])
+        df_gb = _maybe_flatten_list_column(cat_col_selector.names[0], df_gb)
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
@@ -879,7 +877,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
             x2 = gb[
                 _make_name(*(col_selector.names + [cont_col, "pow2", "sum"]), sep=options.name_sep)
             ]
-            result = x2 - x ** 2 / n
+            result = x2 - x**2 / n
             div = n - ddof
             div[div < 1] = 1
             result /= div
@@ -1048,72 +1046,15 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         # Use ignore_index=True to avoid allocating memory for
         # an index we don't even need
         df = df.sort_values(col_selector.names, na_position="first", ignore_index=True)
-        new_cols = {}
-        nulls_missing = False
-        for col in col_selector.names:
-            name_size = col + "_size"
-            null_size = 0
-            # Set null size if first element in `col` is
-            # null, and the `size` aggregation is known
-            if name_size in df and df[col].iloc[:1].isnull().any():
-                null_size = df[name_size].iloc[0]
-            if options.max_size:
-                max_emb_size = options.max_size
-                if isinstance(options.max_size, dict):
-                    max_emb_size = max_emb_size[col]
-                if options.num_buckets:
-                    if isinstance(options.num_buckets, int):
-                        nlargest = max_emb_size - options.num_buckets - 1
-                    else:
-                        nlargest = max_emb_size - options.num_buckets[col] - 1
-                else:
-                    nlargest = max_emb_size - 1
 
-                if nlargest <= 0:
-                    raise ValueError("`nlargest` cannot be 0 or negative")
+        name_size_multi = "_".join(col_selector.names + ["size"])
+        if len(col_selector.names) > 1 and name_size_multi in df:
+            # Using "combo" encoding
+            df = _combo_encode(df, name_size_multi, col_selector, options)
+        else:
+            # Using (default) "joint" encoding
+            df = _joint_encode(df, col_selector, options)
 
-                if nlargest < len(df) and name_size in df:
-                    # remove NAs from column, we have na count from above.
-                    df = df.dropna()
-                    # sort based on count (name_size column)
-                    df = df.nlargest(n=nlargest, columns=name_size)
-                    new_cols[col] = _concat(
-                        [nullable_series([None], df, df[col].dtype), df[col]],
-                        ignore_index=True,
-                    )
-                    new_cols[name_size] = _concat(
-                        [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
-                        ignore_index=True,
-                    )
-                    # recreate newly "count" ordered df
-                    df = type(df)(new_cols)
-            if not dispatch.series_has_nulls(df[col]):
-                if name_size in df:
-                    df = df.sort_values(name_size, ascending=False, ignore_index=True)
-
-                nulls_missing = True
-                new_cols[col] = _concat(
-                    [nullable_series([None], df, df[col].dtype), df[col]],
-                    ignore_index=True,
-                )
-                if name_size in df:
-                    new_cols[name_size] = _concat(
-                        [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
-                        ignore_index=True,
-                    )
-
-            else:
-                # ensure None aka "unknown" stays at index 0
-                if name_size in df:
-                    df_0 = df.iloc[0:1]
-                    df_1 = df.iloc[1:].sort_values(name_size, ascending=False, ignore_index=True)
-                    df = _concat([df_0, df_1])
-                new_cols[col] = df[col].copy(deep=False)
-
-                if name_size in df:
-                    new_cols[name_size] = df[name_size].copy(deep=False)
-        if nulls_missing:
-            df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
     else:
         df_null = type(df)({c: [None] for c in col_selector.names})
@@ -1123,6 +1064,119 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
     del df
     return path
+
+
+@annotate("_combo_encode", color="green", domain="nvt_python")
+def _combo_encode(df, name_size_multi: str, col_selector: ColumnSelector, options: FitOptions):
+    # Combo-encoding utility (used by _write_uniques)
+
+    # Account for max_size and num_buckets
+    if options.max_size:
+        max_emb_size = options.max_size
+        if isinstance(options.max_size, dict):
+            raise NotImplementedError(
+                "Cannot specify max_size as a dictionary for 'combo' encoding."
+            )
+        if options.num_buckets:
+            if isinstance(options.num_buckets, dict):
+                raise NotImplementedError(
+                    "Cannot specify num_buckets as a dictionary for 'combo' encoding."
+                )
+            nlargest = max_emb_size - options.num_buckets - 1
+        else:
+            nlargest = max_emb_size - 1
+
+        if nlargest <= 0:
+            raise ValueError("`nlargest` cannot be 0 or negative")
+
+        if nlargest < len(df):
+            # sort based on count (name_size_multi column)
+            df = df.nlargest(n=nlargest, columns=name_size_multi)
+
+    # Deal with nulls
+    has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
+    if hasattr(has_nans, "iloc"):
+        has_nans = has_nans[0]
+    if not has_nans:
+        null_data = {col: nullable_series([None], df, df[col].dtype) for col in col_selector.names}
+        null_data[name_size_multi] = [0]
+        null_df = type(df)(null_data)
+        df = _concat([null_df, df], ignore_index=True)
+
+    return df
+
+
+@annotate("_joint_encode", color="green", domain="nvt_python")
+def _joint_encode(df, col_selector: ColumnSelector, options: FitOptions):
+    # Joint-encoding utility (used by _write_uniques)
+
+    new_cols = {}
+    nulls_missing = False
+    for col in col_selector.names:
+        name_size = col + "_size"
+        null_size = 0
+        # Set null size if first element in `col` is
+        # null, and the `size` aggregation is known
+        if name_size in df and df[col].iloc[:1].isnull().any():
+            null_size = df[name_size].iloc[0]
+        if options.max_size:
+            max_emb_size = options.max_size
+            if isinstance(options.max_size, dict):
+                max_emb_size = max_emb_size[col]
+            if options.num_buckets:
+                if isinstance(options.num_buckets, int):
+                    nlargest = max_emb_size - options.num_buckets - 1
+                else:
+                    nlargest = max_emb_size - options.num_buckets[col] - 1
+            else:
+                nlargest = max_emb_size - 1
+
+            if nlargest <= 0:
+                raise ValueError("`nlargest` cannot be 0 or negative")
+
+            if nlargest < len(df) and name_size in df:
+                # remove NAs from column, we have na count from above.
+                df = df.dropna()  # TODO: This seems dangerous - Check this
+                # sort based on count (name_size column)
+                df = df.nlargest(n=nlargest, columns=name_size)
+                new_cols[col] = _concat(
+                    [nullable_series([None], df, df[col].dtype), df[col]],
+                    ignore_index=True,
+                )
+                new_cols[name_size] = _concat(
+                    [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
+                    ignore_index=True,
+                )
+                # recreate newly "count" ordered df
+                df = type(df)(new_cols)
+        if not dispatch.series_has_nulls(df[col]):
+            if name_size in df:
+                df = df.sort_values(name_size, ascending=False, ignore_index=True)
+
+            nulls_missing = True
+            new_cols[col] = _concat(
+                [nullable_series([None], df, df[col].dtype), df[col]],
+                ignore_index=True,
+            )
+            if name_size in df:
+                new_cols[name_size] = _concat(
+                    [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
+                    ignore_index=True,
+                )
+
+        else:
+            # ensure None aka "unknown" stays at index 0
+            if name_size in df:
+                df_0 = df.iloc[0:1]
+                df_1 = df.iloc[1:].sort_values(name_size, ascending=False, ignore_index=True)
+                df = _concat([df_0, df_1])
+            new_cols[col] = df[col].copy(deep=False)
+
+            if name_size in df:
+                new_cols[name_size] = df[name_size].copy(deep=False)
+    if nulls_missing:
+        return type(df)(new_cols)
+    return df
 
 
 def _finish_labels(paths, cols):
@@ -1413,6 +1467,15 @@ def is_list_col(col_selector, df):
     if has_lists and len(col_selector.names) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
+
+
+def _maybe_flatten_list_column(col: str, df):
+    # Flatten the specified column (col) if it is
+    # a list dtype. Otherwise, pass back df "as is"
+    selector = ColumnSelector([col])
+    if is_list_col(selector, df):
+        return dispatch.flatten_list_column(df[selector.names[0]])
+    return df
 
 
 def _hash_bucket(df, num_buckets, col, encode_type="joint"):

@@ -23,8 +23,7 @@ from merlin.core.dispatch import (
     is_list_dtype,
 )
 from merlin.schema import Tags
-
-from .operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, Operator
 
 
 class LogOp(Operator):

@@ -18,9 +18,8 @@ import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema
-
-from .operator import ColumnSelector, Operator
-from .stat_operator import StatOperator
+from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.stat_operator import StatOperator
 
 _INT_DTYPES = [np.int8, np.int16, np.int32, np.int64]
 

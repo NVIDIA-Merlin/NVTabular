@@ -26,11 +26,10 @@ from merlin.core.dispatch import (
 )
 from merlin.dag import Node
 from merlin.schema import Schema, Tags
-
-from . import categorify as nvt_cat
-from .moments import _custom_moments
-from .operator import ColumnSelector, Operator
-from .stat_operator import StatOperator
+from nvtabular.ops import categorify as nvt_cat
+from nvtabular.ops.moments import _custom_moments
+from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.stat_operator import StatOperator
 
 
 class TargetEncoding(StatOperator):
@@ -262,7 +261,7 @@ class TargetEncoding(StatOperator):
 
     @property
     def output_tags(self):
-        return [Tags.CATEGORICAL]
+        return [Tags.CONTINUOUS]
 
     @property
     def target_columns(self):

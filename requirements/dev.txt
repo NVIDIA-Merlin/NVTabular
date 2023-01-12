@@ -1,0 +1,5 @@
+# packages necessary to run tests and push PRs
+# assumes requirements for nvtabular logic are already installed
+
+# linting
+cpplint>=1.5

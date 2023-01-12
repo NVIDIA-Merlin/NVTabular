@@ -34,9 +34,9 @@ def test_reduce_size(tmpdir, cpu):
     if not cpu:
         df = cudf.DataFrame(df)
 
-    df["int16"] = np.array([2 ** 15 - 1, 0], dtype="int64")
-    df["int32"] = np.array([2 ** 30, -(2 ** 30)], dtype="int64")
-    df["int64"] = np.array([2 ** 60, -(2 ** 60)], dtype="int64")
+    df["int16"] = np.array([2**15 - 1, 0], dtype="int64")
+    df["int32"] = np.array([2**30, -(2**30)], dtype="int64")
+    df["int64"] = np.array([2**60, -(2**60)], dtype="int64")
     df["float32"] = np.array([1.0, 2.0], dtype="float64")
 
     workflow = nvt.Workflow(list(df.columns) >> nvt.ops.ReduceDtypeSize())

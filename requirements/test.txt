@@ -1,0 +1,36 @@
+nvidia-pyindex
+pybind11
+
+-r base.txt
+-r dev.txt
+
+tritonclient[all]
+torch
+tensorflow-cpu
+numpy==1.20.3
+Markdown==3.3.7
+
+pytest>=5
+pytest-cov>=2
+asvdb@git+https://github.com/rapidsai/asvdb.git
+testbook
+ipykernel
+
+# needed to make test_s3 work
+pytest-xdist
+s3fs>=2021.4
+aiobotocore>=1.3.3
+flask
+flask-cors
+moto>=2
+boto3==1.17
+
+# needed to generate synthetic data
+merlin-models@git+https://github.com/NVIDIA-Merlin/models.git
+
+# Assume these are required for notebook tests, but want to doublecheck that
+scikit-learn>=0.20
+graphviz>=0.16
+# ipython_genutils
+
+
