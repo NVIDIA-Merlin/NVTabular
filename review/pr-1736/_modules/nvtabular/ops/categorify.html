@@ -130,7 +130,7 @@
 
 
 <div class="viewcode-block" id="Categorify"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Categorify.html#nvtabular.ops.Categorify">[docs]</a><span class="k">class</span> <span class="nc">Categorify</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Most of the data set will contain categorical features,</span>
 <span class="sd">    and these variables are typically stored as text values.</span>
 <span class="sd">    Machine Learning algorithms don&#39;t support these text values.</span>
@@ -460,11 +460,11 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">[</span><span class="n">cat</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_cat_file_path</span></div>
 
 <div class="viewcode-block" id="Categorify.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Categorify.html#nvtabular.ops.Categorify.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Clear the internal state of the operator&#39;s stats.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear the internal state of the operator&#39;s stats.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vocabs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Categorify.process_vocabs"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Categorify.html#nvtabular.ops.Categorify.process_vocabs">[docs]</a>    <span class="k">def</span> <span class="nf">process_vocabs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vocabs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Process vocabs passed in by the user.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process vocabs passed in by the user.&quot;&quot;&quot;</span>
         <span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vocabs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">dispatch</span><span class="o">.</span><span class="n">is_series_object</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vocabs</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
             <span class="n">fit_options</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_fit_options_from_columns</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">vocabs</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
@@ -655,7 +655,7 @@
 
 
 <span class="k">def</span> <span class="nf">get_embedding_sizes</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">output_dtypes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Returns a dictionary of embedding sizes from a workflow or workflow_node</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns a dictionary of embedding sizes from a workflow or workflow_node</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -746,7 +746,7 @@
 
 <span class="nd">@dataclass</span>
 <span class="k">class</span> <span class="nc">FitOptions</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Contains options on how to fit statistics.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Contains options on how to fit statistics.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -1042,7 +1042,7 @@
 
 <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;write_uniques&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">_write_uniques</span><span class="p">(</span><span class="n">dfs</span><span class="p">,</span> <span class="n">base_path</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="n">FitOptions</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Writes out a dataframe to a parquet file.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Writes out a dataframe to a parquet file.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -1402,7 +1402,7 @@
     <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">start_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;The _encode method is responsible for transforming a dataframe by taking the written</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The _encode method is responsible for transforming a dataframe by taking the written</span>
 <span class="sd">    out vocabulary file and looking up values to translate inputs to numeric</span>
 <span class="sd">    outputs.</span>
 
@@ -1590,7 +1590,7 @@
 
 
 <span class="k">def</span> <span class="nf">_copy_storage</span><span class="p">(</span><span class="n">existing_stats</span><span class="p">,</span> <span class="n">existing_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;helper function to copy files to a new storage location&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;helper function to copy files to a new storage location&quot;&quot;&quot;</span>
     <span class="n">existing_fs</span> <span class="o">=</span> <span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">existing_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">new_fs</span> <span class="o">=</span> <span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">new_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">new_locations</span> <span class="o">=</span> <span class="p">{}</span>
