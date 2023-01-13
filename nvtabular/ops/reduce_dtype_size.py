@@ -64,14 +64,14 @@ class ReduceDtypeSize(StatOperator):
             column = input_schema[column]
 
             dtype = column.dtype
-            if column.dtype.elemtype.value == "int":
+            if column.dtype.element_type.value == "int":
                 for possible_dtype in _INT_DTYPES:
                     dtype_range = np.iinfo(possible_dtype)
                     if min_value >= dtype_range.min and max_value <= dtype_range.max:
                         dtype = possible_dtype
                         break
 
-            elif column.dtype.elemtype.value == "float":
+            elif column.dtype.element_type.value == "float":
                 dtype = self.float_dtype
 
             output_columns.append(column.with_dtype(dtype))
