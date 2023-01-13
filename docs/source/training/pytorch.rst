@@ -9,7 +9,7 @@ PyTorch. The NVTabular dataloader is capable of:
 
 -  removing bottlenecks from dataloading by processing large chunks of
    data at a time instead of item by item
--  processing datasets that don’t fit within the GPU or CPU memory by
+-  processing datasets that don't fit within the GPU or CPU memory by
    streaming from the disk
 -  reading data directly into the GPU memory and removing CPU-GPU
    communication
@@ -42,9 +42,9 @@ happens:
 
       TRAIN_PATHS = glob.glob("./train/*.parquet")
       train_dataset = TorchAsyncItr(
-         nvt.Dataset(TRAIN_PATHS), 
-         cats=CATEGORICAL_COLUMNS, 
-         conts=CONTINUOUS_COLUMNS, 
+         nvt.Dataset(TRAIN_PATHS),
+         cats=CATEGORICAL_COLUMNS,
+         conts=CONTINUOUS_COLUMNS,
          labels=LABEL_COLUMNS,
          batch_size=BATCH_SIZE
       )
@@ -54,10 +54,10 @@ happens:
    .. code:: python
 
       train_loader = DLDataLoader(
-         train_dataset, 
-         batch_size=None, 
-         collate_fn=collate_fn, 
-         pin_memory=False, 
+         train_dataset,
+         batch_size=None,
+         collate_fn=collate_fn,
+         pin_memory=False,
          num_workers=0
       )
 
@@ -79,8 +79,6 @@ happens:
 5. The ``TorchAsyncItr`` dataloader can be initialized for the
    validation dataset using the same structure.
 
-You can find additional examples in our repository such as `MovieLens`_
-and `Criteo`_.
+You can find additional `examples`_ in our repository.
 
-.. _MovieLens: ../examples/getting-started-movielens/
-.. _Criteo: ../examples/scaling-criteo/
+.. _examples: ../examples/

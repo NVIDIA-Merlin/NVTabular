@@ -1,5 +1,3 @@
--r base.txt
-cudf>=21.12
-dask-cudf>=21.12
-dask-cuda>=21.12
-cupy>=7
+cudf-cu11
+dask-cudf-cu11
+cupy-cuda11x

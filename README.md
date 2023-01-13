@@ -4,7 +4,7 @@
 [![LICENSE](https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular)](https://github.com/NVIDIA-Merlin/NVTabular/blob/main/LICENSE)
 [![Documentation](https://img.shields.io/badge/documentation-blue.svg)](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html)
 
-[NVTabular](https://github.com/NVIDIA-Merlin/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
+NVTabular is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
 
 NVTabular is a component of [NVIDIA Merlin](https://developer.nvidia.com/nvidia-merlin), an open source framework for building and deploying recommender systems and works with the other Merlin components including [Merlin Models](https://github.com/NVIDIA-Merlin/models), [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Merlin Systems](https://github.com/NVIDIA-Merlin/systems) to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s  [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server), the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.
 
@@ -78,13 +78,16 @@ To use these Docker containers, you'll first need to install the [NVIDIA Contain
 
 ### Notebook Examples and Tutorials
 
-We provide a [collection of examples, use cases, and tutorials](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples) as Jupyter notebooks covering:
-
-* Feature engineering and preprocessing with NVTabular
+We provide a [collection of examples](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples) to demonstrate feature engineering with NVTabular as Jupyter notebooks:
+* Introduction to NVTabular's High-Level API
 * Advanced workflows with NVTabular
-* Scaling to multi-GPU and multi-node systems
-* Integrating NVTabular with HugeCTR
-* Deploying to inference with Triton
+* NVTabular on CPU
+* Scaling NVTabular to multi-GPU systems
+
+In addition, NVTabular is used in many of our examples in other Merlin libraries:
+- [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples)
+- [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/main/examples)
+- [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples)
 
 ### Feedback and Support
 

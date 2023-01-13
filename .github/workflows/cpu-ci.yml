@@ -34,9 +34,12 @@ jobs:
         python -m pip install --upgrade pip setuptools==59.4.0 wheel tox pybind11
         python -m pip uninstall protobuf -y
         python -m pip install --no-binary=protobuf protobuf
-    - name: Lint with flake8, black, isort, interrogate, codespell
+    - name: Generate package for pypi
       run: |
-        tox -e lint
+        python setup.py sdist bdist_wheel
+    - name: Check distribution is valid
+      run: |
+        ./ci/check_dist.sh
     - name: Run tests
       run: |
         ref_type=${{ github.ref_type }}
@@ -47,9 +50,6 @@ jobs:
           branch=${raw/origin\/}
         fi
         tox -e test-cpu -- $branch
-    - name: Generate package for pypi
-      run: |
-        python setup.py sdist bdist_wheel
     - name: Upload pypi artifacts to github
       uses: actions/upload-artifact@v3
       with:

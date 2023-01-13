@@ -84,19 +84,19 @@ def test_example_02_advanced_workflow():
         metrics = tb.ref("metrics")
         assert set(metrics.history.keys()) == set(
             [
-                "auc_1",
+                "auc",
                 "binary_accuracy",
                 "loss",
                 "loss_batch",
-                "precision_1",
-                "recall_1",
+                "precision",
+                "recall",
                 "regularization_loss",
-                "val_auc_1",
+                "val_auc",
                 "val_binary_accuracy",
                 "val_loss",
                 "val_loss_batch",
-                "val_precision_1",
-                "val_recall_1",
+                "val_precision",
+                "val_recall",
                 "val_regularization_loss",
             ]
         )
