@@ -76,14 +76,9 @@ def read_requirements(req_path, filename):
         return packages
 
 
-requirements = {
-    "cpu": read_requirements("requirements", "base.txt"),
+install_requires = read_requirements("requirements", "base.txt")
+extras_require = {
     "gpu": read_requirements("requirements", "gpu.txt"),
-}
-dev_requirements = {
-    "dev": read_requirements("requirements", "dev.txt"),
-    "test": read_requirements("requirements", "test.txt"),
-    "docs": read_requirements("requirements", "docs.txt"),
 }
 
 with open("README.md", encoding="utf8") as readme_file:
@@ -114,9 +109,6 @@ setup(
     ext_modules=ext_modules,
     zip_safe=False,
     python_requires=">=3.8",
-    install_requires=requirements["cpu"],
-    extras_require={
-        **requirements,
-        **dev_requirements,
-    },
+    install_requires=install_requires,
+    extras_require=extras_require,
 )
