@@ -94,20 +94,23 @@
              
   <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Copyright 2022 NVIDIA Corporation. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2022 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+
+<span class="c1"># Each user is responsible for checking the content of datasets and the</span>
+<span class="c1"># applicable licenses and determining if suitable for the intended use.</span>
 </pre></div>
 </div>
 </div>
@@ -143,11 +146,11 @@
 <p>To streamline obtaining data, we will use a function from Merlin Models.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import os
-from merlin.datasets.entertainment import get_movielens
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">merlin.datasets.entertainment</span> <span class="kn">import</span> <span class="n">get_movielens</span>
 
-input_path = os.environ.get(&quot;INPUT_DATA_DIR&quot;, os.path.expanduser(&quot;~/merlin-framework/movielens/&quot;))
-get_movielens(variant=&quot;ml-1m&quot;, path=input_path);
+<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/merlin-framework/movielens/&quot;</span><span class="p">))</span>
+<span class="n">get_movielens</span><span class="p">(</span><span class="n">variant</span><span class="o">=</span><span class="s2">&quot;ml-1m&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">input_path</span><span class="p">);</span>
 </pre></div>
 </div>
 </div>
@@ -165,7 +168,7 @@ get_movielens(variant=&quot;ml-1m&quot;, path=input_path);
 <p>The data has already been split for us into train and validation sets.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ls {input_path}/ml-1m #noqa
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ls</span> <span class="p">{</span><span class="n">input_path</span><span class="p">}</span><span class="o">/</span><span class="n">ml</span><span class="o">-</span><span class="mi">1</span><span class="n">m</span> <span class="c1">#noqa</span>
 </pre></div>
 </div>
 </div>
@@ -179,10 +182,10 @@ movies_converted.parquet  <span class=" -Color -Color-Bold -Color-Bold-Blue">tra
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from merlin.core.dispatch import get_lib
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
 
-train = get_lib().read_parquet(f&#39;{input_path}ml-1m/train.parquet&#39;)
-valid = get_lib().read_parquet(f&#39;{input_path}ml-1m/valid.parquet&#39;)
+<span class="n">train</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s1">ml-1m/train.parquet&#39;</span><span class="p">)</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s1">ml-1m/valid.parquet&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -190,7 +193,7 @@ valid = get_lib().read_parquet(f&#39;{input_path}ml-1m/valid.parquet&#39;)
 <p>From the provided <code class="docutils literal notranslate"><span class="pre">train</span></code> and <code class="docutils literal notranslate"><span class="pre">validation</span></code> sets we will extract <code class="docutils literal notranslate"><span class="pre">userId</span></code>, <code class="docutils literal notranslate"><span class="pre">movieId</span></code> and <code class="docutils literal notranslate"><span class="pre">rating</span></code>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train.head()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -269,13 +272,13 @@ valid = get_lib().read_parquet(f&#39;{input_path}ml-1m/valid.parquet&#39;)
 <p>We achieve this by passing the <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> to the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> constructor.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import nvtabular as nvt
-from merlin.schema.tags import Tags
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">merlin.schema.tags</span> <span class="kn">import</span> <span class="n">Tags</span>
 
-train_ds = nvt.Dataset(train)
-valid_ds = nvt.Dataset(valid)
+<span class="n">train_ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
+<span class="n">valid_ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
 
-train_ds, valid_ds
+<span class="n">train_ds</span><span class="p">,</span> <span class="n">valid_ds</span>
 </pre></div>
 </div>
 </div>
@@ -292,7 +295,7 @@ train_ds, valid_ds
 <p>We accomplish both of these with the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> operator.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output = [&#39;userId&#39;, &#39;movieId&#39;] &gt;&gt; nvt.ops.Categorify()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;userId&#39;</span><span class="p">,</span> <span class="s1">&#39;movieId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -301,7 +304,7 @@ train_ds, valid_ds
 <p>When we run the cell, the actual operation is not performed. Only a graph representation of the operation is created.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output.graph
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span><span class="o">.</span><span class="n">graph</span>
 </pre></div>
 </div>
 </div>
@@ -313,7 +316,7 @@ train_ds, valid_ds
 <p>If you would like to learn more about using <code class="docutils literal notranslate"><span class="pre">Tags</span></code>, take a look at the <a class="reference external" href="https://nvidia-merlin.github.io/models/main/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> notebook in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>output += [&#39;rating&#39;] &gt;&gt; nvt.ops.AddMetadata(tags=[Tags.REGRESSION, Tags.TARGET])
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;rating&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddMetadata</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">REGRESSION</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">TARGET</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
@@ -321,7 +324,7 @@ train_ds, valid_ds
 <p>We are now ready to construct a <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> that will run the operations we defined above.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow = nvt.Workflow(output)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -332,8 +335,8 @@ train_ds, valid_ds
 <p><code class="docutils literal notranslate"><span class="pre">NVTabular</span></code> follows the familiar <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> API. We can fit the workflow to our train set and subsequently use it to transform our validation dataset.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>workflow.fit_transform(train_ds).to_parquet(&#39;train&#39;)
-workflow.transform(valid_ds).to_parquet(&#39;valid&#39;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">train_ds</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_ds</span><span class="p">)</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s1">&#39;valid&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -350,7 +353,7 @@ workflow.transform(valid_ds).to_parquet(&#39;valid&#39;)
 <p>We output both datasets to disk.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ls train
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ls</span> <span class="n">train</span>
 </pre></div>
 </div>
 </div>
@@ -363,15 +366,15 @@ workflow.transform(valid_ds).to_parquet(&#39;valid&#39;)
 <p>Let us now load our transformed data and see whether everything looks as expected.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_transformed = nvt.Dataset(&#39;train&#39;, engine=&#39;parquet&#39;)
-valid_transformed = nvt.Dataset(&#39;valid&#39;, engine=&#39;parquet&#39;)
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_transformed</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="s1">&#39;train&#39;</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">)</span>
+<span class="n">valid_transformed</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="s1">&#39;valid&#39;</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>train_transformed.head()
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_transformed</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -443,23 +446,23 @@ valid_transformed = nvt.Dataset(&#39;valid&#39;, engine=&#39;parquet&#39;)
 <p>We define the DLRM model, whose prediction task is a binary classification. From the <code class="docutils literal notranslate"><span class="pre">schema</span></code>, the categorical features are identified (and embedded) and the target column is also automatically inferred, because of the schema tags. We talk more about the schema in the next example notebook, <a class="reference internal" href="02-Advanced-NVTabular-workflow.html"><span class="doc std std-doc">Advanced NVTabular Workflow</span></a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import tensorflow
-import merlin.models.tf as mm
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span>
+<span class="kn">import</span> <span class="nn">merlin.models.tf</span> <span class="k">as</span> <span class="nn">mm</span>
 
-model = mm.DLRMModel(
-    train_transformed.schema,
-    embedding_dim=64,
-    bottom_block=mm.MLPBlock([128, 64]),
-    top_block=mm.MLPBlock([128, 64, 32]),
-    prediction_tasks=mm.RegressionTask(&#39;rating&#39;)
-)
+<span class="n">model</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">DLRMModel</span><span class="p">(</span>
+    <span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span>
+    <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">bottom_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">]),</span>
+    <span class="n">top_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">]),</span>
+    <span class="n">prediction_tasks</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">RegressionTask</span><span class="p">(</span><span class="s1">&#39;rating&#39;</span><span class="p">)</span>
+<span class="p">)</span>
 
-opt = tensorflow.optimizers.Adam(learning_rate=1e-3)
-model.compile(optimizer=opt)
-model.fit(train_transformed, validation_data=valid_transformed, batch_size=1024, epochs=5)
+<span class="n">opt</span> <span class="o">=</span> <span class="n">tensorflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">opt</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 
-model.optimizer.learning_rate = 1e-4
-metrics = model.fit(train_transformed, validation_data=valid_transformed, batch_size=1024, epochs=3)
+<span class="n">model</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">1e-4</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
