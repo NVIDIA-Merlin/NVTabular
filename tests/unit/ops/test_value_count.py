@@ -31,8 +31,7 @@ from nvtabular.ops import ValueCount
             ColumnSchema(
                 "feature",
                 dtype=np.int64,
-                is_ragged=False,
-                properties={"value_count": {"min": 3, "max": 3}},
+                properties={"value_count": {"min": 3, "max": 3}, "is_ragged": False},
             ),
         ],
         [
@@ -40,8 +39,7 @@ from nvtabular.ops import ValueCount
             ColumnSchema(
                 "feature",
                 dtype=np.int64,
-                is_ragged=True,
-                properties={"value_count": {"min": 1, "max": 3}},
+                properties={"value_count": {"min": 1, "max": 3}, "is_ragged": True},
             ),
         ],
     ],
@@ -70,8 +68,7 @@ def test_value_count_multiple_partitions():
     expected_col_schema = ColumnSchema(
         "feature",
         dtype=np.int64,
-        is_ragged=True,
-        properties={"value_count": {"min": 1, "max": 2}},
+        properties={"value_count": {"min": 1, "max": 2}, "is_ragged": True},
     )
 
     assert transformed.schema["feature"] == expected_col_schema
