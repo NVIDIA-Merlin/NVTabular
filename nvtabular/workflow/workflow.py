@@ -390,11 +390,10 @@ class Workflow:
             for m in modules_byvalue:
                 if isinstance(m, types.ModuleType):
                     if m.__name__ not in preexisting_modules_byvalue:
-                     cloudpickle.unregister_pickle_by_value(m)
+                        cloudpickle.unregister_pickle_by_value(m)
                 elif isinstance(m, str) and m in sys.modules:
                     if m not in preexisting_modules_byvalue:
                         cloudpickle.unregister_pickle_by_value(sys.modules[m])
-
 
     @classmethod
     def load(cls, path, client=None) -> "Workflow":
