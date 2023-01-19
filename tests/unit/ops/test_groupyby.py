@@ -74,7 +74,7 @@ def test_groupby_op(keys, cpu, ascending):
     if not cpu:
         # Make sure we are capturing the list type in `output_dtypes`
         assert (
-            processor.output_schema["x-list"].dtype
+            processor.output_schema["x-list"].dtype.name
             == cudf.core.dtypes.ListDtype("int64").element_type
         )
         assert processor.output_schema["x-list"].is_list is True

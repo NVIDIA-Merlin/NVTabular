@@ -18,13 +18,13 @@ on:
   issue_comment:
     types: [created]
   workflow_dispatch:
-      inputs:
-          platform:
-            description: 'runs-on argument'
-            required: false
-          args:
-            description: 'argument'
-            required: false
+    inputs:
+      platform:
+        description: "runs-on argument"
+        required: false
+      args:
+        description: "argument"
+        required: false
 jobs:
   Authorization:
     name: Authorization
@@ -51,7 +51,7 @@ jobs:
       - name: Check if comment is issued by authorized person
         run: blossom-ci
         env:
-          OPERATION: 'AUTH'
+          OPERATION: "AUTH"
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_KEY_DATA: ${{ secrets.BLOSSOM_KEY }}
 
@@ -65,7 +65,7 @@ jobs:
         with:
           repository: ${{ fromJson(needs.Authorization.outputs.args).repo }}
           ref: ${{ fromJson(needs.Authorization.outputs.args).ref }}
-          lfs: 'true'
+          lfs: "true"
 
       # repo specific steps
       #- name: Setup java
@@ -98,18 +98,18 @@ jobs:
       - name: Start ci job
         run: blossom-ci
         env:
-          OPERATION: 'START-CI-JOB'
+          OPERATION: "START-CI-JOB"
           CI_SERVER: ${{ secrets.CI_SERVER }}
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   Post-processing:
     name: Post processing
     runs-on: blossom
-    if : github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Start post processing
         run: blossom-ci
         env:
-          OPERATION: 'POST-PROCESSING'
+          OPERATION: "POST-PROCESSING"
           CI_SERVER: ${{ secrets.CI_SERVER }}
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
