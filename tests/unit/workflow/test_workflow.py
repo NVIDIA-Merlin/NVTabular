@@ -35,7 +35,7 @@ from merlin.core import dispatch
 from merlin.core.dispatch import HAS_GPU, make_df
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes
-from merlin.schema import Schema, Tags
+from merlin.schema import Tags
 from nvtabular import Dataset, Workflow, ops
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
@@ -74,13 +74,12 @@ def test_workflow_fit_op_rename(tmpdir, dataset, engine):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_grab_additional_input_columns(dataset, engine):
-    schema = Schema(["x", "y"])
     node1 = ["x"] >> ops.FillMissing()
     node2 = node1 >> ops.Clip(min_value=0)
 
     add_node = node2 + ["y"]
 
-    workflow = Workflow(add_node).fit_schema(schema)
+    workflow = Workflow(add_node).fit_schema(dataset.schema)
     output_df = workflow.transform(dataset).to_ddf().compute()
 
     assert len(workflow.output_node.input_columns.names) == 2

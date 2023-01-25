@@ -3,8 +3,7 @@ name: Research Question
 about: Longer term research related to NVTabular
 title: "[REA]"
 labels: "? - Proposed research topic"
-assignees: ''
-
+assignees: ""
 ---
 
 **What questions are you trying to answer? Please describe.**
