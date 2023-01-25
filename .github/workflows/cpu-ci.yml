@@ -34,9 +34,9 @@ jobs:
           python -m pip install --upgrade pip setuptools==59.4.0 wheel tox pybind11
           python -m pip uninstall protobuf -y
           python -m pip install --no-binary=protobuf protobuf
-      - name: Generate package for pypi
+      - name: Build source package for PyPI
         run: |
-          python setup.py sdist bdist_wheel
+          python setup.py sdist
       - name: Check distribution is valid
         run: |
           ./ci/check_dist.sh
@@ -50,7 +50,12 @@ jobs:
             branch=${raw/origin\/}
           fi
           tox -e test-cpu -- $branch
-      - name: Upload pypi artifacts to github
+      - name: Build wheels for PyPI
+        uses: pypa/cibuildwheel@v2.12.0
+        env: CIBW_SKIP="cp36-* cp37-* pp*" # Don't build wheels for 3.6, 3.7, or PyPy
+        with:
+          output-dir: dist
+      - name: Upload PyPI artifacts to Github
         uses: actions/upload-artifact@v3
         with:
           name: dist
