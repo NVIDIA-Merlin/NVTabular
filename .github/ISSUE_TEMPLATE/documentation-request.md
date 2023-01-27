@@ -3,8 +3,7 @@ name: Documentation request
 about: Report incorrect or needed documentation
 title: "[DOC]"
 labels: "? - Needs Triage, doc"
-assignees: ''
-
+assignees: ""
 ---
 
 ## Report incorrect documentation
