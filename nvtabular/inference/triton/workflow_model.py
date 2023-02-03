@@ -32,11 +32,11 @@ import numpy as np
 import triton_python_backend_utils as pb_utils
 
 import nvtabular
-from merlin.core.dispatch import is_list_dtype
 from nvtabular.inference.triton import _convert_tensor
 from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
 from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner
 from nvtabular.inference.workflow.tensorflow import TensorflowWorkflowRunner
+from nvtabular.workflow import Workflow
 
 LOG = logging.getLogger("nvtabular")
 
@@ -131,9 +131,15 @@ class TritonPythonModel:
             out = out[:, 0]
         return out
 
+    def _is_list_dtype(self, column: str) -> bool:
+        """Check if a column of a Workflow contains list elements"""
+        col_schema = self.workflow.input_schema.get(column)
+        if col_schema is None:
+            return False
+        return col_schema.is_list
 
-def _parse_input_dtypes(dtypes):
-    input_dtypes = {col: dtype for col, dtype in dtypes if not is_list_dtype(dtype)}
-    input_multihots = {col: dtype for col, dtype in dtypes if is_list_dtype(dtype)}
+    def _parse_input_dtypes(self, dtypes):
+        input_dtypes = {col: dtype for col, dtype in dtypes if not self._is_list_dtype(col)}
+        input_multihots = {col: dtype for col, dtype in dtypes if self._is_list_dtype(col)}
 
-    return input_dtypes, input_multihots
+        return input_dtypes, input_multihots
