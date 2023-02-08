@@ -131,6 +131,15 @@ class ListSlice(Operator):
         col_schema = super()._compute_dtype(col_schema, input_schema)
         return col_schema.with_dtype(col_schema.dtype, is_list=True, is_ragged=not self.pad)
 
+    def _compute_properties(self, col_schema, input_schema):
+        col_schema = super()._compute_properties(col_schema, input_schema)
+        properties = {**col_schema.properties, **{"value_count": {"min": 0, "max": None}}}
+        if self.max_elements != np.iinfo(np.int64).max:
+            properties["value_count"]["max"] = self.max_elements
+            if self.pad:
+                properties["value_count"]["min"] = self.max_elements
+        return col_schema.with_properties(properties)
+
     @property
     def output_tags(self):
         return [Tags.LIST]

@@ -40,6 +40,8 @@ def _augment_schema(
         properties = cs.properties
         if sparse_max and col in sparse_max:
             properties["value_count"] = {"max": sparse_max[col]}
+        if sparse_as_dense:
+            properties["value_count"]["min"] = properties["value_count"]["max"]
         schema[col] = ColumnSchema(
             name=cs.name,
             tags=cs.tags,

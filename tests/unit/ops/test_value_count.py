@@ -31,6 +31,7 @@ from nvtabular.ops import ValueCount
             ColumnSchema(
                 "feature",
                 dtype=np.int64,
+                is_list=True,
                 is_ragged=False,
                 properties={"value_count": {"min": 3, "max": 3}},
             ),
@@ -40,6 +41,7 @@ from nvtabular.ops import ValueCount
             ColumnSchema(
                 "feature",
                 dtype=np.int64,
+                is_list=True,
                 is_ragged=True,
                 properties={"value_count": {"min": 1, "max": 3}},
             ),
