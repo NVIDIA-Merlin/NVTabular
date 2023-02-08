@@ -1,4 +1,4 @@
-name: GPU CI
+name: GPU Tests
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 jobs:
-  gpu-ci:
+  gpu-tests:
     runs-on: 2GPU
 
     steps:
