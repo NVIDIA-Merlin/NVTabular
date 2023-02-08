@@ -133,7 +133,7 @@ class ListSlice(Operator):
 
     def _compute_properties(self, col_schema, input_schema):
         col_schema = super()._compute_properties(col_schema, input_schema)
-        properties = {**col_schema.properties, **{"value_count": {"min": 1, "max": None}}}
+        properties = {**col_schema.properties, **{"value_count": {"min": 0, "max": None}}}
         if self.max_elements != np.iinfo(np.int64).max:
             properties["value_count"]["max"] = self.max_elements
             if self.pad:
