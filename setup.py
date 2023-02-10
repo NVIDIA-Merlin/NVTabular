@@ -96,6 +96,10 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3 :: Only",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Topic :: Software Development :: Libraries",
@@ -104,6 +108,7 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     zip_safe=False,
+    python_requires=">=3.8",
     install_requires=install_requires,
     extras_require=extras_require,
 )
