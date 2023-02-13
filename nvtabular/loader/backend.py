@@ -26,7 +26,7 @@ def _augment_schema(
     padded_cols=None,
     padded_lengths=None,
     pad=False,
-    batch_size=0
+    batch_size=0,
 ):
     labels = [labels] if isinstance(labels, str) else labels
     for label in labels or []:
@@ -38,7 +38,7 @@ def _augment_schema(
 
     for col in padded_cols or []:
         cs = schema[col]
-        dims = Shape(((1,batch_size), None))
+        dims = Shape(((1, batch_size), None))
 
         if not cs.shape.dims[1].is_unknown:
             dims = dims.with_dim(1, cs.shape.dims[1])
@@ -47,13 +47,9 @@ def _augment_schema(
             dims = dims.with_dim_min(1, padded_lengths[col])
         if padded_lengths and col in padded_lengths:
             dims = dims.with_dim_max(1, padded_lengths[col])
-        
+
         schema[col] = ColumnSchema(
-            name=cs.name,
-            tags=cs.tags,
-            dtype=cs.dtype,
-            properties=cs.properties,
-            dims=dims
+            name=cs.name, tags=cs.tags, dtype=cs.dtype, properties=cs.properties, dims=dims
         )
 
     return schema

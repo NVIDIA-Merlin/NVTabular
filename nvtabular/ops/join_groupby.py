@@ -246,7 +246,7 @@ class JoinGroupby(StatOperator):
         new_schema = super()._compute_shape(col_schema, input_schema)
         shape = new_schema.shape
         dtype = new_schema.dtype
-        
+
         for agg in list(AGG_DTYPES.keys()):
             if col_schema.name.endswith(f"{self.name_sep}{agg}"):
                 dtype = AGG_DTYPES.get(agg, dtype)
