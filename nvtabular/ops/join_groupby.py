@@ -242,18 +242,26 @@ class JoinGroupby(StatOperator):
 
         return column_mapping
 
-    def _compute_shape(self, col_schema, input_schema):
-        new_schema = super()._compute_shape(col_schema, input_schema)
-        shape = new_schema.shape
+    def _compute_dtype(self, col_schema, input_schema):
+        new_schema = super()._compute_dtype(col_schema, input_schema)
         dtype = new_schema.dtype
 
         for agg in list(AGG_DTYPES.keys()):
-            if col_schema.name.endswith(f"{self.name_sep}{agg}"):
+            if new_schema.name.endswith(f"{self.name_sep}{agg}"):
                 dtype = AGG_DTYPES.get(agg, dtype)
-                shape = DefaultShapes.SCALAR
                 break
 
-        return col_schema.with_shape(shape)
+        return new_schema.with_dtype(dtype)
+
+    def _compute_shape(self, col_schema, input_schema):
+        new_schema = super()._compute_shape(col_schema, input_schema)
+        shape = new_schema.shape
+
+        agg_applied = any(
+            [new_schema.name.endswith(f"{self.name_sep}{agg}") for agg in list(AGG_DTYPES.keys())]
+        )
+
+        return new_schema.with_shape(DefaultShapes.SCALAR if agg_applied else shape)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
