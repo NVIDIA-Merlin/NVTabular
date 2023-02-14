@@ -17,7 +17,7 @@ import warnings
 warnings.warn(
     "The `nvtabular.inference` module is being replaced by the Merlin Systems library. "
     "Support for importing from `nvtabular.inference` is deprecated, "
-    "and will be removed in a future version. Please consider using the "
-    "models and layers from Merlin Systems instead.",
+    "and will be removed in a future version. Please consider using "
+    "operators and ensembles from Merlin Systems instead.",
     DeprecationWarning,
 )
