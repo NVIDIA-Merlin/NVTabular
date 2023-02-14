@@ -258,7 +258,7 @@ class JoinGroupby(StatOperator):
         shape = new_schema.shape
 
         agg_applied = any(
-            [new_schema.name.endswith(f"{self.name_sep}{agg}") for agg in list(AGG_DTYPES.keys())]
+            new_schema.name.endswith(f"{self.name_sep}{agg}") for agg in list(AGG_DTYPES.keys())
         )
 
         return new_schema.with_shape(DefaultShapes.SCALAR if agg_applied else shape)
