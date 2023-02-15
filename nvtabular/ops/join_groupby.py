@@ -21,6 +21,7 @@ from dask.delayed import Delayed
 
 import nvtabular as nvt
 from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
+from merlin.dtypes.shape import DefaultShapes
 from merlin.schema import Schema
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.operator import ColumnSelector, Operator
@@ -243,17 +244,24 @@ class JoinGroupby(StatOperator):
 
     def _compute_dtype(self, col_schema, input_schema):
         new_schema = super()._compute_dtype(col_schema, input_schema)
-
         dtype = new_schema.dtype
-        is_list = new_schema.is_list
 
         for agg in list(AGG_DTYPES.keys()):
-            if col_schema.name.endswith(f"{self.name_sep}{agg}"):
+            if new_schema.name.endswith(f"{self.name_sep}{agg}"):
                 dtype = AGG_DTYPES.get(agg, dtype)
-                is_list = False
                 break
 
-        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
+        return new_schema.with_dtype(dtype)
+
+    def _compute_shape(self, col_schema, input_schema):
+        new_schema = super()._compute_shape(col_schema, input_schema)
+        shape = new_schema.shape
+
+        agg_applied = any(
+            new_schema.name.endswith(f"{self.name_sep}{agg}") for agg in list(AGG_DTYPES.keys())
+        )
+
+        return new_schema.with_shape(DefaultShapes.SCALAR if agg_applied else shape)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
