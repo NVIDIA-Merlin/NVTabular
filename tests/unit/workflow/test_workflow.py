@@ -378,7 +378,6 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_join_external_workflow(tmpdir, df, dataset, engine):
-
     # Define "external" table
     how = "left"
     drop_duplicates = True

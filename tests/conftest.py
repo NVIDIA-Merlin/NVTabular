@@ -237,7 +237,6 @@ def asv_db():
 
 @pytest.fixture(scope="session")
 def bench_info():
-
     # Create a BenchmarkInfo object describing the benchmarking environment.
     # This can/should be reused when adding multiple results from the same environment.
 

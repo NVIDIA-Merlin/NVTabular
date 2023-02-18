@@ -129,7 +129,6 @@ class TritonPythonModel:
 
                 # Sparse inputs have a special format
                 for name, dtype in self.sparse_inputs.items():
-
                     # Get __values and __nnzs
                     input_val = _convert_tensor(
                         pb_utils.get_input_tensor_by_name(request, name + sparse_value_marker)
