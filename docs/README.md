@@ -14,6 +14,7 @@ Follow the instructions below to build the docs.
    ```shell
    python3 -m vevn .venv
    source .venv/bin/activate
+   python -m pip install -U pip tox
    tox -e docs
    ```
 
