@@ -5,26 +5,26 @@ repos:
     hooks:
       - id: absolufy-imports
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.10.1
+    rev: 5.12.0
     hooks:
       - id: isort
         additional_dependencies: [toml]
         exclude: examples/.*
   # code style
   - repo: https://github.com/python/black
-    rev: 22.6.0
+    rev: 23.1.0
     hooks:
       - id: black
   - repo: https://github.com/pycqa/pylint
-    rev: v2.14.1
+    rev: v2.16.2
     hooks:
       - id: pylint
   - repo: https://github.com/pycqa/flake8
-    rev: 3.9.2
+    rev: 6.0.0
     hooks:
       - id: flake8
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v2.7.1
+    rev: v3.0.0-alpha.4
     hooks:
       - id: prettier
         types_or: [yaml, markdown]
@@ -43,7 +43,7 @@ repos:
         exclude: ^(docs|bench|examples|tests|setup.py|versioneer.py)
         args: [--config=pyproject.toml]
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.1
+    rev: v2.2.2
     hooks:
       - id: codespell
         exclude: .github/.*

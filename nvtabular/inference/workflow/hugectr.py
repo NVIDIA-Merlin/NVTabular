@@ -77,7 +77,7 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
     def get_offsets(self, workflow, categorical_cols):
         embeddings = get_embedding_sizes(workflow)
         if embeddings is None:
-            raise Exception("embeddings cannot be None")
+            raise ValueError("embeddings cannot be None")
         else:
             offsets = {}
             curr_offset = 0
