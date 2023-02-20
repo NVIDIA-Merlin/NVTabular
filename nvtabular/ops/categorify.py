@@ -211,7 +211,6 @@ class Categorify(StatOperator):
         single_table=False,
         cardinality_memory_limit=None,
     ):
-
         # We need to handle three types of encoding here:
         #
         #   (1) Conventional encoding. There are no multi-column groups. So,
@@ -932,7 +931,6 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
     n_writes = 0
     for df in dfs:
         if len(df):
-
             if options.on_host and not is_cpu_object(df):
                 # Use pyarrow - df is already a pyarrow table
                 if pwriter is None:

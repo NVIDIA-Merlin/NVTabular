@@ -99,7 +99,7 @@ class Workflow:
         return self._transform_impl(dataset)
 
     def fit_schema(self, input_schema: Schema):
-        """Fits the schema onto the workflow, computing the Schema for each node in the Workflow Graph
+        """Computes input and output schemas for each node in the Workflow graph
 
         Parameters
         ----------

@@ -234,7 +234,6 @@ def _columns_out_from_aggs(aggs, name_sep="_"):
 
 
 def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascending=True):
-
     # Apply conventional aggs
     _columns = list(set(groupby_cols) | set(_conv_aggs) | set(_list_aggs))
     df = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
