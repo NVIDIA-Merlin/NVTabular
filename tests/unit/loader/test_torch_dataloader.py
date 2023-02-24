@@ -293,6 +293,8 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
 
     assert idx < len_dl
 
+    data_itr.stop()
+
     first_chunk_2 = 0
     for idx, chunk in enumerate(data_itr):
         if idx == 0:

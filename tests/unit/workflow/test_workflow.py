@@ -18,6 +18,7 @@ import glob
 import math
 import os
 import shutil
+import sys
 
 try:
     import cudf
@@ -35,7 +36,7 @@ from merlin.core import dispatch
 from merlin.core.dispatch import HAS_GPU, make_df
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes
-from merlin.schema import Schema, Tags
+from merlin.schema import Tags
 from nvtabular import Dataset, Workflow, ops
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
@@ -74,13 +75,12 @@ def test_workflow_fit_op_rename(tmpdir, dataset, engine):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_grab_additional_input_columns(dataset, engine):
-    schema = Schema(["x", "y"])
     node1 = ["x"] >> ops.FillMissing()
     node2 = node1 >> ops.Clip(min_value=0)
 
     add_node = node2 + ["y"]
 
-    workflow = Workflow(add_node).fit_schema(schema)
+    workflow = Workflow(add_node).fit_schema(dataset.schema)
     output_df = workflow.transform(dataset).to_ddf().compute()
 
     assert len(workflow.output_node.input_columns.names) == 2
@@ -378,7 +378,6 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_join_external_workflow(tmpdir, df, dataset, engine):
-
     # Define "external" table
     how = "left"
     drop_duplicates = True
@@ -667,3 +666,71 @@ def test_workflow_saved_schema(tmpdir):
     for node in postorder_iter_nodes(workflow2.output_node):
         assert node.input_schema is not None
         assert node.output_schema is not None
+
+
+def test_workflow_infer_modules_byvalue(tmp_path):
+    module_fn = tmp_path / "not_a_real_module.py"
+    sys.path.append(str(tmp_path))
+
+    with open(module_fn, "w") as module_f:
+        module_f.write("def identity(col):\n    return col")
+
+    import not_a_real_module
+
+    f_0 = not_a_real_module.identity
+    f_1 = lambda x: not_a_real_module.identity(x)  # noqa
+    f_2 = lambda x: f_0(x)  # noqa
+
+    try:
+        for fn, f in {
+            "not_a_real_module.identity": f_0,
+            "lambda x: not_a_real_module.identity(x)": f_1,
+            "lambda x: f_0(x)": f_2,
+        }.items():
+            assert not_a_real_module in Workflow._getmodules(
+                [f]
+            ), f"inferred module dependencies from {fn}"
+
+    finally:
+        sys.path.pop()
+        del sys.modules["not_a_real_module"]
+
+
+def test_workflow_explicit_modules_byvalue(tmp_path):
+    module_fn = tmp_path / "not_a_real_module.py"
+    sys.path.append(str(tmp_path))
+
+    with open(module_fn, "w") as module_f:
+        module_f.write("def identity(col):\n    return col")
+
+    import not_a_real_module
+
+    wf = nvt.Workflow(["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity))
+
+    wf.save(str(tmp_path / "identity-workflow"), modules_byvalue=[not_a_real_module])
+
+    del not_a_real_module
+    del sys.modules["not_a_real_module"]
+    os.unlink(str(tmp_path / "not_a_real_module.py"))
+
+    Workflow.load(str(tmp_path / "identity-workflow"))
+
+
+def test_workflow_auto_infer_modules_byvalue(tmp_path):
+    module_fn = tmp_path / "not_a_real_module.py"
+    sys.path.append(str(tmp_path))
+
+    with open(module_fn, "w") as module_f:
+        module_f.write("def identity(col):\n    return col")
+
+    import not_a_real_module
+
+    wf = nvt.Workflow(["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity))
+
+    wf.save(str(tmp_path / "identity-workflow"), modules_byvalue="auto")
+
+    del not_a_real_module
+    del sys.modules["not_a_real_module"]
+    os.unlink(str(tmp_path / "not_a_real_module.py"))
+
+    Workflow.load(str(tmp_path / "identity-workflow"))

@@ -251,6 +251,7 @@ class KerasSequenceLoader(merlin.loader.tensorflow.Loader):
             sparse_names,
             sparse_max,
             sparse_as_dense,
+            batch_size,
         )
 
         super().__init__(

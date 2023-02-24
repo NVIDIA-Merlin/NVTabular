@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from merlin.dtypes.shape import Shape
 from merlin.schema import ColumnSchema, Tags
 
 
@@ -22,9 +23,10 @@ def _augment_schema(
     cats=None,
     conts=None,
     labels=None,
-    sparse_names=None,
-    sparse_max=None,
-    sparse_as_dense=False,
+    padded_cols=None,
+    padded_lengths=None,
+    pad=False,
+    batch_size=0,
 ):
     labels = [labels] if isinstance(labels, str) else labels
     for label in labels or []:
@@ -34,19 +36,20 @@ def _augment_schema(
     for label in conts or []:
         schema[label] = schema[label].with_tags(Tags.CONTINUOUS)
 
-    # Set the appropriate properties for the sparse_names/sparse_max/sparse_as_dense
-    for col in sparse_names or []:
+    for col in padded_cols or []:
         cs = schema[col]
-        properties = cs.properties
-        if sparse_max and col in sparse_max:
-            properties["value_count"] = {"min": sparse_max[col], "max": sparse_max[col]}
+        dims = Shape(((1, batch_size), None))
+
+        if not cs.shape.dims[1].is_unknown:
+            dims = dims.with_dim(1, cs.shape.dims[1])
+
+        if pad:
+            dims = dims.with_dim_min(1, padded_lengths[col])
+        if padded_lengths and col in padded_lengths:
+            dims = dims.with_dim_max(1, padded_lengths[col])
+
         schema[col] = ColumnSchema(
-            name=cs.name,
-            tags=cs.tags,
-            dtype=cs.dtype,
-            is_list=True,
-            is_ragged=not sparse_as_dense,
-            properties=properties,
+            name=cs.name, tags=cs.tags, dtype=cs.dtype, properties=cs.properties, dims=dims
         )
 
     return schema

@@ -18,6 +18,7 @@ import numpy
 from dask.dataframe.utils import meta_nonempty
 
 from merlin.core.dispatch import DataFrameType, annotate
+from merlin.dtypes.shape import DefaultShapes
 from merlin.schema import Schema
 from nvtabular.ops.operator import ColumnSelector, Operator
 
@@ -186,10 +187,7 @@ class Groupby(Operator):
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
-        dtype = col_schema.dtype
-        is_list = col_schema.is_list
-
-        dtypes = {
+        agg_dtypes = {
             "count": numpy.int32,
             "nunique": numpy.int32,
             "mean": numpy.float32,
@@ -199,18 +197,26 @@ class Groupby(Operator):
             "sum": numpy.float32,
         }
 
-        is_lists = {"list": True}
+        agg = self._find_agg(col_schema, input_schema)
+        dtype = agg_dtypes.get(agg, col_schema.dtype)
 
-        for col_name in input_schema.column_names:
-            combined_aggs = _aggs_for_column(col_name, self.conv_aggs)
-            combined_aggs += _aggs_for_column(col_name, self.list_aggs)
-            for agg in combined_aggs:
-                if col_schema.name.endswith(f"{self.name_sep}{agg}"):
-                    dtype = dtypes.get(agg, dtype)
-                    is_list = is_lists.get(agg, is_list)
-                    break
+        return col_schema.with_dtype(dtype)
 
-        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
+    def _compute_shape(self, col_schema, input_schema):
+        agg_is_lists = {"list": True}
+
+        agg = self._find_agg(col_schema, input_schema)
+        is_list = agg_is_lists.get(agg, col_schema.is_list)
+
+        shape = DefaultShapes.LIST if is_list else DefaultShapes.SCALAR
+        return col_schema.with_shape(shape)
+
+    def _find_agg(self, col_schema, input_schema):
+        input_selector = ColumnSelector(input_schema.column_names)
+        column_mapping = self.column_mapping(input_selector)
+        input_column_name = column_mapping[col_schema.name][0]
+        agg = col_schema.name.replace(input_column_name, "").lstrip(self.name_sep)
+        return agg
 
 
 def _aggs_for_column(col_name, agg_dict):
@@ -228,7 +234,6 @@ def _columns_out_from_aggs(aggs, name_sep="_"):
 
 
 def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_", ascending=True):
-
     # Apply conventional aggs
     _columns = list(set(groupby_cols) | set(_conv_aggs) | set(_list_aggs))
     df = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()

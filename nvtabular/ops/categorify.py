@@ -220,7 +220,6 @@ class Categorify(StatOperator):
         split_out=1,
         split_every=8,
     ):
-
         # We need to handle three types of encoding here:
         #
         #   (1) Conventional encoding. There are no multi-column groups. So,
@@ -1697,9 +1696,23 @@ def _encode(
                 columns=selection_r.names,
                 **(dict(split_row_groups=False) if split_out > 1 else {}),
             )
+
             value.index = value.index.rename("labels")
             if split_out > 1:
                 value = value.reset_index(drop=False)
+                if type(df).__module__.split(".")[0] == "cudf":
+                    # `cudf.read_parquet` may drop the RangeIndex, so we need
+                    # to use the parquet metadata to set a proper RangeIndex.
+                    # We can avoid this workaround for cudf>=23.04
+                    # (See: https://github.com/rapidsai/cudf/issues/12837)
+                    import pyarrow.dataset as _ds
+
+                    ranges, size = [], 0
+                    for file_frag in _ds.dataset(path, format="parquet").get_fragments():
+                        part_size = file_frag.metadata.num_rows
+                        ranges.append((size, size + part_size))
+                        size += part_size
+                    value["labels"] = dd.from_map(lambda r: pd.RangeIndex(*r), ranges)
             else:
                 value.reset_index(drop=False, inplace=True)
 

@@ -8,43 +8,13 @@ subtrees:
       - file: training/index.rst
       - file: examples/index.md
         title: Example Notebooks
-        subtrees:
-          - entries:
-              - file: examples/getting-started-movielens/index.md
-                title: Getting Started with MovieLens
-                entries:
-                  - file: examples/getting-started-movielens/01-Download-Convert.ipynb
-                    title: Download and Convert
-                  - file: examples/getting-started-movielens/02-ETL-with-NVTabular.ipynb
-                    title: ETL with NVTabular
-                  - file: examples/getting-started-movielens/03-Training-with-HugeCTR.ipynb
-                    title: Train with HugeCTR
-                  - file: examples/getting-started-movielens/03-Training-with-TF.ipynb
-                    title: Train with TensorFlow
-                  - file: examples/getting-started-movielens/03-Training-with-PyTorch.ipynb
-                    title: Train with PyTorch
-                  - file: examples/getting-started-movielens/04-Triton-Inference-with-HugeCTR.ipynb
-                    title: Serve a HugeCTR Model
-                  - file: examples/getting-started-movielens/04-Triton-Inference-with-TF.ipynb
-                    title: Serve a TensorFlow Model
-              - file: examples/scaling-criteo/index.md
-                entries:
-                  - file: examples/scaling-criteo/01-Download-Convert.ipynb
-                    title: Download and Convert
-                  - file: examples/scaling-criteo/02-ETL-with-NVTabular.ipynb
-                    title: ETL with NVTabular
-                  - file: examples/scaling-criteo/03-Training-with-HugeCTR.ipynb
-                    title: Train with HugeCTR
-                  - file: examples/scaling-criteo/03-Training-with-TF.ipynb
-                    title: Train with TensorFlow
-                  - file: examples/scaling-criteo/04-Triton-Inference-with-HugeCTR.ipynb
-                    title: Serve a HugeCTR Model
-                  - file: examples/scaling-criteo/04-Triton-Inference-with-TF.ipynb
-                    title: Serve a TensorFlow Model
-              - file: examples/multi-gpu-movielens/index.md
-                entries:
-                  - file: examples/multi-gpu-movielens/01-03-MultiGPU-Download-Convert-ETL-with-NVTabular-Training-with-TensorFlow.ipynb
-                  - file: examples/multi-gpu-toy-example/multi-gpu_dask.ipynb
+        entries:
+          - file: examples/01-Getting-started.ipynb
+            title: Getting Started with NVTabular
+          - file: examples/02-Advanced-NVTabular-workflow.ipynb
+            title: Advanced NVTabular Workflow
+          - file: examples/03-Running-on-multiple-GPUs-or-on-CPU.ipynb
+            title: Run on multi-GPU or CPU-only
       - file: api
         title: API Documentation
       - file: resources/index
