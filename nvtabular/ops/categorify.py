@@ -698,12 +698,12 @@ def _to_parquet_dask_lazy(df, path, write_index=False):
     is_collection = isinstance(df, DaskDataFrame)
 
     # Use `ddf.to_parquet` method
-    kwargs = dict(
-        overwrite=True,
-        compute=False,
-        write_index=write_index,
-        schema=None,
-    )
+    kwargs = {
+        "overwrite": True,
+        "compute": False,
+        "write_index": write_index,
+        "schema": None,
+    }
     return (
         df
         if is_collection
@@ -1015,7 +1015,6 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, options: FitOptions, s
 def _bottom_level_groupby(
     dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions, spill=True
 ):
-
     gb = _mid_level_groupby(dfs, col_selector, options, spill=False)
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
@@ -1694,7 +1693,7 @@ def _encode(
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
                 path,
                 columns=selection_r.names,
-                **(dict(split_row_groups=False) if split_out > 1 else {}),
+                **({"split_row_groups": False} if split_out > 1 else {}),
             )
 
             value.index = value.index.rename("labels")
@@ -1705,10 +1704,8 @@ def _encode(
                     # to use the parquet metadata to set a proper RangeIndex.
                     # We can avoid this workaround for cudf>=23.04
                     # (See: https://github.com/rapidsai/cudf/issues/12837)
-                    import pyarrow.dataset as _ds
-
                     ranges, size = [], 0
-                    for file_frag in _ds.dataset(path, format="parquet").get_fragments():
+                    for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                         part_size = file_frag.metadata.num_rows
                         ranges.append((size, size + part_size))
                         size += part_size
@@ -1749,7 +1746,6 @@ def _encode(
 
         # apply frequency hashing
         if freq_threshold and buckets and storage_name in buckets:
-
             if use_collection:
                 # Manual broadcast merge
                 merged_df = _concat(
