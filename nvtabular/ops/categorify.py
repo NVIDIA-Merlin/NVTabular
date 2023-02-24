@@ -47,6 +47,9 @@ from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
 
+# Constants
+START_INDEX = 1  # NVTabular will always reserve `0` for padding
+
 
 class Categorify(StatOperator):
     """
@@ -183,15 +186,6 @@ class Categorify(StatOperator):
         value will be `max_size - num_buckets -1`.  Setting the max_size param means that
         freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
         smaller than the max_size value.
-    start_index: int, default 0
-        The start index where Categorify will begin to translate dataframe entries
-        into integer values, including an initial out-of-vocabulary encoding value.
-        For instance, if our original translated dataframe entries appear
-        as [[1], [1, 4], [3, 2], [2]], with an out-of-vocabulary value of 0, then with a
-        start_index of 16, Categorify will reserve 16 as the out-of-vocabulary encoding value,
-        and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
-        This parameter is useful to reserve an initial segment of non-negative translated integers
-        for special user-defined values.
     cardinality_memory_limit: int or str, default None
         Upper limit on the "allowed" memory usage of the internal DataFrame and Table objects
         used to store unique categories. By default, this limit is 12.5% of the total memory.
@@ -213,13 +207,23 @@ class Categorify(StatOperator):
         num_buckets=None,
         vocabs=None,
         max_size=0,
-        start_index=0,
         single_table=False,
         cardinality_memory_limit=None,
         tree_width=None,
         split_out=1,
         split_every=8,
+        **kwargs,  # Deprecated/unsupported arguments
     ):
+        # Handle deprecations and unsupported kwargs
+        if "start_index" in kwargs:
+            raise ValueError(
+                "start_index is now deprecated. `Categorify` will always "
+                "reserve index `0` for user-specific purposes, and will "
+                "use index `1` for null values."
+            )
+        if kwargs:
+            raise ValueError(f"Unrecognized key-word arguments: {kwargs}")
+
         # We need to handle three types of encoding here:
         #
         #   (1) Conventional encoding. There are no multi-column groups. So,
@@ -270,7 +274,6 @@ class Categorify(StatOperator):
         self.cat_cache = cat_cache
         self.encode_type = encode_type
         self.search_sorted = search_sorted
-        self.start_index = start_index
         self.cardinality_memory_limit = cardinality_memory_limit
         self.split_every = split_every
         self.split_out = split_out
@@ -443,7 +446,6 @@ class Categorify(StatOperator):
             num_buckets=self.num_buckets,
             cardinality_memory_limit=self.cardinality_memory_limit,
             split_every=self.split_every,
-            start_index=self.start_index,
         )
 
     def set_storage_path(self, new_path, copy=False):
@@ -500,7 +502,6 @@ class Categorify(StatOperator):
                     cat_names=column_names,
                     max_size=self.max_size,
                     dtype=self.output_dtype,
-                    start_index=self.start_index,
                     split_out=(
                         self.split_out.get(storage_name, 1)
                         if isinstance(self.split_out, dict)
@@ -548,7 +549,6 @@ class Categorify(StatOperator):
             "max_size": self.max_size[col_name]
             if isinstance(self.max_size, dict)
             else self.max_size,
-            "start_index": self.start_index,
             "cat_path": target_category_path,
             "domain": {"min": 0, "max": cardinality - 1, "name": category_name},
             "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
@@ -581,7 +581,6 @@ class Categorify(StatOperator):
             self.num_buckets,
             self.freq_threshold,
             self.max_size,
-            self.start_index,
         )
 
     def inference_initialize(self, columns, inference_config):
@@ -648,7 +647,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     return single_hots, multi_hots
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, start_index=0):
+def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
@@ -678,7 +677,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
         else:
             num_rows += bucket_size
 
-        num_rows += start_index
+        num_rows += START_INDEX
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -794,8 +793,6 @@ class FitOptions:
         num_buckets:
             If specified will also do hashing operation for values that would otherwise be mapped
             to as unknown (by freq_limit or max_size parameters)
-        start_index: int
-            The index to start mapping our output categorical values to.
         cardinality_memory_limit: int
             Suggested upper limit on categorical data containers.
         split_every:
@@ -814,7 +811,6 @@ class FitOptions:
     name_sep: str = "-"
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
-    start_index: int = 0
     cardinality_memory_limit: Optional[int] = None
     split_every: Optional[Union[int, dict]] = 8
 
@@ -1617,7 +1613,6 @@ def _encode(
     cat_names=None,
     max_size=0,
     dtype=None,
-    start_index=0,
     split_out=1,
 ):
     """The _encode method is responsible for transforming a dataframe by taking the written
@@ -1649,11 +1644,6 @@ def _encode(
         Defaults to 0.
     dtype :
         Defaults to None.
-    start_index :  int
-        The index to start outputting categorical values to. This is useful
-        to, for instance, reserve an initial segment of non-negative
-        integers for out-of-vocabulary or other special values. Defaults
-        to 1.
 
     Returns
     -------
@@ -1826,7 +1816,7 @@ def _encode(
             )
         labels[labels >= len(value[selection_r.names])] = na_sentinel
 
-    labels = labels + start_index
+    labels = labels + START_INDEX
 
     if list_col:
         labels = dispatch.encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
