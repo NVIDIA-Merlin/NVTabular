@@ -155,8 +155,6 @@ class Categorify(StatOperator):
         groupby reduction. The extra host <-> device data movement can reduce
         performance.  However, using `on_host=True` typically improves stability
         (by avoiding device-level memory pressure).
-    na_sentinel : default 0
-        Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
         Location to cache the list of unique categories for
         each categorical column. If passing a dict, each key and value
@@ -197,7 +195,6 @@ class Categorify(StatOperator):
         self,
         freq_threshold=0,
         out_path=None,
-        na_sentinel=None,
         cat_cache="host",
         dtype=None,
         on_host=True,
@@ -220,6 +217,13 @@ class Categorify(StatOperator):
                 "start_index is now deprecated. `Categorify` will always "
                 "reserve index `0` for user-specific purposes, and will "
                 "use index `1` for null values."
+            )
+        if "na_sentinel" in kwargs:
+            raise ValueError(
+                "na_sentinel is now deprecated. `Categorify` will always "
+                "reserve index `1` for null values, and the following "
+                "`num_buckets` indices for out-of-vocabulary values "
+                "(or just index `2` if `num_buckets is None`)."
             )
         if kwargs:
             raise ValueError(f"Unrecognized key-word arguments: {kwargs}")
@@ -268,7 +272,6 @@ class Categorify(StatOperator):
         self.single_table = single_table
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
-        self.na_sentinel = na_sentinel or 0
         self.dtype = dtype
         self.on_host = on_host
         self.cat_cache = cat_cache
@@ -492,7 +495,6 @@ class Categorify(StatOperator):
                     path,
                     df,
                     self.cat_cache,
-                    na_sentinel=self.na_sentinel,
                     freq_threshold=self.freq_threshold[name]
                     if isinstance(self.freq_threshold, dict)
                     else self.freq_threshold,
@@ -746,7 +748,11 @@ def _to_parquet_dask_eager(
             # so that we can make sure the index is correct
             _len = len(_df)
             _df.set_index(
-                pd.RangeIndex(start=size, stop=size + _len, step=1),
+                pd.RangeIndex(
+                    start=size + START_INDEX,
+                    stop=size + START_INDEX + _len,
+                    step=1,
+                ),
                 drop=True,
                 inplace=True,
             )
@@ -1605,7 +1611,6 @@ def _encode(
     path,
     df,
     cat_cache,
-    na_sentinel=0,
     freq_threshold=0,
     search_sorted=False,
     buckets=None,
@@ -1626,8 +1631,6 @@ def _encode(
     path : str
     df : DataFrame
     cat_cache :
-    na_sentinel : int
-        Sentinel for NA value. Defaults to 0.
     freq_threshold :  int
         Categories with a count or frequency below this threshold will
         be omitted from the encoding and corresponding data will be
@@ -1679,6 +1682,9 @@ def _encode(
                         cats_only=True,
                         reader=read_pq_func,
                     )
+                    if value["labels"].iloc[0] < START_INDEX:
+                        # See: https://github.com/rapidsai/cudf/issues/12837
+                        value["labels"] += 1
         else:
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
                 path,
@@ -1694,7 +1700,7 @@ def _encode(
                     # to use the parquet metadata to set a proper RangeIndex.
                     # We can avoid this workaround for cudf>=23.04
                     # (See: https://github.com/rapidsai/cudf/issues/12837)
-                    ranges, size = [], 0
+                    ranges, size = [], START_INDEX
                     for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                         part_size = file_frag.metadata.num_rows
                         ranges.append((size, size + part_size))
@@ -1731,8 +1737,9 @@ def _encode(
             else:
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
 
+        indistinct = 1  # TODO: FIX THIS
         if buckets and storage_name in buckets:
-            na_sentinel = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
+            indistinct = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
 
         # apply frequency hashing
         if freq_threshold and buckets and storage_name in buckets:
@@ -1759,17 +1766,17 @@ def _encode(
             max_id = merged_df["labels"].max()
             if len(merged_df) < len(codes):
                 # Missing nulls
-                labels = df._constructor_sliced(na_sentinel + max_id + 1)
+                labels = df._constructor_sliced(indistinct + max_id + 1)
                 labels.iloc[merged_df["order"]] = merged_df["labels"]
                 labels = labels.values
             else:
                 merged_df["labels"].fillna(
-                    df._constructor_sliced(na_sentinel + max_id + 1), inplace=True
+                    df._constructor_sliced(indistinct + max_id + 1), inplace=True
                 )
                 labels = merged_df["labels"].values
         # only do hashing
         elif buckets and storage_name in buckets:
-            labels = na_sentinel
+            labels = indistinct
         # no hashing
         else:
             if use_collection:
@@ -1791,7 +1798,7 @@ def _encode(
                     labels = codes._constructor_sliced(
                         np.full(
                             len(codes),
-                            na_sentinel,
+                            indistinct,
                             like=merged_df["labels"].values,
                         ),
                     )
@@ -1802,7 +1809,7 @@ def _encode(
                 labels = codes.merge(
                     value, left_on=selection_l.names, right_on=selection_r.names, how="left"
                 ).sort_values("order")["labels"]
-            labels.fillna(na_sentinel, inplace=True)
+            labels.fillna(indistinct, inplace=True)
             labels = labels.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
@@ -1814,9 +1821,7 @@ def _encode(
             labels = value[selection_r.names].searchsorted(
                 df[selection_l.names], side="left", na_position="first"
             )
-        labels[labels >= len(value[selection_r.names])] = na_sentinel
-
-    labels = labels + START_INDEX
+        labels[labels >= len(value[selection_r.names])] = 1  # TODO: FIX THIS (indistinct)?
 
     if list_col:
         labels = dispatch.encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)

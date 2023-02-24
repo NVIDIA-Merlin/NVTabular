@@ -117,8 +117,8 @@ def test_na_value_count(tmpdir):
 
     single_cat = dispatch.read_dispatch(fmt="parquet")("./categories/unique.brand.parquet")
     second_cat = dispatch.read_dispatch(fmt="parquet")("./categories/unique.productID.parquet")
-    assert single_cat["brand_size"][0] == 5
-    assert second_cat["productID_size"][0] == 3
+    assert single_cat["brand_size"].values[0] == 5
+    assert second_cat["productID_size"].values[0] == 3
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
@@ -542,7 +542,7 @@ def test_categorify_no_nulls():
 
     df = pd.read_parquet("./categories/unique.user_id.parquet")
     assert df["user_id"].iloc[:1].isnull().any()
-    assert df["user_id_size"][0] == 0
+    assert df["user_id_size"].values[0] == 0
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
