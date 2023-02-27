@@ -721,6 +721,7 @@ def _to_parquet_dask_eager(
     path,
     preserve_index=False,
     first_n=None,
+    freq_threshold=None,
 ):
     # Write DataFrame data to parquet (eagerly) with dask
 
@@ -741,6 +742,17 @@ def _to_parquet_dask_eager(
     for p, part in enumerate(df.partitions if is_collection else [df]):
         local_path = "/".join([path, f"part.{p}.parquet"]) if use_directory else path
         _df = _compute_sync(part) if is_collection else part
+
+        if freq_threshold:
+            sizes = _df.iloc[:, 1]
+            if p == 0:
+                # First file will have null and oov buckets
+                _df = _df[sizes >= freq_threshold & sizes != 0]
+            else:
+                _df = _df[sizes >= freq_threshold]
+            if len(_df) == 0:
+                continue
+
         if not preserve_index:
             # If we are NOT writing the index of df,
             # then make sure we are writing a "correct"
@@ -1125,6 +1137,38 @@ def _write_uniques(
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
+    # Set max_emb_size
+    # This is the maximum number of rows we will write to
+    # the unique-value parquet files
+    col_name = col_selector.names[0]
+    max_emb_size = options.max_size
+    if max_emb_size is None:
+        max_emb_size = max_emb_size[col_name] if isinstance(max_emb_size, dict) else max_emb_size
+
+    # Set num_buckets
+    # This is the maximum number of indices
+    num_buckets = options.num_buckets
+    if num_buckets:
+        num_buckets = num_buckets if isinstance(num_buckets, int) else num_buckets[col_name]
+    oov_count = num_buckets or 1
+
+    # Set freq_threshold
+    # This is the minimum unique count for a distinct
+    # category to be included in the unique-value files
+    freq_threshold = options.freq_limit
+    if freq_threshold:
+        freq_threshold = (
+            freq_threshold if isinstance(freq_threshold, int) else freq_threshold[col_name]
+        )
+
+    # Sanity check
+    if max_emb_size and max_emb_size <= max(oov_count + 1, 2):
+        raise ValueError(
+            "`max_size` can never be less than the maximum of "
+            "`num_buckets + 1` and `2`, because we must always "
+            "include null and oov (bucket) indices."
+        )
+
     if path:
         # We have a parquet path to construct uniques from
         # (rather than a list of DataFrame objects)
@@ -1150,25 +1194,25 @@ def _write_uniques(
         # At this point, `simple` may have changed from True to False
         # if the backend library failed to sort by the target column.
         if simple:
-            # Step 2 - Check for max_size
-            nlargest = None
-            if options.max_size:
-                max_emb_size = (
-                    options.max_size[col_name]
-                    if isinstance(options.max_size, dict)
-                    else options.max_size
-                )
-                if options.num_buckets:
-                    num_buckets = (
-                        options.num_buckets
-                        if isinstance(options.num_buckets, int)
-                        else options.num_buckets[col_name]
-                    )
-                else:
-                    num_buckets = 0
-                nlargest = max_emb_size - num_buckets
-                if nlargest <= 0:
-                    raise ValueError("`nlargest` cannot be 0 or negative")
+            # # Step 2 - Check for max_size
+            # nlargest = None
+            # if options.max_size:
+            #     max_emb_size = (
+            #         options.max_size[col_name]
+            #         if isinstance(options.max_size, dict)
+            #         else options.max_size
+            #     )
+            #     if options.num_buckets:
+            #         num_buckets = (
+            #             options.num_buckets
+            #             if isinstance(options.num_buckets, int)
+            #             else options.num_buckets[col_name]
+            #         )
+            #     else:
+            #         num_buckets = 0
+            #     nlargest = max_emb_size - num_buckets
+            #     if nlargest <= 0:
+            #         raise ValueError("`nlargest` cannot be 0 or negative")
 
             # Step 3 - Check for null group and drop it
             def _drop_first_row(part, index):
@@ -1183,6 +1227,16 @@ def _write_uniques(
                     _data[name_size] = nullable_series([0], null_row, null_row[name_size].dtype)
                 null_row = type(null_row)(_data)
 
+            # OOV rows
+            _data = {
+                col_name: nullable_series([None] * oov_count, null_row, null_row[col_name].dtype)
+            }
+            if has_size:
+                _data[name_size] = nullable_series(
+                    [0] * oov_count, null_row, null_row[name_size].dtype
+                )
+            oov_rows = type(null_row)(_data)
+
             # Step 4 - Sort by size (without null group)
             if has_size:
                 # Avoid using dask_cudf to calculate divisions
@@ -1196,15 +1250,20 @@ def _write_uniques(
                 )
 
             # Step 5 - Add null group back to df
-            def _add_row(part, index, first_row=None):
-                if index == (0,) and first_row is not None:
-                    return _concat([first_row, part], ignore_index=True)
+            def _add_row(part, index):
+                if index == (0,):
+                    return _concat([null_row, oov_rows, part], ignore_index=True)
                 return part
 
-            df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)), first_row=null_row)
+            df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)))
             rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
             out_path = "/".join([base_path, rel_path])
-            _to_parquet_dask_eager(df, out_path, first_n=nlargest)
+            _to_parquet_dask_eager(
+                df,
+                out_path,
+                first_n=max_emb_size,
+                freq_threshold=freq_threshold,
+            )
 
             # TODO: Delete temporary parquet file(s) now thet the final
             # uniques are written to disk? (May not want to wait on deletion)
@@ -1252,13 +1311,19 @@ def _write_uniques(
 
         df_write = df
     else:
-        df_null = type(df)({c: [None] for c in col_selector.names})
+        oovs = [None] * oov_count
+        df_null = type(df)({c: [None] + oovs for c in col_selector.names})
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_write = df_null
 
     # Assume max_size was already taken into account
-    _to_parquet_dask_eager(df_write, path)
+    _to_parquet_dask_eager(
+        df_write,
+        path,
+        first_n=max_emb_size,
+        freq_threshold=freq_threshold,
+    )
     del df
     del df_write
     return path
@@ -1268,37 +1333,54 @@ def _write_uniques(
 def _combo_encode(df, name_size_multi: str, col_selector: ColumnSelector, options: FitOptions):
     # Combo-encoding utility (used by _write_uniques)
 
-    # Account for max_size and num_buckets
-    if options.max_size:
-        max_emb_size = options.max_size
-        if isinstance(options.max_size, dict):
-            raise NotImplementedError(
-                "Cannot specify max_size as a dictionary for 'combo' encoding."
-            )
-        if options.num_buckets:
-            if isinstance(options.num_buckets, dict):
-                raise NotImplementedError(
-                    "Cannot specify num_buckets as a dictionary for 'combo' encoding."
-                )
-            nlargest = max_emb_size - options.num_buckets - 1
-        else:
-            nlargest = max_emb_size - 1
+    # # Account for max_size and num_buckets
+    # if options.max_size:
+    #     max_emb_size = options.max_size
+    #     if isinstance(options.max_size, dict):
+    #         raise NotImplementedError(
+    #             "Cannot specify max_size as a dictionary for 'combo' encoding."
+    #         )
+    #     if options.num_buckets:
+    #         if isinstance(options.num_buckets, dict):
+    #             raise NotImplementedError(
+    #                 "Cannot specify num_buckets as a dictionary for 'combo' encoding."
+    #             )
+    #         nlargest = max_emb_size - options.num_buckets - 1
+    #     else:
+    #         nlargest = max_emb_size - 1
 
-        if nlargest <= 0:
-            raise ValueError("`nlargest` cannot be 0 or negative")
+    #     if nlargest <= 0:
+    #         raise ValueError("`nlargest` cannot be 0 or negative")
 
-        if nlargest < len(df):
-            # sort based on count (name_size_multi column)
-            df = df.nlargest(n=nlargest, columns=name_size_multi)
+    #     if nlargest < len(df):
+    #         # sort based on count (name_size_multi column)
+    #         df = df.nlargest(n=nlargest, columns=name_size_multi)
 
-    # Deal with nulls
+    # Check if we already have a null row
     has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
     if hasattr(has_nans, "iloc"):
         has_nans = has_nans[0]
-    if not has_nans:
-        null_data = {col: nullable_series([None], df, df[col].dtype) for col in col_selector.names}
-        null_data[name_size_multi] = [0]
-        null_df = type(df)(null_data)
+
+    # Add null and OOV rows to df
+    num_buckets = options.num_buckets or 1
+    if has_nans:
+        # We have nulls: Only need to add OOV buckets
+        null_df = df.iloc[:1]
+        oov_data = {
+            col: nullable_series([None] * num_buckets, df, df[col].dtype)
+            for col in col_selector.names
+        }
+        oov_data[name_size_multi] = [0] * num_buckets
+        oov_df = type(df)(oov_data)
+        df = _concat([null_df, oov_df, df.iloc[1:]], ignore_index=True)
+    else:
+        # Add null row and OOV buckets
+        null_and_oov_data = {
+            col: nullable_series([None] * (num_buckets + 1), df, df[col].dtype)
+            for col in col_selector.names
+        }
+        null_and_oov_data[name_size_multi] = [0] * (num_buckets + 1)
+        null_df = type(df)(null_and_oov_data)
         df = _concat([null_df, df], ignore_index=True)
 
     return df
