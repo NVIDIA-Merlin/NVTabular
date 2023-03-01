@@ -436,9 +436,8 @@ class Categorify(StatOperator):
                     ).reset_index()[0]
                     vals = {col_name: with_empty}
 
-                save_path = os.path.join(base_path, f"unique.{col_name}.parquet")
                 col_df = dispatch.make_df(vals)
-                _to_parquet_dask_eager(col_df, save_path)
+                save_path = _save_encodings(col_df, base_path, col_name)
                 categories[col_name] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
             # TODO: How to deal with the fact that this file may be missing null and oov rows??
@@ -755,15 +754,19 @@ def _filter_infrequent(df, max_size=None, freq_threshold=None, oov_count=0):
     return df
 
 
-def _to_parquet_dask_eager(
+def _save_encodings(
     df,
-    path,
+    base_path,
+    field_name,
     preserve_index=False,
     first_n=None,
     freq_threshold=None,
     oov_count=1,
 ):
     # Write DataFrame data to parquet (eagerly) with dask
+
+    # Define paths
+    path = "/".join([str(base_path), f"unique.{field_name}.parquet"])
 
     # Check if we already have a dask collection
     is_collection = isinstance(df, DaskDataFrame)
@@ -822,7 +825,8 @@ def _to_parquet_dask_eager(
         _df.to_parquet(local_path, compression=None)
         if first_n and size >= first_n:
             break  # Ignore any remaining files
-    return
+
+    return path
 
 
 @dataclass
@@ -1280,11 +1284,10 @@ def _write_uniques(
                 return part
 
             df = df.map_partitions(_add_nulls, BlockIndex((df.npartitions,)))
-            rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
-            out_path = "/".join([base_path, rel_path])
-            _to_parquet_dask_eager(
+            unique_path = _save_encodings(
                 df,
-                out_path,
+                base_path,
+                _make_name(*col_selector.names, sep=options.name_sep),
                 first_n=max_emb_size,
                 freq_threshold=freq_threshold,
                 oov_count=oov_count,
@@ -1292,7 +1295,7 @@ def _write_uniques(
 
             # TODO: Delete temporary parquet file(s) now thet the final
             # uniques are written to disk? (May not want to wait on deletion)
-            return out_path
+            return unique_path
 
         # If we have reached this point, we have a dask collection
         # that must be computed before continuing
@@ -1318,8 +1321,6 @@ def _write_uniques(
             f"(12.5% of the total memory by default)"
         )
 
-    rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
-    path = "/".join([base_path, rel_path])
     if len(df):
         # Make sure first category is Null.
         # Use ignore_index=True to avoid allocating memory for
@@ -1334,16 +1335,17 @@ def _write_uniques(
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_write = df_null
 
-    _to_parquet_dask_eager(
+    unique_path = _save_encodings(
         df_write,
-        path,
+        base_path,
+        _make_name(*col_selector.names, sep=options.name_sep),
         first_n=max_emb_size,
         freq_threshold=freq_threshold,
         oov_count=oov_count,
     )
     del df
     del df_write
-    return path
+    return unique_path
 
 
 @annotate("_make_encodings", color="green", domain="nvt_python")
@@ -1926,8 +1928,12 @@ def _reset_df_index(col_name, cat_file_path, idx_count):
     # update count
     idx_count += cat_df.shape[0]
     # save the new indexes in file
-    new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
-    _to_parquet_dask_eager(cat_df, new_cat_file_path, preserve_index=True)
+    new_cat_file_path = _save_encodings(
+        cat_df,
+        Path(cat_file_path).parent,
+        col_name,
+        preserve_index=True,
+    )
     return idx_count, new_cat_file_path
 
 
