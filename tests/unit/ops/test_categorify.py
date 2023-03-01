@@ -80,9 +80,9 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
         }
     else:
         # Ignore first element if it is NaN
-        if vocab["session_id"].iloc[:1].isna().any():
-            session_id = vocab["session_id"].iloc[1:]
-            session_id_size = vocab["session_id_size"].iloc[1:]
+        if vocab["session_id"].iloc[:2].isna().any():
+            session_id = vocab["session_id"].iloc[2:]
+            session_id_size = vocab["session_id_size"].iloc[2:]
         else:
             session_id = vocab["session_id"]
             session_id_size = vocab["session_id_size"]
@@ -152,9 +152,9 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
         compare = df_out["Authors"].to_arrow().to_pylist()
 
     if freq_threshold < 2 or vocabs is not None:
-        assert compare == [[2], [2, 5], [4, 3], [3]]
+        assert compare == [[3], [3, 6], [5, 4], [4]]
     else:
-        assert compare == [[2], [2, 1], [1, 3], [3]]
+        assert compare == [[3], [3, 2], [2, 4], [4]]
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
@@ -191,8 +191,8 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 else df_out["Engaging User"].to_arrow().to_pylist()
             )
             # again userB has highest frequency given lowest encoding
-            assert compare_authors == [3, 6, 2, 4]
-            assert compare_engaging == [2, 2, 3, 5]
+            assert compare_authors == [4, 7, 3, 5]
+            assert compare_engaging == [3, 3, 4, 6]
         else:
             # Column combinations are encoded
             compare_engaging = (
@@ -200,7 +200,7 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 if cpu
                 else df_out["Author_Engaging User"].to_arrow().to_pylist()
             )
-            assert compare_engaging == [2, 5, 3, 4]
+            assert compare_engaging == [3, 6, 4, 5]
     else:
         # Columns are encoded independently
         compare_authors = (
@@ -211,9 +211,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
             if cpu
             else df_out["Engaging User"].to_arrow().to_pylist()
         )
-        assert compare_authors == [2, 5, 3, 4]
+        assert compare_authors == [3, 6, 4, 5]
         # User B is first in frequency based ordering
-        assert compare_engaging == [2, 2, 3, 4]
+        assert compare_engaging == [3, 3, 4, 5]
 
 
 @pytest.mark.parametrize("cpu", _CPU)
@@ -236,9 +236,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
                 "Post": [1, 2, 3, 4],
             },
-            "expected_a": [2, 4, 2, 3],
-            "expected_e": [4, 3, 2, 5],
-            "expected_ae": [3, 5, 2, 4],
+            "expected_a": [3, 5, 3, 4],
+            "expected_e": [5, 4, 3, 6],
+            "expected_ae": [4, 6, 3, 5],
         },
         # dupes in both Engaging user
         {
@@ -247,9 +247,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
                 "Post": [1, 2, 3, 4],
             },
-            "expected_a": [2, 5, 3, 4],
-            "expected_e": [2, 2, 3, 4],
-            "expected_ae": [2, 5, 3, 4],
+            "expected_a": [3, 6, 4, 5],
+            "expected_e": [3, 3, 4, 5],
+            "expected_ae": [3, 6, 4, 5],
         },
         # dupes in both Author and Engaging User
         {
@@ -258,9 +258,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
                 "Post": [1, 2, 3, 4],
             },
-            "expected_a": [2, 4, 3, 2],
-            "expected_e": [2, 2, 3, 4],
-            "expected_ae": [3, 5, 2, 4],
+            "expected_a": [3, 5, 4, 3],
+            "expected_e": [3, 3, 4, 5],
+            "expected_ae": [4, 6, 3, 5],
         },
         # dupes in both, lining up
         {
@@ -269,9 +269,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 "Engaging User": ["User_A", "User_B", "User_C", "User_C"],
                 "Post": [1, 2, 3, 4],
             },
-            "expected_a": [3, 4, 2, 2],
-            "expected_e": [3, 4, 2, 2],
-            "expected_ae": [2, 3, 4, 4],
+            "expected_a": [4, 5, 3, 3],
+            "expected_e": [4, 5, 3, 3],
+            "expected_ae": [4, 5, 3, 3],
         },
         # no dupes
         {
@@ -280,9 +280,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
                 "Post": [1, 2, 3, 4],
             },
-            "expected_a": [4, 5, 3, 2],
-            "expected_e": [4, 3, 2, 5],
-            "expected_ae": [4, 5, 3, 2],
+            "expected_a": [5, 6, 4, 3],
+            "expected_e": [5, 4, 3, 6],
+            "expected_ae": [5, 6, 4, 3],
         },
         # Include null value
         {
@@ -291,9 +291,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
                 "Post": [1, 2, 3, 4],
             },
-            "expected_a": [1, 4, 3, 2],
-            "expected_e": [4, 3, 2, 5],
-            "expected_ae": [2, 5, 4, 3],
+            "expected_a": [1, 5, 4, 3],
+            "expected_e": [5, 4, 3, 6],
+            "expected_ae": [3, 6, 5, 4],
         },
     ],
 )
@@ -380,39 +380,42 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
             .compute(scheduler="synchronous")
         )
 
+        null, oov = 1, 1
+        unique = {"Author": 5, "Engaging User": 4}
+        freq_limited = {"Author": 2, "Engaging User": 1}
         if freq_limit and not buckets:
             # Column combinations are encoded
             if isinstance(freq_limit, dict):
-                assert df_out["Author"].max() == 3
-                assert df_out["Engaging User"].max() == 2
+                assert df_out["Author"].max() == null + oov + freq_limited["Author"]
+                assert df_out["Engaging User"].max() == null + oov + freq_limited["Engaging User"]
             else:
                 assert len(df["Author"].unique()) == df_out["Author"].max()
                 assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
         elif not freq_limit and buckets:
             if isinstance(buckets, dict):
-                assert df_out["Author"].max() <= 10
-                assert df_out["Engaging User"].max() <= 20
+                assert df_out["Author"].max() <= null + buckets["Author"] + unique["Author"]
+                assert (
+                    df_out["Engaging User"].max()
+                    <= null + buckets["Engaging User"] + unique["Engaging User"]
+                )
             else:
-                assert df_out["Author"].max() <= 10
-                assert df_out["Engaging User"].max() <= 10
+                assert df_out["Author"].max() <= null + buckets + unique["Author"]
+                assert df_out["Engaging User"].max() <= null + buckets + unique["Engaging User"]
         elif freq_limit and buckets:
             if (
                 isinstance(buckets, dict)
-                and isinstance(buckets, dict)
+                and isinstance(freq_limit, dict)
                 and not isinstance(df, pd.DataFrame)
             ):
-                assert (
-                    df_out["Author"].max()
-                    <= (df["Author"].hash_values() % buckets["Author"]).max() + 2 + 2
-                )
+                assert df_out["Author"].max() <= null + freq_limited["Author"] + buckets["Author"]
                 assert (
                     df_out["Engaging User"].max()
-                    <= (df["Engaging User"].hash_values() % buckets["Engaging User"]).max() + 1 + 2
+                    <= null + freq_limited["Engaging User"] + buckets["Engaging User"]
                 )
 
 
 @pytest.mark.parametrize("cpu", _CPU)
-def test_categorify_hash_bucket(cpu):
+def test_categorify_hash_bucket_only(cpu):
     df = dispatch.make_df(
         {
             "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
@@ -422,18 +425,19 @@ def test_categorify_hash_bucket(cpu):
     )
     cat_names = ["Authors", "Engaging_User"]
     buckets = 10
+    max_size = buckets + 1  # Must include null index
     dataset = nvt.Dataset(df, cpu=cpu)
-    hash_features = cat_names >> ops.Categorify(num_buckets=buckets)
+    hash_features = cat_names >> ops.Categorify(num_buckets=buckets, max_size=max_size)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     # check hashed values
-    assert new_gdf["Authors"].max() <= buckets
-    assert new_gdf["Engaging_User"].max() <= buckets
+    assert new_gdf["Authors"].max() <= max_size
+    assert new_gdf["Engaging_User"].max() <= max_size
     # check embedding size is equal to the num_buckets after hashing
-    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == buckets + 1
-    assert nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] == buckets + 1
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == max_size
+    assert nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] == max_size
 
 
 @pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
@@ -510,7 +514,7 @@ def test_categorify_single_table():
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    old_max = 0
+    old_max = 1
     for name in cat_names:
         curr_min = new_gdf[name].min()
         assert old_max <= curr_min
@@ -650,8 +654,8 @@ def test_categorify_joint_list(cpu):
         else df_out["Engaging User"].explode().dropna().to_arrow().to_pylist()
     )
 
-    assert compare_a == [2, 6, 3, 4]
-    assert compare_e == [3, 4, 2, 5, 2]
+    assert compare_a == [3, 7, 4, 5]
+    assert compare_e == [4, 5, 3, 6, 3]
 
 
 @pytest.mark.parametrize("cpu", _CPU)

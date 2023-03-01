@@ -403,14 +403,24 @@ class Categorify(StatOperator):
         if isinstance(vocabs, dict) and all(dispatch.is_series_object(v) for v in vocabs.values()):
             fit_options = self._create_fit_options_from_columns(list(vocabs.keys()))
             base_path = os.path.join(self.out_path, fit_options.stat_name)
+            num_buckets = fit_options.num_buckets
             os.makedirs(base_path, exist_ok=True)
             for col, vocab in vocabs.items():
                 col_name = _make_name(*col, sep=self.name_sep) if isinstance(col, tuple) else col
                 vals = {col_name: vocab}
+                if num_buckets:
+                    oov_count = (
+                        num_buckets if isinstance(num_buckets, int) else num_buckets[col_name]
+                    )
+                    oov_count = oov_count or 1
+                else:
+                    oov_count = 1
                 if not vocab.iloc[:1].isna().any():
                     with_empty = dispatch.concat(
                         [
-                            dispatch.nullable_series([None], vocab.to_frame(), vocab.dtype),
+                            dispatch.nullable_series(
+                                [None] * (oov_count + 1), vocab.to_frame(), vocab.dtype
+                            ),
                             vocab,
                         ]
                     ).reset_index()[0]
@@ -421,6 +431,7 @@ class Categorify(StatOperator):
                 _to_parquet_dask_eager(col_df, save_path)
                 categories[col_name] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
+            # TODO: How to deal with the fact that this file may be missing null and oov rows??
             categories = {
                 (_make_name(*col, sep=self.name_sep) if isinstance(col, tuple) else col): path
                 for col, path in vocabs.items()
@@ -509,6 +520,7 @@ class Categorify(StatOperator):
                         if isinstance(self.split_out, dict)
                         else self.split_out
                     ),
+                    single_table=self.single_table,
                 )
                 new_df[name] = encoded
             except Exception as e:
@@ -577,13 +589,7 @@ class Categorify(StatOperator):
         return parents_selector
 
     def get_embedding_sizes(self, columns):
-        return _get_embeddings_dask(
-            self.categories,
-            columns,
-            self.num_buckets,
-            self.freq_threshold,
-            self.max_size,
-        )
+        return _get_embeddings_dask(self.categories, columns, self.num_buckets)
 
     def inference_initialize(self, columns, inference_config):
         # we don't currently support 'combo'
@@ -649,37 +655,24 @@ def get_embedding_sizes(source, output_dtypes=None):
     return single_hots, multi_hots
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
+def _get_embeddings_dask(paths, cat_names, buckets=0):
     embeddings = {}
-    if isinstance(freq_limit, int):
-        freq_limit = {name: freq_limit for name in cat_names}
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
-    if isinstance(max_size, int):
-        max_size = {name: max_size for name in cat_names}
     for col in cat_names:
         path = paths.get(col)
         num_rows = 0
         if path:
             for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                 num_rows += file_frag.metadata.num_rows
-        if isinstance(buckets, dict):
-            bucket_size = buckets.get(col, 0)
-        elif isinstance(buckets, int):
-            bucket_size = buckets
         else:
-            bucket_size = 0
-
-        _has_frequency_limit = col in freq_limit and freq_limit[col] > 0
-        _has_max_size = col in max_size and max_size[col] > 0
-
-        if bucket_size and not _has_frequency_limit and not _has_max_size:
-            # pure hashing (no categorical lookup)
-            num_rows = bucket_size
-        else:
+            if isinstance(buckets, dict):
+                bucket_size = buckets.get(col, 0)
+            elif isinstance(buckets, int):
+                bucket_size = buckets
+            else:
+                bucket_size = 0
             num_rows += bucket_size
-
-        num_rows += START_INDEX
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -716,6 +709,18 @@ def _to_parquet_dask_lazy(df, path, write_index=False):
     ).to_parquet(path, **kwargs)
 
 
+def _filter_infrequent(df, max_size=None, freq_threshold=None):
+    # TODO: Update size statistics after infrequent categories
+    # are removed!! (this seems like it may be tricky)
+    if freq_threshold:
+        sizes = df.iloc[:, 1]
+        # remove = df[(sizes < freq_threshold) & (sizes > 0)]
+        df = df[(sizes >= freq_threshold) | (sizes == 0)]
+    if max_size and len(df) > max_size:
+        df = df.iloc[0:max_size]
+    return df
+
+
 def _to_parquet_dask_eager(
     df,
     path,
@@ -737,22 +742,28 @@ def _to_parquet_dask_eager(
     if use_directory:
         fs.mkdir(_path, exists_ok=True)
 
+    # Filter out infrequent values
+    if first_n or freq_threshold:
+        if is_collection:
+            df = df.map_partitions(
+                _filter_infrequent,
+                max_size=first_n,
+                freq_threshold=freq_threshold,
+            )
+        else:
+            df = _filter_infrequent(
+                df,
+                max_size=first_n,
+                freq_threshold=freq_threshold,
+            )
+
     # Iterate over partitions and write to disk
     size = 0
     for p, part in enumerate(df.partitions if is_collection else [df]):
         local_path = "/".join([path, f"part.{p}.parquet"]) if use_directory else path
         _df = _compute_sync(part) if is_collection else part
-
-        if freq_threshold:
-            sizes = _df.iloc[:, 1]
-            if p == 0:
-                # First file will have null and oov buckets
-                _df = _df[sizes >= freq_threshold & sizes != 0]
-            else:
-                _df = _df[sizes >= freq_threshold]
-            if len(_df) == 0:
-                continue
-
+        if len(_df) == 0:
+            continue
         if not preserve_index:
             # If we are NOT writing the index of df,
             # then make sure we are writing a "correct"
@@ -769,10 +780,10 @@ def _to_parquet_dask_eager(
                 inplace=True,
             )
             size += _len
-        if first_n is not None and size > first_n:
+        if first_n and size > first_n:
             _df = _df.iloc[: -(size - first_n)]
         _df.to_parquet(local_path, compression=None)
-        if first_n is not None and size >= first_n:
+        if first_n and size >= first_n:
             break  # Ignore any remaining files
     return
 
@@ -1142,7 +1153,7 @@ def _write_uniques(
     # the unique-value parquet files
     col_name = col_selector.names[0]
     max_emb_size = options.max_size
-    if max_emb_size is None:
+    if max_emb_size:
         max_emb_size = max_emb_size[col_name] if isinstance(max_emb_size, dict) else max_emb_size
 
     # Set num_buckets
@@ -1162,7 +1173,7 @@ def _write_uniques(
         )
 
     # Sanity check
-    if max_emb_size and max_emb_size <= max(oov_count + 1, 2):
+    if max_emb_size and max_emb_size < max(oov_count + 1, 2):
         raise ValueError(
             "`max_size` can never be less than the maximum of "
             "`num_buckets + 1` and `2`, because we must always "
@@ -1185,7 +1196,7 @@ def _write_uniques(
             name_size = col_name + "_size"
             has_size = name_size in df
             try:
-                # Step 1 - Sort by col_name
+                # Sort by col_name
                 df = df.sort_values(col_name, na_position="first")
             except NotImplementedError:
                 # Dask-based sort failed - Need to compute first
@@ -1194,27 +1205,7 @@ def _write_uniques(
         # At this point, `simple` may have changed from True to False
         # if the backend library failed to sort by the target column.
         if simple:
-            # # Step 2 - Check for max_size
-            # nlargest = None
-            # if options.max_size:
-            #     max_emb_size = (
-            #         options.max_size[col_name]
-            #         if isinstance(options.max_size, dict)
-            #         else options.max_size
-            #     )
-            #     if options.num_buckets:
-            #         num_buckets = (
-            #             options.num_buckets
-            #             if isinstance(options.num_buckets, int)
-            #             else options.num_buckets[col_name]
-            #         )
-            #     else:
-            #         num_buckets = 0
-            #     nlargest = max_emb_size - num_buckets
-            #     if nlargest <= 0:
-            #         raise ValueError("`nlargest` cannot be 0 or negative")
-
-            # Step 3 - Check for null group and drop it
+            # Define the null row
             def _drop_first_row(part, index):
                 return part.iloc[1:] if index == (0,) else part
 
@@ -1227,7 +1218,7 @@ def _write_uniques(
                     _data[name_size] = nullable_series([0], null_row, null_row[name_size].dtype)
                 null_row = type(null_row)(_data)
 
-            # OOV rows
+            # Define the OOV rows
             _data = {
                 col_name: nullable_series([None] * oov_count, null_row, null_row[col_name].dtype)
             }
@@ -1237,7 +1228,7 @@ def _write_uniques(
                 )
             oov_rows = type(null_row)(_data)
 
-            # Step 4 - Sort by size (without null group)
+            # Sort by size (without null and oov rows)
             if has_size:
                 # Avoid using dask_cudf to calculate divisions
                 # (since it may produce too-few partitions)
@@ -1249,13 +1240,13 @@ def _write_uniques(
                     )[0][::-1],
                 )
 
-            # Step 5 - Add null group back to df
-            def _add_row(part, index):
+            # Add null and oov rows back to df
+            def _add_nulls(part, index):
                 if index == (0,):
                     return _concat([null_row, oov_rows, part], ignore_index=True)
                 return part
 
-            df = df.map_partitions(_add_row, BlockIndex((df.npartitions,)))
+            df = df.map_partitions(_add_nulls, BlockIndex((df.npartitions,)))
             rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
             out_path = "/".join([base_path, rel_path])
             _to_parquet_dask_eager(
@@ -1300,24 +1291,15 @@ def _write_uniques(
         # Use ignore_index=True to avoid allocating memory for
         # an index we don't even need
         df = df.sort_values(col_selector.names, na_position="first", ignore_index=True)
-
         name_size_multi = "_".join(col_selector.names + ["size"])
-        if len(col_selector.names) > 1 and name_size_multi in df:
-            # Using "combo" encoding
-            df = _combo_encode(df, name_size_multi, col_selector, options)
-        else:
-            # Using (default) "joint" encoding
-            df = _joint_encode(df, col_selector, options)
-
+        df = _make_encodings(df, name_size_multi, col_selector, options)
         df_write = df
     else:
-        oovs = [None] * oov_count
-        df_null = type(df)({c: [None] + oovs for c in col_selector.names})
+        df_null = type(df)({c: [None] * (oov_count + 1) for c in col_selector.names})
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_write = df_null
 
-    # Assume max_size was already taken into account
     _to_parquet_dask_eager(
         df_write,
         path,
@@ -1329,133 +1311,44 @@ def _write_uniques(
     return path
 
 
-@annotate("_combo_encode", color="green", domain="nvt_python")
-def _combo_encode(df, name_size_multi: str, col_selector: ColumnSelector, options: FitOptions):
-    # Combo-encoding utility (used by _write_uniques)
-
-    # # Account for max_size and num_buckets
-    # if options.max_size:
-    #     max_emb_size = options.max_size
-    #     if isinstance(options.max_size, dict):
-    #         raise NotImplementedError(
-    #             "Cannot specify max_size as a dictionary for 'combo' encoding."
-    #         )
-    #     if options.num_buckets:
-    #         if isinstance(options.num_buckets, dict):
-    #             raise NotImplementedError(
-    #                 "Cannot specify num_buckets as a dictionary for 'combo' encoding."
-    #             )
-    #         nlargest = max_emb_size - options.num_buckets - 1
-    #     else:
-    #         nlargest = max_emb_size - 1
-
-    #     if nlargest <= 0:
-    #         raise ValueError("`nlargest` cannot be 0 or negative")
-
-    #     if nlargest < len(df):
-    #         # sort based on count (name_size_multi column)
-    #         df = df.nlargest(n=nlargest, columns=name_size_multi)
+@annotate("_make_encodings", color="green", domain="nvt_python")
+def _make_encodings(df, name_size_multi: str, col_selector: ColumnSelector, options: FitOptions):
+    # Make encodings (used by _write_uniques)
 
     # Check if we already have a null row
     has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
     if hasattr(has_nans, "iloc"):
         has_nans = has_nans[0]
 
-    # Add null and OOV rows to df
-    num_buckets = options.num_buckets or 1
+    num_buckets = options.num_buckets
+    if num_buckets:
+        num_buckets = (
+            num_buckets if isinstance(num_buckets, int) else num_buckets[col_selector.names[0]]
+        )
+    oov_count = num_buckets or 1
+
     if has_nans:
         # We have nulls: Only need to add OOV buckets
         null_df = df.iloc[:1]
         oov_data = {
-            col: nullable_series([None] * num_buckets, df, df[col].dtype)
+            col: nullable_series([None] * oov_count, df, df[col].dtype)
             for col in col_selector.names
         }
-        oov_data[name_size_multi] = [0] * num_buckets
+        oov_data[name_size_multi] = [0] * oov_count
         oov_df = type(df)(oov_data)
-        df = _concat([null_df, oov_df, df.iloc[1:]], ignore_index=True)
+        df = df.iloc[1:].sort_values(name_size_multi, ascending=False, ignore_index=True)
+        df = _concat([null_df, oov_df, df], ignore_index=True)
     else:
         # Add null row and OOV buckets
         null_and_oov_data = {
-            col: nullable_series([None] * (num_buckets + 1), df, df[col].dtype)
+            col: nullable_series([None] * (oov_count + 1), df, df[col].dtype)
             for col in col_selector.names
         }
-        null_and_oov_data[name_size_multi] = [0] * (num_buckets + 1)
+        null_and_oov_data[name_size_multi] = [0] * (oov_count + 1)
         null_df = type(df)(null_and_oov_data)
+        df = df.sort_values(name_size_multi, ascending=False, ignore_index=True)
         df = _concat([null_df, df], ignore_index=True)
 
-    return df
-
-
-@annotate("_joint_encode", color="green", domain="nvt_python")
-def _joint_encode(df, col_selector: ColumnSelector, options: FitOptions):
-    # Joint-encoding utility (used by _write_uniques)
-
-    new_cols = {}
-    nulls_missing = False
-    for col in col_selector.names:
-        name_size = col + "_size"
-        null_size = 0
-        # Set null size if first element in `col` is
-        # null, and the `size` aggregation is known
-        if name_size in df and df[col].iloc[:1].isnull().any():
-            null_size = df[name_size].iloc[0]
-        if options.max_size:
-            max_emb_size = options.max_size
-            if isinstance(options.max_size, dict):
-                max_emb_size = max_emb_size[col]
-            if options.num_buckets:
-                if isinstance(options.num_buckets, int):
-                    nlargest = max_emb_size - options.num_buckets - 1
-                else:
-                    nlargest = max_emb_size - options.num_buckets[col] - 1
-            else:
-                nlargest = max_emb_size - 1
-
-            if nlargest <= 0:
-                raise ValueError("`nlargest` cannot be 0 or negative")
-
-            if nlargest < len(df) and name_size in df:
-                # remove NAs from column, we have na count from above.
-                df = df.dropna()  # TODO: This seems dangerous - Check this
-                # sort based on count (name_size column)
-                df = df.nlargest(n=nlargest, columns=name_size)
-                new_cols[col] = _concat(
-                    [nullable_series([None], df, df[col].dtype), df[col]],
-                    ignore_index=True,
-                )
-                new_cols[name_size] = _concat(
-                    [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
-                    ignore_index=True,
-                )
-                # recreate newly "count" ordered df
-                df = type(df)(new_cols)
-        if not dispatch.series_has_nulls(df[col]):
-            if name_size in df:
-                df = df.sort_values(name_size, ascending=False, ignore_index=True)
-
-            nulls_missing = True
-            new_cols[col] = _concat(
-                [nullable_series([None], df, df[col].dtype), df[col]],
-                ignore_index=True,
-            )
-            if name_size in df:
-                new_cols[name_size] = _concat(
-                    [nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
-                    ignore_index=True,
-                )
-
-        else:
-            # ensure None aka "unknown" stays at index 0
-            if name_size in df:
-                df_0 = df.iloc[0:1]
-                df_1 = df.iloc[1:].sort_values(name_size, ascending=False, ignore_index=True)
-                df = _concat([df_0, df_1])
-            new_cols[col] = df[col].copy(deep=False)
-
-            if name_size in df:
-                new_cols[name_size] = df[name_size].copy(deep=False)
-    if nulls_missing:
-        return type(df)(new_cols)
     return df
 
 
@@ -1701,6 +1594,7 @@ def _encode(
     max_size=0,
     dtype=None,
     split_out=1,
+    single_table=False,
 ):
     """The _encode method is responsible for transforming a dataframe by taking the written
     out vocabulary file and looking up values to translate inputs to numeric
@@ -1737,9 +1631,6 @@ def _encode(
     """
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
-    # this is to apply freq_hashing logic
-    if max_size:
-        freq_threshold = 1
     value = None
     selection_l = ColumnSelector(name if isinstance(name, list) else [name])
     selection_r = ColumnSelector(name if isinstance(name, list) else [storage_name])
@@ -1804,6 +1695,27 @@ def _encode(
         # Use simple merge for single-partition case
         value = _compute_sync(value)
         use_collection = False
+
+    # Find number of oov buckets
+    if buckets and storage_name in buckets:
+        num_oov_buckets = buckets[storage_name]
+        search_sorted = False
+    else:
+        num_oov_buckets = 1
+
+    # Drop indistinct rows from value
+    null_encoding_offset = value["labels"].head(1).iloc[0] if single_table else 1
+    bucket_encoding_offset = null_encoding_offset + 1  # 2 (if not single_table)
+    distinct_encoding_offset = bucket_encoding_offset + num_oov_buckets
+    value = value[value["labels"] >= distinct_encoding_offset]
+
+    # Determine indices of "real" null values
+    # (these will always be encoded to `1`)
+    expr = df[selection_l.names[0]].isna()
+    for _name in selection_l.names[1:]:
+        expr = expr & df[_name].isna()
+    nulls = df[expr].index
+
     if use_collection or not search_sorted:
         if list_col:
             codes = dispatch.flatten_list_column(df[selection_l.names[0]])
@@ -1819,12 +1731,14 @@ def _encode(
             else:
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
 
-        indistinct = 1  # TODO: FIX THIS
+        indistinct = bucket_encoding_offset
         if buckets and storage_name in buckets:
-            indistinct = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
+            # apply hashing for "infrequent" categories
+            indistinct = (
+                _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
+                + bucket_encoding_offset
+            )
 
-        # apply frequency hashing
-        if freq_threshold and buckets and storage_name in buckets:
             if use_collection:
                 # Manual broadcast merge
                 merged_df = _concat(
@@ -1845,22 +1759,16 @@ def _encode(
                 ).sort_values("order")
 
             merged_df.reset_index(drop=True, inplace=True)
-            max_id = merged_df["labels"].max()
             if len(merged_df) < len(codes):
                 # Missing nulls
-                labels = df._constructor_sliced(indistinct + max_id + 1)
+                labels = df._constructor_sliced(indistinct)
                 labels.iloc[merged_df["order"]] = merged_df["labels"]
                 labels = labels.values
             else:
-                merged_df["labels"].fillna(
-                    df._constructor_sliced(indistinct + max_id + 1), inplace=True
-                )
+                merged_df["labels"].fillna(df._constructor_sliced(indistinct), inplace=True)
                 labels = merged_df["labels"].values
-        # only do hashing
-        elif buckets and storage_name in buckets:
-            labels = indistinct
-        # no hashing
         else:
+            # no hashing
             if use_collection:
                 # Manual broadcast merge
                 merged_df = _concat(
@@ -1896,14 +1804,25 @@ def _encode(
     else:
         # Use `searchsorted` if we are using a "full" encoding
         if list_col:
-            labels = value[selection_r.names].searchsorted(
-                df[selection_l.names[0]].list.leaves, side="left", na_position="first"
+            labels = (
+                value[selection_r.names].searchsorted(
+                    df[selection_l.names[0]].list.leaves, side="left", na_position="first"
+                )
+                + distinct_encoding_offset
             )
         else:
-            labels = value[selection_r.names].searchsorted(
-                df[selection_l.names], side="left", na_position="first"
+            labels = (
+                value[selection_r.names].searchsorted(
+                    df[selection_l.names], side="left", na_position="first"
+                )
+                + distinct_encoding_offset
             )
-        labels[labels >= len(value[selection_r.names])] = 1  # TODO: FIX THIS (indistinct)?
+        labels[labels >= len(value[selection_r.names])] = bucket_encoding_offset
+
+    # Make sure nulls are encoded to `null_encoding_offset`
+    # (This should be `1` in most casese)
+    if len(nulls):
+        labels[nulls] = null_encoding_offset
 
     if list_col:
         labels = dispatch.encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
