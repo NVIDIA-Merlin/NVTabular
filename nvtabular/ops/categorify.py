@@ -728,28 +728,29 @@ def _filter_infrequent(df, max_size=None, freq_threshold=None, oov_count=0):
     size_col = list(df.columns)[1]
     if freq_threshold:
         sizes = df[size_col]
-        removed = df[(sizes < freq_threshold) & (sizes > 0)]
+        removed = df[(sizes < freq_threshold) & (sizes > 0)].reset_index(drop=True)
         df = df[(sizes >= freq_threshold) | (sizes == 0)]
     if max_size and len(df) > max_size:
-        removed = df.iloc[max_size:]
+        removed = df.iloc[max_size:].reset_index(drop=True)
         df = df.iloc[:max_size]
 
     if removed is not None:
         if oov_count == 1:
-            df[size_col].iloc[1 : 1 + oov_count] += len(removed)
+            df[size_col].iloc[1] += removed[size_col].sum()
         elif oov_count > 1:
             col = df.columns[0]
-            encoded = _hash_bucket(removed, {col: oov_count}, [col])
-            new = type(df)({"index": encoded, "size": [1] * len(encoded)}).groupby("index").sum()
-            to_add = (
+            encodings = _hash_bucket(removed, {col: oov_count}, [col])
+            encodings_df = (
+                type(df)({"index": encodings, "size": removed[size_col]}).groupby("index").sum()
+            )
+            new_sizes = (
                 df.iloc[1 : 1 + oov_count][[]]
-                .join(new)
+                .reset_index(drop=True)
+                .join(encodings_df)
                 .fillna(0)["size"]
                 .astype(df[size_col].dtype)
-            )
-            df[size_col].iloc[1 : 1 + oov_count] = (
-                df[size_col].iloc[1 : 1 + oov_count].values + to_add.values
-            )
+            ).values + df[size_col].iloc[1 : 1 + oov_count].values
+            df[size_col].iloc[1 : 1 + oov_count] = new_sizes
 
     return df
 
@@ -1073,17 +1074,13 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, options: FitOptions, s
 
 
 @annotate("bottom_level_groupby", color="green", domain="nvt_python")
-def _bottom_level_groupby(
-    dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions, spill=True
-):
+def _bottom_level_groupby(dfs, col_selector: ColumnSelector, options: FitOptions, spill=True):
     gb = _mid_level_groupby(dfs, col_selector, options, spill=False)
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
     name_count = _make_name(*(col_selector.names + ["count"]), sep=options.name_sep)
     name_size = _make_name(*(col_selector.names + ["size"]), sep=options.name_sep)
-    if options.freq_limit and not options.max_size:
-        gb = gb[gb[name_size] >= freq_limit_val]
 
     required = col_selector.names.copy()
     if "count" in options.agg_list:
@@ -1473,13 +1470,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         col_str = _make_name(*col.names, sep=options.name_sep)
         col_groups_str.append(col_str)
         reduce_2_name = f"reduce_2-{c}-" + token
-        freq_limit_val = None
-        if options.freq_limit:
-            freq_limit_val = (
-                options.freq_limit[col_str]
-                if isinstance(options.freq_limit, dict)
-                else options.freq_limit
-            )
         for s in range(options.split_out[col_str]):
             split_every = options.split_every[col_str]
             parts = ddf.npartitions
@@ -1516,7 +1506,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                                 _bottom_level_groupby,
                                 input_keys,
                                 col,
-                                freq_limit_val,
                                 options,
                                 False,
                             )
@@ -1534,7 +1523,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
                     _bottom_level_groupby,
                     [(split_name, 0, c, s)],
                     col,
-                    freq_limit_val,
                     options,
                     False,
                 )
@@ -1543,7 +1531,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         _meta = _bottom_level_groupby(
             [_grouped_meta_col[c]],
             col,
-            freq_limit_val,
             options,
             spill=False,
         )

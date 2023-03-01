@@ -381,8 +381,11 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
         )
 
         # Check size statistics add up to len(df)
-        check_cats = dispatch.read_dispatch(fmt="parquet")("./categories/unique.Author.parquet")
-        assert check_cats["Author_size"].sum() == len(df)
+        for col in ["Author", "Engaging User"]:
+            check_cats = dispatch.read_dispatch(fmt="parquet")(
+                str(tmpdir) + f"/categories/unique.{col}.parquet"
+            )
+            assert check_cats[f"{col}_size"].sum() == len(df)
 
         null, oov = 1, 1
         unique = {"Author": 5, "Engaging User": 4}
