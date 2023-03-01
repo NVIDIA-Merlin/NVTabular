@@ -228,6 +228,16 @@ class Categorify(StatOperator):
         if kwargs:
             raise ValueError(f"Unrecognized key-word arguments: {kwargs}")
 
+        # Warn user if they set num_buckets without setting max_size or
+        # freq_threshold - Which used to hash everything, but will now
+        # just use multiple indices for OOV encodings.
+        if num_buckets and not max_size and not freq_threshold:
+            warnings.warn(
+                "You are setting num_buckets without using max_size or "
+                "freq_threshold to restrict the number of distinct "
+                "categories. Are you sure this is what you want?"
+            )
+
         # We need to handle three types of encoding here:
         #
         #   (1) Conventional encoding. There are no multi-column groups. So,
@@ -709,15 +719,38 @@ def _to_parquet_dask_lazy(df, path, write_index=False):
     ).to_parquet(path, **kwargs)
 
 
-def _filter_infrequent(df, max_size=None, freq_threshold=None):
-    # TODO: Update size statistics after infrequent categories
-    # are removed!! (this seems like it may be tricky)
+def _filter_infrequent(df, max_size=None, freq_threshold=None, oov_count=0):
+    if len(df.columns) > 2:
+        # TODO: Can this happen?
+        raise NotImplementedError()
+
+    removed = None
+    size_col = list(df.columns)[1]
     if freq_threshold:
-        sizes = df.iloc[:, 1]
-        # remove = df[(sizes < freq_threshold) & (sizes > 0)]
+        sizes = df[size_col]
+        removed = df[(sizes < freq_threshold) & (sizes > 0)]
         df = df[(sizes >= freq_threshold) | (sizes == 0)]
     if max_size and len(df) > max_size:
-        df = df.iloc[0:max_size]
+        removed = df.iloc[max_size:]
+        df = df.iloc[:max_size]
+
+    if removed is not None:
+        if oov_count == 1:
+            df[size_col].iloc[1 : 1 + oov_count] += len(removed)
+        elif oov_count > 1:
+            col = df.columns[0]
+            encoded = _hash_bucket(removed, {col: oov_count}, [col])
+            new = type(df)({"index": encoded, "size": [1] * len(encoded)}).groupby("index").sum()
+            to_add = (
+                df.iloc[1 : 1 + oov_count][[]]
+                .join(new)
+                .fillna(0)["size"]
+                .astype(df[size_col].dtype)
+            )
+            df[size_col].iloc[1 : 1 + oov_count] = (
+                df[size_col].iloc[1 : 1 + oov_count].values + to_add.values
+            )
+
     return df
 
 
@@ -727,6 +760,7 @@ def _to_parquet_dask_eager(
     preserve_index=False,
     first_n=None,
     freq_threshold=None,
+    oov_count=1,
 ):
     # Write DataFrame data to parquet (eagerly) with dask
 
@@ -749,12 +783,14 @@ def _to_parquet_dask_eager(
                 _filter_infrequent,
                 max_size=first_n,
                 freq_threshold=freq_threshold,
+                oov_count=0,  # TODO: Attempt this?
             )
         else:
             df = _filter_infrequent(
                 df,
                 max_size=first_n,
                 freq_threshold=freq_threshold,
+                oov_count=oov_count,
             )
 
     # Iterate over partitions and write to disk
@@ -1254,6 +1290,7 @@ def _write_uniques(
                 out_path,
                 first_n=max_emb_size,
                 freq_threshold=freq_threshold,
+                oov_count=oov_count,
             )
 
             # TODO: Delete temporary parquet file(s) now thet the final
@@ -1305,6 +1342,7 @@ def _write_uniques(
         path,
         first_n=max_emb_size,
         freq_threshold=freq_threshold,
+        oov_count=oov_count,
     )
     del df
     del df_write
