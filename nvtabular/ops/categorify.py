@@ -718,42 +718,6 @@ def _to_parquet_dask_lazy(df, path, write_index=False):
     ).to_parquet(path, **kwargs)
 
 
-def _filter_infrequent(df, max_size=None, freq_threshold=None, oov_count=0):
-    if len(df.columns) > 2:
-        # TODO: Can this happen?
-        raise NotImplementedError()
-
-    removed = None
-    size_col = list(df.columns)[1]
-    if freq_threshold:
-        sizes = df[size_col]
-        removed = df[(sizes < freq_threshold) & (sizes > 0)].reset_index(drop=True)
-        df = df[(sizes >= freq_threshold) | (sizes == 0)]
-    if max_size and len(df) > max_size:
-        removed = df.iloc[max_size:].reset_index(drop=True)
-        df = df.iloc[:max_size]
-
-    if removed is not None:
-        if oov_count == 1:
-            df[size_col].iloc[1] += removed[size_col].sum()
-        elif oov_count > 1:
-            col = df.columns[0]
-            encodings = _hash_bucket(removed, {col: oov_count}, [col])
-            encodings_df = (
-                type(df)({"index": encodings, "size": removed[size_col]}).groupby("index").sum()
-            )
-            new_sizes = (
-                df.iloc[1 : 1 + oov_count][[]]
-                .reset_index(drop=True)
-                .join(encodings_df)
-                .fillna(0)["size"]
-                .astype(df[size_col].dtype)
-            ).values + df[size_col].iloc[1 : 1 + oov_count].values
-            df[size_col].iloc[1 : 1 + oov_count] = new_sizes
-
-    return df
-
-
 def _save_encodings(
     df,
     base_path,
@@ -766,50 +730,76 @@ def _save_encodings(
     # Write DataFrame data to parquet (eagerly) with dask
 
     # Define paths
-    path = "/".join([str(base_path), f"unique.{field_name}.parquet"])
+    unique_path = "/".join([str(base_path), f"unique.{field_name}.parquet"])
+    meta_path = "/".join([str(base_path), f"meta.{field_name}.parquet"])
 
     # Check if we already have a dask collection
     is_collection = isinstance(df, DaskDataFrame)
 
     # Create empty directory if it doesn't already exist
     use_directory = is_collection and df.npartitions > 1
-    fs = get_fs_token_paths(path, mode="wb")[0]
-    _path = fs._strip_protocol(path)
+    fs = get_fs_token_paths(unique_path, mode="wb")[0]
+    _path = fs._strip_protocol(unique_path)
     if fs.isdir(_path) or fs.exists(_path):
         fs.rm(_path, recursive=True)
     if use_directory:
         fs.mkdir(_path, exists_ok=True)
 
-    # Filter out infrequent values
-    if first_n or freq_threshold:
-        if is_collection:
-            df = df.map_partitions(
-                _filter_infrequent,
-                max_size=first_n,
-                freq_threshold=freq_threshold,
-                oov_count=0,  # TODO: Attempt this?
-            )
-        else:
-            df = _filter_infrequent(
-                df,
-                max_size=first_n,
-                freq_threshold=freq_threshold,
-                oov_count=oov_count,
-            )
+    # Start tracking embedding metadata
+    record_size_meta = True
+    null_size = 0
+    oov_size = 0
+    unique_count = 0
+    unique_size = 0
 
     # Iterate over partitions and write to disk
     size = 0
     for p, part in enumerate(df.partitions if is_collection else [df]):
-        local_path = "/".join([path, f"part.{p}.parquet"]) if use_directory else path
+        local_path = "/".join([unique_path, f"part.{p}.parquet"]) if use_directory else unique_path
         _df = _compute_sync(part) if is_collection else part
-        if len(_df) == 0:
+        _len = len(_df)
+        if _len == 0:
             continue
+
+        size_col = f"{field_name}_size"
+        if size_col not in _df.columns:
+            record_size_meta = False
+
+        if record_size_meta:
+            # Set number of rows allowed from this part
+            if first_n is not None:
+                first_n_local = first_n - size
+            else:
+                first_n_local = _len
+
+            # Record null size
+            if p == 0:
+                null_size = _df[size_col].iloc[0]
+                # _df = _df.iloc[1:]
+
+            # Update oov size
+            if first_n or freq_threshold:
+                removed = None
+                if freq_threshold:
+                    sizes = _df[size_col]
+                    removed = df[(sizes < freq_threshold) & (sizes > 0)]
+                    _df = _df[(sizes >= freq_threshold) | (sizes == 0)]
+                if first_n and _len > first_n_local:
+                    removed = _df.iloc[first_n_local:]
+                    _df = _df.iloc[:first_n_local]
+                if removed is not None:
+                    oov_size += removed[size_col].sum()
+                    _len = len(_df)
+
+            # Record unique-value metadata
+            unique_count += _len
+            unique_size += _df[size_col].sum()
+
         if not preserve_index:
             # If we are NOT writing the index of df,
             # then make sure we are writing a "correct"
             # index. Note that we avoid using ddf.to_parquet
             # so that we can make sure the index is correct
-            _len = len(_df)
             _df.set_index(
                 pd.RangeIndex(
                     start=size + START_INDEX,
@@ -819,14 +809,25 @@ def _save_encodings(
                 drop=True,
                 inplace=True,
             )
-            size += _len
-        if first_n and size > first_n:
-            _df = _df.iloc[: -(size - first_n)]
+
+        size += _len
         _df.to_parquet(local_path, compression=None)
         if first_n and size >= first_n:
             break  # Ignore any remaining files
 
-    return path
+    # Write encoding metadata
+    if record_size_meta:
+        type(_df)(
+            {
+                "kind": ["pad", "null", "oov", "unique"],
+                "offset": [0, 1, 2, 2 + oov_count],
+                "num_indices": [1, 1, oov_count, unique_count],
+                "num_observed": [0, null_size, oov_size, unique_size],
+            }
+        ).to_parquet(meta_path)
+
+    # Return path to uniques
+    return unique_path
 
 
 @dataclass
