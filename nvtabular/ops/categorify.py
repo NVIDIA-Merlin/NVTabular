@@ -418,25 +418,13 @@ class Categorify(StatOperator):
             for col, vocab in vocabs.items():
                 col_name = _make_name(*col, sep=self.name_sep) if isinstance(col, tuple) else col
                 vals = {col_name: vocab}
+                oov_count = 1
                 if num_buckets:
                     oov_count = (
                         num_buckets if isinstance(num_buckets, int) else num_buckets[col_name]
-                    )
-                    oov_count = oov_count or 1
-                else:
-                    oov_count = 1
-                if not vocab.iloc[:1].isna().any():
-                    with_empty = dispatch.concat(
-                        [
-                            dispatch.nullable_series(
-                                [None] * (oov_count + 1), vocab.to_frame(), vocab.dtype
-                            ),
-                            vocab,
-                        ]
-                    ).reset_index()[0]
-                    vals = {col_name: with_empty}
-
-                col_df = dispatch.make_df(vals)
+                    ) or 1
+                col_df = dispatch.make_df(vals).dropna()
+                col_df.index += START_INDEX + oov_count
                 save_path = _save_encodings(col_df, base_path, col_name)
                 categories[col_name] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
@@ -670,18 +658,17 @@ def _get_embeddings_dask(paths, cat_names, buckets=0):
         buckets = {name: buckets for name in cat_names}
     for col in cat_names:
         path = paths.get(col)
-        num_rows = 0
+        num_rows = START_INDEX
         if path:
             for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                 num_rows += file_frag.metadata.num_rows
+        if isinstance(buckets, dict):
+            bucket_size = buckets.get(col, 0)
+        elif isinstance(buckets, int):
+            bucket_size = buckets
         else:
-            if isinstance(buckets, dict):
-                bucket_size = buckets.get(col, 0)
-            elif isinstance(buckets, int):
-                bucket_size = buckets
-            else:
-                bucket_size = 0
-            num_rows += bucket_size
+            bucket_size = 1
+        num_rows += bucket_size
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -726,6 +713,7 @@ def _save_encodings(
     first_n=None,
     freq_threshold=None,
     oov_count=1,
+    null_size=None,
 ):
     # Write DataFrame data to parquet (eagerly) with dask
 
@@ -747,13 +735,12 @@ def _save_encodings(
 
     # Start tracking embedding metadata
     record_size_meta = True
-    null_size = 0
     oov_size = 0
     unique_count = 0
     unique_size = 0
 
     # Iterate over partitions and write to disk
-    size = 0
+    size = oov_count + 1  # Reserve null and oov buckets
     for p, part in enumerate(df.partitions if is_collection else [df]):
         local_path = "/".join([unique_path, f"part.{p}.parquet"]) if use_directory else unique_path
         _df = _compute_sync(part) if is_collection else part
@@ -772,11 +759,6 @@ def _save_encodings(
             else:
                 first_n_local = _len
 
-            # Record null size
-            if p == 0:
-                null_size = _df[size_col].iloc[0]
-                # _df = _df.iloc[1:]
-
             # Update oov size
             if first_n or freq_threshold:
                 removed = None
@@ -792,7 +774,6 @@ def _save_encodings(
                     _len = len(_df)
 
             # Record unique-value metadata
-            unique_count += _len
             unique_size += _df[size_col].sum()
 
         if not preserve_index:
@@ -811,20 +792,20 @@ def _save_encodings(
             )
 
         size += _len
+        unique_count += _len
         _df.to_parquet(local_path, compression=None)
         if first_n and size >= first_n:
             break  # Ignore any remaining files
 
     # Write encoding metadata
+    meta = {
+        "kind": ["pad", "null", "oov", "unique"],
+        "offset": [0, 1, 2, 2 + oov_count],
+        "num_indices": [1, 1, oov_count, unique_count],
+    }
     if record_size_meta:
-        type(_df)(
-            {
-                "kind": ["pad", "null", "oov", "unique"],
-                "offset": [0, 1, 2, 2 + oov_count],
-                "num_indices": [1, 1, oov_count, unique_count],
-                "num_observed": [0, null_size, oov_size, unique_size],
-            }
-        ).to_parquet(meta_path)
+        meta["num_observed"] = [0, null_size, oov_size, unique_size]
+    type(_df)(meta).to_parquet(meta_path)
 
     # Return path to uniques
     return unique_path
@@ -1218,6 +1199,7 @@ def _write_uniques(
             "include null and oov (bucket) indices."
         )
 
+    null_size = None
     if path:
         # We have a parquet path to construct uniques from
         # (rather than a list of DataFrame objects)
@@ -1250,21 +1232,10 @@ def _write_uniques(
             null_row = df.head(1)
             if null_row[col_name].iloc[:1].isnull().any():
                 df = df.map_partitions(_drop_first_row, BlockIndex((df.npartitions,)))
-            else:
-                _data = {col_name: nullable_series([None], null_row, null_row[col_name].dtype)}
                 if has_size:
-                    _data[name_size] = nullable_series([0], null_row, null_row[name_size].dtype)
-                null_row = type(null_row)(_data)
-
-            # Define the OOV rows
-            _data = {
-                col_name: nullable_series([None] * oov_count, null_row, null_row[col_name].dtype)
-            }
-            if has_size:
-                _data[name_size] = nullable_series(
-                    [0] * oov_count, null_row, null_row[name_size].dtype
-                )
-            oov_rows = type(null_row)(_data)
+                    null_size = null_row[name_size].iloc[0]
+            else:
+                null_size = 0
 
             # Sort by size (without null and oov rows)
             if has_size:
@@ -1278,13 +1249,6 @@ def _write_uniques(
                     )[0][::-1],
                 )
 
-            # Add null and oov rows back to df
-            def _add_nulls(part, index):
-                if index == (0,):
-                    return _concat([null_row, oov_rows, part], ignore_index=True)
-                return part
-
-            df = df.map_partitions(_add_nulls, BlockIndex((df.npartitions,)))
             unique_path = _save_encodings(
                 df,
                 base_path,
@@ -1292,6 +1256,7 @@ def _write_uniques(
                 first_n=max_emb_size,
                 freq_threshold=freq_threshold,
                 oov_count=oov_count,
+                null_size=null_size,
             )
 
             # TODO: Delete temporary parquet file(s) now thet the final
@@ -1328,10 +1293,24 @@ def _write_uniques(
         # an index we don't even need
         df = df.sort_values(col_selector.names, na_position="first", ignore_index=True)
         name_size_multi = "_".join(col_selector.names + ["size"])
-        df = _make_encodings(df, name_size_multi, col_selector, options)
+        has_size = name_size_multi in df
+
+        # Check if we already have a null row
+        has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
+        if hasattr(has_nans, "iloc"):
+            has_nans = has_nans[0]
+
+        if has_nans:
+            if has_size:
+                null_size = df[name_size_multi].iloc[0]
+            df = df.iloc[1:]
+        else:
+            null_size = 0
+        if has_size:
+            df = df.sort_values(name_size_multi, ascending=False, ignore_index=True)
         df_write = df
     else:
-        df_null = type(df)({c: [None] * (oov_count + 1) for c in col_selector.names})
+        df_null = type(df)({c: [None] for c in col_selector.names})
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_write = df_null
@@ -1343,51 +1322,11 @@ def _write_uniques(
         first_n=max_emb_size,
         freq_threshold=freq_threshold,
         oov_count=oov_count,
+        null_size=null_size,
     )
     del df
     del df_write
     return unique_path
-
-
-@annotate("_make_encodings", color="green", domain="nvt_python")
-def _make_encodings(df, name_size_multi: str, col_selector: ColumnSelector, options: FitOptions):
-    # Make encodings (used by _write_uniques)
-
-    # Check if we already have a null row
-    has_nans = df[col_selector.names].iloc[0].transpose().isnull().all()
-    if hasattr(has_nans, "iloc"):
-        has_nans = has_nans[0]
-
-    num_buckets = options.num_buckets
-    if num_buckets:
-        num_buckets = (
-            num_buckets if isinstance(num_buckets, int) else num_buckets[col_selector.names[0]]
-        )
-    oov_count = num_buckets or 1
-
-    if has_nans:
-        # We have nulls: Only need to add OOV buckets
-        null_df = df.iloc[:1]
-        oov_data = {
-            col: nullable_series([None] * oov_count, df, df[col].dtype)
-            for col in col_selector.names
-        }
-        oov_data[name_size_multi] = [0] * oov_count
-        oov_df = type(df)(oov_data)
-        df = df.iloc[1:].sort_values(name_size_multi, ascending=False, ignore_index=True)
-        df = _concat([null_df, oov_df, df], ignore_index=True)
-    else:
-        # Add null row and OOV buckets
-        null_and_oov_data = {
-            col: nullable_series([None] * (oov_count + 1), df, df[col].dtype)
-            for col in col_selector.names
-        }
-        null_and_oov_data[name_size_multi] = [0] * (oov_count + 1)
-        null_df = type(df)(null_and_oov_data)
-        df = df.sort_values(name_size_multi, ascending=False, ignore_index=True)
-        df = _concat([null_df, df], ignore_index=True)
-
-    return df
 
 
 def _finish_labels(paths, cols):
@@ -1663,6 +1602,14 @@ def _encode(
     selection_l = ColumnSelector(name if isinstance(name, list) else [name])
     selection_r = ColumnSelector(name if isinstance(name, list) else [storage_name])
     list_col = is_list_col(selection_l, df)
+
+    # Find number of oov buckets
+    if buckets and storage_name in buckets:
+        num_oov_buckets = buckets[storage_name]
+        search_sorted = False
+    else:
+        num_oov_buckets = 1
+
     if path:
         read_pq_func = dispatch.read_dispatch(
             df,
@@ -1683,9 +1630,9 @@ def _encode(
                         cats_only=True,
                         reader=read_pq_func,
                     )
-                    if value["labels"].iloc[0] < START_INDEX:
+                    if len(value) and value["labels"].iloc[0] < START_INDEX + num_oov_buckets + 1:
                         # See: https://github.com/rapidsai/cudf/issues/12837
-                        value["labels"] += 1
+                        value["labels"] += 1 + num_oov_buckets + 1
         else:
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
                 path,
@@ -1701,7 +1648,7 @@ def _encode(
                     # to use the parquet metadata to set a proper RangeIndex.
                     # We can avoid this workaround for cudf>=23.04
                     # (See: https://github.com/rapidsai/cudf/issues/12837)
-                    ranges, size = [], START_INDEX
+                    ranges, size = [], START_INDEX + num_oov_buckets + 1
                     for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                         part_size = file_frag.metadata.num_rows
                         ranges.append((size, size + part_size))
@@ -1724,18 +1671,10 @@ def _encode(
         value = _compute_sync(value)
         use_collection = False
 
-    # Find number of oov buckets
-    if buckets and storage_name in buckets:
-        num_oov_buckets = buckets[storage_name]
-        search_sorted = False
-    else:
-        num_oov_buckets = 1
-
-    # Drop indistinct rows from value
+    # Determine encoding offsets
     null_encoding_offset = value["labels"].head(1).iloc[0] if single_table else 1
     bucket_encoding_offset = null_encoding_offset + 1  # 2 (if not single_table)
     distinct_encoding_offset = bucket_encoding_offset + num_oov_buckets
-    value = value[value["labels"] >= distinct_encoding_offset]
 
     # Determine indices of "real" null values
     # (these will always be encoded to `1`)

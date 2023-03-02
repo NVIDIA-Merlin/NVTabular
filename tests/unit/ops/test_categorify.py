@@ -115,10 +115,12 @@ def test_na_value_count(tmpdir):
     workflow.fit(train_dataset)
     workflow.transform(train_dataset).to_ddf().compute()
 
-    single_cat = dispatch.read_dispatch(fmt="parquet")("./categories/unique.brand.parquet")
-    second_cat = dispatch.read_dispatch(fmt="parquet")("./categories/unique.productID.parquet")
-    assert single_cat["brand_size"].values[0] == 5
-    assert second_cat["productID_size"].values[0] == 3
+    single_meta = dispatch.read_dispatch(fmt="parquet")("./categories/meta.brand.parquet")
+    second_meta = dispatch.read_dispatch(fmt="parquet")("./categories/meta.productID.parquet")
+    assert single_meta["kind"].iloc[1] == "null"
+    assert single_meta["num_observed"].iloc[1] == 5
+    assert second_meta["kind"].iloc[1] == "null"
+    assert second_meta["num_observed"].iloc[1] == 3
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
@@ -551,9 +553,9 @@ def test_categorify_no_nulls():
     workflow = nvt.Workflow(["user_id", "item_id"] >> ops.Categorify())
     workflow.fit(nvt.Dataset(df))
 
-    df = pd.read_parquet("./categories/unique.user_id.parquet")
-    assert df["user_id"].iloc[:1].isnull().any()
-    assert df["user_id_size"].values[0] == 0
+    df = pd.read_parquet("./categories/meta.user_id.parquet")
+    assert df["kind"].iloc[1] == "null"
+    assert df["num_observed"].iloc[1] == 0
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
@@ -622,15 +624,15 @@ def test_categorify_max_size_null_iloc_check():
     workflow = nvt.Workflow(cat_features)
     workflow.fit(train_dataset)
     workflow.transform(train_dataset)
-    # read back the unique categories
-    unique_C1 = pd.read_parquet("./categories/unique.C1.parquet")
-    assert str(unique_C1["C1"].iloc[0]) in ["<NA>", "nan"]
-    assert unique_C1["C1_size"].iloc[0] == 5
+    # read back the C1 encoding metadata
+    meta_C1 = pd.read_parquet("./categories/meta.C1.parquet")
+    assert meta_C1["kind"].iloc[1] == "null"
+    assert meta_C1["num_observed"].iloc[1] == 5
 
-    # read back the unique categories
-    unique_C2 = pd.read_parquet("./categories/unique.C2.parquet")
-    assert str(unique_C2["C2"].iloc[0]) in ["<NA>", "nan"]
-    assert unique_C2["C2_size"].iloc[0] == 0
+    # read back the C2 encoding metadata
+    meta_C2 = pd.read_parquet("./categories/meta.C2.parquet")
+    assert meta_C2["kind"].iloc[1] == "null"
+    assert meta_C2["num_observed"].iloc[1] == 0
 
 
 @pytest.mark.parametrize("cpu", _CPU)
