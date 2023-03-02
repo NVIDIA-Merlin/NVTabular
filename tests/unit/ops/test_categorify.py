@@ -434,7 +434,7 @@ def test_categorify_hash_bucket_only(cpu):
     )
     cat_names = ["Authors", "Engaging_User"]
     buckets = 10
-    max_size = buckets + 1  # Must include null index
+    max_size = buckets + 2  # Must include pad and null indices
     dataset = nvt.Dataset(df, cpu=cpu)
     hash_features = cat_names >> ops.Categorify(num_buckets=buckets, max_size=max_size)
     processor = nvt.Workflow(hash_features)
@@ -539,7 +539,7 @@ def test_categorify_embedding_sizes(dataset, engine):
     workflow = nvt.Workflow(cat_1 + cat_2)
     workflow.fit_transform(dataset)
 
-    assert get_embedding_sizes(workflow) == {"name-cat": (28, 16), "name-string_test": (28, 16)}
+    assert get_embedding_sizes(workflow) == {"name-cat": (29, 16), "name-string_test": (29, 16)}
 
 
 def test_categorify_no_nulls():

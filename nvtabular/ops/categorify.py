@@ -48,7 +48,10 @@ from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
 
 # Constants
-START_INDEX = 1  # NVTabular will always reserve `0` for padding
+# (NVTabular will reserve `0` for padding and `1` for nulls)
+PAD_OFFSET = 0
+NULL_OFFSET = 1
+OOV_OFFSET = 2
 
 
 class Categorify(StatOperator):
@@ -229,9 +232,9 @@ class Categorify(StatOperator):
             raise ValueError(f"Unrecognized key-word arguments: {kwargs}")
 
         # Warn user if they set num_buckets without setting max_size or
-        # freq_threshold - Which used to hash everything, but will now
-        # just use multiple indices for OOV encodings.
-        if num_buckets and not max_size and not freq_threshold:
+        # freq_threshold - This setting used to hash everything, but will
+        # now just use multiple indices for OOV encodings at transform time
+        if num_buckets and not (max_size or freq_threshold):
             warnings.warn(
                 "You are setting num_buckets without using max_size or "
                 "freq_threshold to restrict the number of distinct "
@@ -424,7 +427,7 @@ class Categorify(StatOperator):
                         num_buckets if isinstance(num_buckets, int) else num_buckets[col_name]
                     ) or 1
                 col_df = dispatch.make_df(vals).dropna()
-                col_df.index += START_INDEX + oov_count
+                col_df.index += NULL_OFFSET + oov_count
                 save_path = _save_encodings(col_df, base_path, col_name)
                 categories[col_name] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
@@ -658,7 +661,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0):
         buckets = {name: buckets for name in cat_names}
     for col in cat_names:
         path = paths.get(col)
-        num_rows = START_INDEX
+        num_rows = OOV_OFFSET
         if path:
             for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                 num_rows += file_frag.metadata.num_rows
@@ -740,7 +743,7 @@ def _save_encodings(
     unique_size = 0
 
     # Iterate over partitions and write to disk
-    size = oov_count + 1  # Reserve null and oov buckets
+    size = oov_count + OOV_OFFSET  # Reserve null and oov buckets
     for p, part in enumerate(df.partitions if is_collection else [df]):
         local_path = "/".join([unique_path, f"part.{p}.parquet"]) if use_directory else unique_path
         _df = _compute_sync(part) if is_collection else part
@@ -783,8 +786,8 @@ def _save_encodings(
             # so that we can make sure the index is correct
             _df.set_index(
                 pd.RangeIndex(
-                    start=size + START_INDEX,
-                    stop=size + START_INDEX + _len,
+                    start=size,
+                    stop=size + _len,
                     step=1,
                 ),
                 drop=True,
@@ -800,7 +803,7 @@ def _save_encodings(
     # Write encoding metadata
     meta = {
         "kind": ["pad", "null", "oov", "unique"],
-        "offset": [0, 1, 2, 2 + oov_count],
+        "offset": [PAD_OFFSET, NULL_OFFSET, OOV_OFFSET, OOV_OFFSET + oov_count],
         "num_indices": [1, 1, oov_count, unique_count],
     }
     if record_size_meta:
@@ -1192,11 +1195,11 @@ def _write_uniques(
         )
 
     # Sanity check
-    if max_emb_size and max_emb_size < max(oov_count + 1, 2):
+    if max_emb_size and max_emb_size < oov_count + 2:
         raise ValueError(
             "`max_size` can never be less than the maximum of "
-            "`num_buckets + 1` and `2`, because we must always "
-            "include null and oov (bucket) indices."
+            "`num_buckets + 2` and `3`, because we must always "
+            "reserve pad, null and at least 1 oov-bucket index."
         )
 
     null_size = None
@@ -1630,9 +1633,9 @@ def _encode(
                         cats_only=True,
                         reader=read_pq_func,
                     )
-                    if len(value) and value["labels"].iloc[0] < START_INDEX + num_oov_buckets + 1:
+                    if len(value) and value["labels"].iloc[0] < OOV_OFFSET + num_oov_buckets:
                         # See: https://github.com/rapidsai/cudf/issues/12837
-                        value["labels"] += 1 + num_oov_buckets + 1
+                        value["labels"] += OOV_OFFSET + num_oov_buckets
         else:
             value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
                 path,
@@ -1648,7 +1651,7 @@ def _encode(
                     # to use the parquet metadata to set a proper RangeIndex.
                     # We can avoid this workaround for cudf>=23.04
                     # (See: https://github.com/rapidsai/cudf/issues/12837)
-                    ranges, size = [], START_INDEX + num_oov_buckets + 1
+                    ranges, size = [], OOV_OFFSET + num_oov_buckets
                     for file_frag in pa_ds.dataset(path, format="parquet").get_fragments():
                         part_size = file_frag.metadata.num_rows
                         ranges.append((size, size + part_size))
@@ -1672,7 +1675,7 @@ def _encode(
         use_collection = False
 
     # Determine encoding offsets
-    null_encoding_offset = value["labels"].head(1).iloc[0] if single_table else 1
+    null_encoding_offset = value["labels"].head(1).iloc[0] if single_table else NULL_OFFSET
     bucket_encoding_offset = null_encoding_offset + 1  # 2 (if not single_table)
     distinct_encoding_offset = bucket_encoding_offset + num_oov_buckets
 
