@@ -700,13 +700,7 @@ def test_categorify_split_out(tmpdir, cpu, split_out, max_size, buckets):
     # (Note that pandas may convert int64 to float64,
     # instead of nullable Int64)
     cats_n["user_id"] = cats_n["user_id"].astype(cats_1["user_id"].dtype)
-    # For now, we cannot update the oov-bucket statistics
-    # to reflect training-set items that didn't satisfy
-    # freq_threshold or max_size when split_out > 1.
-    # TODO: Fix this, or clearly rationalize and document
-    # the split_out>1 distinction
-    check_offset = (buckets or 1) + 1
-    assert_eq(cats_n.iloc[check_offset:], cats_1.iloc[check_offset:])
+    assert_eq(cats_n, cats_1)
 
     # Check that transform works
     assert_eq(result_n, result_1)
