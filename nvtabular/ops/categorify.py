@@ -1865,9 +1865,9 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
 
 
 def _reset_df_index(col_name, cat_file_path, idx_count):
-    cat_df = _compute_sync(dispatch.read_dispatch(collection=True)(cat_file_path, index=False))
+    cat_df = _compute_sync(dispatch.read_dispatch(collection=True)(cat_file_path))
     # change indexes for category
-    cat_df.index += idx_count
+    cat_df.index = cat_df.index + idx_count
     # update count
     idx_count += cat_df.shape[0]
     # save the new indexes in file
