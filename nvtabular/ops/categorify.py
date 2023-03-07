@@ -1221,7 +1221,7 @@ def _write_uniques(
             try:
                 # Sort by col_name
                 df = df.sort_values(col_name, na_position="first")
-            except NotImplementedError:
+            except (NotImplementedError, TypeError):
                 # Dask-based sort failed - Need to compute first
                 simple = False
 
