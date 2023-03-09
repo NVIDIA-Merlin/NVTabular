@@ -20,7 +20,7 @@ Follow the instructions below to build the docs.
 
    This runs Sphinx in your shell and outputs to `docs/build/html/`.
 
-   > **Note:** Your virtual environment should use Python 3.9, not 3.10+:
+   > **Note:** Currently, we lock our Sphinx version to 3.6, which doesn't support Python 3.10. If you're using Python 3.10, install an earlier version of Python to build the docs:
    >
    > ```shell
    > sudo apt update
