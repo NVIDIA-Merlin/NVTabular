@@ -20,14 +20,14 @@ Follow the instructions below to build the docs.
 
    This runs Sphinx in your shell and outputs to `docs/build/html/`.
 
-    > **Note:** Your virtual environment should use Python 3.9, not 3.10+:
-    >
-    > ```shell
-    > sudo apt update
-    > sudo apt install python3.9-venv
-    > sudo apt install python3.9-dev
-    > python3.9 -m venv .venv
-    > ```
+   > **Note:** Your virtual environment should use Python 3.9, not 3.10+:
+   >
+   > ```shell
+   > sudo apt update
+   > sudo apt install python3.9-venv
+   > sudo apt install python3.9-dev
+   > python3.9 -m venv .venv
+   > ```
 
 1. Start an HTTP server and review your updates:
 
