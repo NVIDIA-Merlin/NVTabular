@@ -21,7 +21,7 @@ import sys
 import time
 import types
 import warnings
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import cloudpickle
 import fsspec
@@ -78,7 +78,9 @@ class Workflow:
         self.graph = Graph(output_node)
         self.executor = DaskExecutor(client)
 
-    def transform(self, dataset: Dataset) -> Dataset:
+    def transform(
+        self, dataset: Union[Dataset, "cudf.DataFrame", pd.DataFrame]
+    ) -> Union[Dataset, "cudf.DataFrame", pd.DataFrame]:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
 
