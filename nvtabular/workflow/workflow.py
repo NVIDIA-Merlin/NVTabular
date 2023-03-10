@@ -32,6 +32,7 @@ except ImportError:
     cudf = None
 import pandas as pd
 
+from merlin.core.dispatch import DataFrameType
 from merlin.dag import Graph
 from merlin.dag.executors import DaskExecutor, LocalExecutor
 from merlin.dag.node import iter_nodes
@@ -78,9 +79,7 @@ class Workflow:
         self.graph = Graph(output_node)
         self.executor = DaskExecutor(client)
 
-    def transform(
-        self, dataset: Union[Dataset, "cudf.DataFrame", pd.DataFrame]
-    ) -> Union[Dataset, "cudf.DataFrame", pd.DataFrame]:
+    def transform(self, dataset: Union[Dataset, DataFrameType]) -> Union[Dataset, DataFrameType]:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
 
