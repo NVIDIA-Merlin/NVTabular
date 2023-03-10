@@ -531,7 +531,7 @@ def test_sparse_tensors(tmpdir, sparse_dense):
 )
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 @pytest.mark.skipif(
-    cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
+    HAS_GPU and cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
     reason="This unittest requires multiple gpu's to run",
 )
 def test_horovod_multigpu(tmpdir):
