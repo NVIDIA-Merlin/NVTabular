@@ -96,7 +96,15 @@ class Workflow:
         Dataset
             Transformed Dataset with the workflow graph applied to it
         """
-        return self._transform_impl(dataset)
+        if isinstance(dataset, Dataset):
+            return self._transform_impl(dataset)
+        elif isinstance(dataset, pd.DataFrame) or (cudf and isinstance(dataset, cudf.DataFrame)):
+            return self._transform_df(dataset)
+        else:
+            raise ValueError(
+                "Workflow.transform received an unsupported type: {type(dataset)} "
+                "Supported types are a `merlin.io.Dataset` or DataFrame (pandas or cudf)"
+            )
 
     def fit_schema(self, input_schema: Schema):
         """Computes input and output schemas for each node in the Workflow graph
