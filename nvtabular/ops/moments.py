@@ -26,7 +26,6 @@ from merlin.core.dispatch import flatten_list_column_values, is_list_dtype
 
 
 def _custom_moments(ddf, split_every=32):
-
     # Build custom task graph to gather stat moments
     dsk = {}
     token = tokenize(ddf)
@@ -45,7 +44,6 @@ def _custom_moments(ddf, split_every=32):
     height = len(widths)
     for depth in range(1, height):
         for group in range(widths[depth]):
-
             p_max = widths[depth - 1]
             lstart = split_every * group
             lstop = min(lstart + split_every, p_max)

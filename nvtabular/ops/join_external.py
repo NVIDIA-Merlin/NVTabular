@@ -119,7 +119,6 @@ class JoinExternal(Operator):
 
     @property
     def _ext(self):
-
         if self._ext_cache is not None:
             # Return cached result if present
             return convert_data(self._ext_cache, cpu=self.cpu)
