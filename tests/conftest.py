@@ -215,7 +215,7 @@ def dataset(request, paths, engine):
     try:
         cpu = request.getfixturevalue("cpu")
     except Exception:  # pylint: disable=broad-except
-        cpu = False
+        cpu = None
 
     kwargs = {}
     if engine == "csv-no-header":
