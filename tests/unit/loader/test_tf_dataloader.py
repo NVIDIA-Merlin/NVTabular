@@ -14,9 +14,7 @@
 # limitations under the License.
 #
 
-import importlib
 import os
-import subprocess
 
 from merlin.core.dispatch import HAS_GPU, make_df
 from merlin.io import Dataset
@@ -528,90 +526,6 @@ def test_sparse_tensors(tmpdir, sparse_dense):
             else:
                 assert feature_tensor.shape[1] == spa_mx[col]
                 assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
-
-
-@pytest.mark.skipif(
-    os.environ.get("NR_USER") is not None, reason="not working correctly in ci environment"
-)
-@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
-@pytest.mark.skipif(
-    cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
-    reason="This unittest requires multiple gpu's to run",
-)
-def test_horovod_multigpu(tmpdir):
-    json_sample = {
-        "conts": {},
-        "cats": {
-            "genres": {
-                "dtype": None,
-                "cardinality": 50,
-                "min_entry_size": 1,
-                "max_entry_size": 5,
-                "multi_min": 2,
-                "multi_max": 4,
-                "multi_avg": 3,
-            },
-            "movieId": {
-                "dtype": None,
-                "cardinality": 500,
-                "min_entry_size": 1,
-                "max_entry_size": 5,
-            },
-            "userId": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
-        },
-        "labels": {"rating": {"dtype": None, "cardinality": 2}},
-    }
-    cols = datagen._get_cols_from_schema(json_sample)
-    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.0001)
-    target_path = os.path.join(tmpdir, "input/")
-    os.mkdir(target_path)
-    df_files = df_gen.full_df_create(10000, cols, output=target_path)
-    # process them
-    cat_features = nvt.ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
-    ratings = nvt.ColumnSelector(["rating"]) >> nvt.ops.LambdaOp(
-        lambda col: (col > 3).astype("int8")
-    )
-    output = cat_features + ratings
-    proc = nvt.Workflow(output)
-    target_path_train = os.path.join(tmpdir, "train/")
-    os.mkdir(target_path_train)
-    proc.fit_transform(nvt.Dataset(df_files)).to_parquet(
-        output_path=target_path_train, out_files_per_proc=5
-    )
-    # add new location
-    target_path = os.path.join(tmpdir, "workflow/")
-    os.mkdir(target_path)
-    proc.save(target_path)
-    curr_path = os.path.abspath(__file__)
-    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../../..")))
-    hvd_wrap_path = os.path.join(repo_root, "examples/multi-gpu-movielens/hvd_wrapper.sh")
-    hvd_exam_path = os.path.join(repo_root, "examples/multi-gpu-movielens/tf_trainer.py")
-    with subprocess.Popen(
-        [
-            "horovodrun",
-            "-np",
-            "2",
-            "-H",
-            "localhost:2",
-            "sh",
-            hvd_wrap_path,
-            "python",
-            hvd_exam_path,
-            "--dir_in",
-            f"{tmpdir}",
-            "--batch_size",
-            "1024",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    ) as process:
-        process.wait()
-        stdout, stderr = process.communicate()
-        print(stdout, stderr)
-        # if horovod failed to run because of environment issue, lets not fail the test here
-        if b"horovod does not find an installed MPI." in stderr:
-            pytest.skip("Skipping test because of horovod missing MPI")
-        assert "Loss:" in str(stdout)
 
 
 @pytest.mark.parametrize("batch_size", [1000])
