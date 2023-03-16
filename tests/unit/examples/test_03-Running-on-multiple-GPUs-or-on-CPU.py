@@ -56,4 +56,9 @@ def test_example_03():
 
             """
         )
+        for cell in tb.cells:
+            cell.source.replace(
+                "device_memory_limit=device_limit", "# device_memory_limit=device_limit"
+            )
+            cell.source.replace("rmm_pool_size=", "# rmm_pool_size=")
         tb.execute()
