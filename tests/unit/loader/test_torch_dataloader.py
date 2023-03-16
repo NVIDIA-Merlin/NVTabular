@@ -105,9 +105,13 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
             for col in df_cols:
                 if col in chunk[0].keys():
                     if dispatch.HAS_GPU:
-                        assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
+                        assert (
+                            np.expand_dims(chunk[0][col].cpu().numpy(), 1) == df[col].values_host
+                        ).all()
                     else:
-                        assert (list(chunk[0][col].cpu().numpy()) == df[col].values).all()
+                        assert (
+                            np.expand_dims(chunk[0][col].cpu().numpy(), 1) == df[col].values
+                        ).all()
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -479,12 +483,11 @@ def test_mh_support(tmpdir):
     for batch in data_itr:
         idx = idx + 1
         cats_conts, labels = batch
-        assert "Reviewers" in cats_conts
-        # check it is multihot
-        assert isinstance(cats_conts["Reviewers"], tuple)
-        # mh is a tuple of dictionaries {Column name: (values, offsets)}
-        assert "Authors" in cats_conts
-        assert isinstance(cats_conts["Authors"], tuple)
+        assert "Reviewers__values" in cats_conts
+        assert "Reviewers__offsets" in cats_conts
+        assert "Authors__values" in cats_conts
+        assert "Authors__offsets" in cats_conts
+
     assert idx > 0
 
 
