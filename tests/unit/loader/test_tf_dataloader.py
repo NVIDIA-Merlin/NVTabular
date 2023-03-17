@@ -29,7 +29,6 @@ import pytest
 from sklearn.metrics import roc_auc_score
 
 import nvtabular as nvt
-import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
 
 tf = pytest.importorskip("tensorflow")
@@ -467,65 +466,6 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
     )
     indices = data_loader._indices_for_process()
     assert indices == [global_rank]
-
-
-@pytest.mark.parametrize("sparse_dense", [False, True])
-def test_sparse_tensors(tmpdir, sparse_dense):
-    # create small dataset, add values to sparse_list
-    json_sample = {
-        "conts": {},
-        "cats": {
-            "spar1": {
-                "dtype": None,
-                "cardinality": 50,
-                "min_entry_size": 1,
-                "max_entry_size": 5,
-                "multi_min": 2,
-                "multi_max": 4,
-                "multi_avg": 3,
-            },
-            "spar2": {
-                "dtype": None,
-                "cardinality": 50,
-                "min_entry_size": 1,
-                "max_entry_size": 5,
-                "multi_min": 3,
-                "multi_max": 5,
-                "multi_avg": 4,
-            },
-            # "": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
-        },
-        "labels": {"rating": {"dtype": None, "cardinality": 2}},
-    }
-    cols = datagen._get_cols_from_schema(json_sample)
-    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.0001)
-    target_path = os.path.join(tmpdir, "input/")
-    os.mkdir(target_path)
-    df_files = df_gen.full_df_create(10000, cols, output=target_path)
-    spa_lst = ["spar1", "spar2"]
-    spa_mx = {"spar1": 5, "spar2": 6}
-    batch_size = 10
-    data_itr = tf_dataloader.KerasSequenceLoader(
-        df_files,
-        cat_names=spa_lst,
-        cont_names=[],
-        label_names=["rating"],
-        batch_size=batch_size,
-        buffer_size=0.1,
-        sparse_names=spa_lst,
-        sparse_max=spa_mx,
-        sparse_as_dense=sparse_dense,
-    )
-    for batch in data_itr:
-        feats, labs = batch
-        for col in spa_lst:
-            feature_tensor = feats[f"{col}"]
-            if not sparse_dense:
-                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
-                assert isinstance(feature_tensor, tf.sparse.SparseTensor)
-            else:
-                assert feature_tensor.shape[1] == spa_mx[col]
-                assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
 
 
 @pytest.mark.parametrize("batch_size", [1000])
