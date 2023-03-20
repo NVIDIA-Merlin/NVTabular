@@ -81,25 +81,36 @@ class Workflow:
 
     @singledispatchmethod
     def transform(self, data):
-        """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
-        method to have already been called, or calculated statistics to be loaded from disk
+        """Transforms the data by applying the graph of operators to it.
 
-        This method returns a Dataset object, with the transformations lazily loaded. None
-        of the actual computation will happen until the produced Dataset is consumed, or
-        written out to disk.
+        Requires the ``fit`` method to have already been called, or
+        using a Workflow that has already beeen fit and re-loaded from
+        disk (using the ``load`` method).
+
+        This method returns data of the same type.
+
+        In the case of a `Dataset`. The computation is lazy. It won't
+        happen until the produced Dataset is consumed, or written out
+        to disk. e.g. with a `dataset.compute()`.
 
         Parameters
         -----------
         data: Union[Dataset, DataFrameType]
-            Input dataset or dataframe to transform
+            Input Dataset or DataFrame to transform
 
         Returns
         -------
         Dataset or DataFrame
             Transformed Dataset or DataFrame with the workflow graph applied to it
+
+        Raises
+        ------
+        NotImplementedError
+            If passed an unsupoprted data type to transform.
+
         """
         raise NotImplementedError(
-            "Workflow.transform received an unsupported type: {type(dataset)} "
+            f"Workflow.transform received an unsupported type: {type(data)} "
             "Supported types are a `merlin.io.Dataset` or DataFrame (pandas or cudf)"
         )
 
