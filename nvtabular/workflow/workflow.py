@@ -21,6 +21,7 @@ import sys
 import time
 import types
 import warnings
+from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
@@ -78,25 +79,54 @@ class Workflow:
         self.graph = Graph(output_node)
         self.executor = DaskExecutor(client)
 
-    def transform(self, dataset: Dataset) -> Dataset:
-        """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
-        method to have already been called, or calculated statistics to be loaded from disk
+    @singledispatchmethod
+    def transform(self, data):
+        """Transforms the data by applying the graph of operators to it.
 
-        This method returns a Dataset object, with the transformations lazily loaded. None
-        of the actual computation will happen until the produced Dataset is consumed, or
-        written out to disk.
+        Requires the ``fit`` method to have already been called, or
+        using a Workflow that has already beeen fit and re-loaded from
+        disk (using the ``load`` method).
+
+        This method returns data of the same type.
+
+        In the case of a `Dataset`. The computation is lazy. It won't
+        happen until the produced Dataset is consumed, or written out
+        to disk. e.g. with a `dataset.compute()`.
 
         Parameters
         -----------
-        dataset: Dataset
-            Input dataset to transform
+        data: Union[Dataset, DataFrameType]
+            Input Dataset or DataFrame to transform
 
         Returns
         -------
-        Dataset
-            Transformed Dataset with the workflow graph applied to it
+        Dataset or DataFrame
+            Transformed Dataset or DataFrame with the workflow graph applied to it
+
+        Raises
+        ------
+        NotImplementedError
+            If passed an unsupoprted data type to transform.
+
         """
+        raise NotImplementedError(
+            f"Workflow.transform received an unsupported type: {type(data)} "
+            "Supported types are a `merlin.io.Dataset` or DataFrame (pandas or cudf)"
+        )
+
+    @transform.register
+    def _(self, dataset: Dataset) -> Dataset:
         return self._transform_impl(dataset)
+
+    @transform.register
+    def _(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+        return self._transform_df(dataframe)
+
+    if cudf:
+
+        @transform.register
+        def _(self, dataframe: cudf.DataFrame) -> cudf.DataFrame:
+            return self._transform_df(dataframe)
 
     def fit_schema(self, input_schema: Schema):
         """Computes input and output schemas for each node in the Workflow graph

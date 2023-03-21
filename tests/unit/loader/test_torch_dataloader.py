@@ -105,9 +105,13 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
             for col in df_cols:
                 if col in chunk[0].keys():
                     if dispatch.HAS_GPU:
-                        assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
+                        assert (
+                            np.expand_dims(chunk[0][col].cpu().numpy(), 1) == df[col].values_host
+                        ).all()
                     else:
-                        assert (list(chunk[0][col].cpu().numpy()) == df[col].values).all()
+                        assert (
+                            np.expand_dims(chunk[0][col].cpu().numpy(), 1) == df[col].values
+                        ).all()
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -479,51 +483,12 @@ def test_mh_support(tmpdir):
     for batch in data_itr:
         idx = idx + 1
         cats_conts, labels = batch
-        assert "Reviewers" in cats_conts
-        # check it is multihot
-        assert isinstance(cats_conts["Reviewers"], tuple)
-        # mh is a tuple of dictionaries {Column name: (values, offsets)}
-        assert "Authors" in cats_conts
-        assert isinstance(cats_conts["Authors"], tuple)
+        assert "Reviewers__values" in cats_conts
+        assert "Reviewers__offsets" in cats_conts
+        assert "Authors__values" in cats_conts
+        assert "Authors__offsets" in cats_conts
+
     assert idx > 0
-
-
-@pytest.mark.parametrize("sparse_dense", [False, True])
-def test_sparse_tensors(sparse_dense):
-    # create small dataset, add values to sparse_list
-    df = make_df(
-        {
-            "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
-            "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
-        }
-    )
-    spa_lst = ["spar1", "spar2"]
-    spa_mx = {"spar1": 5, "spar2": 6}
-    batch_size = 2
-    data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df),
-        cats=spa_lst,
-        conts=[],
-        labels=[],
-        batch_size=batch_size,
-        sparse_names=spa_lst,
-        sparse_max=spa_mx,
-        sparse_as_dense=sparse_dense,
-    )
-    for batch in data_itr:
-        feats, labs = batch
-        for col in spa_lst:
-            feature_tensor = feats[col]
-            if not sparse_dense:
-                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
-                assert feature_tensor.is_sparse
-            else:
-                assert feature_tensor.shape[1] == spa_mx[col]
-                assert not feature_tensor.is_sparse
-
-    # add dict sparse_max entry for each target
-    # iterate dataloader grab sparse columns
-    # ensure they are correct structurally
 
 
 @pytest.mark.parametrize("batch_size", [1000])

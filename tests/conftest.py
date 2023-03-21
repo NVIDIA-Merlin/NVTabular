@@ -163,8 +163,25 @@ def datasets(tmpdir_factory):
     half = int(len(df) // 2)
 
     # Write Parquet Dataset
-    df.iloc[:half].to_parquet(str(datadir["parquet"].join("dataset-0.parquet")), chunk_size=1000)
-    df.iloc[half:].to_parquet(str(datadir["parquet"].join("dataset-1.parquet")), chunk_size=1000)
+    cudf_version = 0
+    if cudf:
+        cudf_version = cudf.__version__.split(".")[:2]
+        cudf_version = float(".".join(cudf_version))
+
+    if cudf_version > 22.10:
+        df.iloc[:half].to_parquet(
+            str(datadir["parquet"].join("dataset-0.parquet")), row_group_size_rows=5000
+        )
+        df.iloc[half:].to_parquet(
+            str(datadir["parquet"].join("dataset-1.parquet")), row_group_size_rows=5000
+        )
+    else:
+        df.iloc[:half].to_parquet(
+            str(datadir["parquet"].join("dataset-0.parquet")), chunk_size=1000
+        )
+        df.iloc[half:].to_parquet(
+            str(datadir["parquet"].join("dataset-1.parquet")), chunk_size=1000
+        )
 
     # Write CSV Dataset (Leave out categorical column)
     df = df[allcols_csv]  # Set deterministic column order before write
@@ -215,7 +232,7 @@ def dataset(request, paths, engine):
     try:
         cpu = request.getfixturevalue("cpu")
     except Exception:  # pylint: disable=broad-except
-        cpu = False
+        cpu = None
 
     kwargs = {}
     if engine == "csv-no-header":
