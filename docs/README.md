@@ -12,12 +12,22 @@ Follow the instructions below to build the docs.
 1. To build the docs, you need to install a developer environment and run `tox`:
 
    ```shell
-   python3 -m vevn .venv
+   python3 -m venv .venv
    source .venv/bin/activate
+   python -m pip install -U pip tox
    tox -e docs
    ```
 
    This runs Sphinx in your shell and outputs to `docs/build/html/`.
+
+   > **Note:** Currently, we lock our Sphinx version to 3.6, which doesn't support Python 3.10. If you're using Python 3.10, install an earlier version of Python to build the docs:
+   >
+   > ```shell
+   > sudo apt update
+   > sudo apt install python3.9-venv
+   > sudo apt install python3.9-dev
+   > python3.9 -m venv .venv
+   > ```
 
 1. Start an HTTP server and review your updates:
 

@@ -59,8 +59,20 @@ class ValueCount(StatOperator):
 
     def _compute_properties(self, col_schema, input_schema):
         new_schema = super()._compute_properties(col_schema, input_schema)
-        stat_properties = self.stats.get(col_schema.name, {})
+        stat_properties = self.stats.get(col_schema.name, {"value_count": {"min": 0, "max": None}})
         return col_schema.with_properties({**new_schema.properties, **stat_properties})
+
+    def _compute_shape(self, col_schema, input_schema):
+        new_schema = super()._compute_shape(col_schema, input_schema)
+
+        value_counts = self.stats.get(col_schema.name, {}).get("value_count", {})
+
+        min_count, max_count = (0, None)
+        if value_counts:
+            min_count = value_counts.get("min", 0)
+            max_count = value_counts.get("max", None)
+
+        return new_schema.with_shape((None, (min_count, max_count)))
 
     def clear(self):
         self.stats = {}

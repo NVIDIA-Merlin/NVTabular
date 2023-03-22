@@ -31,12 +31,11 @@ import nvtabular
 from nvtabular.ops.column_similarity import ColumnSimilarity
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", [True, None])
 @pytest.mark.parametrize("cpu_features", [True, False])
 @pytest.mark.parametrize("on_device", [True, False])
 @pytest.mark.parametrize("metric", ["tfidf", "cosine", "inner"])
 def test_column_similarity(on_device, metric, cpu, cpu_features):
-
     categories = coo_matrix(
         (
             cupy.ones(14),

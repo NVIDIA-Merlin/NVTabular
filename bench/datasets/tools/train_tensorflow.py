@@ -27,7 +27,6 @@ def train_tensorflow(workflow, out_path, cats, conts, labels, batch_size):
     # Get embeddings from workflow
     embeddings = get_embedding_sizes(workflow)
     for key in embeddings:
-
         embeddings[key] = (
             embeddings[key][0],
             min(16, embeddings[key][1]),
