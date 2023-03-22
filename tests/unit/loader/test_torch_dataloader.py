@@ -336,7 +336,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
-    cpu_true = device == "cpu"
+    cpu_true = True if device == "cpu" else None
     nvt_data = nvt.Dataset(
         tar_paths[0], cpu=cpu_true, engine="parquet", part_mem_fraction=part_mem_fraction
     )
