@@ -40,11 +40,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -83,7 +87,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home"></a></li>
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active">Core Features</li>
       <li class="wy-breadcrumbs-aside">
       </li>
@@ -130,7 +134,7 @@
 </pre></div>
 </div>
 <p>Currently, there are many ways to deploy a “cluster” for Dask. This <a class="reference external" href="https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters">article</a> gives a summary of all the practical options. For a single machine with multiple GPUs, the <code class="docutils literal notranslate"><span class="pre">dask_cuda.LocalCUDACluster</span></code> API is typically the most convenient option.</p>
-<p>Since NVTabular already uses <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/dask-cudf.html">Dask-CuDF</a> for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb">Multi-GPU</a> for a simple step-by-step example.</p>
+<p>Since NVTabular already uses <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/">Dask-CuDF</a> for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb">Multi-GPU</a> for a simple step-by-step example.</p>
 </div>
 <div class="section" id="multi-node-support">
 <h2>Multi-Node Support<a class="headerlink" href="#multi-node-support" title="Permalink to this headline"></a></h2>

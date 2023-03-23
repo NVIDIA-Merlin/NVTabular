@@ -38,11 +38,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -71,7 +75,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.groupby</li>
       <li class="wy-breadcrumbs-aside">
@@ -103,12 +107,13 @@
 <span class="kn">from</span> <span class="nn">dask.dataframe.utils</span> <span class="kn">import</span> <span class="n">meta_nonempty</span>
 
 <span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">annotate</span>
+<span class="kn">from</span> <span class="nn">merlin.dtypes.shape</span> <span class="kn">import</span> <span class="n">DefaultShapes</span>
 <span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
 
 
 <div class="viewcode-block" id="Groupby"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby">[docs]</a><span class="k">class</span> <span class="nc">Groupby</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Groupby Transformation</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Groupby Transformation</span>
 
 <span class="sd">    Locally transform each partition of a Dataset with one or</span>
 <span class="sd">    more groupby aggregations.</span>
@@ -271,10 +276,7 @@
     <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
 
-        <span class="n">dtype</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span>
-        <span class="n">is_list</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">is_list</span>
-
-        <span class="n">dtypes</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">agg_dtypes</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
             <span class="s2">&quot;nunique&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
             <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
@@ -284,18 +286,26 @@
             <span class="s2">&quot;sum&quot;</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="n">is_lists</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_agg</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">agg_dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">:</span>
-            <span class="n">combined_aggs</span> <span class="o">=</span> <span class="n">_aggs_for_column</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_aggs</span><span class="p">)</span>
-            <span class="n">combined_aggs</span> <span class="o">+=</span> <span class="n">_aggs_for_column</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_aggs</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">agg</span> <span class="ow">in</span> <span class="n">combined_aggs</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="si">}{</span><span class="n">agg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
-                    <span class="n">dtype</span> <span class="o">=</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
-                    <span class="n">is_list</span> <span class="o">=</span> <span class="n">is_lists</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="n">is_list</span><span class="p">)</span>
-                    <span class="k">break</span>
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="n">is_list</span><span class="p">,</span> <span class="n">is_ragged</span><span class="o">=</span><span class="n">is_list</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">_compute_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">agg_is_lists</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+
+        <span class="n">agg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_agg</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="n">is_list</span> <span class="o">=</span> <span class="n">agg_is_lists</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agg</span><span class="p">,</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">is_list</span><span class="p">)</span>
+
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">DefaultShapes</span><span class="o">.</span><span class="n">LIST</span> <span class="k">if</span> <span class="n">is_list</span> <span class="k">else</span> <span class="n">DefaultShapes</span><span class="o">.</span><span class="n">SCALAR</span>
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_shape</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_find_agg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">input_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">input_selector</span><span class="p">)</span>
+        <span class="n">input_column_name</span> <span class="o">=</span> <span class="n">column_mapping</span><span class="p">[</span><span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">input_column_name</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">agg</span></div>
 
 
 <span class="k">def</span> <span class="nf">_aggs_for_column</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="n">agg_dict</span><span class="p">):</span>
@@ -313,7 +323,6 @@
 
 
 <span class="k">def</span> <span class="nf">_apply_aggs</span><span class="p">(</span><span class="n">_df</span><span class="p">,</span> <span class="n">groupby_cols</span><span class="p">,</span> <span class="n">_list_aggs</span><span class="p">,</span> <span class="n">_conv_aggs</span><span class="p">,</span> <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-
     <span class="c1"># Apply conventional aggs</span>
     <span class="n">_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">groupby_cols</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_list_aggs</span><span class="p">))</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">_df</span><span class="p">[</span><span class="n">_columns</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">groupby_cols</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">_conv_aggs</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>

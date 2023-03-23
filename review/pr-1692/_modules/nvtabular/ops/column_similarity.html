@@ -38,11 +38,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -71,7 +75,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.column_similarity</li>
       <li class="wy-breadcrumbs-aside">
@@ -120,7 +124,7 @@
 
 
 <div class="viewcode-block" id="ColumnSimilarity"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ColumnSimilarity.html#nvtabular.ops.ColumnSimilarity">[docs]</a><span class="k">class</span> <span class="nc">ColumnSimilarity</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Calculates the similarity between two columns using tf-idf, cosine or</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the similarity between two columns using tf-idf, cosine or</span>
 <span class="sd">    inner product as the distance metric. For each row, this calculates the distance</span>
 <span class="sd">    between the two columns by looking up features for those columns in a sparse matrix,</span>
 <span class="sd">    and then computing the distance between the rows of the feature matrices.</span>
@@ -227,7 +231,7 @@
 
 
 <span class="k">def</span> <span class="nf">row_wise_inner_product</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">a_features</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">b_features</span><span class="p">,</span> <span class="n">on_device</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Computes the similarity between two columns, by computing the inner product</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the similarity between two columns, by computing the inner product</span>
 <span class="sd">    along two sparse feature matrices . Both a_features and b_features are</span>
 <span class="sd">    required to be in canonical CSR format.</span>
 

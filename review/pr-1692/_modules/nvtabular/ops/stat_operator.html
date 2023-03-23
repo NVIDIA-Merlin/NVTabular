@@ -38,11 +38,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -71,7 +75,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.stat_operator</li>
       <li class="wy-breadcrumbs-aside">
@@ -106,33 +110,33 @@
 
 
 <div class="viewcode-block" id="StatOperator"><a class="viewcode-back" href="../../../generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator">[docs]</a><span class="k">class</span> <span class="nc">StatOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for statistical operator classes. This adds a &#39;fit&#39; and &#39;finalize&#39; method</span>
 <span class="sd">    on top of the Operator class.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="StatOperator.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Calculate statistics for this operator, and return a dask future</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate statistics for this operator, and return a dask future</span>
 <span class="sd">        to these statistics, which will be computed by the workflow.&quot;&quot;&quot;</span>
 
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-            <span class="sd">&quot;&quot;&quot;The dask operations needed to return a dictionary of uncomputed statistics.&quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;The dask operations needed to return a dictionary of uncomputed statistics.&quot;&quot;&quot;</span>
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="StatOperator.fit_finalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator.fit_finalize">[docs]</a>    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Finalize statistics calculation - the workflow calls this function with</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finalize statistics calculation - the workflow calls this function with</span>
 <span class="sd">        the computed statistics from the &#39;fit&#39; object&#39;&quot;&quot;&quot;</span>
 
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-            <span class="sd">&quot;&quot;&quot;Follow-up operations to convert dask statistics in to member variables&quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Follow-up operations to convert dask statistics in to member variables&quot;&quot;&quot;</span>
         <span class="p">)</span></div>
 
 <div class="viewcode-block" id="StatOperator.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;zero and reinitialize all relevant statistical properties&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;zero and reinitialize all relevant statistical properties&quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;clear isn&#39;t implemented for this op!&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="StatOperator.set_storage_path"><a class="viewcode-back" href="../../../generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator.set_storage_path">[docs]</a>    <span class="k">def</span> <span class="nf">set_storage_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Certain stat operators need external storage - for instance Categorify writes out</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Certain stat operators need external storage - for instance Categorify writes out</span>
 <span class="sd">        parquet files containing the categorical mapping. When we save the operator, we</span>
 <span class="sd">        also want to save these files as part of the bundle. Implementing this method</span>
 <span class="sd">        lets statoperators bundle their dependent files into the new path that we&#39;re writing</span>

@@ -38,11 +38,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -71,7 +75,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.target_encoding</li>
       <li class="wy-breadcrumbs-aside">
@@ -118,7 +122,7 @@
 
 
 <div class="viewcode-block" id="TargetEncoding"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding">[docs]</a><span class="k">class</span> <span class="nc">TargetEncoding</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Target encoding is a common feature-engineering technique for</span>
 <span class="sd">    categorical columns in tabular datasets. For each categorical group,</span>
 <span class="sd">    the mean of a continuous target column is calculated, and the</span>
@@ -510,7 +514,7 @@
 
 
 <span class="k">def</span> <span class="nf">_add_fold</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">kfold</span><span class="p">,</span> <span class="n">fold_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Deterministically computes a &#39;__fold__&#39; column, given an optional</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Deterministically computes a &#39;__fold__&#39; column, given an optional</span>
 <span class="sd">    random seed&quot;&quot;&quot;</span>
     <span class="n">typ</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min_scalar_type</span><span class="p">(</span><span class="n">kfold</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fold_seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

@@ -38,11 +38,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -71,7 +75,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.list_slice</li>
       <li class="wy-breadcrumbs-aside">
@@ -112,7 +116,7 @@
 
 
 <div class="viewcode-block" id="ListSlice"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ListSlice.html#nvtabular.ops.ListSlice">[docs]</a><span class="k">class</span> <span class="nc">ListSlice</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Slices a list column</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Slices a list column</span>
 
 <span class="sd">    This operator provides the ability to slice list column by row. For example, to truncate a</span>
 <span class="sd">    list column to only include the first 10 elements per row::</span>
@@ -214,7 +218,27 @@
 
     <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">is_ragged</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_properties</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">col_schema</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="s2">&quot;value_count&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}}}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s2">&quot;value_count&quot;</span><span class="p">][</span><span class="s2">&quot;max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="p">:</span>
+                <span class="n">properties</span><span class="p">[</span><span class="s2">&quot;value_count&quot;</span><span class="p">][</span><span class="s2">&quot;min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span>
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_shape</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+
+        <span class="n">min_count</span><span class="p">,</span> <span class="n">max_count</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">:</span>
+            <span class="n">max_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span><span class="p">:</span>
+                <span class="n">min_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_elements</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_shape</span><span class="p">((</span><span class="kc">None</span><span class="p">,</span> <span class="p">(</span><span class="n">min_count</span><span class="p">,</span> <span class="n">max_count</span><span class="p">)))</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -225,7 +249,7 @@
 
 <span class="nd">@numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">jit</span>
 <span class="k">def</span> <span class="nf">_calculate_row_sizes</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">row_sizes</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;given a slice (start/end) and existing offsets indicating row lengths, this</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;given a slice (start/end) and existing offsets indicating row lengths, this</span>
 <span class="sd">    calculates the size for each new row after slicing&quot;&quot;&quot;</span>
     <span class="n">rowid</span> <span class="o">=</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">rowid</span> <span class="o">&lt;</span> <span class="n">offsets</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
@@ -246,7 +270,7 @@
 
 <span class="nd">@numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">jit</span>
 <span class="k">def</span> <span class="nf">_slice_rows</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">elements</span><span class="p">,</span> <span class="n">new_offsets</span><span class="p">,</span> <span class="n">new_elements</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;slices rows of a list column. requires the &#39;new_offsets&#39; to</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;slices rows of a list column. requires the &#39;new_offsets&#39; to</span>
 <span class="sd">    be previously calculated (meaning that we don&#39;t need the &#39;end&#39; slice index</span>
 <span class="sd">    since that&#39;s baked into the new_offsets&quot;&quot;&quot;</span>
     <span class="n">rowid</span> <span class="o">=</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>

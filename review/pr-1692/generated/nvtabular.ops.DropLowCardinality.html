@@ -40,11 +40,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -58,15 +62,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../api.html#workflow-constructors">Workflow Constructors</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="../api.html#categorical-operators">Categorical Operators</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.Bucketize.html">nvtabular.ops.Bucketize</a></li>
-<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.Categorify.html">nvtabular.ops.Categorify</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">nvtabular.ops.DropLowCardinality</a></li>
-<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.HashBucket.html">nvtabular.ops.HashBucket</a></li>
-<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.HashedCross.html">nvtabular.ops.HashedCross</a></li>
-<li class="toctree-l3"><a class="reference internal" href="nvtabular.ops.TargetEncoding.html">nvtabular.ops.TargetEncoding</a></li>
-</ul>
-</li>
+<li class="toctree-l2 current"><a class="reference internal" href="../api.html#categorical-operators">Categorical Operators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api.html#continuous-operators">Continuous Operators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api.html#missing-value-operators">Missing Value Operators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api.html#row-manipulation-operators">Row Manipulation Operators</a></li>
@@ -93,7 +89,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a></li>
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../api.html">API Documentation</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.DropLowCardinality</li>
       <li class="wy-breadcrumbs-aside">
@@ -108,14 +104,14 @@
 <h1>nvtabular.ops.DropLowCardinality<a class="headerlink" href="#nvtabular-ops-droplowcardinality" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt id="nvtabular.ops.DropLowCardinality">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">DropLowCardinality</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_cardinality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/drop_low_cardinality.html#DropLowCardinality"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.DropLowCardinality" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">DropLowCardinality</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_cardinality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/drop_low_cardinality.html#DropLowCardinality"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.DropLowCardinality" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.operator.Operator</span></code></p>
 <p>DropLowCardinality drops low cardinality categorical columns. This requires the
 cardinality of these columns to be known in the schema - for instance by
 first encoding these columns using Categorify.</p>
 <dl class="py method">
 <dt id="nvtabular.ops.DropLowCardinality.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_cardinality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/drop_low_cardinality.html#DropLowCardinality.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.DropLowCardinality.__init__" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_cardinality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/drop_low_cardinality.html#DropLowCardinality.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.DropLowCardinality.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>

@@ -38,11 +38,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../../index.html" class="icon icon-home"> NVTabular
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NVTabular
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -71,7 +75,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../../index.html" class="icon icon-home"></a></li>
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
       <li class="breadcrumb-item active">nvtabular.ops.fill</li>
       <li class="wy-breadcrumbs-aside">
@@ -107,7 +111,7 @@
 
 
 <div class="viewcode-block" id="FillMissing"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing">[docs]</a><span class="k">class</span> <span class="nc">FillMissing</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This operation replaces missing values with a constant pre-defined value</span>
 
 <span class="sd">    Example usage::</span>
@@ -143,7 +147,7 @@
         <span class="k">return</span> <span class="n">df</span></div>
 
 <div class="viewcode-block" id="FillMissing.inference_initialize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing.inference_initialize">[docs]</a>    <span class="k">def</span> <span class="nf">inference_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">inference_config</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;load up extra configuration about this op.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;load up extra configuration about this op.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="kn">import</span> <span class="nn">nvtabular_cpp</span>
@@ -167,7 +171,7 @@
 
 
 <div class="viewcode-block" id="FillMedian"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian">[docs]</a><span class="k">class</span> <span class="nc">FillMedian</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This operation replaces missing values with the median value for the column.</span>
 
 <span class="sd">    Example usage::</span>
