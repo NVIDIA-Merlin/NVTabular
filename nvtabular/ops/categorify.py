@@ -62,6 +62,13 @@ class Categorify(StatOperator):
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
 
+    Encoding Convention::
+
+        - `0`: Not used by `Categorify` (reserved for padding).
+        - `1`: Null and NaN values.
+        - `[2, 2 + num_buckets)`: OOV values (including hash buckets).
+        - `[2 + num_buckets, max_size)`: Unique vocabulary.
+
     Example usage::
 
         # Define pipeline
@@ -131,7 +138,7 @@ class Categorify(StatOperator):
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
         Categories with a count/frequency below this threshold will be
         omitted from the encoding and corresponding data will be mapped
-        to the "null" category. Can be represented as both an integer or
+        to the OOV indices. Can be represented as both an integer or
         a dictionary with column names as keys and frequency limit as
         value. If dictionary is used, all columns targeted must be included
         in the dictionary.
@@ -171,23 +178,24 @@ class Categorify(StatOperator):
         for multi-column groups.
     search_sorted : bool, default False.
         Set it True to apply searchsorted algorithm in encoding.
-    num_buckets : int, or dictionary:{column: num_hash_buckets}
-        Column-wise modulo to apply after hash function. Note that this
-        means that the corresponding value will be the categorical cardinality
-        of the transformed categorical feature. If given as an int, that value
-        will be used as the number of "hash buckets" for every feature. If a dictionary is passed,
-        it will be used to specify explicit mappings from a column name to a number of buckets.
-        In this case, only the columns specified in the keys of `num_buckets`
-        will be transformed.
-    max_size : int or dictionary:{column: max_size_value}, default 0
-        This parameter allows you to set the maximum size for an embedding table for each column.
-        For example, if max_size is set to 1000 only the first 999 most frequent values for each
-        column will be be encoded, and the rest will be mapped to a single value (0). To map the
-        rest to a number of buckets,  you can set the num_buckets parameter > 1. In that case, topK
-        value will be `max_size - num_buckets -1`.  Setting the max_size param means that
-        freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
-        smaller than the max_size value.
-    cardinality_memory_limit: int or str, default None
+    num_buckets : int, or dictionary:{column: num_oov_indices}, optional
+        Number of indices to reserve for out-of-vocabulary (OOV) encoding at
+        transformation time. By default, all OOV values will be mapped to
+        the same index (`2`). If `num_buckets` is set to an integer greater
+        than one, a column-wise hash and modulo will be used to map each OOV
+        value to an index in the range `[2, 2 + num_buckets)`. A dictionary
+        may be used if the desired `num_buckets` behavior varies by column.
+    max_size : int or dictionary:{column: max_size_value}, optional
+        Set the maximum size of the expected embedding table for each column.
+        For example, if `max_size` is set to 1000, only the first 997 most-
+        frequent values will be included in the unique-value vocabulary, and
+        all remaining non-null values will be mapped to the OOV indices
+        (indices `0` and `1` will still be reserved for padding and nulls).
+        To use multiple OOV indices for infrequent values, set the `num_buckets`
+        parameter accordingly. Note that `max_size` cannot be combined with
+        `freq_threshold`, and it cannot be less than `num_buckets + 2`. By
+        default, the total number of encoding indices will be unconstrained.
+    cardinality_memory_limit: int or str, optional
         Upper limit on the "allowed" memory usage of the internal DataFrame and Table objects
         used to store unique categories. By default, this limit is 12.5% of the total memory.
         Note that this argument is meant as a guide for internal optimizations and UserWarnings
