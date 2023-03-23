@@ -24,10 +24,10 @@ import rmm
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
+from merlin.core.utils import device_mem_size, get_rmm_size, pynvml_mem_size
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
 from nvtabular import ops
-from nvtabular.utils import _pynvml_mem_size, device_mem_size, get_rmm_size
 
 
 def setup_rmm_pool(client, device_pool_size):
@@ -133,7 +133,7 @@ def nvt_etl(
 
     # Check if any device memory is already occupied
     for dev in devices.split(","):
-        fmem = _pynvml_mem_size(kind="free", index=int(dev))
+        fmem = pynvml_mem_size(kind="free", index=int(dev))
         used = (device_size - fmem) / 1e9
         if used > 1.0:
             warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")

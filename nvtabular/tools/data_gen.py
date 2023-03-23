@@ -126,14 +126,16 @@ class DatasetGen:
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
                     )
                     ser = make_series(np.ceil(ser)).astype(ser.dtype)
+                    _cumsum = cupy.cumsum
                 else:
                     ser = dist.create_col(
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
                     )
                     ser = make_df(np.ceil(ser))[0]
+                    _cumsum = np.cumsum
                 # sum returns numpy dtype
                 col_size = int(ser.sum())
-                offs = make_df(cupy.cumsum(ser.values))[0]
+                offs = make_df(_cumsum(ser.values))[0]
                 offs = offs.astype("int32")
             if HAS_GPU:
                 ser = dist.create_col(

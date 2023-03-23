@@ -1,4 +1,6 @@
 name: CPU Tests
+# If you change the name of this test,
+# change it in docs-preview-pr too.
 
 on:
   workflow_dispatch:
