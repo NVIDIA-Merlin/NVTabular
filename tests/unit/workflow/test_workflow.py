@@ -53,6 +53,15 @@ def test_workflow_double_fit():
         workflow.transform(df_event).to_ddf().compute()
 
 
+def test_workflow_transform_df():
+    df = make_df({"user_session": ["1", "2", "4", "4", "5"]})
+    ops = ["user_session"] >> nvt.ops.Categorify()
+    dataset = nvt.Dataset(df)
+    workflow = nvt.Workflow(ops)
+    workflow.fit(dataset)
+    assert isinstance(workflow.transform(df), type(df))
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_workflow_fit_op_rename(tmpdir, dataset, engine):
     # NVT
