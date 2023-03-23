@@ -111,6 +111,13 @@ and these variables are typically stored as text values.
 Machine Learning algorithms don’t support these text values.
 Categorify operation can be added to the workflow to
 transform categorical features into unique integer values.</p>
+<p>Encoding Convention:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>- `0`: Not used by `Categorify` (reserved for padding).
+- `1`: Null and NaN values.
+- `[2, 2 + num_buckets)`: OOV values (including hash buckets).
+- `[2 + num_buckets, max_size)`: Unique vocabulary.
+</pre></div>
+</div>
 <p>Example usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define pipeline</span>
 <span class="n">cat_features</span> <span class="o">=</span> <span class="n">CATEGORICAL_COLUMNS</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span><span class="n">freq_threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
@@ -180,7 +187,7 @@ transform categorical features into unique integer values.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>freq_threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em> or </em><em>dictionary:{column: freq_limit_value}</em><em>, </em><em>default 0</em>) – Categories with a count/frequency below this threshold will be
 omitted from the encoding and corresponding data will be mapped
-to the “null” category. Can be represented as both an integer or
+to the OOV indices. Can be represented as both an integer or
 a dictionary with column names as keys and frequency limit as
 value. If dictionary is used, all columns targeted must be included
 in the dictionary.</p></li>
@@ -211,21 +218,22 @@ after encoding is performed.</p></li>
 <li><p><strong>name_sep</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>default &quot;_&quot;</em>) – String separator to use between concatenated column names
 for multi-column groups.</p></li>
 <li><p><strong>search_sorted</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a><em>, </em><em>default False.</em>) – Set it True to apply searchsorted algorithm in encoding.</p></li>
-<li><p><strong>num_buckets</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>, or </em><em>dictionary:{column: num_hash_buckets}</em>) – Column-wise modulo to apply after hash function. Note that this
-means that the corresponding value will be the categorical cardinality
-of the transformed categorical feature. If given as an int, that value
-will be used as the number of “hash buckets” for every feature. If a dictionary is passed,
-it will be used to specify explicit mappings from a column name to a number of buckets.
-In this case, only the columns specified in the keys of <cite>num_buckets</cite>
-will be transformed.</p></li>
-<li><p><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em> or </em><em>dictionary:{column: max_size_value}</em><em>, </em><em>default 0</em>) – This parameter allows you to set the maximum size for an embedding table for each column.
-For example, if max_size is set to 1000 only the first 999 most frequent values for each
-column will be be encoded, and the rest will be mapped to a single value (0). To map the
-rest to a number of buckets,  you can set the num_buckets parameter &gt; 1. In that case, topK
-value will be <cite>max_size - num_buckets -1</cite>.  Setting the max_size param means that
-freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
-smaller than the max_size value.</p></li>
-<li><p><strong>cardinality_memory_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>default None</em>) – Upper limit on the “allowed” memory usage of the internal DataFrame and Table objects
+<li><p><strong>num_buckets</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>, or </em><em>dictionary:{column: num_oov_indices}</em><em>, </em><em>optional</em>) – Number of indices to reserve for out-of-vocabulary (OOV) encoding at
+transformation time. By default, all OOV values will be mapped to
+the same index (<cite>2</cite>). If <cite>num_buckets</cite> is set to an integer greater
+than one, a column-wise hash and modulo will be used to map each OOV
+value to an index in the range <cite>[2, 2 + num_buckets)</cite>. A dictionary
+may be used if the desired <cite>num_buckets</cite> behavior varies by column.</p></li>
+<li><p><strong>max_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em> or </em><em>dictionary:{column: max_size_value}</em><em>, </em><em>optional</em>) – Set the maximum size of the expected embedding table for each column.
+For example, if <cite>max_size</cite> is set to 1000, only the first 997 most-
+frequent values will be included in the unique-value vocabulary, and
+all remaining non-null values will be mapped to the OOV indices
+(indices <cite>0</cite> and <cite>1</cite> will still be reserved for padding and nulls).
+To use multiple OOV indices for infrequent values, set the <cite>num_buckets</cite>
+parameter accordingly. Note that <cite>max_size</cite> cannot be combined with
+<cite>freq_threshold</cite>, and it cannot be less than <cite>num_buckets + 2</cite>. By
+default, the total number of encoding indices will be unconstrained.</p></li>
+<li><p><strong>cardinality_memory_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>optional</em>) – Upper limit on the “allowed” memory usage of the internal DataFrame and Table objects
 used to store unique categories. By default, this limit is 12.5% of the total memory.
 Note that this argument is meant as a guide for internal optimizations and UserWarnings
 within NVTabular, and does not guarantee that the memory limit will be satisfied.</p></li>
