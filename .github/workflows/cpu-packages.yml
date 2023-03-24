@@ -9,6 +9,7 @@ on:
 
 jobs:
   build-conda:
+    name: Build Conda
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -48,6 +49,7 @@ jobs:
           path: ${{ steps.conda_build.outputs.conda_package }}
 
   build-pypi:
+    name: Build PyPI
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -111,7 +113,7 @@ jobs:
           path: pr/
 
   release-conda:
-    name: Release
+    name: Release Conda
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [build-conda]
@@ -138,7 +140,7 @@ jobs:
           anaconda -t $ANACONDA_TOKEN upload -u nvidia conda/*.tar.bz2
 
   release-pypi:
-    name: Release
+    name: Release PyPI
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [build-pypi]
