@@ -25,10 +25,10 @@ import time
 from pathlib import Path
 
 import dask
+import pandas as pd
 
 from merlin.core.compat import cudf
 from merlin.core.compat import numpy as np
-from merlin.core.compat import pandas as pd
 
 if cudf:
     try:

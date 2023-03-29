@@ -18,6 +18,7 @@ import os
 import shutil
 import time
 
+import pandas as pd
 import pyarrow as pa
 import pytest
 
@@ -26,7 +27,6 @@ import nvtabular.tools.data_gen as datagen
 from merlin.core import dispatch
 from merlin.core.compat import HAS_GPU, cudf
 from merlin.core.compat import numpy as np
-from merlin.core.compat import pandas as pd
 from merlin.core.dispatch import make_df
 from merlin.io import Dataset
 from nvtabular import ColumnSelector, ops

@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 import numba
+import pandas as pd
 import scipy.sparse
 
 from merlin.core.compat import cuda, cupy, numpy
-from merlin.core.compat import pandas as pd
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
