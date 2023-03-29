@@ -19,14 +19,13 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core.compat import cudf
 from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, Schema, Workflow, ops
 
-try:
-    import cudf
-
+if cudf:
     _CPU = [True, False]
-except ImportError:
+else:
     _CPU = [True]
 
 

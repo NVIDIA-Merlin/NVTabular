@@ -27,12 +27,8 @@ from typing import TYPE_CHECKING, Optional
 import cloudpickle
 import fsspec
 
-try:
-    import cudf
-except ImportError:
-    cudf = None
-import pandas as pd
-
+from merlin.core.compat import cudf
+from merlin.core.compat import pandas as pd
 from merlin.dag import Graph
 from merlin.dag.executors import DaskExecutor, LocalExecutor
 from merlin.dag.node import iter_nodes

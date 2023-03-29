@@ -15,14 +15,10 @@
 #
 import warnings
 
-try:
-    import cudf
-except ImportError:
-    cudf = None
-
 import dask.dataframe as dd
 import pandas as pd
 
+from merlin.core.compat import cudf
 from merlin.core.dispatch import (
     DataFrameType,
     ExtData,

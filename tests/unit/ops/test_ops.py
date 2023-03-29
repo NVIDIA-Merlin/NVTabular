@@ -21,19 +21,17 @@ import pytest
 
 import nvtabular as nvt
 from merlin.core import dispatch
+from merlin.core.compat import HAS_GPU, cudf, dask_cudf
 from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
-try:
-    import cudf
-    import dask_cudf
-
+if cudf:
     _CPU = [True, False]
-    _HAS_GPU = True
-except ImportError:
+else:
     _CPU = [True]
-    _HAS_GPU = False
+
+_HAS_GPU = HAS_GPU
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
