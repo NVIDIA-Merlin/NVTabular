@@ -18,22 +18,16 @@ import os
 import shutil
 import time
 
-import pyarrow as pa
-
-from merlin.core.dispatch import HAS_GPU, make_df
-
-try:
-    import cudf
-except ImportError:
-    cudf = None
-
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from merlin.core import dispatch
+from merlin.core.compat import cudf
+from merlin.core.dispatch import HAS_GPU, make_df
 from merlin.io import Dataset
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
@@ -104,7 +98,7 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         if idx < all_len:
             for col in df_cols:
                 if col in chunk[0].keys():
-                    if dispatch.HAS_GPU:
+                    if cudf:
                         assert (
                             np.expand_dims(chunk[0][col].cpu().numpy(), 1) == df[col].values_host
                         ).all()
