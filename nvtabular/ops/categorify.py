@@ -1055,6 +1055,8 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
         df.to_parquet(path, index=False, compression=None)
     else:
+        if hasattr(df, "convert_dtypes"):
+            df = df.convert_dtypes()
         df_null = type(df)({c: [None] for c in col_selector.names})
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
