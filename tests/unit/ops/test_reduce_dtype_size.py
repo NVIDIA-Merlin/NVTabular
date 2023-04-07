@@ -18,13 +18,12 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core.compat import cudf
 from tests.conftest import assert_eq
 
-try:
-    import cudf
-
+if cudf:
     _CPU = [True, False]
-except ImportError:
+else:
     _CPU = [True]
 
 

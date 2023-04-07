@@ -26,17 +26,15 @@
 
 import itertools
 
-try:
-    import cudf
-    import cupy as cp
-except ImportError:
-    cudf = cp = None
-
-import numpy as np
 import pandas as pd
 
+from merlin.core.compat import cudf
+from merlin.core.compat import cupy as cp
+from merlin.core.compat import numpy as np
 from merlin.core.dispatch import build_cudf_list_column, is_list_dtype
 from merlin.dag import Supports
+
+xp = cp or np
 
 
 def convert_format(tensors, kind, target_kind):
@@ -54,7 +52,7 @@ def convert_format(tensors, kind, target_kind):
 
     elif target_kind & Supports.GPU_DICT_ARRAY:
         if kind == Supports.CPU_DICT_ARRAY:
-            return _convert_array(tensors, cp.array), Supports.GPU_DICT_ARRAY
+            return _convert_array(tensors, xp.array), Supports.GPU_DICT_ARRAY
         elif kind == Supports.CPU_DATAFRAME:
             return _pandas_to_array(tensors, False), Supports.GPU_DICT_ARRAY
         elif kind == Supports.GPU_DATAFRAME:
@@ -62,7 +60,7 @@ def convert_format(tensors, kind, target_kind):
 
     elif target_kind & Supports.CPU_DICT_ARRAY:
         if kind == Supports.GPU_DICT_ARRAY:
-            return _convert_array(tensors, cp.asnumpy), Supports.CPU_DICT_ARRAY
+            return _convert_array(tensors, xp.asnumpy), Supports.CPU_DICT_ARRAY
         elif kind == Supports.CPU_DATAFRAME:
             return _pandas_to_array(tensors, True), Supports.CPU_DICT_ARRAY
         elif kind == Supports.GPU_DATAFRAME:
@@ -79,7 +77,7 @@ def convert_format(tensors, kind, target_kind):
         elif kind == Supports.CPU_DICT_ARRAY:
             return _array_to_pandas(tensors), Supports.CPU_DATAFRAME
         elif kind == Supports.GPU_DICT_ARRAY:
-            return _array_to_pandas(_convert_array(tensors, cp.asnumpy)), Supports.CPU_DATAFRAME
+            return _array_to_pandas(_convert_array(tensors, xp.asnumpy)), Supports.CPU_DATAFRAME
 
     raise ValueError("unsupported target for converting tensors", target_kind)
 
@@ -116,7 +114,7 @@ def _array_to_cudf(tensors):
 
 
 def _pandas_to_array(df, cpu=True):
-    array_type = np.array if cpu else cp.array
+    array_type = np.array if cpu else xp.array
 
     output = {}
     for name in df.columns:
@@ -124,13 +122,13 @@ def _pandas_to_array(df, cpu=True):
         if pd.api.types.is_list_like(col.values[0]):
             offsets = pd.Series([0]).append(col.map(len).cumsum()).values
             if not cpu:
-                offsets = cp.array(offsets)
+                offsets = xp.array(offsets)
             values = array_type(list(itertools.chain(*col)))
             output[name] = (values, offsets)
         else:
             values = col.values
             if not cpu:
-                values = cp.array(values)
+                values = xp.array(values)
             output[name] = values
 
     return output
