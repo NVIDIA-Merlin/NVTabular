@@ -191,7 +191,7 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 <span class="kn">from</span> <span class="nn">dask_cuda</span> <span class="kn">import</span> <span class="n">LocalCUDACluster</span>
 <span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
 <span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
-<span class="kn">from</span> <span class="nn">nvtabular.utils</span> <span class="kn">import</span> <span class="n">pynvml_mem_size</span><span class="p">,</span> <span class="n">device_mem_size</span>
+<span class="kn">from</span> <span class="nn">merlin.core.compat</span> <span class="kn">import</span> <span class="n">pynvml_mem_size</span><span class="p">,</span> <span class="n">device_mem_size</span>
 
 <span class="n">dask_workdir</span> <span class="o">=</span> <span class="s2">&quot;test_dask/workdir&quot;</span>
 </pre></div>
@@ -222,7 +222,11 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 <span class="n">part_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">part_mem_frac</span> <span class="o">*</span> <span class="n">device_size</span><span class="p">)</span>
 
 <span class="c1"># Check if any device memory is already occupied</span>
-<span class="k">for</span> <span class="n">dev</span> <span class="ow">in</span> <span class="n">visible_devices</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">):</span>
+<span class="k">if</span> <span class="n">NUM_GPUS</span><span class="p">:</span>
+    <span class="n">devices</span> <span class="o">=</span> <span class="n">visible_devices</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">devices</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">dev</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
     <span class="n">fmem</span> <span class="o">=</span> <span class="n">pynvml_mem_size</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">&quot;free&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dev</span><span class="p">))</span>
     <span class="n">used</span> <span class="o">=</span> <span class="p">(</span><span class="n">device_size</span> <span class="o">-</span> <span class="n">fmem</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1e9</span>
     <span class="k">if</span> <span class="n">used</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
@@ -242,7 +246,7 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 <p>We can now initialize the CUDA cluster.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">cluster</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">NUM_GPUS</span><span class="p">:</span>
     <span class="n">cluster</span> <span class="o">=</span> <span class="n">LocalCUDACluster</span><span class="p">(</span>
         <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">,</span>
         <span class="n">n_workers</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">visible_devices</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)),</span>
@@ -266,7 +270,10 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 <p>Before we do so, please take a look at the options available to us in the <code class="docutils literal notranslate"><span class="pre">Client(...)</span></code> constructor. Instead of initializing a cluster locally, another option available to us is connecting to a remote CUDA cluster. Such cluster might not only include multiple GPUs, but can also span multiple nodes. This enables scaling to running on arbitrarily large data.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">cluster</span><span class="p">:</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">client</span><span class="o">.</span><span class="n">cluster</span>
 </pre></div>
 </div>
