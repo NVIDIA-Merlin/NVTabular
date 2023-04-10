@@ -1321,6 +1321,8 @@ def _write_uniques(
             df = df.sort_values(name_size_multi, ascending=False, ignore_index=True)
         df_write = df
     else:
+        if hasattr(df, "convert_dtypes"):
+            df = df.convert_dtypes()
         df_null = type(df)({c: [None] for c in col_selector.names})
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)

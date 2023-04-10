@@ -8,13 +8,9 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
+from merlin.core.compat import cudf
 from nvtabular import Dataset, Workflow, ops
 from tests.conftest import get_cats
-
-try:
-    import cudf
-except ImportError:
-    cudf = None
 
 
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])

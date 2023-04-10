@@ -18,7 +18,7 @@
 import warnings
 
 # Re-export classes/modules from the core library for backwards compatibility
-from merlin.core.utils import *  # noqa
+from merlin.core.compat import *  # noqa
 
 warnings.warn(
     "The `nvtabular.utils` module has moved to `merlin.core.utils`. "

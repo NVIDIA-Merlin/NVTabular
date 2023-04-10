@@ -22,19 +22,17 @@ import pytest
 
 import nvtabular as nvt
 from merlin.core import dispatch
+from merlin.core.compat import HAS_GPU, cudf
 from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, ops
 from nvtabular.ops.categorify import get_embedding_sizes
 from tests.conftest import assert_eq
 
-try:
-    import cudf
-
+if cudf:
     _CPU = [True, False]
-    _HAS_GPU = True
-except ImportError:
+else:
     _CPU = [True]
-    _HAS_GPU = False
+_HAS_GPU = HAS_GPU
 
 
 @pytest.mark.parametrize("cpu", _CPU)

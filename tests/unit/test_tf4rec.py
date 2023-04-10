@@ -1,14 +1,15 @@
 import numpy as np
 
-try:
-    from cudf import to_datetime
-except ImportError:
-    from dask.dataframe import to_datetime
-
 import nvtabular as nvt
+from merlin.core.compat import cudf
 from merlin.core.dispatch import make_df
 from merlin.schema import Schema
 from nvtabular import ColumnSelector
+
+if cudf:
+    from cudf import to_datetime
+else:
+    from dask.dataframe import to_datetime
 
 NUM_ROWS = 10000
 

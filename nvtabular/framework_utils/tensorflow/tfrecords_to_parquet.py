@@ -15,12 +15,15 @@
 
 import gc
 
-import cudf
 import tensorflow as tf
-from cudf.core.column.lists import is_list_dtype
-from cudf.io.parquet import ParquetWriter
 from pandas_tfrecords.from_tfrecords import _get_feature_type, read_example
 from tqdm import tqdm
+
+from merlin.core.compat import cudf
+
+if cudf:
+    from cudf.core.column.lists import is_list_dtype
+    from cudf.io.parquet import ParquetWriter
 
 
 def convert_tfrecords_to_parquet(

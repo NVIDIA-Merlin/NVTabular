@@ -18,22 +18,11 @@ import random
 import string
 
 import numpy as np
-import pandas as pd
 import psutil
-
-try:
-    import cupy
-except ImportError:
-    cupy = np
-
-try:
-    import cudf
-except ImportError:
-    cudf = pd
-
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
+from merlin.core.compat import cupy
 from merlin.core.dispatch import (
     HAS_GPU,
     concat,
@@ -45,6 +34,8 @@ from merlin.core.dispatch import (
 )
 from merlin.core.utils import device_mem_size
 from merlin.io import Dataset
+
+xp = cupy or np
 
 
 class UniformDistro:
@@ -64,9 +55,9 @@ class PowerLawDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
         gamma = 1 - self.alpha
         # range 1.0 - 2.0 to avoid using 0, which represents unknown, null, None
-        ser = make_df(cupy.random.uniform(0.0, 1.0, size=num_rows))[0]
-        factor = cupy.power(max_val, gamma) - cupy.power(min_val, gamma)
-        ser = (ser * factor.item()) + cupy.power(min_val, gamma).item()
+        ser = make_df(xp.random.uniform(0.0, 1.0, size=num_rows))[0]
+        factor = xp.power(max_val, gamma) - xp.power(min_val, gamma)
+        ser = (ser * factor.item()) + xp.power(min_val, gamma).item()
         exp = 1.0 / gamma
         ser = ser.pow(exp)
         # replace zeroes saved for unknown
@@ -126,7 +117,7 @@ class DatasetGen:
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
                     )
                     ser = make_series(np.ceil(ser)).astype(ser.dtype)
-                    _cumsum = cupy.cumsum
+                    _cumsum = xp.cumsum
                 else:
                     ser = dist.create_col(
                         col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
@@ -376,10 +367,10 @@ class DatasetGen:
         name = ser.name
         ser.name = "ind"
         ind = ser.drop_duplicates().values
-        ind_random = cupy.random.permutation(ind)
-        df_map = cudf.DataFrame({"ind": ind, "ind_random": ind_random})
+        ind_random = xp.random.permutation(ind)
+        df_map = make_df({"ind": ind, "ind_random": ind_random})
         if not HAS_GPU:
-            ser = cudf.DataFrame(ser)
+            ser = make_df(ser)
         ser = ser.merge(df_map, how="left", left_on="ind", right_on="ind")["ind_random"]
         ser.name = name
         return ser
