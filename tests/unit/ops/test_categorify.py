@@ -695,3 +695,29 @@ def test_categorify_joint_list(cpu):
 
     assert compare_a == [1, 5, 2, 3]
     assert compare_e == [2, 3, 1, 4, 1]
+
+
+def test_categorify_inference():
+    num_rows = 100
+    a_char, z_char = np.array(["a", "z"]).view("int32")
+    input_tensors = {
+        "unicode_string": np.random.randint(
+            low=a_char, high=z_char, size=num_rows * 10, dtype="int32"
+        ).view("U10"),
+        "int16_feature": np.random.randint(0, 10, dtype="int16", size=num_rows),
+        "int32_feature": np.random.randint(0, 10, dtype="int32", size=num_rows),
+        "int64_feature": np.random.randint(0, 10, dtype="int64", size=num_rows),
+        "uint16_feature": np.random.randint(0, 10, dtype="uint16", size=num_rows),
+        "uint32_feature": np.random.randint(0, 10, dtype="uint32", size=num_rows),
+        "uint64_feature": np.random.randint(0, 10, dtype="uint64", size=num_rows),
+    }
+    df = dispatch.make_df(input_tensors)
+    cat_names = df.columns
+    cats = cat_names >> nvt.ops.Categorify()
+    workflow = nvt.Workflow(cats)
+    workflow.fit(nvt.Dataset(df))
+    model_config = {}
+    inference_op = cats.op.inference_initialize(cats.input_columns, model_config)
+    output_tensors = inference_op.transform(cats.input_columns, input_tensors)
+    for key in input_tensors:
+        assert output_tensors[key].dtype == np.dtype("int64")
