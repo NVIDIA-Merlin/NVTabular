@@ -110,7 +110,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;WorkflowNode represents a Node in a NVTabular workflow graph&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__rshift__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operator</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">operator</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">operator</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">operator</span><span class="p">,</span> <span class="n">Operator</span><span class="p">)</span>
         <span class="p">):</span>
             <span class="c1"># implicit lambdaop conversion.</span>
