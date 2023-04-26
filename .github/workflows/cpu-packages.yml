@@ -33,7 +33,7 @@ jobs:
         run: |
           conda update conda
           conda install conda-build pybind11
-          conda build --python 3.8 --python 3.9 --python 3.10 --python 3.11 . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
+          conda build --python 3.8 --python 3.9 --python 3.10 . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
           export CONDA_PACKAGE=$(find ./conda_packages/ -name nvtabular*.tar.bz2)
           echo "conda_package : $CONDA_PACKAGE"
           echo "conda_package=$CONDA_PACKAGE" >> $GITHUB_OUTPUT
