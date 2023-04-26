@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NVTabular Example Notebooks &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/examples/index.html" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Getting Started with NVTabular: Process Tabular Data On GPU" href="01-Getting-started.html" />
+    <link rel="prev" title="Accelerated Training with HugeCTR" href="../training/hugectr.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="banner">
+    <p class="banner">
+      Beginning in January 2023, versions for all NVIDIA Merlin projects
+      will change from semantic versioning like <code>4.0</code>
+      to calendar versioning like <code>23.01</code>.</p>
+  </div>
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Example Notebooks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#inventory">Inventory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">NVTabular Example Notebooks</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="nvtabular-example-notebooks">
+<h1>NVTabular Example Notebooks<a class="headerlink" href="#nvtabular-example-notebooks" title="Permalink to this headline"></a></h1>
+<p>In this library, we provide a collection of Jupyter notebooks, which demonstrates the functionality of NVTabular.</p>
+<div class="section" id="inventory">
+<h2>Inventory<a class="headerlink" href="#inventory" title="Permalink to this headline"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="01-Getting-started.html"><span class="doc std std-doc">Getting Started with NVTabular</span></a>: Get started with NVTabular by processing data on the GPU.</p></li>
+<li><p><a class="reference internal" href="02-Advanced-NVTabular-workflow.html"><span class="doc std std-doc">Advanced NVTabular workflow</span></a>: Understand NVTabular in more detail by defining more advanced workflows and learn about different operators</p></li>
+<li><p><a class="reference internal" href="03-Running-on-multiple-GPUs-or-on-CPU.html"><span class="doc std std-doc">Running on multiple GPUs or on CPU</span></a>: Run NVTabular in different environments, such as multi-GPU or CPU-only mode.</p></li>
+</ul>
+<p>In addition, NVTabular is used in many of our examples in other Merlin libraries. You can explore more complex processing pipelines in following examples:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples">End-To-End Examples with Merlin</a></p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/models/tree/main/examples">Training Examples with Merlin Models</a></p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples">Training Examples with Transformer4Rec</a></p></li>
+</ul>
+</div>
+<div class="section" id="running-the-example-notebooks">
+<h2>Running the Example Notebooks<a class="headerlink" href="#running-the-example-notebooks" title="Permalink to this headline"></a></h2>
+<p>You can run the example notebooks by <a class="reference external" href="https://github.com/NVIDIA/NVTabular#installation">installing NVTabular</a> and other required libraries. Alternatively, Docker containers are available from the NVIDIA GPU Cloud (NGC) at <a class="reference external" href="http://ngc.nvidia.com/catalog/containers/">http://ngc.nvidia.com/catalog/containers/</a> with pre-installed versions.
+Depending on which example you want to run, you should use any one of these Docker containers:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">merlin-hugectr</span></code> (contains NVTabular with HugeCTR)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">merlin-tensorflow</span></code> (contains NVTabular with TensorFlow)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">merlin-pytorch</span></code> (contains NVTabular with PyTorch)</p></li>
+</ul>
+<p>Beginning with the 22.06 release, each container includes the software for training models and performing inference.</p>
+<p>To run the example notebooks using Docker containers, perform the following steps:</p>
+<ol class="arabic">
+<li><p>Pull and start the container by running the following command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="m">8888</span>:8888<span class="w"> </span>-p<span class="w"> </span><span class="m">8797</span>:8787<span class="w"> </span>-p<span class="w"> </span><span class="m">8796</span>:8786<span class="w"> </span>--ipc<span class="o">=</span>host<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>&lt;docker<span class="w"> </span>container&gt;<span class="w"> </span>/bin/bash
+</pre></div>
+</div>
+<p>The container opens a shell when the run command execution is completed.
+Your shell prompt should look similar to the following example:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>root@2efa5b50b909:
+</pre></div>
+</div>
+</li>
+<li><p>Start the JupyterLab server by running the following command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>jupyter-lab<span class="w"> </span>--allow-root<span class="w"> </span>--ip<span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span>
+</pre></div>
+</div>
+<p>View the messages in your terminal to identify the URL for JupyterLab.
+The messages in your terminal show similar lines to the following example:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>Or<span class="w"> </span>copy<span class="w"> </span>and<span class="w"> </span>paste<span class="w"> </span>one<span class="w"> </span>of<span class="w"> </span>these<span class="w"> </span>URLs:
+http://2efa5b50b909:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+or<span class="w"> </span>http://127.0.0.1:8888/lab?token<span class="o">=</span>9b537d1fda9e4e9cadc673ba2a472e247deee69a6229ff8d
+</pre></div>
+</div>
+</li>
+<li><p>Open a browser and use the <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> URL provided in the messages by JupyterLab.</p></li>
+<li><p>After you log in to JupyterLab, navigate to the <code class="docutils literal notranslate"><span class="pre">/nvtabular</span></code> directory to try out the example notebooks.</p></li>
+</ol>
+</div>
+<div class="section" id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline"></a></h2>
+<p>If you experience any trouble running the example notebooks, check the latest <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/resources/troubleshooting.html">troubleshooting</a> documentation.</p>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../training/hugectr.html" class="btn btn-neutral float-left" title="Accelerated Training with HugeCTR" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="01-Getting-started.html" class="btn btn-neutral float-right" title="Getting Started with NVTabular: Process Tabular Data On GPU" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v23.04.00
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v1.6.0/index.html">v1.6.0</a></dd>
+      <dd><a href="../../v1.7.0/index.html">v1.7.0</a></dd>
+      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
+      <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
+      <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
+      <dd><a href="index.html">v23.04.00</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+    <!-- Theme Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-NVJ1Y1YJHK', {
+          'anonymize_ip': false,
+      });
+    </script> 
+
+</body>
+</html>
