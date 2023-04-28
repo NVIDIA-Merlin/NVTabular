@@ -20,12 +20,12 @@ from dask.delayed import Delayed
 
 import nvtabular as nvt
 from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
+from merlin.dag.stat_operator import StatOperator
 from merlin.dtypes.shape import DefaultShapes
 from merlin.io import Dataset
 from merlin.schema import Schema
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 AGG_DTYPES = {
     "count": np.int32,

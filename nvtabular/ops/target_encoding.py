@@ -24,12 +24,12 @@ from merlin.core.dispatch import (
     read_parquet_dispatch,
 )
 from merlin.dag import Node
+from merlin.dag.stat_operator import StatOperator
 from merlin.io import Dataset
 from merlin.schema import Schema, Tags
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.moments import _custom_moments
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class TargetEncoding(StatOperator):

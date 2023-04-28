@@ -17,9 +17,9 @@
 from typing import Any
 
 from merlin.core.dispatch import DataFrameType, is_list_dtype, pull_apart_list
+from merlin.dag.stat_operator import StatOperator
 from merlin.io import Dataset
 from nvtabular.ops.operator import ColumnSelector
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class ValueCount(StatOperator):

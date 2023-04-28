@@ -37,11 +37,11 @@ from pyarrow import parquet as pq
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
+from merlin.dag.stat_operator import StatOperator
 from merlin.io import Dataset
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class Categorify(StatOperator):

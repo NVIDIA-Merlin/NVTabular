@@ -47,6 +47,5 @@ from nvtabular.ops.normalize import Normalize, NormalizeMinMax
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.reduce_dtype_size import ReduceDtypeSize
 from nvtabular.ops.rename import Rename
-from nvtabular.ops.stat_operator import StatOperator
 from nvtabular.ops.target_encoding import TargetEncoding
 from nvtabular.ops.value_counts import ValueCount

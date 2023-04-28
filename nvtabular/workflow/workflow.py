@@ -32,9 +32,10 @@ from merlin.core.compat import cudf
 from merlin.dag import Graph
 from merlin.dag.executors import DaskExecutor, LocalExecutor
 from merlin.dag.node import iter_nodes
+from merlin.dag.stat_operator import StatOperator
 from merlin.io import Dataset
 from merlin.schema import Schema
-from nvtabular.ops import LambdaOp, StatOperator
+from nvtabular.ops import LambdaOp
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
@@ -200,42 +201,7 @@ class Workflow:
         Workflow
             This Workflow with statistics calculated on it
         """
-        self.clear_stats()
-
-        if not self.graph.output_schema:
-            self.graph.construct_schema(dataset.schema)
-
-        # Get a dictionary mapping all StatOperators we need to fit to a set of any dependent
-        # StatOperators (having StatOperators that depend on the output of other StatOperators
-        # means that will have multiple phases in the fit cycle here)
-        stat_op_nodes = {
-            node: Graph.get_nodes_by_op_type(node.parents_with_dependencies, StatOperator)
-            for node in Graph.get_nodes_by_op_type([self.graph.output_node], StatOperator)
-        }
-
-        while stat_op_nodes:
-            # get all the StatOperators that we can currently call fit on (no outstanding
-            # dependencies)
-            current_phase = [
-                node for node, dependencies in stat_op_nodes.items() if not dependencies
-            ]
-            if not current_phase:
-                # this shouldn't happen, but lets not infinite loop just in case
-                raise RuntimeError("failed to find dependency-free StatOperator to fit")
-
-            self.executor.fit(dataset, current_phase)
-
-            # Remove all the operators we processed in this phase, and remove
-            # from the dependencies of other ops too
-            for node in current_phase:
-                stat_op_nodes.pop(node)
-            for dependencies in stat_op_nodes.values():
-                dependencies.difference_update(current_phase)
-
-        # This captures the output dtypes of operators like LambdaOp where
-        # the dtype can't be determined without running the transform
-        self._transform_impl(dataset, capture_dtypes=True).sample_dtypes()
-        self.graph.construct_schema(dataset.schema, preserve_dtypes=True)
+        self.executor.fit(dataset, self.graph)
 
         return self
 
