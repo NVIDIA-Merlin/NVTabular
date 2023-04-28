@@ -6,26 +6,31 @@ on:
     branches: [main]
     tags:
       - v*
+  pull_request:
+    branches: [main]
 
 jobs:
   build-conda:
     name: Build Conda
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, 3.10]
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up Python 3.8
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: 3.8
+          python-version: ${{ matrix.python-version }}
       - name: Install Ubuntu packages
         run: |
           sudo apt-get update -y
           sudo apt-get install -y protobuf-compiler
       - name: Install and upgrade python packages
         run: |
-          python -m pip install --upgrade pip setuptools==59.4.0 wheel tox pybind11
+          python -m pip install --upgrade pip setuptools==59.4.0 wheel pybind11
           python -m pip uninstall protobuf -y
           python -m pip install --no-binary=protobuf protobuf
       - name: Generate package for conda
@@ -33,14 +38,15 @@ jobs:
         run: |
           conda update conda
           conda install conda-build pybind11
-          conda build --python 3.8 --python 3.9 --python 3.10 . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
-          export CONDA_PACKAGE=$(find ./conda_packages/ -name nvtabular*.tar.bz2)
-          echo "conda_package : $CONDA_PACKAGE"
-          echo "conda_package=$CONDA_PACKAGE" >> $GITHUB_OUTPUT
+          conda build --python ${{ matrix.python-version }} . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
+          conda_package=$(find ./conda_packages/ -name "*.tar.bz2")
+          export CONDA_PACKAGE=$conda_package
+          echo "conda_package : $conda_package"
+          echo "conda_package=$conda_package" >> $GITHUB_OUTPUT
       - name: Upload conda artifacts to github
         uses: actions/upload-artifact@v3
         with:
-          name: conda
+          name: conda-${{ matrix.python-version }}
           path: ${{ steps.conda_build.outputs.conda_package }}
 
   build-pypi:
@@ -106,6 +112,25 @@ jobs:
         with:
           name: pr
           path: pr/
+
+  check-conda:
+    name: Check Conda Artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, 3.10]
+    needs: [build-conda]
+    steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - uses: actions/download-artifact@v2
+        with:
+          name: conda-${{ matrix.python-version }}
+          path: conda
+      - name: check artifacts
+        run: |
+          find conda -name "*.tar.gz"
 
   release-conda:
     name: Release Conda
