@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
@@ -22,6 +21,7 @@ from dask.delayed import Delayed
 import nvtabular as nvt
 from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
 from merlin.dtypes.shape import DefaultShapes
+from merlin.io import Dataset
 from merlin.schema import Schema
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.operator import ColumnSelector, Operator
@@ -131,12 +131,14 @@ class JoinGroupby(StatOperator):
                 "until `Workflow` is fit to dataset or schema."
             )
 
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
         for group in col_selector.subgroups:
             if len(group.names) > 1:
                 name = nvt_cat._make_name(*group.names, sep=self.name_sep)
                 for col in group.names:
                     self.storage_name[col] = name
+
+        ddf = dataset.to_ddf()
 
         # Check metadata type to reset on_host and cat_cache if the
         # underlying ddf is already a pandas-backed collection

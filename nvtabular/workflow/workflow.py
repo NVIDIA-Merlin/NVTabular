@@ -205,8 +205,6 @@ class Workflow:
         if not self.graph.output_schema:
             self.graph.construct_schema(dataset.schema)
 
-        ddf = dataset.to_ddf(columns=self._input_columns())
-
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependent
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
@@ -225,7 +223,7 @@ class Workflow:
                 # this shouldn't happen, but lets not infinite loop just in case
                 raise RuntimeError("failed to find dependency-free StatOperator to fit")
 
-            self.executor.fit(ddf, current_phase)
+            self.executor.fit(dataset, current_phase)
 
             # Remove all the operators we processed in this phase, and remove
             # from the dependencies of other ops too
@@ -268,12 +266,15 @@ class Workflow:
         if not self.graph.output_schema:
             self.graph.construct_schema(dataset.schema)
 
-        ddf = dataset.to_ddf(columns=self._input_columns())
+        result = self.executor.transform(
+            dataset, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
+        )
+
+        if isinstance(result, Dataset):
+            result = result.to_ddf()
 
         return Dataset(
-            self.executor.transform(
-                ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
-            ),
+            result,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
             schema=self.output_schema,

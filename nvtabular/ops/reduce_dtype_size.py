@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dask.dataframe as dd
 import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
+from merlin.io import Dataset
 from merlin.schema import Schema
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
@@ -38,7 +38,8 @@ class ReduceDtypeSize(StatOperator):
         self.dtypes = {}
 
     @annotate("reduce_dtype_size_fit", color="green", domain="nvt_python")
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
+        ddf = dataset.to_ddf(columns=col_selector.names)
         return {col: (ddf[col].min(), ddf[col].max()) for col in col_selector.names}
 
     def fit_finalize(self, dask_stats):

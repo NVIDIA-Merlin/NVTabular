@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dask.dataframe as dd
 import numpy
 
 from merlin.core.dispatch import (
@@ -24,6 +23,7 @@ from merlin.core.dispatch import (
     is_list_dtype,
 )
 from merlin.dag import Supports
+from merlin.io import Dataset
 from merlin.schema import Tags
 from nvtabular.ops.moments import _custom_moments
 from nvtabular.ops.operator import ColumnSelector, Operator
@@ -59,7 +59,8 @@ class Normalize(StatOperator):
         self.out_dtype = out_dtype
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
+        ddf = dataset.to_ddf(columns=col_selector.names)
         return _custom_moments(ddf[col_selector.names])
 
     def fit_finalize(self, dask_stats):
@@ -154,7 +155,8 @@ class NormalizeMinMax(StatOperator):
     transform.__doc__ = Operator.transform.__doc__
 
     @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
-    def fit(self, col_selector: ColumnSelector, ddf):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
+        ddf = dataset.to_ddf(columns=col_selector.names)
         return {
             "mins": ddf[col_selector.names].min(),
             "maxs": ddf[col_selector.names].max(),

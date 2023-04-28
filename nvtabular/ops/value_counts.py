@@ -16,9 +16,8 @@
 
 from typing import Any
 
-import dask.dataframe as dd
-
 from merlin.core.dispatch import DataFrameType, is_list_dtype, pull_apart_list
+from merlin.io import Dataset
 from nvtabular.ops.operator import ColumnSelector
 from nvtabular.ops.stat_operator import StatOperator
 
@@ -32,7 +31,9 @@ class ValueCount(StatOperator):
         super().__init__()
         self.stats = {}
 
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame) -> Any:
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset) -> Any:
+        ddf = dataset.to_ddf(columns=col_selector.names)
+
         stats = {}
         for col in col_selector.names:
             series = ddf[col]

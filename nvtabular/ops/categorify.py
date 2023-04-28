@@ -21,7 +21,6 @@ from operator import getitem
 from pathlib import Path
 from typing import Optional, Union
 
-import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -38,6 +37,7 @@ from pyarrow import parquet as pq
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
+from merlin.io import Dataset
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
@@ -304,7 +304,7 @@ class Categorify(StatOperator):
         self.categories = deepcopy(self.vocabs)
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
@@ -324,6 +324,8 @@ class Categorify(StatOperator):
                 name = _make_name(*group.names, sep=self.name_sep)
                 for col in group.names:
                     self.storage_name[col] = name
+
+        ddf = dataset.to_ddf()
 
         # Check metadata type to reset on_host and cat_cache if the
         # underlying ddf is already a pandas-backed collection

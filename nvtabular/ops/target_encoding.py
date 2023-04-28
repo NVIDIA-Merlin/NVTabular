@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
@@ -25,6 +24,7 @@ from merlin.core.dispatch import (
     read_parquet_dispatch,
 )
 from merlin.dag import Node
+from merlin.io import Dataset
 from merlin.schema import Schema, Tags
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.moments import _custom_moments
@@ -161,8 +161,10 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
         moments = None
+
+        ddf = dataset.to_ddf()
 
         if self.target_mean is None:
             # calculate the mean if we don't have it already

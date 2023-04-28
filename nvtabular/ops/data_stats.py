@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dask.dataframe as dd
 import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
+from merlin.io import Dataset
 from nvtabular.ops.moments import _custom_moments
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
@@ -50,8 +50,9 @@ class DataStats(StatOperator):
         return df
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
         dask_stats = {}
+        ddf = dataset.to_ddf(columns=col_selector.names)
 
         ddf_dtypes = ddf.head(1)
 

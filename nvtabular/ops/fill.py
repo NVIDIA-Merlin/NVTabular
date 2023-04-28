@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dask.dataframe as dd
 import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
+from merlin.io import Dataset
 from nvtabular.ops.operator import ColumnSelector, Operator
 from nvtabular.ops.stat_operator import StatOperator
 
@@ -114,7 +114,9 @@ class FillMedian(StatOperator):
         return df
 
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset):
+        ddf = dataset.to_ddf(columns=col_selector.names)
+
         # TODO: Use `method="tidigest"` when crick supports device
         dask_stats = ddf[col_selector.names].quantile(q=0.5, method="dask")
         return dask_stats

@@ -15,8 +15,7 @@
 #
 from typing import Any
 
-import dask.dataframe as dd
-
+from merlin.io import Dataset
 from nvtabular.ops.operator import ColumnSelector, Operator
 
 
@@ -26,7 +25,7 @@ class StatOperator(Operator):
     on top of the Operator class.
     """
 
-    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame) -> Any:
+    def fit(self, col_selector: ColumnSelector, dataset: Dataset) -> Any:
         """Calculate statistics for this operator, and return a dask future
         to these statistics, which will be computed by the workflow."""
 
