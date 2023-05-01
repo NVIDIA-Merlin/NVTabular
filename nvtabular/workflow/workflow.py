@@ -113,7 +113,7 @@ class Workflow:
 
     @transform.register
     def _(self, dataset: Dataset) -> Dataset:
-        return self._transform_impl(dataset)
+        return self._transform_dataset(dataset)
 
     @transform.register
     def _(self, dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -228,7 +228,7 @@ class Workflow:
         self.fit(dataset)
         return self.transform(dataset)
 
-    def _transform_impl(self, dataset: Dataset, capture_dtypes=False):
+    def _transform_dataset(self, dataset: Dataset, capture_dtypes=False):
         if not self.graph.output_schema:
             self.graph.construct_schema(dataset.schema)
 
@@ -445,13 +445,3 @@ class Workflow:
             stat.op.set_storage_path(path, copy=False)
 
         return workflow
-
-    def clear_stats(self):
-        """Removes calculated statistics from each node in the workflow graph
-
-        See Also
-        --------
-        nvtabular.ops.stat_operator.StatOperator.clear
-        """
-        for stat in Graph.get_nodes_by_op_type([self.graph.output_node], StatOperator):
-            stat.op.clear()
