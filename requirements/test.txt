@@ -16,10 +16,6 @@ ipykernel
 pytest-xdist
 s3fs>=2021.4
 aiobotocore>=1.3.3
-flask
-flask-cors
-moto>=2
-boto3==1.17
 
 # required for dataloader tests
 merlin-dataloader[tensorflow,torch]@git+https://github.com/NVIDIA-Merlin/dataloader.git@stable
