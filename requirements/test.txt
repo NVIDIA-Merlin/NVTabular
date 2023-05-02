@@ -5,7 +5,6 @@ pybind11
 -r dev.txt
 
 tritonclient[all]
-numpy==1.20.3
 Markdown==3.3.7
 
 pytest>=5
