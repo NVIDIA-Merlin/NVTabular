@@ -27,6 +27,5 @@ merlin-models[tensorflow]@git+https://github.com/NVIDIA-Merlin/models.git@stable
 nest-asyncio
 scikit-learn>=0.20
 graphviz>=0.16
-# ipython_genutils
 
 
