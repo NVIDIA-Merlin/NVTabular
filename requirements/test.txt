@@ -5,8 +5,6 @@ pybind11
 -r dev.txt
 
 tritonclient[all]
-torch
-tensorflow-cpu
 numpy==1.20.3
 Markdown==3.3.7
 
@@ -25,8 +23,11 @@ flask-cors
 moto>=2
 boto3==1.17
 
-# needed to generate synthetic data
-merlin-models@git+https://github.com/NVIDIA-Merlin/models.git
+# required for dataloader tests
+merlin-dataloader[tensorflow,torch]@git+https://github.com/NVIDIA-Merlin/dataloader.git@stable
+
+# required for synthetic data `merlin.datasets` and notebook tests using merlin models
+merlin-models[tensorflow]@git+https://github.com/NVIDIA-Merlin/models.git@stable
 
 # needed to run notebook tests
 nest-asyncio
