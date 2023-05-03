@@ -132,7 +132,7 @@ class ColumnSimilarity(Operator):
 
     @property
     def output_dtype(self):
-        return numpy.float
+        return float
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
