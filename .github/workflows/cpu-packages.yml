@@ -3,19 +3,23 @@ name: Packages
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+      - release*
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-conda:
     name: Build Conda
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
-        os: [ubuntu-latest]
-
+        python-version: ["3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -30,22 +34,28 @@ jobs:
           sudo apt-get install -y protobuf-compiler
       - name: Install and upgrade python packages
         run: |
-          python -m pip install --upgrade pip setuptools==59.4.0 wheel tox pybind11
+          python -m pip install --upgrade pip setuptools==59.4.0 wheel pybind11
           python -m pip uninstall protobuf -y
           python -m pip install --no-binary=protobuf protobuf
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
       - name: Generate package for conda
         id: conda_build
         run: |
+          echo "conda pkgs dir $CONDA_PKGS_DIRS"
           conda update conda
-          conda install conda-build pybind11
-          conda build --python ${{ matrix.python-version }} . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
-          export CONDA_PACKAGE=$(conda build --python ${{ matrix.python-version }} . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages --output)
-          echo "conda_package : $CONDA_PACKAGE"
-          echo "conda_package=$CONDA_PACKAGE" >> $GITHUB_OUTPUT
+          conda install -c conda-forge mamba
+          mamba install -c conda-forge conda-build boa conda-verify pybind11
+          conda mambabuild --python ${{ matrix.python-version }} . -c defaults -c conda-forge -c numba -c rapidsai -c nvidia --output-folder ./conda_packages
+          conda_package=$(find ./conda_packages/ -name "*.tar.bz2")
+          export CONDA_PACKAGE=$conda_package
+          echo "conda_package : $conda_package"
+          echo "conda_package=$conda_package" >> $GITHUB_OUTPUT
       - name: Upload conda artifacts to github
         uses: actions/upload-artifact@v3
         with:
-          name: conda
+          name: conda-${{ matrix.python-version }}
           path: ${{ steps.conda_build.outputs.conda_package }}
 
   build-pypi:
@@ -115,15 +125,18 @@ jobs:
   release-conda:
     name: Release Conda
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [build-conda]
     steps:
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: ${{ matrix.python-version }}
       - uses: actions/download-artifact@v2
         with:
-          name: conda
+          name: conda-${{ matrix.python-version }}
           path: conda
       - uses: conda-incubator/setup-miniconda@v2
         with:

@@ -34,7 +34,7 @@ requirements:
     - python
     - cudf>=21.10.*
     - dask-cudf>=21.10.*
-    - cupy>=7.2.0,<10.0.0a
+    - cupy>=7.2.0
     - nvtx>=0.2.1
     - pynvml
 
