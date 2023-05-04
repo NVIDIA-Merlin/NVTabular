@@ -245,7 +245,7 @@ class TargetEncoding(StatOperator):
         if input_schema.column_schemas:
             new_schema = super()._compute_dtype(col_schema, input_schema)
         else:
-            # fold only, setting the np.int
+            # fold only, setting the dtype to int
             new_schema = col_schema.with_dtype(np.uint8)
         return new_schema
 
