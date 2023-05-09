@@ -6,9 +6,6 @@ pybind11
 
 tritonclient[all]
 torch
-tensorflow-cpu
-numpy==1.20.3
-Markdown==3.3.7
 
 pytest>=5
 pytest-cov>=2
@@ -20,18 +17,13 @@ ipykernel
 pytest-xdist
 s3fs>=2021.4
 aiobotocore>=1.3.3
-flask
-flask-cors
-moto>=2
-boto3==1.17
 
-# needed to generate synthetic data
-merlin-models@git+https://github.com/NVIDIA-Merlin/models.git
+# required for synthetic data `merlin.datasets` and notebook tests using merlin models
+merlin-models[tensorflow]@git+https://github.com/NVIDIA-Merlin/models.git
 
 # needed to run notebook tests
 nest-asyncio
 scikit-learn>=0.20
 graphviz>=0.16
-# ipython_genutils
 
 

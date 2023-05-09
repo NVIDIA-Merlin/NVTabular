@@ -125,9 +125,9 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 json_sample = {
     "conts": {
-        "cont_1": {"dtype": np.float, "min_val": 0, "max_val": 1},
-        "cont_2": {"dtype": np.float, "min_val": 0, "max_val": 1},
-        "cont_3": {"dtype": np.float, "min_val": 0, "max_val": 1},
+        "cont_1": {"dtype": float, "min_val": 0, "max_val": 1},
+        "cont_2": {"dtype": float, "min_val": 0, "max_val": 1},
+        "cont_3": {"dtype": float, "min_val": 0, "max_val": 1},
     },
     "cats": {
         "cat_1": {
