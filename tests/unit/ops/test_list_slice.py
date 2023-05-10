@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pandas as pd
 import pytest
 
-from merlin.core.compat import cudf
+import nvtabular as nvt
+from merlin.core.compat import cudf, numpy, pandas
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq
 
@@ -28,7 +28,7 @@ else:
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_list_slice(cpu):
-    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+    DataFrame = pandas.DataFrame if cpu else cudf.DataFrame
 
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
@@ -66,7 +66,7 @@ def test_list_slice(cpu):
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_list_slice_pad(cpu):
-    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+    DataFrame = pandas.DataFrame if cpu else cudf.DataFrame
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
     # 0 pad to 5 elements
@@ -101,3 +101,11 @@ def test_list_slice_pad(cpu):
     transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
     assert_eq(transformed, expected)
+
+
+def test_cpu_slice_ndarrays():
+    out = ["test"] >> nvt.ops.ListSlice(10, pad=True)
+    workflow = nvt.Workflow(out)
+    df = cudf.DataFrame({"test": [[x for x in numpy.asarray(range(1, 4)).astype(numpy.int32)]]})
+    workflow.fit(nvt.Dataset(df.to_pandas(), cpu=True))
+    workflow.transform(nvt.Dataset(df.to_pandas(), cpu=True)).compute()
