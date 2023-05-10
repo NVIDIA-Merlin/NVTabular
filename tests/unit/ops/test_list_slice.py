@@ -17,6 +17,7 @@ import pytest
 
 import nvtabular as nvt
 from merlin.core.compat import cudf, numpy, pandas
+from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq
 
@@ -103,9 +104,9 @@ def test_list_slice_pad(cpu):
     assert_eq(transformed, expected)
 
 
-def test_cpu_slice_ndarrays():
+def test_slice_ndarrays():
     out = ["test"] >> nvt.ops.ListSlice(10, pad=True)
     workflow = nvt.Workflow(out)
-    df = cudf.DataFrame({"test": [[x for x in numpy.asarray(range(1, 4)).astype(numpy.int32)]]})
-    workflow.fit(nvt.Dataset(df.to_pandas(), cpu=True))
-    workflow.transform(nvt.Dataset(df.to_pandas(), cpu=True)).compute()
+    df = make_df({"test": [[x for x in numpy.asarray(range(1, 4)).astype(numpy.int32)]]})
+    workflow.fit(nvt.Dataset(df, cpu=True))
+    workflow.transform(nvt.Dataset(df, cpu=True)).compute()
