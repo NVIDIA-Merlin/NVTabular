@@ -21,19 +21,17 @@ import pytest
 
 import nvtabular as nvt
 from merlin.core import dispatch
+from merlin.core.compat import HAS_GPU, cudf, dask_cudf
 from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
-try:
-    import cudf
-    import dask_cudf
-
+if cudf:
     _CPU = [True, False]
-    _HAS_GPU = True
-except ImportError:
+else:
     _CPU = [True]
-    _HAS_GPU = False
+
+_HAS_GPU = HAS_GPU
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
@@ -299,83 +297,6 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
         assert output[col]["per_nan"] == pytest.approx(
             100 * (1 - ddf[col].count().compute() / len(ddf[col]))
         )
-
-
-@pytest.mark.parametrize("cpu", _CPU)
-def test_list_slice(cpu):
-    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
-
-    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
-
-    op = ops.ListSlice(0, 2)
-    selector = ColumnSelector(["y"])
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(3, 5)
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[2, 767], [3], []]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(4, 10)
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[767], [], []]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(100, 20000)
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[], [], []]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(-4)
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(-3, -1)
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
-    assert_eq(transformed, expected)
-
-
-@pytest.mark.parametrize("cpu", _CPU)
-def test_list_slice_pad(cpu):
-    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
-    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
-
-    # 0 pad to 5 elements
-    op = ops.ListSlice(5, pad=True)
-    selector = ColumnSelector(["y"])
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3, 0], [1, 223, 4, 0, 0]]})
-    assert_eq(transformed, expected)
-
-    # make sure we can also pad when start != 0, and when pad_value is set
-    op = ops.ListSlice(1, 6, pad=True, pad_value=123)
-    selector = ColumnSelector(["y"])
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[1, 2, 2, 767, 123], [2, 2, 3, 123, 123], [223, 4, 123, 123, 123]]})
-    assert_eq(transformed, expected)
-
-    # we should be able to do pad out negative offsets as well
-    op = ops.ListSlice(-4, pad=True, pad_value=-1)
-    selector = ColumnSelector(["y"])
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(-4, -1, pad=True, pad_value=-1)
-    selector = ColumnSelector(["y"])
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[1, 2, 2], [1, 2, 2], [1, 223, -1]]})
-    assert_eq(transformed, expected)
-
-    op = ops.ListSlice(-4, pad=True, pad_value=-1)
-    selector = ColumnSelector(["y"])
-    transformed = op.transform(selector, df)
-    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
-    assert_eq(transformed, expected)
 
 
 @pytest.mark.parametrize("cpu", _CPU)

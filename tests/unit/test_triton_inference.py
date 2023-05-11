@@ -11,7 +11,8 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from merlin.core.dispatch import HAS_GPU, hash_series, make_df
+from merlin.core.compat import HAS_GPU
+from merlin.core.dispatch import hash_series, make_df
 from merlin.dag import Supports
 from nvtabular import ColumnSelector
 from tests.conftest import assert_eq

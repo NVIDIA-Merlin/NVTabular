@@ -93,6 +93,12 @@ namespace nvtabular
           case 'u':
             switch (dtype.itemsize())
             {
+            case 1:
+              insert_int_mapping<uint8_t>(values);
+              return;
+            case 2:
+              insert_int_mapping<uint16_t>(values);
+              return;
             case 4:
               insert_int_mapping<uint32_t>(values);
               return;
@@ -104,6 +110,12 @@ namespace nvtabular
           case 'i':
             switch (dtype.itemsize())
             {
+            case 1:
+              insert_int_mapping<int8_t>(values);
+              return;
+            case 2:
+              insert_int_mapping<int16_t>(values);
+              return;
             case 4:
               insert_int_mapping<int32_t>(values);
               return;
@@ -198,6 +210,10 @@ namespace nvtabular
           case 'u':
             switch (itemsize)
             {
+            case 1:
+              return transform_int<uint8_t>(input);
+            case 2:
+              return transform_int<uint16_t>(input);
             case 4:
               return transform_int<uint32_t>(input);
             case 8:
@@ -207,6 +223,10 @@ namespace nvtabular
           case 'i':
             switch (itemsize)
             {
+            case 1:
+              return transform_int<int8_t>(input);
+            case 2:
+              return transform_int<int16_t>(input);
             case 4:
               return transform_int<int32_t>(input);
             case 8:

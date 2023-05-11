@@ -18,22 +18,16 @@ import os
 import shutil
 import time
 
-import pyarrow as pa
-
-from merlin.core.dispatch import HAS_GPU, make_df
-
-try:
-    import cudf
-except ImportError:
-    cudf = None
-
-import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from merlin.core import dispatch
+from merlin.core.compat import HAS_GPU, cudf
+from merlin.core.compat import numpy as np
+from merlin.core.dispatch import make_df
 from merlin.io import Dataset
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
@@ -131,9 +125,9 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 json_sample = {
     "conts": {
-        "cont_1": {"dtype": np.float, "min_val": 0, "max_val": 1},
-        "cont_2": {"dtype": np.float, "min_val": 0, "max_val": 1},
-        "cont_3": {"dtype": np.float, "min_val": 0, "max_val": 1},
+        "cont_1": {"dtype": float, "min_val": 0, "max_val": 1},
+        "cont_2": {"dtype": float, "min_val": 0, "max_val": 1},
+        "cont_3": {"dtype": float, "min_val": 0, "max_val": 1},
     },
     "cats": {
         "cat_1": {

@@ -20,19 +20,13 @@ import os
 import shutil
 import sys
 
-try:
-    import cudf
-    import dask_cudf
-except ImportError:
-    cudf = None
-    dask_cudf = None
-
 import numpy as np
 import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from merlin.core import dispatch
+from merlin.core.compat import cudf, dask_cudf
 from merlin.core.dispatch import HAS_GPU, make_df
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes

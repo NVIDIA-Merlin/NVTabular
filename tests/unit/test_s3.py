@@ -23,11 +23,15 @@ from packaging.version import Version
 
 import nvtabular as nvt
 from merlin.core import dispatch
+from merlin.core.compat import dask_cudf
 from nvtabular import ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
-dask_cudf = pytest.importorskip("dask_cudf")
-from dask_cudf.io.tests import test_s3  # noqa: E402
+if dask_cudf:
+    from dask_cudf.io.tests import test_s3  # noqa: E402
+else:
+    pytest.skip(reason="dask_cudf not successfully imported", allow_module_level=True)
+
 
 # Import fixtures and context managers from dask_cudf
 s3_base = test_s3.s3_base

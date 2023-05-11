@@ -79,6 +79,11 @@ class ListSlice(Operator):
         on_cpu = is_cpu_object(df)
         ret = type(df)()
 
+        if on_cpu:
+            xp = np
+        else:
+            xp = cp
+
         for col in col_selector.names:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
@@ -88,7 +93,11 @@ class ListSlice(Operator):
                 if self.pad:
                     for v in values:
                         if len(v) < self.max_elements:
-                            v.extend([self.pad_value] * (self.max_elements - len(v)))
+                            padding = [self.pad_value] * (self.max_elements - len(v))
+                            if isinstance(v, xp.ndarray):
+                                xp.append(v, padding)
+                            else:
+                                v.extend(padding)
 
                 ret[col] = values
             else:
@@ -115,11 +124,18 @@ class ListSlice(Operator):
 
                 # create a new array for the sliced elements
                 new_elements = cp.full(
-                    new_offsets[-1].item(), fill_value=self.pad_value, dtype=elements.dtype
+                    new_offsets[-1].item(),
+                    fill_value=self.pad_value,
+                    dtype=elements.dtype,
                 )
                 if new_elements.size:
                     _slice_rows[blocks, threads](
-                        self.start, self.end, offsets, elements, new_offsets, new_elements
+                        self.start,
+                        self.end,
+                        offsets,
+                        elements,
+                        new_offsets,
+                        new_elements,
                     )
 
                 # build up a list column with the sliced values
@@ -133,7 +149,10 @@ class ListSlice(Operator):
 
     def _compute_properties(self, col_schema, input_schema):
         col_schema = super()._compute_properties(col_schema, input_schema)
-        properties = {**col_schema.properties, **{"value_count": {"min": 0, "max": None}}}
+        properties = {
+            **col_schema.properties,
+            **{"value_count": {"min": 0, "max": None}},
+        }
         if self.max_elements != np.iinfo(np.int64).max:
             properties["value_count"]["max"] = self.max_elements
             if self.pad:

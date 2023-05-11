@@ -19,7 +19,11 @@ from testbook import testbook
 
 from tests.conftest import REPO_ROOT
 
-pytest.importorskip("dask_cudf")
+from merlin.core.compat import dask_cudf
+
+if not dask_cudf:
+    pytest.mark.skip(reason="could not import dask_cudf successfully")
+
 nest_asyncio.apply()
 
 

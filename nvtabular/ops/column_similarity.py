@@ -13,25 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-try:
-    import cupy
-    import cupy.sparse
-except ImportError:
-    cupy = None
-
 import numba
-import numpy
 import pandas as pd
 import scipy.sparse
 
-try:
-    from cupyx.scipy.sparse import coo_matrix
-except ImportError:
-    from scipy.sparse import coo_matrix
-
+from merlin.core.compat import cuda, cupy, numpy
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
+
+if cupy:
+    from cupyx.scipy.sparse import coo_matrix
+else:
+    from scipy.sparse import coo_matrix
 
 
 class ColumnSimilarity(Operator):
@@ -138,7 +132,7 @@ class ColumnSimilarity(Operator):
 
     @property
     def output_dtype(self):
-        return numpy.float
+        return float
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
@@ -208,15 +202,17 @@ def _row_wise_inner_product_cpu(
         )
 
 
-@numba.cuda.jit
-def _row_wise_inner_product_gpu(
-    a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_data, output
-):
-    i = numba.cuda.grid(1)
-    if i < a.size:
-        output[i] = _inner_product_gpu(
-            a[i], a_indptr, a_indices, a_data, b[i], b_indptr, b_indices, b_data
-        )
+if cuda:
+
+    @numba.cuda.jit
+    def _row_wise_inner_product_gpu(
+        a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_data, output
+    ):
+        i = numba.cuda.grid(1)
+        if i < a.size:
+            output[i] = _inner_product_gpu(
+                a[i], a_indptr, a_indices, a_data, b[i], b_indptr, b_indices, b_data
+            )
 
 
 def _inner_product(a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_data):
@@ -243,7 +239,7 @@ def _inner_product(a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_dat
 
 # JIT the _inner_product function to run on both CPU/GPU using numba
 _inner_product_cpu = numba.njit(inline="always")(_inner_product)
-_inner_product_gpu = numba.cuda.jit(device=True, inline=True)(_inner_product)
+_inner_product_gpu = numba.cuda.jit(device=True, inline=True)(_inner_product) if cuda else None
 
 
 def _convert_features(features, metric, on_device):

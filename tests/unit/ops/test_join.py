@@ -18,16 +18,15 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core.compat import HAS_GPU, dask_cudf
 from nvtabular import ops
 
-try:
-    import dask_cudf
-
+if dask_cudf:
     _CPU = [True, False]
-    _HAS_GPU = True
-except ImportError:
+else:
     _CPU = [True]
-    _HAS_GPU = False
+
+_HAS_GPU = HAS_GPU
 
 
 @pytest.mark.parametrize("cpu", _CPU)

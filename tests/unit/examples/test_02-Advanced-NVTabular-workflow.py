@@ -19,7 +19,10 @@ from testbook import testbook
 
 from tests.conftest import REPO_ROOT
 
-pytest.importorskip("cudf")
+from merlin.core.compat import cudf
+
+if not cudf:
+    pytest.mark.skip(reason="could not import cudf successfully")
 pytest.importorskip("tensorflow")
 nest_asyncio.apply()
 
