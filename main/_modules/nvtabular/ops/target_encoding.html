@@ -334,7 +334,7 @@
         <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
             <span class="n">new_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># fold only, setting the np.int</span>
+            <span class="c1"># fold only, setting the dtype to int</span>
             <span class="n">new_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">new_schema</span>
 
@@ -550,12 +550,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v1.5.0/index.html">v1.5.0</a></dd>
-      <dd><a href="../../../../v1.6.0/index.html">v1.6.0</a></dd>
       <dd><a href="../../../../v1.7.0/index.html">v1.7.0</a></dd>
       <dd><a href="../../../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../../../v23.02.00/index.html">v23.02.00</a></dd>
+      <dd><a href="../../../../v23.04.00/index.html">v23.04.00</a></dd>
+      <dd><a href="../../../../v23.05.dev0/index.html">v23.05.dev0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

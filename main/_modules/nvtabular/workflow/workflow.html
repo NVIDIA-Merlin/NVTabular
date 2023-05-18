@@ -115,13 +115,9 @@
 
 <span class="kn">import</span> <span class="nn">cloudpickle</span>
 <span class="kn">import</span> <span class="nn">fsspec</span>
-
-<span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">cudf</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="n">cudf</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 
+<span class="kn">from</span> <span class="nn">merlin.core.compat</span> <span class="kn">import</span> <span class="n">cudf</span>
 <span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Graph</span>
 <span class="kn">from</span> <span class="nn">merlin.dag.executors</span> <span class="kn">import</span> <span class="n">DaskExecutor</span><span class="p">,</span> <span class="n">LocalExecutor</span>
 <span class="kn">from</span> <span class="nn">merlin.dag.node</span> <span class="kn">import</span> <span class="n">iter_nodes</span>
@@ -613,12 +609,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v1.5.0/index.html">v1.5.0</a></dd>
-      <dd><a href="../../../../v1.6.0/index.html">v1.6.0</a></dd>
       <dd><a href="../../../../v1.7.0/index.html">v1.7.0</a></dd>
       <dd><a href="../../../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../../../v23.02.00/index.html">v23.02.00</a></dd>
+      <dd><a href="../../../../v23.04.00/index.html">v23.04.00</a></dd>
+      <dd><a href="../../../../v23.05.dev0/index.html">v23.05.dev0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
