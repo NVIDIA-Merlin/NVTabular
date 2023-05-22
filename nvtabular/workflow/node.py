@@ -14,17 +14,5 @@
 # limitations under the License.
 #
 from merlin.dag import Node
-from nvtabular.ops import LambdaOp, Operator
 
-
-class WorkflowNode(Node):
-    """WorkflowNode represents a Node in a NVTabular workflow graph"""
-
-    def __rshift__(self, operator):
-        if callable(operator) and not (
-            isinstance(operator, type) and issubclass(operator, Operator)
-        ):
-            # implicit lambdaop conversion.
-            operator = LambdaOp(operator)
-
-        return super().__rshift__(operator)
+WorkflowNode = Node
