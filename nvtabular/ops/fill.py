@@ -17,8 +17,8 @@ import dask.dataframe as dd
 import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
+from merlin.dag.ops.stat_operator import StatOperator
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class FillMissing(Operator):

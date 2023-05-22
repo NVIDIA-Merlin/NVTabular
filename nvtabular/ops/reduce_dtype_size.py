@@ -17,9 +17,9 @@ import dask.dataframe as dd
 import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.schema import Schema
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 _INT_DTYPES = [np.int8, np.int16, np.int32, np.int64]
 
