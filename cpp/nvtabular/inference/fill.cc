@@ -115,6 +115,11 @@ namespace nvtabular
                                    py::object supports = py::module_::import("nvtabular").attr("graph").attr("base_operator").attr("Supports");
                                    return supports.attr("CPU_DICT_ARRAY");
                                  })
+          .def_property_readonly("supported_formats", [](py::object self)
+                                 {
+                                   py::object supported = py::module_::import("nvtabular").attr("graph").attr("base_operator").attr("DataFormats");
+                                   return supported.attr("NUMPY_DICT_ARRAY");
+                                 })
           .def("transform", &FillTransform::transform);
     }
   } // namespace inference

@@ -19,7 +19,7 @@ from typing import Optional
 
 import nvtabular as nvt
 from merlin.core.dispatch import DataFrameType
-from merlin.dag import BaseOperator, ColumnSelector
+from merlin.dag import BaseOperator, ColumnSelector, DataFormats
 
 
 class Operator(BaseOperator):
@@ -53,3 +53,7 @@ class Operator(BaseOperator):
 
     def create_node(self, selector):
         return nvt.workflow.node.WorkflowNode(selector)
+
+    @property
+    def supported_formats(self) -> DataFormats:
+        return DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
