@@ -105,7 +105,7 @@
 <dl class="py class">
 <dt id="nvtabular.ops.ValueCount">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">ValueCount</span></code><a class="reference internal" href="../_modules/nvtabular/ops/value_counts.html#ValueCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.ValueCount" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.ops.stat_operator.StatOperator</span></code></p>
 <p>The operator calculates the min and max lengths of multihot columns.</p>
 <dl class="py method">
 <dt id="nvtabular.ops.ValueCount.__init__">
@@ -149,19 +149,16 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.ValueCount.fit_finalize" title="nvtabular.ops.ValueCount.fit_finalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_finalize</span></code></a>(dask_stats)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">inference_initialize</span></code>(col_selector, model_config)</p></td>
-<td><p>Configures this operator for use in inference.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
 <td><p>Given a set of columns names returns the names of the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code>(new_path[, copy])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code>(new_path[, copy])</p></td>
 <td><p>Certain stat operators need external storage - for instance Categorify writes out parquet files containing the categorical mapping.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.ValueCount.transform" title="nvtabular.ops.ValueCount.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.ValueCount.transform" title="nvtabular.ops.ValueCount.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
 <td><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p></td>
 </tr>
 </tbody>
