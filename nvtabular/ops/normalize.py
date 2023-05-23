@@ -24,10 +24,10 @@ from merlin.core.dispatch import (
     is_list_dtype,
 )
 from merlin.dag import DataFormats, Supports
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.schema import Tags
 from nvtabular.ops.moments import _custom_moments
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class Normalize(StatOperator):

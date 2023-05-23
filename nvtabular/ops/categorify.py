@@ -38,10 +38,10 @@ from pyarrow import parquet as pq
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class Categorify(StatOperator):
@@ -346,7 +346,6 @@ class Categorify(StatOperator):
             for c in col_selector.grouped_names
             if c not in cols_with_vocabs
         ]
-
         # Define a rough row-count at which we are likely to
         # start hitting memory-pressure issues that cannot
         # be accommodated with smaller partition sizes.
@@ -361,7 +360,6 @@ class Categorify(StatOperator):
 
     def fit_finalize(self, categories):
         idx_count = 0
-
         for cat in categories:
             # this is a path
             self.categories[cat] = categories[cat]
