@@ -13,6 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.dag import BaseOperator
+from merlin.dag import BaseOperator, ColumnSelector  # noqa pylint: disable=unused-import
 
 Operator = BaseOperator

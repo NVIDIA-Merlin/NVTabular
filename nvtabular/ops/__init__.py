@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+from merlin.dag import ColumnSelector
+
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
 from nvtabular.ops.add_metadata import (
@@ -44,7 +46,7 @@ from nvtabular.ops.lambdaop import LambdaOp
 from nvtabular.ops.list_slice import ListSlice
 from nvtabular.ops.logop import LogOp
 from nvtabular.ops.normalize import Normalize, NormalizeMinMax
-from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.operator import Operator
 from nvtabular.ops.reduce_dtype_size import ReduceDtypeSize
 from nvtabular.ops.rename import Rename
 from nvtabular.ops.stat_operator import StatOperator
