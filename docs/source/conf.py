@@ -138,8 +138,8 @@ intersphinx_mapping = {
     "cudf": ("https://docs.rapids.ai/api/cudf/stable/", None),
     "distributed": ("https://distributed.dask.org/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
-    "merlin-core": ("https://nvidia-merlin.github.io/core/main", None),
-    "merlin-systems": ("https://nvidia-merlin.github.io/systems/main", None),
+    "merlin-core": ("https://nvidia-merlin.github.io/core/stable/", None),
+    "merlin-systems": ("https://nvidia-merlin.github.io/systems/stable/", None),
 }
 
 copydirs_additional_dirs = [
