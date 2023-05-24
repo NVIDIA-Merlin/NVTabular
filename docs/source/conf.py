@@ -116,7 +116,7 @@ else:
     smv_tag_whitelist = r"^v.*$"
 
 # Only include main branch for now
-smv_branch_whitelist = "^main$"
+smv_branch_whitelist = "^(main|stable)$"
 
 smv_refs_override_suffix = "-docs"
 
