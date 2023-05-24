@@ -26,6 +26,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools==59.4.0 wheel tox
+      - name: Setup local branches for docs build
+        run: |
+          git branch --track main origin/main || true
+          git branch --track stable origin/stable || true
       - name: Building docs (multiversion)
         run: |
           tox -e docs-multi
