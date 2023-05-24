@@ -121,7 +121,7 @@ smv_branch_whitelist = "^(main|stable)$"
 smv_refs_override_suffix = "-docs"
 
 html_sidebars = {"**": ["versions.html"]}
-html_baseurl = "https://nvidia-merlin.github.io/NVTabular/main"
+html_baseurl = "https://nvidia-merlin.github.io/NVTabular/stable/"
 
 autodoc_inherit_docstrings = False
 autodoc_default_options = {
