@@ -165,7 +165,7 @@ To run NVTabular on Databricks, do the following:
 
 [AWS SageMaker](https://aws.amazon.com/sagemaker/) is a service from AWS to "build, train and deploy machine learning" models. It automates and manages the MLOps workflow. It supports jupyter notebook instances enabling users to work directly in jupyter notebook/jupyter lab without any additional configurations. In this section, we will explain how to run NVIDIA Merlin (NVTabular) on AWS SageMaker notebook instances. We adopted the work from [Eugene](https://twitter.com/eugeneyan/) from his [twitter post](https://twitter.com/eugeneyan/status/1470916049604268035). We tested the workflow on February, 1st, 2022, but it is not integrated into our CI workflows. Future release of Merlin or Merlin's dependencies can cause issues.
 
-To run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens) on AWS SageMaker, do the following:
+To run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples/getting-started-movielens) on AWS SageMaker, do the following:
 
 1. Login into your AWS console and select AWS SageMaker.
 
@@ -213,6 +213,6 @@ conda install -y torchmetrics ipykernel
 python -m ipykernel install --user --name=nvtabular
 ```
 
-11. You can switch in jupyter lab and run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens).
+11. You can switch in jupyter lab and run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples/getting-started-movielens).
 
 This workflow enables NVTabular ETL and training with TensorFlow or Pytorch. Deployment with Triton Inference Server will follow soon.

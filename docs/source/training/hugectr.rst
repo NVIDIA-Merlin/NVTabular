@@ -126,5 +126,5 @@ When training is accelerated with HugeCTR, the following happens:
            metrics = sess.evaluation()
            print("[HUGECTR][INFO] iter: {}, {}".format(i, metrics))
 
-For more information, refer to the `HugeCTR documentation <https://nvidia-merlin.github.io/HugeCTR/main/hugectr_user_guide.html>`_
+For more information, refer to the `HugeCTR documentation <https://nvidia-merlin.github.io/HugeCTR/stable/hugectr_user_guide.html>`_
 or the `HugeCTR repository <https://github.com/NVIDIA-Merlin/HugeCTR>`_ on GitHub.
