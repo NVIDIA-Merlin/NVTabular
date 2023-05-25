@@ -749,40 +749,45 @@ def test_embedding_cat_export_import(tmpdir, cpu):
             "string_id": string_ids,
         }
     )
-
-    embedding_input = training_data.copy()
-    embedding_input["embeddings"] = create_multihot_col([0, 5, 10, 15, 20, 25], np.random.rand(25))
+    training_data["embeddings"] = create_multihot_col([0, 5, 10, 15, 20, 25], np.random.rand(25))
 
     cat_op = nvt.ops.Categorify()
 
     # first workflow that categorifies all data
     graph1 = ["string_id"] >> cat_op
-    train_res = Workflow(graph1).fit_transform(Dataset(training_data))
-
-    # second workflow that categorifies the embedding table data
-    graph2 = ["string_id"] >> cat_op
+    emb_res = Workflow(graph1 + ["embeddings"]).fit_transform(
+        Dataset(training_data, cpu=(cpu is not None))
+    )
     npy_path = str(tmpdir / "embeddings.npy")
-    emb_res = Workflow(graph2 + ["embeddings"]).transform(Dataset(embedding_input))
     emb_res.to_npy(npy_path)
 
     embeddings = np.load(npy_path)
-
-    # df = make_df({"id": np.random.choice(string_ids, 30)})
-    # dataset = Dataset(df)
-    # graph3 = ["id"] >> cat_op
-    # target_res = Workflow(graph3).transform(dataset)
+    # second workflow that categorifies the embedding table data
+    df = make_df({"string_id": np.random.choice(string_ids, 30)})
+    graph2 = ["string_id"] >> cat_op
+    train_res = Workflow(graph2).transform(Dataset(df, cpu=(cpu is not None)))
 
     data_loader = Loader(
         train_res,
-        batch_size=30,
+        batch_size=1,
         transforms=[
             EmbeddingOperator(
-                embeddings[:, 1:], id_lookup_table=embeddings[:, 0], lookup_key="string_id"
+                embeddings[:, 1:],
+                id_lookup_table=embeddings[:, 0].astype(int),
+                lookup_key="string_id",
             )
         ],
         shuffle=False,
         device=cpu,
     )
+    origin_df = train_res.to_ddf().merge(emb_res.to_ddf(), on="string_id", how="left").compute()
     for idx, batch in enumerate(data_loader):
         batch
-        breakpoint()
+        b_df = batch[0].to_df()
+        org_df = origin_df.iloc[idx]
+        if not cpu:
+            assert (b_df["string_id"].to_numpy() == org_df["string_id"].to_numpy()).all()
+            assert (b_df["embeddings"].list.leaves == org_df["embeddings"].list.leaves).all()
+        else:
+            assert (b_df["string_id"].values == org_df["string_id"]).all()
+            assert b_df["embeddings"].values[0] == org_df["embeddings"].tolist()
