@@ -27,9 +27,11 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 from merlin.core import dispatch
 from merlin.core.compat import cudf, dask_cudf
-from merlin.core.dispatch import HAS_GPU, make_df
+from merlin.core.dispatch import HAS_GPU, create_multihot_col, make_df
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes
+from merlin.dataloader.loader_base import LoaderBase as Loader
+from merlin.dataloader.ops.embeddings import EmbeddingOperator
 from merlin.schema import Tags
 from nvtabular import Dataset, Workflow, ops
 from tests.conftest import assert_eq, get_cats, mycols_csv
@@ -737,3 +739,50 @@ def test_workflow_auto_infer_modules_byvalue(tmp_path):
     os.unlink(str(tmp_path / "not_a_real_module.py"))
 
     Workflow.load(str(tmp_path / "identity-workflow"))
+
+
+@pytest.mark.parametrize("cpu", [None, "cpu"] if HAS_GPU else ["cpu"])
+def test_embedding_cat_export_import(tmpdir, cpu):
+    string_ids = ["alpha", "bravo", "charlie", "delta", "foxtrot"]
+    training_data = make_df(
+        {
+            "string_id": string_ids,
+        }
+    )
+
+    embedding_input = training_data.copy()
+    embedding_input["embeddings"] = create_multihot_col([0, 5, 10, 15, 20, 25], np.random.rand(25))
+
+    cat_op = nvt.ops.Categorify()
+
+    # first workflow that categorifies all data
+    graph1 = ["string_id"] >> cat_op
+    train_res = Workflow(graph1).fit_transform(Dataset(training_data))
+
+    # second workflow that categorifies the embedding table data
+    graph2 = ["string_id"] >> cat_op
+    npy_path = str(tmpdir / "embeddings.npy")
+    emb_res = Workflow(graph2 + ["embeddings"]).transform(Dataset(embedding_input))
+    emb_res.to_npy(npy_path)
+
+    embeddings = np.load(npy_path)
+
+    # df = make_df({"id": np.random.choice(string_ids, 30)})
+    # dataset = Dataset(df)
+    # graph3 = ["id"] >> cat_op
+    # target_res = Workflow(graph3).transform(dataset)
+
+    data_loader = Loader(
+        train_res,
+        batch_size=30,
+        transforms=[
+            EmbeddingOperator(
+                embeddings[:, 1:], id_lookup_table=embeddings[:, 0], lookup_key="string_id"
+            )
+        ],
+        shuffle=False,
+        device=cpu,
+    )
+    for idx, batch in enumerate(data_loader):
+        batch
+        breakpoint()
