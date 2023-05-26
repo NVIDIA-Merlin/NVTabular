@@ -32,9 +32,10 @@ from merlin.core.compat import cudf
 from merlin.dag import Graph
 from merlin.dag.executors import DaskExecutor, LocalExecutor
 from merlin.dag.node import iter_nodes
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.io import Dataset
 from merlin.schema import Schema
-from nvtabular.ops import LambdaOp, StatOperator
+from nvtabular.ops import LambdaOp
 from nvtabular.workflow.node import WorkflowNode
 
 LOG = logging.getLogger("nvtabular")
