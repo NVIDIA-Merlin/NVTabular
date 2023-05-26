@@ -17,7 +17,7 @@ In addition to providing mechanisms for transforming the data to prepare it for 
 
 ## HugeCTR Interoperability
 
-NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the [HugeCTR Example Notebook](https://github.com/NVIDIA-Merlin/NVTabular/blob/main/examples/scaling-criteo/03-Training-with-HugeCTR.ipynb) for details about how this works.
+NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the [HugeCTR Example Notebook](https://github.com/NVIDIA-Merlin/NVTabular/blob/stable/examples/scaling-criteo/03-Training-with-HugeCTR.ipynb) for details about how this works.
 
 ## Multi-GPU Support
 
@@ -38,7 +38,7 @@ workflow = nvt.Workflow(..., client=client)
 
 Currently, there are many ways to deploy a "cluster" for Dask. This [article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a summary of all the practical options. For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
 
-Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/) for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see [Multi-GPU](https://github.com/NVIDIA/NVTabular/blob/main/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb) for a simple step-by-step example.
+Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/) for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see [Multi-GPU](https://github.com/NVIDIA/NVTabular/blob/stable/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb) for a simple step-by-step example.
 
 ## Multi-Node Support
 

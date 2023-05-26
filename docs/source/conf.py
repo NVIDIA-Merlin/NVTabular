@@ -11,6 +11,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import re
 import subprocess
 import sys
 
@@ -107,6 +108,7 @@ source_suffix = [".rst", ".md"]
 # at a commit (not a Git repo).
 if os.path.exists(gitdir):
     tag_refs = subprocess.check_output(["git", "tag", "-l", "v*"]).decode("utf-8").split()
+    tag_refs = [tag for tag in tag_refs if re.match(r"^v[0-9]+.[0-9]+.[0-9]+$", tag)]
     tag_refs = natsorted(tag_refs)[-6:]
     smv_tag_whitelist = r"^(" + r"|".join(tag_refs) + r")$"
 else:
@@ -114,12 +116,12 @@ else:
     smv_tag_whitelist = r"^v.*$"
 
 # Only include main branch for now
-smv_branch_whitelist = "^main$"
+smv_branch_whitelist = "^(main|stable)$"
 
 smv_refs_override_suffix = "-docs"
 
 html_sidebars = {"**": ["versions.html"]}
-html_baseurl = "https://nvidia-merlin.github.io/NVTabular/main"
+html_baseurl = "https://nvidia-merlin.github.io/NVTabular/stable/"
 
 autodoc_inherit_docstrings = False
 autodoc_default_options = {
@@ -136,8 +138,8 @@ intersphinx_mapping = {
     "cudf": ("https://docs.rapids.ai/api/cudf/stable/", None),
     "distributed": ("https://distributed.dask.org/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
-    "merlin-core": ("https://nvidia-merlin.github.io/core/main", None),
-    "merlin-systems": ("https://nvidia-merlin.github.io/systems/main", None),
+    "merlin-core": ("https://nvidia-merlin.github.io/core/stable/", None),
+    "merlin-systems": ("https://nvidia-merlin.github.io/systems/stable/", None),
 }
 
 copydirs_additional_dirs = [

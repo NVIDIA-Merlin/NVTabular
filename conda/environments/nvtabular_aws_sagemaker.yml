@@ -1,4 +1,4 @@
-# Based on https://github.com/NVIDIA-Merlin/NVTabular/blob/main/conda/environments/nvtabular_dev_cuda11.0.yml
+# Based on https://github.com/NVIDIA-Merlin/NVTabular/blob/stable/conda/environments/nvtabular_dev_cuda11.0.yml
 name: nvtabular
 channels:
   - rapidsai
