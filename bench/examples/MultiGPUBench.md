@@ -2,7 +2,7 @@
 
 The benchmark script described in this document is located at `NVTabular/examples/dask-nvtabular-criteo-benchmark.py`.
 
-The [multi-GPU Criteo/DLRM benchmark](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py) is designed to measure the time required to preprocess the [Criteo (1TB) dataset](https://www.kaggle.com/c/criteo-display-ad-challenge/data) for Facebook’s [DLRM model](https://github.com/facebookresearch/dlrm). The user must specify the path of the raw dataset (using the `--data-path` flag), as well as the output directory for all temporary/final data (using the `--out-path` flag).
+The [multi-GPU Criteo/DLRM benchmark](https://github.com/NVIDIA/NVTabular/blob/stable/examples/dask-nvtabular-criteo-benchmark.py) is designed to measure the time required to preprocess the [Criteo (1TB) dataset](https://www.kaggle.com/c/criteo-display-ad-challenge/data) for Facebook’s [DLRM model](https://github.com/facebookresearch/dlrm). The user must specify the path of the raw dataset (using the `--data-path` flag), as well as the output directory for all temporary/final data (using the `--out-path` flag).
 
 ### Example Usage
 
@@ -12,7 +12,7 @@ python dask-nvtabular-criteo-benchmark.py --data-path /path/to/criteo_parquet --
 
 ### Dataset Requirements (Parquet)
 
-The script is designed with a parquet-formatted dataset in mind. Although csv files can also be handled by NVTabular, converting to parquet yields significantly better performance. To convert your dataset, try using the [conversion notebook](https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb) (located at `NVTabular/examples/optimize_criteo.ipynb`).
+The script is designed with a parquet-formatted dataset in mind. Although csv files can also be handled by NVTabular, converting to parquet yields significantly better performance. To convert your dataset, try using the [conversion notebook](https://github.com/NVIDIA/NVTabular/blob/stable/examples/optimize_criteo.ipynb) (located at `NVTabular/examples/optimize_criteo.ipynb`).
 
 ### General Notes on Parameter Tuning
 
