@@ -317,7 +317,7 @@ movies_converted.parquet  <span class=" -Color -Color-Bold -Color-Bold-Blue">tra
 </div>
 <p>Let us also add our target to the set of returned columns.</p>
 <p>Additionally, we tag the <code class="docutils literal notranslate"><span class="pre">rating</span></code> column with appropriate tags. This will allow other components of the Merlin Framework to use this information and minimize the code we will have to write to perform complex operations such as training or serving a Deep Learning model.</p>
-<p>If you would like to learn more about using <code class="docutils literal notranslate"><span class="pre">Tags</span></code>, take a look at the <a class="reference external" href="https://nvidia-merlin.github.io/models/main/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> notebook in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
+<p>If you would like to learn more about using <code class="docutils literal notranslate"><span class="pre">Tags</span></code>, take a look at the <a class="reference external" href="https://nvidia-merlin.github.io/models/stable/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> notebook in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;rating&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddMetadata</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">REGRESSION</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">TARGET</span><span class="p">])</span>
@@ -442,7 +442,7 @@ movies_converted.parquet  <span class=" -Color -Color-Bold -Color-Bold-Blue">tra
 </div></div></div>
 </div>
 <p>Let’s finish off this notebook with training a DLRM (a Deep Learning Recommendation Model introduced in <a class="reference external" href="https://arxiv.org/abs/1906.00091">Deep Learning Recommendation Model for Personalization and Recommendation Systems</a>) on our preprocessed data.</p>
-<p>To learn more about the integration between NVTabular and Merlin Models, please see the <a class="reference external" href="https://nvidia-merlin.github.io/models/main/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
+<p>To learn more about the integration between NVTabular and Merlin Models, please see the <a class="reference external" href="https://nvidia-merlin.github.io/models/stable/examples/02-Merlin-Models-and-NVTabular-integration.html">NVTabular and Merlin Models integrated example</a> in the Merlin Models <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">repository</a>.</p>
 </div>
 </div>
 <div class="section" id="training-a-dlrm-model">
