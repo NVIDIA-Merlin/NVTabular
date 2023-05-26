@@ -27,7 +27,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 from merlin.core import dispatch
 from merlin.core.compat import cudf, dask_cudf
-from merlin.core.dispatch import HAS_GPU, create_multihot_col, make_df
+from merlin.core.dispatch import HAS_GPU, create_multihot_col, make_df, make_series
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes
 from merlin.dataloader.loader_base import LoaderBase as Loader
@@ -749,7 +749,9 @@ def test_embedding_cat_export_import(tmpdir, cpu):
             "string_id": string_ids,
         }
     )
-    training_data["embeddings"] = create_multihot_col([0, 5, 10, 15, 20, 25], np.random.rand(25))
+    training_data["embeddings"] = create_multihot_col(
+        [0, 5, 10, 15, 20, 25], make_series(np.random.rand(25))
+    )
 
     cat_op = nvt.ops.Categorify()
 
