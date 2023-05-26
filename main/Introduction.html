@@ -8,7 +8,7 @@
       <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
       <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
-    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -97,8 +97,8 @@
   <div class="section" id="nvtabular">
 <h1><a class="reference external" href="https://github.com/NVIDIA/NVTabular">NVTabular</a><a class="headerlink" href="#nvtabular" title="Permalink to this headline"></a></h1>
 <p><a class="reference external" href="https://pypi.python.org/pypi/NVTabular/"><img alt="PyPI" src="https://img.shields.io/pypi/v/NVTabular?color=orange&amp;label=version" /></a>
-<a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/blob/main/LICENSE"><img alt="LICENSE" src="https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular" /></a>
-<a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html"><img alt="Documentation" src="https://img.shields.io/badge/documentation-blue.svg" /></a></p>
+<a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/blob/stable/LICENSE"><img alt="LICENSE" src="https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular" /></a>
+<a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html"><img alt="Documentation" src="https://img.shields.io/badge/documentation-blue.svg" /></a></p>
 <p>NVTabular is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the <a class="reference external" href="https://github.com/rapidsai/cudf/tree/main/python/dask_cudf">RAPIDS Dask-cuDF</a> library.</p>
 <p>NVTabular is a component of <a class="reference external" href="https://developer.nvidia.com/nvidia-merlin">NVIDIA Merlin</a>, an open source framework for building and deploying recommender systems and works with the other Merlin components including <a class="reference external" href="https://github.com/NVIDIA-Merlin/models">Merlin Models</a>, <a class="reference external" href="https://github.com/NVIDIA/HugeCTR">HugeCTR</a> and <a class="reference external" href="https://github.com/NVIDIA-Merlin/systems">Merlin Systems</a> to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s <a class="reference external" href="https://github.com/NVIDIA/tensorrt-inference-server">Triton Inference Server</a>, the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.</p>
 <!-- <img src='https://developer.nvidia.com/blog/wp-content/uploads/2020/07/recommender-system-training-pipeline-1.png'/> -->
@@ -118,7 +118,7 @@
 <li><p>prepare datasets quickly and easily for experimentation so that more models can be trained.</p></li>
 <li><p>deploy models into production by providing faster dataset transformation</p></li>
 </ul>
-<p>Learn more in the NVTabular <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/core_features.html">core features documentation</a>.</p>
+<p>Learn more in the NVTabular <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/stable/core_features.html">core features documentation</a>.</p>
 </div>
 <div class="section" id="performance">
 <h2>Performance<a class="headerlink" href="#performance" title="Permalink to this headline"></a></h2>
@@ -179,12 +179,12 @@ The following table summarizes the key information about the containers:</p>
 </tr>
 </tbody>
 </table>
-<p>To use these Docker containers, you’ll first need to install the <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">NVIDIA Container Toolkit</a> to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/docs/source/resources/support_matrix.rst">Support Matrix</a>.</p>
+<p>To use these Docker containers, you’ll first need to install the <a class="reference external" href="https://github.com/NVIDIA/nvidia-docker">NVIDIA Container Toolkit</a> to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/stable/docs/source/resources/support_matrix.rst">Support Matrix</a>.</p>
 </div>
 </div>
 <div class="section" id="notebook-examples-and-tutorials">
 <h2>Notebook Examples and Tutorials<a class="headerlink" href="#notebook-examples-and-tutorials" title="Permalink to this headline"></a></h2>
-<p>We provide a <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples">collection of examples</a> to demonstrate feature engineering with NVTabular as Jupyter notebooks:</p>
+<p>We provide a <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples">collection of examples</a> to demonstrate feature engineering with NVTabular as Jupyter notebooks:</p>
 <ul class="simple">
 <li><p>Introduction to NVTabular’s High-Level API</p></li>
 <li><p>Advanced workflows with NVTabular</p></li>
@@ -193,16 +193,16 @@ The following table summarizes the key information about the containers:</p>
 </ul>
 <p>In addition, NVTabular is used in many of our examples in other Merlin libraries:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples">End-To-End Examples with Merlin</a></p></li>
-<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/models/tree/main/examples">Training Examples with Merlin Models</a></p></li>
-<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples">Training Examples with Transformer4Rec</a></p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/Merlin/tree/stable/examples">End-To-End Examples with Merlin</a></p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/models/tree/stable/examples">Training Examples with Merlin Models</a></p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/stable/examples">Training Examples with Transformer4Rec</a></p></li>
 </ul>
 </div>
 <div class="section" id="feedback-and-support">
 <h2>Feedback and Support<a class="headerlink" href="#feedback-and-support" title="Permalink to this headline"></a></h2>
-<p>If you’d like to contribute to the library directly, see the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md">Contributing.md</a>. We’re particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this <a class="reference external" href="https://developer.nvidia.com/merlin-devzone-survey">survey</a>.</p>
+<p>If you’d like to contribute to the library directly, see the <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/stable/CONTRIBUTING.md">Contributing.md</a>. We’re particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this <a class="reference external" href="https://developer.nvidia.com/merlin-devzone-survey">survey</a>.</p>
 <p>If you’re interested in learning more about how NVTabular works, see
-<a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/Introduction.html">our NVTabular documentation</a>. We also have <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/main/api/index.html">API documentation</a> that outlines the specifics of the available calls within the library.</p>
+<a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html">our NVTabular documentation</a>. We also have <a class="reference external" href="https://nvidia-merlin.github.io/NVTabular/stable/api/index.html">API documentation</a> that outlines the specifics of the available calls within the library.</p>
 </div>
 </div>
 
@@ -240,16 +240,17 @@ The following table summarizes the key information about the containers:</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
+      <dd><a href="../v1.6.0/Introduction.html">v1.6.0</a></dd>
       <dd><a href="../v1.7.0/Introduction.html">v1.7.0</a></dd>
       <dd><a href="../v1.8.0/Introduction.html">v1.8.0</a></dd>
       <dd><a href="../v1.8.1/Introduction.html">v1.8.1</a></dd>
       <dd><a href="../v23.02.00/Introduction.html">v23.02.00</a></dd>
       <dd><a href="../v23.04.00/Introduction.html">v23.04.00</a></dd>
-      <dd><a href="../v23.05.dev0/Introduction.html">v23.05.dev0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
       <dd><a href="Introduction.html">main</a></dd>
+      <dd><a href="../stable/Introduction.html">stable</a></dd>
     </dl>
   </div>
 </div><script>

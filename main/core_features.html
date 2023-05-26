@@ -8,7 +8,7 @@
       <link rel="stylesheet" href="_static/mystnb.css" type="text/css" />
       <link rel="stylesheet" href="_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/custom.css" type="text/css" />
-    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/core_features.html" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/core_features.html" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -116,7 +116,7 @@
 </div>
 <div class="section" id="hugectr-interoperability">
 <h2>HugeCTR Interoperability<a class="headerlink" href="#hugectr-interoperability" title="Permalink to this headline"></a></h2>
-<p>NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/blob/main/examples/scaling-criteo/03-Training-with-HugeCTR.ipynb">HugeCTR Example Notebook</a> for details about how this works.</p>
+<p>NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/blob/stable/examples/scaling-criteo/03-Training-with-HugeCTR.ipynb">HugeCTR Example Notebook</a> for details about how this works.</p>
 </div>
 <div class="section" id="multi-gpu-support">
 <h2>Multi-GPU Support<a class="headerlink" href="#multi-gpu-support" title="Permalink to this headline"></a></h2>
@@ -134,7 +134,7 @@
 </pre></div>
 </div>
 <p>Currently, there are many ways to deploy a “cluster” for Dask. This <a class="reference external" href="https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters">article</a> gives a summary of all the practical options. For a single machine with multiple GPUs, the <code class="docutils literal notranslate"><span class="pre">dask_cuda.LocalCUDACluster</span></code> API is typically the most convenient option.</p>
-<p>Since NVTabular already uses <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/">Dask-CuDF</a> for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/main/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb">Multi-GPU</a> for a simple step-by-step example.</p>
+<p>Since NVTabular already uses <a class="reference external" href="https://docs.rapids.ai/api/cudf/stable/">Dask-CuDF</a> for internal data processing, there are no other requirements for multi-GPU scaling. With that said, the parallel performance can depend strongly on (1) the size of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. For additional information, see <a class="reference external" href="https://github.com/NVIDIA/NVTabular/blob/stable/examples/multi-gpu-toy-example/multi-gpu_dask.ipynb">Multi-GPU</a> for a simple step-by-step example.</p>
 </div>
 <div class="section" id="multi-node-support">
 <h2>Multi-Node Support<a class="headerlink" href="#multi-node-support" title="Permalink to this headline"></a></h2>
@@ -210,16 +210,17 @@ columns. Instead we train models with multi-hot embeddings for these features by
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
+      <dd><a href="../v1.6.0/core_features.html">v1.6.0</a></dd>
       <dd><a href="../v1.7.0/core_features.html">v1.7.0</a></dd>
       <dd><a href="../v1.8.0/core_features.html">v1.8.0</a></dd>
       <dd><a href="../v1.8.1/core_features.html">v1.8.1</a></dd>
       <dd><a href="../v23.02.00/core_features.html">v23.02.00</a></dd>
       <dd><a href="../v23.04.00/core_features.html">v23.04.00</a></dd>
-      <dd><a href="../v23.05.dev0/core_features.html">v23.05.dev0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
       <dd><a href="core_features.html">main</a></dd>
+      <dd><a href="../stable/core_features.html">stable</a></dd>
     </dl>
   </div>
 </div><script>

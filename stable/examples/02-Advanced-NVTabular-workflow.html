@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced NVTabular Workflow &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/examples/02-Advanced-NVTabular-workflow.html" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script >let toggleHintShow = 'Click to show';</script>
+        <script >let toggleHintHide = 'Click to hide';</script>
+        <script >let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Running on multiple GPUs or on CPU" href="03-Running-on-multiple-GPUs-or-on-CPU.html" />
+    <link rel="prev" title="Getting Started with NVTabular: Process Tabular Data On GPU" href="01-Getting-started.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="banner">
+    <p class="banner">
+      Beginning in January 2023, versions for all NVIDIA Merlin projects
+      will change from semantic versioning like <code>4.0</code>
+      to calendar versioning like <code>23.01</code>.</p>
+  </div>
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            NVTabular
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Example Notebooks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#inventory">Inventory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#running-the-example-notebooks">Running the Example Notebooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NVTabular</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">NVTabular Example Notebooks</a></li>
+      <li class="breadcrumb-item active">Advanced NVTabular Workflow</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copyright 2022 NVIDIA Corporation. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1"># ==============================================================================</span>
+
+<span class="c1"># Each user is responsible for checking the content of datasets and the</span>
+<span class="c1"># applicable licenses and determining if suitable for the intended use.</span>
+</pre></div>
+</div>
+</div>
+</div>
+<img alt="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" src="http://developer.download.nvidia.com/compute/machine-learning/frameworks/nvidia_logo.png" />
+<div class="section" id="advanced-nvtabular-workflow">
+<h1>Advanced NVTabular Workflow<a class="headerlink" href="#advanced-nvtabular-workflow" title="Permalink to this headline"></a></h1>
+<p>This notebook is created using the latest stable <a class="reference external" href="https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-tensorflow/tags">merlin-tensorflow</a> container.</p>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>This notebook builds on what is covered in <a class="reference internal" href="01-Getting-started.html"><span class="doc std std-doc">01-Getting-started NB</span></a>. In this notebook we will take a closer look at running more complex <code class="docutils literal notranslate"><span class="pre">Operators</span></code>.</p>
+<p>We will also examine the functionality of the <code class="docutils literal notranslate"><span class="pre">Schema</span></code> – this can be very useful for learning more about our data and instructing which columns we would like to use and how.</p>
+<div class="section" id="learning-objectives">
+<h3>Learning objectives<a class="headerlink" href="#learning-objectives" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p>Leveraging more complex Merlin NVTabular Operators</p></li>
+<li><p>Splitting our data in chunks to limit memory footprint</p></li>
+<li><p>Understanding the role of the schema and modifying it</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="downloading-the-dataset">
+<h2>Downloading the dataset<a class="headerlink" href="#downloading-the-dataset" title="Permalink to this headline"></a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">merlin.datasets.entertainment</span> <span class="kn">import</span> <span class="n">get_movielens</span>
+
+<span class="n">input_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;INPUT_DATA_DIR&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/merlin-framework/movielens/&quot;</span><span class="p">))</span>
+<span class="n">get_movielens</span><span class="p">(</span><span class="n">variant</span><span class="o">=</span><span class="s2">&quot;ml-1m&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">input_path</span><span class="p">);</span> <span class="c1">#noqa</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2022-09-13 07:41:27.850043: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-09-13 07:41:27.850489: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-09-13 07:41:27.850632: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+/usr/local/lib/python3.8/dist-packages/cudf/core/frame.py:384: UserWarning: The deep parameter is ignored and is only included for pandas compatibility.
+  warnings.warn(
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="reading-in-the-data">
+<h2>Reading in the data<a class="headerlink" href="#reading-in-the-data" title="Permalink to this headline"></a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">get_lib</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s1">ml-1m/train.parquet&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">train</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">600_000</span><span class="p">]</span>
+<span class="n">valid</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">600_000</span><span class="p">:]</span>
+
+<span class="n">movies</span> <span class="o">=</span> <span class="n">get_lib</span><span class="p">()</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s1">ml-1m/movies_converted.parquet&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>From the provided <code class="docutils literal notranslate"><span class="pre">train</span></code> and <code class="docutils literal notranslate"><span class="pre">validation</span></code> sets we extract <code class="docutils literal notranslate"><span class="pre">userId</span></code>, <code class="docutils literal notranslate"><span class="pre">movieId</span></code> and <code class="docutils literal notranslate"><span class="pre">rating</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>userId</th>
+      <th>movieId</th>
+      <th>rating</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>315038</th>
+      <td>1880</td>
+      <td>1674</td>
+      <td>3</td>
+      <td>975379394</td>
+    </tr>
+    <tr>
+      <th>835377</th>
+      <td>5021</td>
+      <td>3468</td>
+      <td>4</td>
+      <td>962583655</td>
+    </tr>
+    <tr>
+      <th>105787</th>
+      <td>699</td>
+      <td>2205</td>
+      <td>2</td>
+      <td>986531971</td>
+    </tr>
+    <tr>
+      <th>150012</th>
+      <td>966</td>
+      <td>1653</td>
+      <td>1</td>
+      <td>975115827</td>
+    </tr>
+    <tr>
+      <th>137192</th>
+      <td>883</td>
+      <td>3911</td>
+      <td>4</td>
+      <td>975260600</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>We will also use the metadata contained in <code class="docutils literal notranslate"><span class="pre">movies</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>movieId</th>
+      <th>title</th>
+      <th>genres</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>Toy Story (1995)</td>
+      <td>[Animation, Children's, Comedy]</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>Jumanji (1995)</td>
+      <td>[Adventure, Children's, Fantasy]</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>Grumpier Old Men (1995)</td>
+      <td>[Comedy, Romance]</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>Waiting to Exhale (1995)</td>
+      <td>[Comedy, Drama]</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>Father of the Bride Part II (1995)</td>
+      <td>[Comedy]</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>Let’s create <code class="docutils literal notranslate"><span class="pre">Merlin</span> <span class="pre">Dataset</span></code>s that we will be able to run through our workflow (a workflow defines the operations we would like performed on our data).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
+<span class="kn">from</span> <span class="nn">merlin.schema.tags</span> <span class="kn">import</span> <span class="n">Tags</span>
+
+<span class="n">train_ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">valid_ds</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
+
+<span class="n">train_ds</span><span class="p">,</span> <span class="n">valid_ds</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&lt;merlin.io.dataset.Dataset at 0x7f1c2628e550&gt;,
+ &lt;merlin.io.dataset.Dataset at 0x7f1c2628e0a0&gt;)
+</pre></div>
+</div>
+</div>
+</div>
+<p>The constructor <code class="docutils literal notranslate"><span class="pre">nvt.Dataset(...)</span></code> accepts an important parameter: <code class="docutils literal notranslate"><span class="pre">npartitions</span></code>. We can leverage it to specify into how many chunks we would like our data to be split. Our workflow will process data in chunks and by increasing the number of partitions we can limit the memory footprint.</p>
+<p>We have to remember though to shuffle the data so that all relevant records reside in a single partition. Otherwise, depending on the operations we chose to perform, the results of our workflow might be incorrect.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_ds</span><span class="o">.</span><span class="n">shuffle_by_keys</span><span class="p">(</span><span class="s1">&#39;userId&#39;</span><span class="p">)</span>
+<span class="n">valid_ds</span><span class="o">.</span><span class="n">shuffle_by_keys</span><span class="p">(</span><span class="s1">&#39;userId&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&lt;merlin.io.dataset.Dataset at 0x7f1c26296790&gt;
+</pre></div>
+</div>
+</div>
+</div>
+<p>We have now shuffled the records so that all examples for the same <code class="docutils literal notranslate"><span class="pre">userId</span></code> reside in the same partition.</p>
+<p>The number of partitions hasn’t changed.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_ds</span><span class="o">.</span><span class="n">npartitions</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="defining-the-workflow">
+<h2>Defining the workflow<a class="headerlink" href="#defining-the-workflow" title="Permalink to this headline"></a></h2>
+<div class="section" id="joining-an-external-dataset">
+<h3>Joining an external dataset<a class="headerlink" href="#joining-an-external-dataset" title="Permalink to this headline"></a></h3>
+<p>We want to make use of information contained in the <code class="docutils literal notranslate"><span class="pre">movies</span></code> DataFrame.</p>
+<p>Let us join it onto our data, making sure we only select the <code class="docutils literal notranslate"><span class="pre">genres</span></code> column.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">genres</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;movieId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">JoinExternal</span><span class="p">(</span><span class="n">movies</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s1">&#39;movieId&#39;</span><span class="p">,</span> <span class="n">columns_ext</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;movieId&#39;</span><span class="p">,</span> <span class="s1">&#39;genres&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">genres</span></code> information is represented as a list of strings. In order for us to be able to use it for training an ML model we need to encode the strings as categories.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">movies</span><span class="p">[</span><span class="s1">&#39;genres&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>0     [Animation, Children&#39;s, Comedy]
+1    [Adventure, Children&#39;s, Fantasy]
+2                   [Comedy, Romance]
+3                     [Comedy, Drama]
+4                            [Comedy]
+Name: genres, dtype: list
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="encoding-a-list-of-strings-as-categories">
+<h3>Encoding a list of strings as categories<a class="headerlink" href="#encoding-a-list-of-strings-as-categories" title="Permalink to this headline"></a></h3>
+<p>We leverage the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> operator to encode our lists of strings.</p>
+<p>Additionally, let’s treat the categories that appear infrequently as unknowns.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">genres</span> <span class="o">=</span> <span class="n">genres</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">(</span><span class="n">freq_threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="running-a-custom-preprocessing-step">
+<h3>Running a custom preprocessing step<a class="headerlink" href="#running-a-custom-preprocessing-step" title="Permalink to this headline"></a></h3>
+<p>Let’s look at an example of how we can run a custom preprocessing step on our data.</p>
+<p>Here we will define our own function that will transform the <code class="docutils literal notranslate"><span class="pre">rating</span></code> column to <code class="docutils literal notranslate"><span class="pre">binary_rating</span></code>. We will output a value of False for any <code class="docutils literal notranslate"><span class="pre">rating</span></code> below 4 and a value of True for any rating of <code class="docutils literal notranslate"><span class="pre">4</span></code> or <code class="docutils literal notranslate"><span class="pre">5</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">rating_to_binary</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">col</span> <span class="o">&gt;</span> <span class="mi">3</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">LambdaOp</span></code> is an operator that takes in a function and performs a rowwise transformation.</p>
+<p>Here, <code class="docutils literal notranslate"><span class="pre">LambdaOp</span></code> takes in the <code class="docutils literal notranslate"><span class="pre">rating_to_binary</span></code> function and will apply it to the values in the <code class="docutils literal notranslate"><span class="pre">rating</span></code> column.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">binary_rating</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;rating&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">LambdaOp</span><span class="p">(</span><span class="n">rating_to_binary</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Rename</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;binary_rating&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="tagging-columns">
+<h3>Tagging columns<a class="headerlink" href="#tagging-columns" title="Permalink to this headline"></a></h3>
+<p>Let us also tag our columns. This will help streamline model training and serving down the road, should we opt to do so using other components of the Merlin Framework.</p>
+<p>Running NVTabular operators on our data automatically tags the output columns. For instance, the <code class="docutils literal notranslate"><span class="pre">Categorify</span></code> operator we used above will tag the output columns as <code class="docutils literal notranslate"><span class="pre">Tags.CATEGORICAL</span></code>. Still, some information that can be useful down the road needs to be added by hand. This is true for instance for target information. Let’s add this information below.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">userId</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;userId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddTags</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">USER_ID</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">USER</span><span class="p">])</span>
+<span class="n">movieId</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;movieId&#39;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">Categorify</span><span class="p">()</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddTags</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">ITEM_ID</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">ITEM</span><span class="p">])</span>
+<span class="n">binary_rating</span> <span class="o">=</span> <span class="n">binary_rating</span> <span class="o">&gt;&gt;</span> <span class="n">nvt</span><span class="o">.</span><span class="n">ops</span><span class="o">.</span><span class="n">AddTags</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">TARGET</span><span class="p">,</span> <span class="n">Tags</span><span class="o">.</span><span class="n">BINARY_CLASSIFICATION</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="applying-the-workflow-to-the-train-and-validation-sets">
+<h2>Applying the workflow to the train and validation sets<a class="headerlink" href="#applying-the-workflow-to-the-train-and-validation-sets" title="Permalink to this headline"></a></h2>
+<p>We are now ready to create our workflow.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">workflow</span> <span class="o">=</span> <span class="n">nvt</span><span class="o">.</span><span class="n">Workflow</span><span class="p">(</span><span class="n">userId</span> <span class="o">+</span> <span class="n">movieId</span> <span class="o">+</span> <span class="n">genres</span> <span class="o">+</span> <span class="n">binary_rating</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let us now fit the <code class="docutils literal notranslate"><span class="pre">workflow</span></code> to our train set and transform the train and validation sets.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_transformed</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">train_ds</span><span class="p">)</span>
+<span class="n">valid_transformed</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">valid_ds</span><span class="p">)</span>
+<span class="n">valid_transformed</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/local/lib/python3.8/dist-packages/cudf/core/frame.py:384: UserWarning: The deep parameter is ignored and is only included for pandas compatibility.
+  warnings.warn(
+</pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>userId</th>
+      <th>movieId</th>
+      <th>genres</th>
+      <th>binary_rating</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>112</td>
+      <td>1326</td>
+      <td>[1]</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>251</td>
+      <td>1508</td>
+      <td>[1]</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>147</td>
+      <td>254</td>
+      <td>[7, 1]</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2555</td>
+      <td>238</td>
+      <td>[1]</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>566</td>
+      <td>1000</td>
+      <td>[3, 8, 4]</td>
+      <td>False</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>Our data was processed as we expected.</p>
+<p>Let us look at the schema.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>tags</th>
+      <th>dtype</th>
+      <th>is_list</th>
+      <th>is_ragged</th>
+      <th>properties.num_buckets</th>
+      <th>properties.freq_threshold</th>
+      <th>properties.max_size</th>
+      <th>properties.start_index</th>
+      <th>properties.cat_path</th>
+      <th>properties.domain.min</th>
+      <th>properties.domain.max</th>
+      <th>properties.domain.name</th>
+      <th>properties.embedding_sizes.cardinality</th>
+      <th>properties.embedding_sizes.dimension</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>userId</td>
+      <td>(Tags.USER, Tags.CATEGORICAL, Tags.USER_ID)</td>
+      <td>int64</td>
+      <td>False</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>.//categories/unique.userId.parquet</td>
+      <td>0.0</td>
+      <td>6041.0</td>
+      <td>userId</td>
+      <td>6041.0</td>
+      <td>210.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>movieId</td>
+      <td>(Tags.ITEM_ID, Tags.ITEM, Tags.CATEGORICAL)</td>
+      <td>int64</td>
+      <td>False</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>.//categories/unique.movieId.parquet</td>
+      <td>0.0</td>
+      <td>1852.0</td>
+      <td>movieId</td>
+      <td>1852.0</td>
+      <td>108.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>genres</td>
+      <td>(Tags.CATEGORICAL)</td>
+      <td>int64</td>
+      <td>True</td>
+      <td>True</td>
+      <td>NaN</td>
+      <td>100.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>.//categories/unique.genres.parquet</td>
+      <td>0.0</td>
+      <td>19.0</td>
+      <td>genres</td>
+      <td>19.0</td>
+      <td>16.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>binary_rating</td>
+      <td>(Tags.BINARY_CLASSIFICATION, Tags.TARGET)</td>
+      <td>bool</td>
+      <td>False</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<p>The schema contains a lot of useful information, such as the frequency threshold that was used to process a column or its cardinality.</p>
+<p>Beyond providing us with useful information, schema can be used to inform other components of the Merlin Framework on what information from our datasets we would like it to act on and in what way.</p>
+<p>This is what the <code class="docutils literal notranslate"><span class="pre">Tags.TARGET</span></code>, <code class="docutils literal notranslate"><span class="pre">Tags.ITEM_ID</span></code>, and <code class="docutils literal notranslate"><span class="pre">Tags.USER_ID</span></code> achieve. When we train our Deep Leranin, the model will be able to infer which columns it should use as a source of what type of information.</p>
+<p>We can also use the schema to remove information that we wouldn’t want our model to use in training.</p>
+<p>Let us look at an example of that below.</p>
+</div>
+<div class="section" id="training-a-dlrm-model">
+<h2>Training a DLRM Model<a class="headerlink" href="#training-a-dlrm-model" title="Permalink to this headline"></a></h2>
+<p>Let us train a DLRM Model.</p>
+<p>It is usually advantageous to train on the entiriety of the available data. Let us do so below – we will utilize all the columns included in our schema file.</p>
+<p>We tell the model about the structure of our data by passing in the <code class="docutils literal notranslate"><span class="pre">Schema</span></code> (<code class="docutils literal notranslate"><span class="pre">train_transformed.schema</span></code> in the example below).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span>
+<span class="kn">import</span> <span class="nn">merlin.models.tf</span> <span class="k">as</span> <span class="nn">mm</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">DLRMModel</span><span class="p">(</span>
+    <span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span>
+    <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">bottom_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">]),</span>
+    <span class="n">top_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">]),</span>
+    <span class="n">prediction_tasks</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">BinaryClassificationTask</span><span class="p">(</span><span class="s1">&#39;rating_binary&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">opt</span> <span class="o">=</span> <span class="n">tensorflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">opt</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">1e-3</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2022-08-24 23:45:16.972498: I tensorflow/core/platform/cpu_feature_guard.cc:194] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE3 SSE4.1 SSE4.2 AVX
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2022-08-24 23:45:16.973379: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-08-24 23:45:16.973563: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-08-24 23:45:16.973699: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-08-24 23:45:16.973972: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-08-24 23:45:16.974118: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-08-24 23:45:16.974257: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:991] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2022-08-24 23:45:16.974377: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1532] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 24576 MB memory:  -&gt; device: 0, name: Quadro RTX 8000, pci bus id: 0000:08:00.0, compute capability: 7.5
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Epoch 1/5
+782/782 [==============================] - 14s 13ms/step - loss: 0.5644 - precision: 0.7184 - recall: 0.8133 - binary_accuracy: 0.7092 - auc: 0.7688 - regularization_loss: 0.0000e+00 - val_loss: 0.5397 - val_precision: 0.7416 - val_recall: 0.8116 - val_binary_accuracy: 0.7290 - val_auc: 0.7955 - val_regularization_loss: 0.0000e+00
+Epoch 2/5
+782/782 [==============================] - 9s 11ms/step - loss: 0.5418 - precision: 0.7363 - recall: 0.8131 - binary_accuracy: 0.7250 - auc: 0.7907 - regularization_loss: 0.0000e+00 - val_loss: 0.5288 - val_precision: 0.7366 - val_recall: 0.8376 - val_binary_accuracy: 0.7343 - val_auc: 0.8043 - val_regularization_loss: 0.0000e+00
+Epoch 3/5
+782/782 [==============================] - 10s 12ms/step - loss: 0.5331 - precision: 0.7403 - recall: 0.8172 - binary_accuracy: 0.7299 - auc: 0.7984 - regularization_loss: 0.0000e+00 - val_loss: 0.5184 - val_precision: 0.7562 - val_recall: 0.8081 - val_binary_accuracy: 0.7398 - val_auc: 0.8119 - val_regularization_loss: 0.0000e+00
+Epoch 4/5
+782/782 [==============================] - 9s 12ms/step - loss: 0.5248 - precision: 0.7453 - recall: 0.8207 - binary_accuracy: 0.7355 - auc: 0.8058 - regularization_loss: 0.0000e+00 - val_loss: 0.5080 - val_precision: 0.7599 - val_recall: 0.8182 - val_binary_accuracy: 0.7468 - val_auc: 0.8203 - val_regularization_loss: 0.0000e+00
+Epoch 5/5
+782/782 [==============================] - 9s 12ms/step - loss: 0.5162 - precision: 0.7519 - recall: 0.8204 - binary_accuracy: 0.7410 - auc: 0.8133 - regularization_loss: 0.0000e+00 - val_loss: 0.4997 - val_precision: 0.7601 - val_recall: 0.8349 - val_binary_accuracy: 0.7534 - val_auc: 0.8287 - val_regularization_loss: 0.0000e+00
+Epoch 1/3
+782/782 [==============================] - 10s 12ms/step - loss: 0.4921 - precision: 0.7671 - recall: 0.8265 - binary_accuracy: 0.7558 - auc: 0.8325 - regularization_loss: 0.0000e+00 - val_loss: 0.4798 - val_precision: 0.7747 - val_recall: 0.8338 - val_binary_accuracy: 0.7649 - val_auc: 0.8422 - val_regularization_loss: 0.0000e+00
+Epoch 2/3
+782/782 [==============================] - 10s 12ms/step - loss: 0.4815 - precision: 0.7739 - recall: 0.8304 - binary_accuracy: 0.7628 - auc: 0.8406 - regularization_loss: 0.0000e+00 - val_loss: 0.4685 - val_precision: 0.7804 - val_recall: 0.8411 - val_binary_accuracy: 0.7725 - val_auc: 0.8505 - val_regularization_loss: 0.0000e+00
+Epoch 3/3
+782/782 [==============================] - 10s 12ms/step - loss: 0.4717 - precision: 0.7797 - recall: 0.8349 - binary_accuracy: 0.7694 - auc: 0.8478 - regularization_loss: 0.0000e+00 - val_loss: 0.4578 - val_precision: 0.7901 - val_recall: 0.8385 - val_binary_accuracy: 0.7790 - val_auc: 0.8580 - val_regularization_loss: 0.0000e+00
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&lt;keras.callbacks.History at 0x7f1c021e8b80&gt;
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let us now retry the training without the <code class="docutils literal notranslate"><span class="pre">genres</span></code> information. Maybe we have reason to suspect this data has some issues and we would like to verify how the model performs without this information being passed in.</p>
+<p>We can achieve all this by modifying the passed in schema using the <code class="docutils literal notranslate"><span class="pre">without</span></code> method.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span>
+<span class="kn">import</span> <span class="nn">merlin.models.tf</span> <span class="k">as</span> <span class="nn">mm</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">DLRMModel</span><span class="p">(</span>
+    <span class="n">train_transformed</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">without</span><span class="p">(</span><span class="s1">&#39;genres&#39;</span><span class="p">),</span>   <span class="c1"># &lt;--- this is where we make the change</span>
+    <span class="n">embedding_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">bottom_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">]),</span>
+    <span class="n">top_block</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">MLPBlock</span><span class="p">([</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">]),</span>
+    <span class="n">prediction_tasks</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">BinaryClassificationTask</span><span class="p">(</span><span class="s1">&#39;rating_binary&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">opt</span> <span class="o">=</span> <span class="n">tensorflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">opt</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">1e-3</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_transformed</span><span class="p">,</span> <span class="n">validation_data</span><span class="o">=</span><span class="n">valid_transformed</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Epoch 1/5
+782/782 [==============================] - 10s 11ms/step - loss: 0.5666 - precision_1: 0.7193 - recall_1: 0.8067 - binary_accuracy: 0.7078 - auc_1: 0.7668 - regularization_loss: 0.0000e+00 - val_loss: 0.5415 - val_precision_1: 0.7386 - val_recall_1: 0.8128 - val_binary_accuracy: 0.7268 - val_auc_1: 0.7936 - val_regularization_loss: 0.0000e+00
+Epoch 2/5
+782/782 [==============================] - 8s 10ms/step - loss: 0.5451 - precision_1: 0.7343 - recall_1: 0.8115 - binary_accuracy: 0.7227 - auc_1: 0.7880 - regularization_loss: 0.0000e+00 - val_loss: 0.5314 - val_precision_1: 0.7508 - val_recall_1: 0.7996 - val_binary_accuracy: 0.7320 - val_auc_1: 0.8009 - val_regularization_loss: 0.0000e+00
+Epoch 3/5
+782/782 [==============================] - 8s 10ms/step - loss: 0.5374 - precision_1: 0.7398 - recall_1: 0.8116 - binary_accuracy: 0.7274 - auc_1: 0.7949 - regularization_loss: 0.0000e+00 - val_loss: 0.5239 - val_precision_1: 0.7529 - val_recall_1: 0.8055 - val_binary_accuracy: 0.7361 - val_auc_1: 0.8070 - val_regularization_loss: 0.0000e+00
+Epoch 4/5
+782/782 [==============================] - 8s 9ms/step - loss: 0.5307 - precision_1: 0.7423 - recall_1: 0.8171 - binary_accuracy: 0.7316 - auc_1: 0.8007 - regularization_loss: 0.0000e+00 - val_loss: 0.5171 - val_precision_1: 0.7567 - val_recall_1: 0.8113 - val_binary_accuracy: 0.7415 - val_auc_1: 0.8134 - val_regularization_loss: 0.0000e+00
+Epoch 5/5
+782/782 [==============================] - 8s 10ms/step - loss: 0.5233 - precision_1: 0.7476 - recall_1: 0.8185 - binary_accuracy: 0.7366 - auc_1: 0.8073 - regularization_loss: 0.0000e+00 - val_loss: 0.5092 - val_precision_1: 0.7577 - val_recall_1: 0.8232 - val_binary_accuracy: 0.7468 - val_auc_1: 0.8196 - val_regularization_loss: 0.0000e+00
+Epoch 1/3
+782/782 [==============================] - 8s 10ms/step - loss: 0.5038 - precision_1: 0.7594 - recall_1: 0.8249 - binary_accuracy: 0.7489 - auc_1: 0.8235 - regularization_loss: 0.0000e+00 - val_loss: 0.4938 - val_precision_1: 0.7656 - val_recall_1: 0.8327 - val_binary_accuracy: 0.7571 - val_auc_1: 0.8316 - val_regularization_loss: 0.0000e+00
+Epoch 2/3
+782/782 [==============================] - 8s 10ms/step - loss: 0.4953 - precision_1: 0.7637 - recall_1: 0.8316 - binary_accuracy: 0.7551 - auc_1: 0.8303 - regularization_loss: 0.0000e+00 - val_loss: 0.4856 - val_precision_1: 0.7670 - val_recall_1: 0.8440 - val_binary_accuracy: 0.7628 - val_auc_1: 0.8381 - val_regularization_loss: 0.0000e+00
+Epoch 3/3
+782/782 [==============================] - 8s 10ms/step - loss: 0.4881 - precision_1: 0.7674 - recall_1: 0.8360 - binary_accuracy: 0.7599 - auc_1: 0.8360 - regularization_loss: 0.0000e+00 - val_loss: 0.4781 - val_precision_1: 0.7727 - val_recall_1: 0.8451 - val_binary_accuracy: 0.7679 - val_auc_1: 0.8437 - val_regularization_loss: 0.0000e+00
+</pre></div>
+</div>
+</div>
+</div>
+<p>As it turns out, <code class="docutils literal notranslate"><span class="pre">genres</span></code> contained signal that was genuinely useful to the model as without it the performance on the validation set decreased!</p>
+<p>Using the <code class="docutils literal notranslate"><span class="pre">Schema</span></code> (combined with the ability of the Merlin Framework to infer the appropriate shape of the model based on our data) we can streamline the training and experimentation phase to a significant extent.</p>
+</div>
+<div class="section" id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Permalink to this headline"></a></h2>
+<p>We are using NVTabular in our Merlin repositories to preprocess and engineer features before training. We can recommend multiple examples, which show complex pipelines with NVTabular:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/NVIDIA-Merlin/models/blob/main/examples/usecases/ecommerce-session-based-next-item-prediction-for-fashion.ipynb">This notebook</a> demonstrates how to aggregate data – we are going from multiple rows of session information to a single row describing a session.</p></li>
+<li><p>The <a class="reference external" href="https://github.com/NVIDIA-Merlin/Transformers4Rec/blob/main/examples/end-to-end-session-based/01-ETL-with-NVTabular.ipynb">following notebook</a> demonstrates how to derive features from timestamps and how to define a custom operator (<code class="docutils literal notranslate"><span class="pre">ItemRecency</span></code>).</p></li>
+</ul>
+<ul class="simple">
+<li><p>In <a class="reference external" href="https://github.com/NVIDIA-Merlin/publications/blob/main/tutorials/RecSys22tutorial/02-Implementing-RecSys-architectures.ipynb">this notebook</a>, among other functionality, you can familiarize yourself with using <code class="docutils literal notranslate"><span class="pre">TargetEncoding</span></code>, filling missing values, <code class="docutils literal notranslate"><span class="pre">Normalization</span></code> as well as adding various <code class="docutils literal notranslate"><span class="pre">MetaData</span></code>. Do note, this notebook is not maintained and thus there might be discrepancies between it and the most up to date version of NVTabular.</p></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01-Getting-started.html" class="btn btn-neutral float-left" title="Getting Started with NVTabular: Process Tabular Data On GPU" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03-Running-on-multiple-GPUs-or-on-CPU.html" class="btn btn-neutral float-right" title="Running on multiple GPUs or on CPU" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, NVIDIA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: stable
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v1.6.0/index.html">v1.6.0</a></dd>
+      <dd><a href="../../v1.7.0/index.html">v1.7.0</a></dd>
+      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
+      <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
+      <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
+      <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/index.html">main</a></dd>
+      <dd><a href="02-Advanced-NVTabular-workflow.html">stable</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+    <!-- Theme Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-NVJ1Y1YJHK', {
+          'anonymize_ip': false,
+      });
+    </script> 
+
+</body>
+</html>
