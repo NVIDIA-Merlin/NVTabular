@@ -153,7 +153,7 @@ namespace nvtabular
         for (int64_t i = 0; i < input.size(); ++i)
         {
           auto it = mapping_int.find(static_cast<int64_t>(input_data[i]));
-          if it == mapping_int.end()
+          if (it == mapping_int.end())
           {
             output_data[i] = py::cast<bool>(isnull(input_data[i])) ? NULL_INDEX : OOV_INDEX;
           }
