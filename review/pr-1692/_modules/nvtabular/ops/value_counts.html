@@ -8,7 +8,7 @@
       <link rel="stylesheet" href="../../../_static/mystnb.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/css/custom.css" type="text/css" />
-    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/_modules/nvtabular/ops/value_counts.html" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/_modules/nvtabular/ops/value_counts.html" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -108,8 +108,8 @@
 <span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
 
 <span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">is_list_dtype</span><span class="p">,</span> <span class="n">pull_apart_list</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span>
-<span class="kn">from</span> <span class="nn">nvtabular.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 
 
 <div class="viewcode-block" id="ValueCount"><a class="viewcode-back" href="../../../generated/nvtabular.ops.ValueCount.html#nvtabular.ops.ValueCount">[docs]</a><span class="k">class</span> <span class="nc">ValueCount</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>

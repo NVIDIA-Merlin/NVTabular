@@ -8,7 +8,7 @@
       <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
       <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
-    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/generated/nvtabular.ops.NormalizeMinMax.html" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/generated/nvtabular.ops.NormalizeMinMax.html" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -105,7 +105,7 @@
 <dl class="py class">
 <dt id="nvtabular.ops.NormalizeMinMax">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">NormalizeMinMax</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#NormalizeMinMax"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.stat_operator.StatOperator</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.ops.stat_operator.StatOperator</span></code></p>
 <p>This operator standardizes continuous features such that they are between 0 and 1.</p>
 <p>Example usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use NormalizeMinMax to define a NVTabular workflow</span>
@@ -160,19 +160,16 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.fit_finalize" title="nvtabular.ops.NormalizeMinMax.fit_finalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_finalize</span></code></a>(dask_stats)</p></td>
 <td><p>Finalize statistics calculation - the workflow calls this function with the computed statistics from the ‘fit’ object’</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">inference_initialize</span></code>(col_selector, model_config)</p></td>
-<td><p>Configures this operator for use in inference.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
 <td><p>Given a set of columns names returns the names of the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code>(new_path[, copy])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code>(new_path[, copy])</p></td>
 <td><p>Certain stat operators need external storage - for instance Categorify writes out parquet files containing the categorical mapping.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.transform" title="nvtabular.ops.NormalizeMinMax.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.transform" title="nvtabular.ops.NormalizeMinMax.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, df)</p></td>
 <td><p>Transform the dataframe by applying this operator to the set of input columns</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
 <td><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p></td>
 </tr>
 </tbody>
@@ -190,16 +187,22 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_dtypes</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fitted</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.output_dtype" title="nvtabular.ops.NormalizeMinMax.output_dtype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.output_dtype" title="nvtabular.ops.NormalizeMinMax.output_dtype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.output_tags" title="nvtabular.ops.NormalizeMinMax.output_tags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.output_tags" title="nvtabular.ops.NormalizeMinMax.output_tags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.supported_formats" title="nvtabular.ops.NormalizeMinMax.supported_formats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supported_formats</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.NormalizeMinMax.supports" title="nvtabular.ops.NormalizeMinMax.supports"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports</span></code></a></p></td>
@@ -209,27 +212,27 @@
 </table>
 <dl class="py method">
 <dt id="nvtabular.ops.NormalizeMinMax.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#NormalizeMinMax.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax.transform" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#NormalizeMinMax.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax.transform" title="Permalink to this definition"></a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
-<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+<li><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>transformable</strong> (<em>Transformable</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+<dd class="field-even"><p>Returns a transformed dataframe or dictarray for this operator</p>
 </dd>
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>DataFrame</p>
+<dd class="field-odd"><p>Transformable</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt id="nvtabular.ops.NormalizeMinMax.fit">
-<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.dag.selector.ColumnSelector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#NormalizeMinMax.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax.fit" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ddf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/normalize.html#NormalizeMinMax.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax.fit" title="Permalink to this definition"></a></dt>
 <dd><p>Calculate statistics for this operator, and return a dask future
 to these statistics, which will be computed by the workflow.</p>
 </dd></dl>
@@ -249,6 +252,11 @@ the computed statistics from the ‘fit’ object’</p>
 <dl class="py method">
 <dt id="nvtabular.ops.NormalizeMinMax.supports">
 <em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">supports</span></code><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax.supports" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.ops.NormalizeMinMax.supported_formats">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">supported_formats</span></code><a class="headerlink" href="#nvtabular.ops.NormalizeMinMax.supported_formats" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">

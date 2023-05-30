@@ -8,7 +8,7 @@
       <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
       <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
-    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/main/generated/nvtabular.workflow.workflow.WorkflowNode.html" />
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/generated/nvtabular.workflow.workflow.WorkflowNode.html" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -102,94 +102,10 @@
              
   <div class="section" id="nvtabular-workflow-workflow-workflownode">
 <h1>nvtabular.workflow.workflow.WorkflowNode<a class="headerlink" href="#nvtabular-workflow-workflow-workflownode" title="Permalink to this headline"></a></h1>
-<dl class="py class">
+<dl class="py attribute">
 <dt id="nvtabular.workflow.workflow.WorkflowNode">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">WorkflowNode</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/node.html#WorkflowNode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.WorkflowNode" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.node.Node</span></code></p>
-<p>WorkflowNode represents a Node in a NVTabular workflow graph</p>
-<dl class="py method">
-<dt id="nvtabular.workflow.workflow.WorkflowNode.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.workflow.workflow.WorkflowNode.__init__" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.WorkflowNode.__init__" title="nvtabular.workflow.workflow.WorkflowNode.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([selector])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_child</span></code>(child)</p></td>
-<td><p>Adding a child node to this node</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_dependency</span></code>(dep)</p></td>
-<td><p>Adding a dependency node to this node</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_parent</span></code>(parent)</p></td>
-<td><p>Adding a parent node to this node</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_schemas</span></code>(root_schema[, preserve_dtypes])</p></td>
-<td><p>Defines the input and output schema</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">construct_from</span></code>(nodable)</p></td>
-<td><p>Convert Node-like objects to a Node or list of Nodes.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">exportable</span></code>([backend])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_child</span></code>(child)</p></td>
-<td><p>Removing a child node from this node</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_inputs</span></code>(input_cols)</p></td>
-<td><p>Remove input columns and all output columns that depend on them.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(root_schema[, strict_dtypes])</p></td>
-<td><p>Check if this Node’s input schema matches the output schemas of parents and dependencies</p></td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Attributes</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Nodable</span></code></p></td>
-<td><p>alias of Union[Node, str, List[str], merlin.dag.selector.ColumnSelector, List[Union[str, List[str], Node, merlin.dag.selector.ColumnSelector]]]</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">column_mapping</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dependency_columns</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">graph</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">grouped_parents_with_dependencies</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">input_columns</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_columns</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parents_with_dependencies</span></code></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">selector</span></code></p></td>
-<td><p></p></td>
-</tr>
-</tbody>
-</table>
+<code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">WorkflowNode</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.WorkflowNode" title="Permalink to this definition"></a></dt>
+<dd><p>alias of <a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.Node" title="(in Merlin Core)"><code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.node.Node</span></code></a></p>
 </dd></dl>
 
 </div>
