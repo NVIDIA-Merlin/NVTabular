@@ -42,10 +42,10 @@ from fsspec.core import get_fs_token_paths
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from merlin.core.utils import device_mem_size, run_on_worker
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.io.worker import fetch_table_data, get_worker_cache
 from merlin.schema import Schema, Tags
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 # Constants
 # (NVTabular will reserve `0` for padding and `1` for nulls)
@@ -402,7 +402,6 @@ class Categorify(StatOperator):
 
     def fit_finalize(self, categories):
         idx_count = 0
-
         for cat in categories:
             # this is a path
             self.categories[cat] = categories[cat]

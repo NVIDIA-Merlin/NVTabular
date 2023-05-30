@@ -12,9 +12,9 @@ In this library, we provide a collection of Jupyter notebooks, which demonstrate
 
 In addition, NVTabular is used in many of our examples in other Merlin libraries. You can explore more complex processing pipelines in following examples:
 
-- [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples)
-- [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/main/examples)
-- [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples)
+- [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/stable/examples)
+- [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/stable/examples)
+- [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/stable/examples)
 
 ## Running the Example Notebooks
 
@@ -65,4 +65,4 @@ To run the example notebooks using Docker containers, perform the following step
 
 ## Troubleshooting
 
-If you experience any trouble running the example notebooks, check the latest [troubleshooting](https://nvidia-merlin.github.io/NVTabular/main/resources/troubleshooting.html) documentation.
+If you experience any trouble running the example notebooks, check the latest [troubleshooting](https://nvidia-merlin.github.io/NVTabular/stable/resources/troubleshooting.html) documentation.

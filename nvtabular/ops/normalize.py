@@ -23,11 +23,11 @@ from merlin.core.dispatch import (
     flatten_list_column_values,
     is_list_dtype,
 )
-from merlin.dag import Supports
+from merlin.dag import DataFormats, Supports
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.schema import Tags
 from nvtabular.ops.moments import _custom_moments
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class Normalize(StatOperator):
@@ -96,6 +96,15 @@ class Normalize(StatOperator):
             | Supports.GPU_DICT_ARRAY
             | Supports.CPU_DATAFRAME
             | Supports.GPU_DATAFRAME
+        )
+
+    @property
+    def supported_formats(self):
+        return (
+            DataFormats.PANDAS_DATAFRAME
+            | DataFormats.CUDF_DATAFRAME
+            | DataFormats.NUMPY_DICT_ARRAY
+            | DataFormats.CUPY_DICT_ARRAY
         )
 
     def clear(self):
@@ -179,6 +188,15 @@ class NormalizeMinMax(StatOperator):
             | Supports.GPU_DICT_ARRAY
             | Supports.CPU_DATAFRAME
             | Supports.GPU_DATAFRAME
+        )
+
+    @property
+    def supported_formats(self):
+        return (
+            DataFormats.PANDAS_DATAFRAME
+            | DataFormats.CUDF_DATAFRAME
+            | DataFormats.NUMPY_DICT_ARRAY
+            | DataFormats.CUPY_DICT_ARRAY
         )
 
     @property

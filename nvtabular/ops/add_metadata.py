@@ -54,12 +54,12 @@ class AddProperties(AddMetadata):
 # Wrappers for common features
 class TagAsUserID(AddTags):
     def __init__(self, tags=None):
-        super().__init__(tags=[Tags.USER_ID, Tags.USER])
+        super().__init__(tags=[Tags.ID, Tags.USER])
 
 
 class TagAsItemID(AddTags):
     def __init__(self, tags=None):
-        super().__init__(tags=[Tags.ITEM_ID, Tags.ITEM])
+        super().__init__(tags=[Tags.ID, Tags.ITEM])
 
 
 class TagAsUserFeatures(AddTags):

@@ -93,6 +93,9 @@ namespace nvtabular
           case 'u':
             switch (dtype.itemsize())
             {
+            case 1:
+              insert_int_mapping<uint8_t>(values);
+              return;
             case 2:
               insert_int_mapping<uint16_t>(values);
               return;
@@ -107,6 +110,9 @@ namespace nvtabular
           case 'i':
             switch (dtype.itemsize())
             {
+            case 1:
+              insert_int_mapping<int8_t>(values);
+              return;
             case 2:
               insert_int_mapping<int16_t>(values);
               return;
@@ -204,6 +210,8 @@ namespace nvtabular
           case 'u':
             switch (itemsize)
             {
+            case 1:
+              return transform_int<uint8_t>(input);
             case 2:
               return transform_int<uint16_t>(input);
             case 4:
@@ -215,6 +223,8 @@ namespace nvtabular
           case 'i':
             switch (itemsize)
             {
+            case 1:
+              return transform_int<int8_t>(input);
             case 2:
               return transform_int<int16_t>(input);
             case 4:
@@ -315,6 +325,11 @@ namespace nvtabular
                                  {
                                    py::object supports = py::module_::import("nvtabular").attr("graph").attr("base_operator").attr("Supports");
                                    return supports.attr("CPU_DICT_ARRAY");
+                                 })
+          .def_property_readonly("supported_formats", [](py::object self)
+                                 {
+                                   py::object supported = py::module_::import("nvtabular").attr("graph").attr("base_operator").attr("DataFormats");
+                                   return supported.attr("NUMPY_DICT_ARRAY");
                                  });
     }
   } // namespace inference

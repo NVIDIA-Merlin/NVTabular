@@ -19,8 +19,8 @@ from typing import Any
 import dask.dataframe as dd
 
 from merlin.core.dispatch import DataFrameType, is_list_dtype, pull_apart_list
+from merlin.dag.ops.stat_operator import StatOperator
 from nvtabular.ops.operator import ColumnSelector
-from nvtabular.ops.stat_operator import StatOperator
 
 
 class ValueCount(StatOperator):

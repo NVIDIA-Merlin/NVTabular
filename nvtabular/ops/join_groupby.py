@@ -18,13 +18,13 @@ import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 
-import nvtabular as nvt
 from merlin.core.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
+from merlin.dag import Node
+from merlin.dag.ops.stat_operator import StatOperator
 from merlin.dtypes.shape import DefaultShapes
 from merlin.schema import Schema
 from nvtabular.ops import categorify as nvt_cat
 from nvtabular.ops.operator import ColumnSelector, Operator
-from nvtabular.ops.stat_operator import StatOperator
 
 AGG_DTYPES = {
     "count": np.int32,
@@ -113,7 +113,7 @@ class JoinGroupby(StatOperator):
 
         self._cont_names = None
 
-        if isinstance(cont_cols, nvt.WorkflowNode):
+        if isinstance(cont_cols, Node):
             self.cont_cols = cont_cols
         elif isinstance(cont_cols, ColumnSelector):
             self.cont_cols = self._cont_names = cont_cols

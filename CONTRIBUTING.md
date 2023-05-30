@@ -23,7 +23,7 @@ into three categories:
 
 ### Your first issue
 
-1. Read the project's [README.md](https://github.com/nvidia/NVTabular/blob/main/README.md)
+1. Read the project's [README.md](https://github.com/nvidia/NVTabular/blob/stable/README.md)
    to learn how to setup the development environment.
 2. Find an issue to work on. The best way is to look for the
    [good first issue](https://github.com/nvidia/NVTabular/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)

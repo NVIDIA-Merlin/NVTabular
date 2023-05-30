@@ -715,9 +715,11 @@ def test_categorify_inference():
         "unicode_string": np.random.randint(
             low=a_char, high=z_char, size=num_rows * 10, dtype="int32"
         ).view("U10"),
+        "int8_feature": np.random.randint(0, 10, dtype="int8", size=num_rows),
         "int16_feature": np.random.randint(0, 10, dtype="int16", size=num_rows),
         "int32_feature": np.random.randint(0, 10, dtype="int32", size=num_rows),
         "int64_feature": np.random.randint(0, 10, dtype="int64", size=num_rows),
+        "uint8_feature": np.random.randint(0, 10, dtype="uint8", size=num_rows),
         "uint16_feature": np.random.randint(0, 10, dtype="uint16", size=num_rows),
         "uint32_feature": np.random.randint(0, 10, dtype="uint32", size=num_rows),
         "uint64_feature": np.random.randint(0, 10, dtype="uint64", size=num_rows),
