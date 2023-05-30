@@ -141,14 +141,14 @@ def main(args):
     label_name = ["label"]
 
     # Specify Categorify/GroupbyStatistics options
-    tree_width = {}
+    split_out = {}
     cat_cache = {}
     for col in cat_names:
         if col in high_card_columns:
-            tree_width[col] = args.tree_width
+            split_out[col] = args.split_out
             cat_cache[col] = args.cat_cache_high
         else:
-            tree_width[col] = 1
+            split_out[col] = 1
             cat_cache[col] = args.cat_cache_low
 
     # Use total device size to calculate args.device_limit_frac
@@ -205,7 +205,7 @@ def main(args):
 
     cat_features = cat_names >> ops.Categorify(
         out_path=stats_path,
-        tree_width=tree_width,
+        split_out=split_out,
         cat_cache=cat_cache,
         freq_threshold=freq_limit,
         search_sorted=not freq_limit,
@@ -360,16 +360,16 @@ def parse_args():
         "--high-cards",
         default="C20,C1,C22,C10",
         type=str,
-        help="Specify a list of high-cardinality columns.  The tree-width "
+        help="Specify a list of high-cardinality columns.  The split-out "
         "and cat-cache options will apply to these columns only."
         '(Default "C20,C1,C22,C10")',
     )
     parser.add_argument(
-        "--tree-width",
-        default=8,
+        "--split-out",
+        default=1,
         type=int,
-        help="Tree width for GroupbyStatistics operations on high-cardinality "
-        "columns (Default 8)",
+        help="Number of files needed to store unique values for high-cardinality "
+        "columns (Default 1)",
     )
     parser.add_argument(
         "--cat-cache-high",

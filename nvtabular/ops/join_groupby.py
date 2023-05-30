@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -63,12 +62,15 @@ class JoinGroupby(StatOperator):
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
         Supported statistics include ["count", "sum", "mean", "std", "var"].
-    tree_width : dict or int, optional
-        Tree width of the hash-based groupby reduction for each categorical
-        column. High-cardinality columns may require a large `tree_width`,
-        while low-cardinality columns can likely use `tree_width=1`.
+    split_out : dict or int, optional
+        Number of files needed to store the final result of each groupby
+        reduction. High-cardinality groups may require a large `split_out`,
+        while low-cardinality columns can likely use `split_out=1` (default).
         If passing a dict, each key and value should correspond to the column
-        name and width, respectively. The default value is 8 for all columns.
+        name and value, respectively. The default value is 1 for all columns.
+    split_every : dict or int, optional
+        Number of adjacent partitions to aggregate in each tree-reduction
+        node. The default value is 8 for all columns.
     cat_cache: ToDo Describe
         TEXT
     out_path : str, optional
@@ -88,22 +90,26 @@ class JoinGroupby(StatOperator):
         self,
         cont_cols=None,
         stats=("count",),
-        tree_width=None,
+        split_out=None,
+        split_every=None,
         cat_cache="host",
         out_path=None,
         on_host=True,
         name_sep="_",
+        tree_width=None,
     ):
         super().__init__()
 
         self.storage_name = {}
         self.name_sep = name_sep
         self.stats = stats
-        self.tree_width = tree_width
+        self.split_out = split_out
+        self.split_every = split_every
         self.out_path = out_path or "./"
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.categories = {}
+        nvt_cat._deprecate_tree_width(tree_width)
 
         self._cont_names = None
 
@@ -153,10 +159,11 @@ class JoinGroupby(StatOperator):
                 self.stats,
                 self.out_path,
                 0,
-                self.tree_width,
+                self.split_out,
                 self.on_host,
                 concat_groups=False,
                 name_sep=self.name_sep,
+                split_every=self.split_every,
             ),
         )
         return Delayed(key, dsk)

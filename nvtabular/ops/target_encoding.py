@@ -97,12 +97,15 @@ class TargetEncoding(StatOperator):
         elements must be unique).
     out_dtype : str, default is problem-specific
         dtype of output target-encoding columns.
-    tree_width : dict or int, optional
-        Tree width of the hash-based groupby reduction for each categorical
-        column. High-cardinality columns may require a large `tree_width`,
-        while low-cardinality columns can likely use `tree_width=1`.
+    split_out : dict or int, optional
+        Number of files needed to store the final result of each groupby
+        reduction. High-cardinality groups may require a large `split_out`,
+        while low-cardinality columns can likely use `split_out=1` (default).
         If passing a dict, each key and value should correspond to the column
-        name and width, respectively. The default value is 8 for all columns.
+        name and value, respectively. The default value is 1 for all columns.
+    split_every : dict or int, optional
+        Number of adjacent partitions to aggregate in each tree-reduction
+        node. The default value is 8 for all columns.
     cat_cache : {"device", "host", "disk"} or dict
         Location to cache the list of unique categories for
         each categorical column. If passing a dict, each key and value
@@ -132,12 +135,14 @@ class TargetEncoding(StatOperator):
         p_smooth=20,
         out_col=None,
         out_dtype=None,
-        tree_width=None,
+        split_out=None,
+        split_every=None,
         cat_cache="host",
         out_path=None,
         on_host=True,
         name_sep="_",
         drop_folds=True,
+        tree_width=None,
     ):
         super().__init__()
 
@@ -151,7 +156,8 @@ class TargetEncoding(StatOperator):
         self.p_smooth = p_smooth
         self.out_col = [out_col] if isinstance(out_col, str) else out_col
         self.out_dtype = out_dtype
-        self.tree_width = tree_width
+        self.split_out = split_out
+        self.split_every = split_every
         self.out_path = out_path or "./"
         self.on_host = on_host
         self.cat_cache = cat_cache
@@ -160,6 +166,7 @@ class TargetEncoding(StatOperator):
         self.fold_name = "__fold__"
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
+        nvt_cat._deprecate_tree_width(tree_width)
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
@@ -197,10 +204,11 @@ class TargetEncoding(StatOperator):
                 ["count", "sum"],
                 self.out_path,
                 0,
-                self.tree_width,
+                self.split_out,
                 self.on_host,
                 concat_groups=False,
                 name_sep=self.name_sep,
+                split_every=self.split_every,
             ),
         )
         return Delayed(key, dsk), moments
