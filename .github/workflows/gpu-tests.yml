@@ -39,7 +39,7 @@ jobs:
           python -m pip install --no-binary=protobuf protobuf
       - name: Get Branch name
         id: get-branch-name
-        uses: NVIDIA-Merlin/.github/actions/branch-name@main
+        uses: NVIDIA-Merlin/.github/actions/branch-name@branch-name-pull-request
       - name: Run tests
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
