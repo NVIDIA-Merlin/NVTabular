@@ -30,7 +30,7 @@ issue](https://github.com/NVIDIA/NVTabular/issues/429).
 
 ## Reducing Memory Consumption for NVTabular Workflows
 
-NVTabular is designed to scale to larger than GPU or host memory datasets. In our experiments, we are able to [scale to 1.3TB of uncompressed click logs](https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo). However, some workflows can result in OOM errors `cudaErrorMemoryAllocation out of memory`, which can be addressed by small configuration changes.
+NVTabular is designed to scale to larger than GPU or host memory datasets. In our experiments, we are able to [scale to 1.3TB of uncompressed click logs](https://github.com/NVIDIA/NVTabular/tree/stable/examples/scaling-criteo). However, some workflows can result in OOM errors `cudaErrorMemoryAllocation out of memory`, which can be addressed by small configuration changes.
 
 ### Setting the Row Group Size for the Parquet Files
 
@@ -102,7 +102,7 @@ This is usually caused by string columns in parquet files. If you encounter this
 
 The example notebooks in the repository are developed and tested with the latest [Merlin containers](https://catalog.ngc.nvidia.com/containers?filters=&orderBy=dateModifiedDESC&query=merlin) that are available from the NGC Catalog.
 If you run the example notebooks in an environment that has a different version of TensorFlow, you might experience an out-of-memory condition that requires you to perform additional configuration.
-The version of TensorFlow in each Merlin container is available from the [support matrix](https://nvidia-merlin.github.io/Merlin/main/support_matrix/index.html) in the Merlin documentation.
+The version of TensorFlow in each Merlin container is available from the [support matrix](https://nvidia-merlin.github.io/Merlin/stable/support_matrix/index.html) in the Merlin documentation.
 
 TensorFlow 2.8 uses `cuda_malloc_async` as the default GPU memory allocation function.
 TensorFlow specifies the function in the `TF_GPU_ALLOCATOR` environment variable.

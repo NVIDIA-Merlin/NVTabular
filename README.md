@@ -1,8 +1,8 @@
 ## [NVTabular](https://github.com/NVIDIA/NVTabular)
 
 [![PyPI](https://img.shields.io/pypi/v/NVTabular?color=orange&label=version)](https://pypi.python.org/pypi/NVTabular/)
-[![LICENSE](https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular)](https://github.com/NVIDIA-Merlin/NVTabular/blob/main/LICENSE)
-[![Documentation](https://img.shields.io/badge/documentation-blue.svg)](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html)
+[![LICENSE](https://img.shields.io/github/license/NVIDIA-Merlin/NVTabular)](https://github.com/NVIDIA-Merlin/NVTabular/blob/stable/LICENSE)
+[![Documentation](https://img.shields.io/badge/documentation-blue.svg)](https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html)
 
 NVTabular is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
 
@@ -26,7 +26,7 @@ NVTabular alleviates these challenges and helps data scientists and ML engineers
 - prepare datasets quickly and easily for experimentation so that more models can be trained.
 - deploy models into production by providing faster dataset transformation
 
-Learn more in the NVTabular [core features documentation](https://nvidia-merlin.github.io/NVTabular/main/core_features.html).
+Learn more in the NVTabular [core features documentation](https://nvidia-merlin.github.io/NVTabular/stable/core_features.html).
 
 ### Performance
 
@@ -74,11 +74,11 @@ The following table summarizes the key information about the containers:
 | merlin-tensorflow | https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-tensorflow | NVTabular, Tensorflow and Triton Inference |
 | merlin-pytorch    | https://catalog.ngc.nvidia.com/orgs/nvidia/teams/merlin/containers/merlin-pytorch    | NVTabular, PyTorch, and Triton Inference   |
 
-To use these Docker containers, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see [Support Matrix](https://github.com/NVIDIA/NVTabular/blob/main/docs/source/resources/support_matrix.rst).
+To use these Docker containers, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see [Support Matrix](https://github.com/NVIDIA/NVTabular/blob/stable/docs/source/resources/support_matrix.rst).
 
 ### Notebook Examples and Tutorials
 
-We provide a [collection of examples](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples) to demonstrate feature engineering with NVTabular as Jupyter notebooks:
+We provide a [collection of examples](https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples) to demonstrate feature engineering with NVTabular as Jupyter notebooks:
 
 - Introduction to NVTabular's High-Level API
 - Advanced workflows with NVTabular
@@ -87,13 +87,13 @@ We provide a [collection of examples](https://github.com/NVIDIA-Merlin/NVTabular
 
 In addition, NVTabular is used in many of our examples in other Merlin libraries:
 
-- [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/main/examples)
-- [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/main/examples)
-- [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/main/examples)
+- [End-To-End Examples with Merlin](https://github.com/NVIDIA-Merlin/Merlin/tree/stable/examples)
+- [Training Examples with Merlin Models](https://github.com/NVIDIA-Merlin/models/tree/stable/examples)
+- [Training Examples with Transformer4Rec](https://github.com/NVIDIA-Merlin/Transformers4Rec/tree/stable/examples)
 
 ### Feedback and Support
 
-If you'd like to contribute to the library directly, see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this [survey](https://developer.nvidia.com/merlin-devzone-survey).
+If you'd like to contribute to the library directly, see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/stable/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this [survey](https://developer.nvidia.com/merlin-devzone-survey).
 
 If you're interested in learning more about how NVTabular works, see
-[our NVTabular documentation](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html). We also have [API documentation](https://nvidia-merlin.github.io/NVTabular/main/api/index.html) that outlines the specifics of the available calls within the library.
+[our NVTabular documentation](https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html). We also have [API documentation](https://nvidia-merlin.github.io/NVTabular/stable/api/index.html) that outlines the specifics of the available calls within the library.

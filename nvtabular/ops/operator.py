@@ -13,47 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import annotations
+from merlin.dag import BaseOperator, ColumnSelector  # noqa pylint: disable=unused-import
 
-from typing import Optional
-
-import nvtabular as nvt
-from merlin.core.dispatch import DataFrameType
-from merlin.dag import BaseOperator, ColumnSelector, DataFormats
-
-
-class Operator(BaseOperator):
-    """
-    Base class for all operator classes.
-    """
-
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        """Transform the dataframe by applying this operator to the set of input columns
-
-        Parameters
-        -----------
-        columns: list of str or list of list of str
-            The columns to apply this operator to
-        df: Dataframe
-            A pandas or cudf dataframe that this operator will work on
-
-        Returns
-        -------
-        DataFrame
-            Returns a transformed dataframe for this operator
-        """
-        raise NotImplementedError
-
-    def inference_initialize(
-        self, col_selector: ColumnSelector, model_config: dict
-    ) -> Optional[Operator]:
-        """Configures this operator for use in inference. May return a different operator to use
-        instead of the one configured for use during training"""
-        return None
-
-    def create_node(self, selector):
-        return nvt.workflow.node.WorkflowNode(selector)
-
-    @property
-    def supported_formats(self) -> DataFormats:
-        return DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
+Operator = BaseOperator

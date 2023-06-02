@@ -138,8 +138,8 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
         cats_expected0 = df["name-cat"].unique().values_host if HAS_GPU else df["name-cat"].unique()
         cats0 = get_cats(workflow, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert all(cat in [None] + sorted(cats_expected0.tolist()) for cat in cats0.tolist())
-        assert len(cats0.tolist()) == len(cats_expected0.tolist() + [None])
+        assert all(cat in sorted(cats_expected0.tolist()) for cat in cats0.tolist())
+        assert len(cats0.tolist()) == len(cats_expected0.tolist())
     if HAS_GPU:
         cats_expected1 = (
             df["name-string"].unique().values_host if HAS_GPU else df["name-string"].unique()
@@ -148,8 +148,8 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
         cats_expected1 = df["name-string"].unique()
     cats1 = get_cats(workflow, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert all(cat in [None] + sorted(cats_expected1.tolist()) for cat in cats1.tolist())
-    assert len(cats1.tolist()) == len(cats_expected1.tolist() + [None])
+    assert all(cat in sorted(cats_expected1.tolist()) for cat in cats1.tolist())
+    assert len(cats1.tolist()) == len(cats_expected1.tolist())
 
     # Write to new "shuffled" and "processed" dataset
     workflow.transform(dataset).to_parquet(
@@ -233,15 +233,15 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
         cats_expected0 = df["name-cat"].unique().values_host if HAS_GPU else df["name-cat"].unique()
         cats0 = get_cats(workflow, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert all(cat in [None] + sorted(cats_expected0.tolist()) for cat in cats0.tolist())
-        assert len(cats0.tolist()) == len(cats_expected0.tolist() + [None])
+        assert all(cat in sorted(cats_expected0.tolist()) for cat in cats0.tolist())
+        assert len(cats0.tolist()) == len(cats_expected0.tolist())
     cats_expected1 = (
         df["name-string"].unique().values_host if HAS_GPU else df["name-string"].unique()
     )
     cats1 = get_cats(workflow, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert all(cat in [None] + sorted(cats_expected1.tolist()) for cat in cats1.tolist())
-    assert len(cats1.tolist()) == len(cats_expected1.tolist() + [None])
+    assert all(cat in sorted(cats_expected1.tolist()) for cat in cats1.tolist())
+    assert len(cats1.tolist()) == len(cats_expected1.tolist())
 
     # Write to new "shuffled" and "processed" dataset
     workflow.transform(dataset).to_parquet(
@@ -314,15 +314,15 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
         cats_expected0 = df["name-cat"].unique().values_host if HAS_GPU else df["name-cat"].unique()
         cats0 = get_cats(workflow, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert all(cat in [None] + sorted(cats_expected0.tolist()) for cat in cats0.tolist())
-        assert len(cats0.tolist()) == len(cats_expected0.tolist() + [None])
+        assert all(cat in sorted(cats_expected0.tolist()) for cat in cats0.tolist())
+        assert len(cats0.tolist()) == len(cats_expected0.tolist())
     cats_expected1 = (
         df["name-string"].unique().values_host if HAS_GPU else df["name-string"].unique()
     )
     cats1 = get_cats(workflow, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert all(cat in [None] + sorted(cats_expected1.tolist()) for cat in cats1.tolist())
-    assert len(cats1.tolist()) == len(cats_expected1.tolist() + [None])
+    assert all(cat in sorted(cats_expected1.tolist()) for cat in cats1.tolist())
+    assert len(cats1.tolist()) == len(cats_expected1.tolist())
 
     # Write to new "shuffled" and "processed" dataset
     workflow.transform(dataset).to_parquet(

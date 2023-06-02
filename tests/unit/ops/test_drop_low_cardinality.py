@@ -44,6 +44,6 @@ def test_drop_low_cardinality(tmpdir, cpu):
     assert workflow.output_schema.column_names == ["col2", "col3"]
 
     expected = df.drop(["col1"], axis=1)
-    expected["col2"] = [1, 1, 1, 1, 2]
-    expected["col3"] = [1, 1, 2, 2, 3]
+    expected["col2"] = [3, 3, 3, 3, 4]
+    expected["col3"] = [3, 3, 4, 4, 5]
     assert_eq(transformed, expected)

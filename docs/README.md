@@ -1,7 +1,7 @@
 # Documentation
 
 This folder contains the scripts necessary to build NVTabular's documentation.
-You can view the generated [NVTabular documentation here](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html).
+You can view the generated [NVTabular documentation here](https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html).
 
 ## Contributing to Docs
 
@@ -66,8 +66,8 @@ that the link is broken.
   "lineno": 88,
   "status": "broken",
   "code": 0,
-  "uri": "https://github.com/NVIDIA-Merlin/Merlin/blob/main/docker/build-hadoop.sh",
-  "info": "404 Client Error: Not Found for url: https://github.com/NVIDIA-Merlin/Merlin/blob/main/docker/build-hadoop.sh"
+  "uri": "https://github.com/NVIDIA-Merlin/Merlin/blob/stable/docker/build-hadoop.sh",
+  "info": "404 Client Error: Not Found for url: https://github.com/NVIDIA-Merlin/Merlin/blob/stable/docker/build-hadoop.sh"
 }
 ```
 
@@ -127,7 +127,7 @@ the link is to the repository:
 
 ```markdown
 Refer to the sample Python programs in the
-[examples/blah](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/blah)
+[examples/blah](https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples/blah)
 directory of the repository.
 ```
 
@@ -164,7 +164,7 @@ a relative path works both in the HTML docs page and in the repository browsing 
 Use a link to the HTML page like the following:
 
 ```markdown
-<https://nvidia-merlin.github.io/NVTabular/main/Introduction.html>
+<https://nvidia-merlin.github.io/NVTabular/stable/Introduction.html>
 ```
 
 > I'd like to change this in the future. My preference would be to use a relative
