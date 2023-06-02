@@ -24,16 +24,16 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Install Ubuntu packages
+        run: |
+          apt-get update -y
+          apt-get install -y build-essential protobuf-compiler git lsb-release
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
           python-version: 3.8
           cache: 'pip'
           cache-dependency-path: requirements/*.txt
-      - name: Install Ubuntu packages
-        run: |
-          apt-get update -y
-          apt-get install -y build-essential protobuf-compiler git
       - name: Install and upgrade python packages
         run: |
           python -m pip install --upgrade pip setuptools==59.4.0 wheel tox pybind11
