@@ -28,6 +28,8 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.8
+          cache: 'pip'
+          cache-dependency-path: requirements/*.txt
       - name: Install Ubuntu packages
         run: |
           apt-get update -y
