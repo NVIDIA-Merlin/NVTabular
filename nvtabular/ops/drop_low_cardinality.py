@@ -25,7 +25,7 @@ class DropLowCardinality(Operator):
     first encoding these columns using Categorify.
     """
 
-    def __init__(self, min_cardinality=2):
+    def __init__(self, min_cardinality=4):
         super().__init__()
         self.min_cardinality = min_cardinality
 
