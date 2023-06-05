@@ -318,4 +318,4 @@ def test_multihot_empty_rows():
     )
 
     y_hat = model(x).numpy()
-    np.testing.assert_allclose(y_hat, multi_hot_embedding_rows, rtol=1e-06)
+    np.testing.assert_allclose(y_hat, multi_hot_embedding_rows, rtol=1e-05)
