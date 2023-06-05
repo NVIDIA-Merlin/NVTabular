@@ -186,12 +186,15 @@
 <span class="sd">        elements must be unique).</span>
 <span class="sd">    out_dtype : str, default is problem-specific</span>
 <span class="sd">        dtype of output target-encoding columns.</span>
-<span class="sd">    tree_width : dict or int, optional</span>
-<span class="sd">        Tree width of the hash-based groupby reduction for each categorical</span>
-<span class="sd">        column. High-cardinality columns may require a large `tree_width`,</span>
-<span class="sd">        while low-cardinality columns can likely use `tree_width=1`.</span>
+<span class="sd">    split_out : dict or int, optional</span>
+<span class="sd">        Number of files needed to store the final result of each groupby</span>
+<span class="sd">        reduction. High-cardinality groups may require a large `split_out`,</span>
+<span class="sd">        while low-cardinality columns can likely use `split_out=1` (default).</span>
 <span class="sd">        If passing a dict, each key and value should correspond to the column</span>
-<span class="sd">        name and width, respectively. The default value is 8 for all columns.</span>
+<span class="sd">        name and value, respectively. The default value is 1 for all columns.</span>
+<span class="sd">    split_every : dict or int, optional</span>
+<span class="sd">        Number of adjacent partitions to aggregate in each tree-reduction</span>
+<span class="sd">        node. The default value is 8 for all columns.</span>
 <span class="sd">    cat_cache : {&quot;device&quot;, &quot;host&quot;, &quot;disk&quot;} or dict</span>
 <span class="sd">        Location to cache the list of unique categories for</span>
 <span class="sd">        each categorical column. If passing a dict, each key and value</span>
@@ -221,12 +224,14 @@
         <span class="n">p_smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
         <span class="n">out_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">out_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">tree_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">split_out</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">split_every</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">cat_cache</span><span class="o">=</span><span class="s2">&quot;host&quot;</span><span class="p">,</span>
         <span class="n">out_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">on_host</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span>
         <span class="n">drop_folds</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">tree_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -240,7 +245,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">p_smooth</span> <span class="o">=</span> <span class="n">p_smooth</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">out_col</span> <span class="o">=</span> <span class="p">[</span><span class="n">out_col</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out_col</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">out_col</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">out_dtype</span> <span class="o">=</span> <span class="n">out_dtype</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tree_width</span> <span class="o">=</span> <span class="n">tree_width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">split_out</span> <span class="o">=</span> <span class="n">split_out</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">split_every</span> <span class="o">=</span> <span class="n">split_every</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">out_path</span> <span class="ow">or</span> <span class="s2">&quot;./&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span> <span class="o">=</span> <span class="n">on_host</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span> <span class="o">=</span> <span class="n">cat_cache</span>
@@ -248,7 +254,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_folds</span> <span class="o">=</span> <span class="n">drop_folds</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fold_name</span> <span class="o">=</span> <span class="s2">&quot;__fold__&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># TODO: just update target_mean?</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># TODO: just update target_mean?</span>
+        <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_deprecate_tree_width</span><span class="p">(</span><span class="n">tree_width</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TargetEncoding.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
         <span class="n">moments</span> <span class="o">=</span> <span class="kc">None</span>
@@ -286,10 +293,11 @@
                 <span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="s2">&quot;sum&quot;</span><span class="p">],</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span>
                 <span class="mi">0</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">tree_width</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">split_out</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span><span class="p">,</span>
                 <span class="n">concat_groups</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">,</span>
+                <span class="n">split_every</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_every</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">Delayed</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">dsk</span><span class="p">),</span> <span class="n">moments</span></div>
