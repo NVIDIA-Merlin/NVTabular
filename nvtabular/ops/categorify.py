@@ -1025,7 +1025,7 @@ def _top_level_groupby(df, options: FitOptions = None, spill=True):
         del df_gb
 
         # Extract null groups into gb_null
-        isnull = gb.isnull().any(1)
+        isnull = gb.isnull().any(axis=1)
         gb_null = gb[~isnull]
         gb = gb[isnull]
         if not len(gb_null):
