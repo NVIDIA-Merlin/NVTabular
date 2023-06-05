@@ -97,7 +97,7 @@ _CUDA_CLUSTER = None
 
 @pytest.fixture(scope="module")
 def client():
-    distributed = Distributed(n_workers=2)
+    distributed = Distributed()
     cluster = distributed.cluster
     client = distributed.client
     yield client
