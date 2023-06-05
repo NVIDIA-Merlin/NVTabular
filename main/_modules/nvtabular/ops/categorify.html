@@ -1114,7 +1114,7 @@
         <span class="k">del</span> <span class="n">df_gb</span>
 
         <span class="c1"># Extract null groups into gb_null</span>
-        <span class="n">isnull</span> <span class="o">=</span> <span class="n">gb</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">isnull</span> <span class="o">=</span> <span class="n">gb</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">gb_null</span> <span class="o">=</span> <span class="n">gb</span><span class="p">[</span><span class="o">~</span><span class="n">isnull</span><span class="p">]</span>
         <span class="n">gb</span> <span class="o">=</span> <span class="n">gb</span><span class="p">[</span><span class="n">isnull</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">gb_null</span><span class="p">):</span>
