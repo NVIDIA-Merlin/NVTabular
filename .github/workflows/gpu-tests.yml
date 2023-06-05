@@ -27,7 +27,7 @@ jobs:
       - name: Install Ubuntu packages
         run: |
           apt-get update -y
-          apt-get install -y build-essential protobuf-compiler git lsb-release
+          apt-get install -y build-essential protobuf-compiler git lsb-release libcudnn8
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
