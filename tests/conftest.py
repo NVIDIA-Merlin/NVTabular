@@ -52,10 +52,10 @@ else:
 
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
-from dask.distributed import Client, LocalCluster
 from numba import cuda
 
 import nvtabular
+from merlin.core.utils import Distributed
 from merlin.dag.node import iter_nodes
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -97,8 +97,9 @@ _CUDA_CLUSTER = None
 
 @pytest.fixture(scope="module")
 def client():
-    cluster = LocalCluster(n_workers=2)
-    client = Client(cluster)
+    distributed = Distributed(n_workers=2)
+    cluster = distributed.cluster
+    client = distributed.client
     yield client
     client.close()
     cluster.close()
