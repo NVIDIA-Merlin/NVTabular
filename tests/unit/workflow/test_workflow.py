@@ -673,6 +673,43 @@ def test_workflow_saved_schema(tmpdir):
         assert node.output_schema is not None
 
 
+def test_stat_op_workflow_roundtrip(tmpdir):
+    """
+    Categorify and TargetEncoding produce intermediate stats files that must be properly
+    saved and re-loaded.
+    """
+    N = 100
+
+    df = Dataset(
+        make_df(
+            {
+                "a": np.random.randint(0, 100000, N),
+                "item_id": np.random.randint(0, 100, N),
+                "user_id": np.random.randint(0, 100, N),
+                "click": np.random.randint(0, 2, N),
+            }
+        ),
+    )
+
+    outputs = ["a"] >> nvt.ops.Categorify()
+
+    continuous = (
+        ["user_id", "item_id"]
+        >> nvt.ops.TargetEncoding(["click"], kfold=1, p_smooth=20)
+        >> nvt.ops.Normalize()
+    )
+    outputs += continuous
+    wf = nvt.Workflow(outputs)
+
+    wf.fit(df)
+    expected = wf.transform(df).compute()
+    wf.save(tmpdir)
+
+    wf2 = nvt.Workflow.load(tmpdir)
+    transformed = wf2.transform(df).compute()
+    assert_eq(transformed, expected)
+
+
 def test_workflow_infer_modules_byvalue(tmp_path):
     module_fn = tmp_path / "not_a_real_module.py"
     sys.path.append(str(tmp_path))
