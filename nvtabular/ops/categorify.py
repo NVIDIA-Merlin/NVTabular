@@ -1693,7 +1693,7 @@ def _encode(
     expr = df[selection_l.names[0]].isna()
     for _name in selection_l.names[1:]:
         expr = expr & df[_name].isna()
-    nulls = df[expr].index
+    nulls = df[expr].index.values
 
     if use_collection or not search_sorted:
         if list_col:
