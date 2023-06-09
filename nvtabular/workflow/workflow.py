@@ -143,8 +143,8 @@ class Workflow:
         return self
 
     @property
-    def subgraphs(self):
-        return self.graph.subgraphs.keys()
+    def subworkflows(self):
+        return list(self.graph.subgraphs.keys())
 
     @property
     def input_dtypes(self):
@@ -169,7 +169,7 @@ class Workflow:
     def _input_columns(self):
         return self.graph._input_columns()
 
-    def get_subgraph(self, subgraph_name):
+    def get_subworkflow(self, subgraph_name):
         subgraph = self.graph.subgraph(subgraph_name)
         return Workflow(subgraph.output_node)
 

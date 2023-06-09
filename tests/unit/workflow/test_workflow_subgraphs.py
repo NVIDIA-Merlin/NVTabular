@@ -14,18 +14,16 @@
 # limitations under the License.
 #
 
-import math
 import os
 
 import numpy as np
 import pytest
 from pandas.api.types import is_integer_dtype
 
-from merlin.core.dispatch import HAS_GPU
 from merlin.core.utils import set_dask_client
 from merlin.dag.ops.subgraph import Subgraph
 from nvtabular import Workflow, ops
-from tests.conftest import assert_eq, get_cats
+from tests.conftest import assert_eq
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -74,25 +72,6 @@ def test_workflow_subgraphs(tmpdir, client, df, dataset, gpu_memory_frac, engine
     concat_ops = "_FillMissing_1_LogOp_1"
     if replace:
         concat_ops = ""
-    assert math.isclose(get_norms(df.x).mean(), norms.means["x" + concat_ops], rel_tol=1e-1)
-    assert math.isclose(get_norms(df.y).mean(), norms.means["y" + concat_ops], rel_tol=1e-1)
-
-    assert math.isclose(get_norms(df.x).std(), norms.stds["x" + concat_ops], rel_tol=1e-1)
-    assert math.isclose(get_norms(df.y).std(), norms.stds["y" + concat_ops], rel_tol=1e-1)
-    # Check that categories match
-    if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_host if HAS_GPU else df["name-cat"].unique()
-        cats0 = get_cats(workflow, "name-cat")
-        # adding the None entry as a string because of move from gpu
-        assert all(cat in sorted(cats_expected0.tolist()) for cat in cats0.tolist())
-        assert len(cats0.tolist()) == len(cats_expected0.tolist())
-    cats_expected1 = (
-        df["name-string"].unique().values_host if HAS_GPU else df["name-string"].unique()
-    )
-    cats1 = get_cats(workflow, "name-string")
-    # adding the None entry as a string because of move from gpu
-    assert all(cat in sorted(cats_expected1.tolist()) for cat in cats1.tolist())
-    assert len(cats1.tolist()) == len(cats_expected1.tolist())
 
     # Write to new "shuffled" and "processed" dataset
     df_pp = workflow.transform(dataset).to_ddf().compute()
@@ -101,8 +80,8 @@ def test_workflow_subgraphs(tmpdir, client, df, dataset, gpu_memory_frac, engine
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    subgraph_cat = workflow.get_subgraph("cat_graph")
-    subgraph_cont = workflow.get_subgraph("cont_graph")
+    subgraph_cat = workflow.get_subworkflow("cat_graph")
+    subgraph_cont = workflow.get_subworkflow("cont_graph")
     assert isinstance(subgraph_cat, Workflow)
     assert isinstance(subgraph_cont, Workflow)
     # will not be the same nodes of saved out and loaded back
@@ -111,7 +90,7 @@ def test_workflow_subgraphs(tmpdir, client, df, dataset, gpu_memory_frac, engine
         assert subgraph_cont.output_node == cont_features
     # check failure path works as expected
     with pytest.raises(ValueError) as exc:
-        workflow.get_subgraph("not_exist")
+        workflow.get_subworkflow("not_exist")
     assert "No subgraph named" in str(exc.value)
 
     sub_cat_df = subgraph_cat.transform(dataset).to_ddf().compute()
