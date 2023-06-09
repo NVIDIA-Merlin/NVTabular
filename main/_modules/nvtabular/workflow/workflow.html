@@ -232,6 +232,10 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">subworkflows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">subgraphs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">input_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">input_dtypes</span>
 
@@ -253,6 +257,10 @@
 
     <span class="k">def</span> <span class="nf">_input_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">_input_columns</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Workflow.get_subworkflow"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.get_subworkflow">[docs]</a>    <span class="k">def</span> <span class="nf">get_subworkflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgraph_name</span><span class="p">):</span>
+        <span class="n">subgraph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">subgraph_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Workflow</span><span class="p">(</span><span class="n">subgraph</span><span class="o">.</span><span class="n">output_node</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Workflow.remove_inputs"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.remove_inputs">[docs]</a>    <span class="k">def</span> <span class="nf">remove_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_cols</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes input columns from the workflow.</span>
