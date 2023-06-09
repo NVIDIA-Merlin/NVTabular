@@ -143,6 +143,10 @@ class Workflow:
         return self
 
     @property
+    def subgraphs(self):
+        return self.graph.subgraphs.keys()
+
+    @property
     def input_dtypes(self):
         return self.graph.input_dtypes
 
@@ -164,6 +168,10 @@ class Workflow:
 
     def _input_columns(self):
         return self.graph._input_columns()
+
+    def get_subgraph(self, subgraph_name):
+        subgraph = self.graph.subgraph(subgraph_name)
+        return Workflow(subgraph.output_node)
 
     def remove_inputs(self, input_cols) -> "Workflow":
         """Removes input columns from the workflow.
