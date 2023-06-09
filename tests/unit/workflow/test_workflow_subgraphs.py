@@ -67,13 +67,10 @@ def test_workflow_subgraphs(tmpdir, client, df, dataset, gpu_memory_frac, engine
         gdf = np.log(gdf + 1)
         return gdf
 
-    # Check mean and std - No good right now we have to add all other changes; Clip, Log
-
     concat_ops = "_FillMissing_1_LogOp_1"
     if replace:
         concat_ops = ""
 
-    # Write to new "shuffled" and "processed" dataset
     df_pp = workflow.transform(dataset).to_ddf().compute()
 
     if engine == "parquet":
@@ -93,11 +90,10 @@ def test_workflow_subgraphs(tmpdir, client, df, dataset, gpu_memory_frac, engine
         workflow.get_subworkflow("not_exist")
     assert "No subgraph named" in str(exc.value)
 
+    # test transform results from subgraph
     sub_cat_df = subgraph_cat.transform(dataset).to_ddf().compute()
-    assert assert_eq(sub_cat_df.reset_index(drop=True), df_pp[cat_names].reset_index(drop=True))
+    assert_eq(sub_cat_df, df_pp[cat_names])
 
     cont_names = [name + concat_ops for name in cont_names]
     sub_cont_df = subgraph_cont.transform(dataset).to_ddf().compute()
-    assert assert_eq(
-        sub_cont_df[cont_names].reset_index(drop=True), df_pp[cont_names].reset_index(drop=True)
-    )
+    assert_eq(sub_cont_df[cont_names], df_pp[cont_names])
