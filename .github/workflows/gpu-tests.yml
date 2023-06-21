@@ -43,4 +43,13 @@ jobs:
       - name: Run tests
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
-          RAPIDS_VERSION=23.04 MERLIN_BRANCH="$merlin_branch" tox -e test-gpu
+          rapids_version=23.04
+          python -m pip instll -r requirements/test.txt
+          python -m pip install \
+              nvidia-cudnn-cu11==8.6.0.163 \
+              cudf-cu11==${rapids_version} dask-cudf-cu11==${rapids_version} \
+              git+https://github.com/NVIDIA-Merlin/core.git@${merlin_branch} \
+              git+https://github.com/NVIDIA-Merlin/dataloader.git@${merlin_branch} \
+              git+https://github.com/NVIDIA-Merlin/models.git@${merlin_branch} \
+              git+https://github.com/NVIDIA-Merlin/core.git@${merlin_branch} \
+              --extra-index-url=https://pypi.nvidia.com
