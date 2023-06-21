@@ -53,3 +53,4 @@ jobs:
               git+https://github.com/NVIDIA-Merlin/models.git@${merlin_branch} \
               git+https://github.com/NVIDIA-Merlin/core.git@${merlin_branch} \
               --extra-index-url=https://pypi.nvidia.com
+          python -m pytest -rsx tests/unit
