@@ -44,6 +44,7 @@ jobs:
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
           rapids_version=23.04
+          python -m pip install .
           python -m pip install -r requirements/test.txt
           python -m pip install \
               nvidia-cudnn-cu11==8.6.0.163 \
