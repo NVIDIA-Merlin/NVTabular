@@ -1759,7 +1759,7 @@ def _encode(
                             left_on=selection_l.names,
                             right_on=selection_r.names,
                             how="left",
-                        ).dropna(subset=[tmp_label_column)
+                        ).dropna(subset=[tmp_label_column])
                         for part in value.partitions
                     ],
                     ignore_index=True,
