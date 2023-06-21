@@ -1644,7 +1644,10 @@ def _encode(
                         cats_only=True,
                         reader=read_pq_func,
                     )
-                    if len(value) and value[tmp_label_column].iloc[0] < OOV_OFFSET + num_oov_buckets:
+                    if (
+                        len(value)
+                        and value[tmp_label_column].iloc[0] < OOV_OFFSET + num_oov_buckets
+                    ):
                         # See: https://github.com/rapidsai/cudf/issues/12837
                         value[tmp_label_column] += OOV_OFFSET + num_oov_buckets
         else:
@@ -1770,16 +1773,16 @@ def _encode(
                         np.full(
                             len(codes),
                             indistinct,
-                            like=merged_df[tmp_column_name].values,
+                            like=merged_df[tmp_label_column].values,
                         ),
                     )
-                    labels.iloc[merged_df["order"]] = merged_df[tmp_column_name]
+                    labels.iloc[merged_df["order"]] = merged_df[tmp_label_column]
                 else:
-                    labels = merged_df.sort_values("order")[tmp_column_name].reset_index(drop=True)
+                    labels = merged_df.sort_values("order")[tmp_label_column].reset_index(drop=True)
             else:
                 labels = codes.merge(
                     value, left_on=selection_l.names, right_on=selection_r.names, how="left"
-                ).sort_values("order")[tmp_column_name]
+                ).sort_values("order")[tmp_label_column]
             labels.fillna(indistinct, inplace=True)
             labels = labels.values
     else:
