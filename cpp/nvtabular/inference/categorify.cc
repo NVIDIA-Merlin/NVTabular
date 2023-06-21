@@ -38,7 +38,7 @@ namespace nvtabular
         py::object pandas = py::module_::import("pandas");
         py::object df = pandas.attr("read_parquet")(filename);
         py::object isnull = pandas.attr("isnull");
-        py::array values = df[column_name.c_str()].attr("__values_tmp");
+        py::array values = df[column_name.c_str()].attr("__labels_tmp");
         auto dtype = values.dtype();
 
         if ((dtype.kind() == 'O') || (dtype.kind() == 'U'))
