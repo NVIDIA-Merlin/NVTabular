@@ -53,4 +53,6 @@ jobs:
               git+https://github.com/NVIDIA-Merlin/models.git@${merlin_branch} \
               git+https://github.com/NVIDIA-Merlin/core.git@${merlin_branch} \
               --extra-index-url=https://pypi.nvidia.com
-          python -m pytest -rsx tests/unit
+          python -m pytest -rsx tests/unit/loader/test_tf_dataloader.py
+          python -m pytest -rsx tests/unit/loader/test_torch_dataloader.py
+          python -m pytest -rsx -m 'not loader' tests/unit
