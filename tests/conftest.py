@@ -380,5 +380,8 @@ def pytest_collection_modifyitems(items):
         if "/loader/" in path:
             item.add_marker(getattr(pytest.mark, "loader"))
 
+        if "/ops/" in path:
+            item.add_marker(getattr(pytest.mark, "ops"))
+
         if "test_tf_" in path:
             item.add_marker(getattr(pytest.mark, "tensorflow"))
