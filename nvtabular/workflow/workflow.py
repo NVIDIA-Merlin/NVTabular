@@ -17,12 +17,13 @@
 import inspect
 import json
 import logging
+import os
 import sys
 import time
 import types
 import warnings
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import cloudpickle
 import fsspec
@@ -142,6 +143,10 @@ class Workflow:
         return self
 
     @property
+    def subworkflows(self):
+        return list(self.graph.subgraphs.keys())
+
+    @property
     def input_dtypes(self):
         return self.graph.input_dtypes
 
@@ -163,6 +168,10 @@ class Workflow:
 
     def _input_columns(self):
         return self.graph._input_columns()
+
+    def get_subworkflow(self, subgraph_name):
+        subgraph = self.graph.subgraph(subgraph_name)
+        return Workflow(subgraph.output_node)
 
     def remove_inputs(self, input_cols) -> "Workflow":
         """Removes input columns from the workflow.
@@ -295,12 +304,12 @@ class Workflow:
 
         return [mod for mod in result if mod.__name__ not in exclusions]
 
-    def save(self, path, modules_byvalue=None):
+    def save(self, path: Union[str, os.PathLike], modules_byvalue=None):
         """Save this workflow to disk
 
         Parameters
         ----------
-        path: str
+        path: Union[str, os.PathLike]
             The path to save the workflow to
         modules_byvalue:
             A list of modules that should be serialized by value. This
@@ -313,6 +322,8 @@ class Workflow:
         """
         # avoid a circular import getting the version
         from nvtabular import __version__ as nvt_version
+
+        path = str(path)
 
         fs = fsspec.get_fs_token_paths(path)[0]
 
@@ -385,12 +396,12 @@ class Workflow:
                         cloudpickle.unregister_pickle_by_value(sys.modules[m])
 
     @classmethod
-    def load(cls, path, client=None) -> "Workflow":
+    def load(cls, path: Union[str, os.PathLike], client=None) -> "Workflow":
         """Load up a saved workflow object from disk
 
         Parameters
         ----------
-        path: str
+        path: Union[str, os.PathLike]
             The path to load the workflow from
         client: distributed.Client, optional
             The Dask distributed client to use for multi-gpu processing and multi-node processing
@@ -402,6 +413,8 @@ class Workflow:
         """
         # avoid a circular import getting the version
         from nvtabular import __version__ as nvt_version
+
+        path = str(path)
 
         fs = fsspec.get_fs_token_paths(path)[0]
 

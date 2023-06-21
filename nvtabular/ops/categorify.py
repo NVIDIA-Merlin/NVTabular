@@ -1693,7 +1693,7 @@ def _encode(
     expr = df[selection_l.names[0]].isna()
     for _name in selection_l.names[1:]:
         expr = expr & df[_name].isna()
-    nulls = df[expr].index
+    nulls = df[expr].index.values
 
     if use_collection or not search_sorted:
         if list_col:
@@ -1861,12 +1861,24 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
     existing_fs = get_fs_token_paths(existing_path)[0]
     new_fs = get_fs_token_paths(new_path)[0]
     new_locations = {}
+
     for column, existing_file in existing_stats.items():
         new_file = existing_file.replace(str(existing_path), str(new_path))
         if copy and new_file != existing_file:
             new_fs.makedirs(os.path.dirname(new_file), exist_ok=True)
-            with new_fs.open(new_file, "wb") as output:
-                output.write(existing_fs.open(existing_file, "rb").read())
+
+            # For some ops, the existing "file" is a directory containing `part.N.parquet` files.
+            # In that case, new_file is actually a directory and we will iterate through the "part"
+            # files and copy them individually
+            if os.path.isdir(existing_file):
+                new_fs.makedirs(new_file, exist_ok=True)
+                for existing_file_part in existing_fs.ls(existing_file):
+                    new_file_part = os.path.join(new_file, os.path.basename(existing_file_part))
+                    with new_fs.open(new_file_part, "wb") as output:
+                        output.write(existing_fs.open(existing_file_part, "rb").read())
+            else:
+                with new_fs.open(new_file, "wb") as output:
+                    output.write(existing_fs.open(existing_file, "rb").read())
 
         new_locations[column] = new_file
 

@@ -27,9 +27,11 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 from merlin.core import dispatch
 from merlin.core.compat import cudf, dask_cudf
-from merlin.core.dispatch import HAS_GPU, make_df
+from merlin.core.dispatch import HAS_GPU, create_multihot_col, make_df, make_series
 from merlin.core.utils import set_dask_client
 from merlin.dag import ColumnSelector, postorder_iter_nodes
+from merlin.dataloader.loader_base import LoaderBase as Loader
+from merlin.dataloader.ops.embeddings import EmbeddingOperator
 from merlin.schema import Tags
 from nvtabular import Dataset, Workflow, ops
 from tests.conftest import assert_eq, get_cats, mycols_csv
@@ -671,6 +673,43 @@ def test_workflow_saved_schema(tmpdir):
         assert node.output_schema is not None
 
 
+def test_stat_op_workflow_roundtrip(tmpdir):
+    """
+    Categorify and TargetEncoding produce intermediate stats files that must be properly
+    saved and re-loaded.
+    """
+    N = 100
+
+    df = Dataset(
+        make_df(
+            {
+                "a": np.random.randint(0, 100000, N),
+                "item_id": np.random.randint(0, 100, N),
+                "user_id": np.random.randint(0, 100, N),
+                "click": np.random.randint(0, 2, N),
+            }
+        ),
+    )
+
+    outputs = ["a"] >> nvt.ops.Categorify()
+
+    continuous = (
+        ["user_id", "item_id"]
+        >> nvt.ops.TargetEncoding(["click"], kfold=1, p_smooth=20)
+        >> nvt.ops.Normalize()
+    )
+    outputs += continuous
+    wf = nvt.Workflow(outputs)
+
+    wf.fit(df)
+    expected = wf.transform(df).compute()
+    wf.save(tmpdir)
+
+    wf2 = nvt.Workflow.load(tmpdir)
+    transformed = wf2.transform(df).compute()
+    assert_eq(transformed, expected)
+
+
 def test_workflow_infer_modules_byvalue(tmp_path):
     module_fn = tmp_path / "not_a_real_module.py"
     sys.path.append(str(tmp_path))
@@ -737,3 +776,57 @@ def test_workflow_auto_infer_modules_byvalue(tmp_path):
     os.unlink(str(tmp_path / "not_a_real_module.py"))
 
     Workflow.load(str(tmp_path / "identity-workflow"))
+
+
+@pytest.mark.parametrize("cpu", [None, "cpu"] if HAS_GPU else ["cpu"])
+def test_embedding_cat_export_import(tmpdir, cpu):
+    string_ids = ["alpha", "bravo", "charlie", "delta", "foxtrot"]
+    training_data = make_df(
+        {
+            "string_id": string_ids,
+        }
+    )
+    training_data["embeddings"] = create_multihot_col(
+        [0, 5, 10, 15, 20, 25], make_series(np.random.rand(25))
+    )
+
+    cat_op = nvt.ops.Categorify()
+
+    # first workflow that categorifies all data
+    graph1 = ["string_id"] >> cat_op
+    emb_res = Workflow(graph1 + ["embeddings"]).fit_transform(
+        Dataset(training_data, cpu=(cpu is not None))
+    )
+    npy_path = str(tmpdir / "embeddings.npy")
+    emb_res.to_npy(npy_path)
+
+    embeddings = np.load(npy_path)
+    # second workflow that categorifies the embedding table data
+    df = make_df({"string_id": np.random.choice(string_ids, 30)})
+    graph2 = ["string_id"] >> cat_op
+    train_res = Workflow(graph2).transform(Dataset(df, cpu=(cpu is not None)))
+
+    data_loader = Loader(
+        train_res,
+        batch_size=1,
+        transforms=[
+            EmbeddingOperator(
+                embeddings[:, 1:],
+                id_lookup_table=embeddings[:, 0].astype(int),
+                lookup_key="string_id",
+            )
+        ],
+        shuffle=False,
+        device=cpu,
+    )
+    origin_df = train_res.to_ddf().merge(emb_res.to_ddf(), on="string_id", how="left").compute()
+    for idx, batch in enumerate(data_loader):
+        batch
+        b_df = batch[0].to_df()
+        org_df = origin_df.iloc[idx]
+        if not cpu:
+            assert (b_df["string_id"].to_numpy() == org_df["string_id"].to_numpy()).all()
+            assert (b_df["embeddings"].list.leaves == org_df["embeddings"].list.leaves).all()
+        else:
+            assert (b_df["string_id"].values == org_df["string_id"]).all()
+            assert b_df["embeddings"].values[0] == org_df["embeddings"].tolist()
