@@ -371,3 +371,10 @@ def devices(request):
 @pytest.fixture
 def report(request):
     return request.config.getoption("--report")
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        path = item.location[0]
+
+        if "/loader/" in path:
+            item.add_marker(getattr(pytest.mark, "loader"))
