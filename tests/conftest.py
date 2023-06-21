@@ -372,6 +372,7 @@ def devices(request):
 def report(request):
     return request.config.getoption("--report")
 
+
 def pytest_collection_modifyitems(items):
     for item in items:
         path = item.location[0]
