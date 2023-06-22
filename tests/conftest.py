@@ -385,3 +385,6 @@ def pytest_collection_modifyitems(items):
 
         if "test_tf_" in path:
             item.add_marker(getattr(pytest.mark, "tensorflow"))
+
+        if "test_torch_" in path:
+            item.add_marker(getattr(pytest.mark, "torch"))
