@@ -288,11 +288,17 @@ within NVTabular, and does not guarantee that the memory limit will be satisfied
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Categorify.inference_initialize" title="nvtabular.ops.Categorify.inference_initialize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inference_initialize</span></code></a>(columns, inference_config)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_artifacts</span></code>([artifact_path])</p></td>
+<td><p>Load artifacts from disk required for operator function.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
 <td><p>Given a set of columns names returns the names of the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Categorify.process_vocabs" title="nvtabular.ops.Categorify.process_vocabs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">process_vocabs</span></code></a>(vocabs)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Categorify.process_vocabs" title="nvtabular.ops.Categorify.process_vocabs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">process_vocabs</span></code></a>(vocabs)</p></td>
 <td><p>Process vocabs passed in by the user.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_artifacts</span></code>([artifact_path])</p></td>
+<td><p>Save artifacts required to be reload operator state from disk</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Categorify.set_storage_path" title="nvtabular.ops.Categorify.set_storage_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code></a>(new_path[, copy])</p></td>
 <td><p></p></td>
