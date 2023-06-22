@@ -371,3 +371,26 @@ def devices(request):
 @pytest.fixture
 def report(request):
     return request.config.getoption("--report")
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        path = item.location[0]
+
+        if "/unit/" in path:
+            item.add_marker(getattr(pytest.mark, "unit"))
+
+        if "/loader/" in path:
+            item.add_marker(getattr(pytest.mark, "loader"))
+
+        if "/examples/" in path:
+            item.add_marker(getattr(pytest.mark, "examples"))
+
+        if "/ops/" in path:
+            item.add_marker(getattr(pytest.mark, "ops"))
+
+        if "test_tf_" in path:
+            item.add_marker(getattr(pytest.mark, "tensorflow"))
+
+        if "test_torch_" in path:
+            item.add_marker(getattr(pytest.mark, "torch"))
