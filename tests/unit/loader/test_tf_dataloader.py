@@ -80,7 +80,6 @@ def test_nested_list():
     assert multihot_data2_col.shape == true_data2_col.shape
     assert np.allclose(multihot_data2_col.numpy(), true_data2_col.numpy())
 
-    train_dataset.stop()
 
 def test_shuffling():
     num_rows = 10000
@@ -99,8 +98,6 @@ def test_shuffling():
 
     assert (first_batch != in_order).numpy().any()
     assert (tf.sort(first_batch) == in_order).numpy().all()
-
-    train_dataset.stop()
 
 
 @pytest.mark.parametrize("batch_size", [10, 9, 8])
@@ -151,8 +148,6 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
     else:
         assert num_rows == all_rows
 
-    data_itr.stop()
-
 
 def test_tf_catname_ordering(tmpdir):
     df = make_df(
@@ -188,8 +183,6 @@ def test_tf_catname_ordering(tmpdir):
         assert list(X["cont1"].numpy()) == [1.0] * 10
         assert list(X["cont2"].numpy()) == [2.0] * 10
         assert list(X["cont3"].numpy()) == [3.0] * 10
-
-    data_itr.stop()
 
 
 def test_tf_map(tmpdir):
@@ -232,8 +225,6 @@ def test_tf_map(tmpdir):
         assert list(X["cont2"].numpy()) == [2.0] * 10
 
         assert list(sample_weight.numpy()) == [1.0] * 10
-
-    data_itr.stop()
 
 
 # TODO: include use_columns option
@@ -401,7 +392,6 @@ def test_mh_support(tmpdir, batch_size):
 
         idx += 1
     assert idx == (3 // batch_size + 1)
-    data_itr.stop()
 
 
 @pytest.mark.parametrize("batch_size", [128, 256])
@@ -454,8 +444,6 @@ def test_validater(tmpdir, batch_size):
     print(estimated_auc)
     assert np.isclose(true_auc, estimated_auc, rtol=0.1)
 
-    dataloader.stop()
-
 
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
@@ -478,7 +466,6 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
     )
     indices = data_loader._indices_for_process()
     assert indices == [global_rank]
-    data_loader.stop()
 
 
 @pytest.mark.parametrize("batch_size", [1000])
