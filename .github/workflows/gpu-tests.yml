@@ -42,3 +42,32 @@ jobs:
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
           RAPIDS_VERSION=23.04 MERLIN_BRANCH=$merlin_branch tox -e test-gpu-cu11
+
+  gpu-tests-cu12:
+    runs-on: linux-amd64-gpu-p100-latest-1
+    container:
+      image: nvidia/cuda:12.1.1-devel-ubuntu22.04
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install Ubuntu packages
+        run: |
+          apt-get update -y
+          apt-get install -y git lsb-release
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+      - name: Install and upgrade python packages
+        run: |
+          python -m pip install --upgrade pip tox
+      - name: Get Branch name
+        id: get-branch-name
+        uses: NVIDIA-Merlin/.github/actions/branch-name@branch-name-pull-request
+      - name: Run tests
+        run: |
+          merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
+          RAPIDS_VERSION=23.06 MERLIN_BRANCH=$merlin_branch tox -e test-gpu-cu12
