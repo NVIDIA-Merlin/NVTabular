@@ -41,4 +41,4 @@ jobs:
       - name: Run tests
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
-          RAPIDS_VERSION=23.04 MERLIN_BRANCH=$merlin_branch tox -e test-gpu
+          RAPIDS_VERSION=23.04 MERLIN_BRANCH=$merlin_branch tox -e test-gpu-cu11
