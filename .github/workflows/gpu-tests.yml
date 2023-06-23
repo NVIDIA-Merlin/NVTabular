@@ -27,7 +27,8 @@ jobs:
       - name: Install Ubuntu packages
         run: |
           apt-get update -y
-          apt-get install -y git lsb-release
+          # libcudnn8 installed for tensorflow GPU support
+          apt-get install -y git lsb-release 'libcudnn8=*cuda11.8'
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
