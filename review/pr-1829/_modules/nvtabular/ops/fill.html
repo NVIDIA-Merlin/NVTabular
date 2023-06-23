@@ -164,7 +164,7 @@
     <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_filled&quot;</span><span class="p">):</span>
-            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">col_schema</span>
 
     <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span></div>
@@ -232,7 +232,7 @@
     <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
         <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_filled&quot;</span><span class="p">):</span>
-            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">col_schema</span></div>
 </pre></div>
 
