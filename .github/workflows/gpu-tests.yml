@@ -31,4 +31,4 @@ jobs:
             raw=$(git branch -r --contains ${{ github.ref_name }})
             branch=${raw/origin\/}
           fi
-          cd ${{ github.workspace }}; tox -e test-gpu -- $branch
+          cd ${{ github.workspace }}; MERLIN_REF=$branch tox -e test-gpu

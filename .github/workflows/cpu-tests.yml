@@ -49,7 +49,7 @@ jobs:
             raw=$(git branch -r --contains ${{ github.ref_name }})
             branch=${raw/origin\/}
           fi
-          tox -e test-cpu -- $branch
+          MERLIN_REF=$branch tox -e test-cpu
 
       # Build docs, treat warnings as errors
       - name: Building docs
