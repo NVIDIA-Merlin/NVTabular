@@ -114,13 +114,13 @@ class DatasetGen:
             if col.multi_min and col.multi_max:
                 if HAS_GPU:
                     ser = dist.create_col(
-                        col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
+                        col_size + 1, dtype=int, min_val=col.multi_min, max_val=col.multi_max
                     )
                     ser = make_series(np.ceil(ser)).astype(ser.dtype)
                     _cumsum = xp.cumsum
                 else:
                     ser = dist.create_col(
-                        col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
+                        col_size + 1, dtype=int, min_val=col.multi_min, max_val=col.multi_max
                     )
                     ser = make_df(np.ceil(ser))[0]
                     _cumsum = np.cumsum
@@ -130,12 +130,12 @@ class DatasetGen:
                 offs = offs.astype("int32")
             if HAS_GPU:
                 ser = dist.create_col(
-                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
+                    col_size, dtype=int, min_val=col.min_val, max_val=col.cardinality
                 )
                 ser = make_series(np.ceil(ser)).astype(ser.dtype)
             else:
                 ser = dist.create_col(
-                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
+                    col_size, dtype=int, min_val=col.min_val, max_val=col.cardinality
                 )
                 ser = make_df(np.ceil(ser))[0]
                 ser = ser.astype("int32")
