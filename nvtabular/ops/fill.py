@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
-import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.dag.ops.stat_operator import StatOperator
