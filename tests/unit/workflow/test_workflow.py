@@ -805,9 +805,10 @@ def test_embedding_cat_export_import(tmpdir, cpu):
     df = make_df({"string_id": np.random.choice(string_ids, 30)})
     graph2 = ["string_id"] >> cat_op
     train_res = Workflow(graph2).transform(Dataset(df, cpu=(cpu is not None)))
+    train_df = train_res.compute()
 
     data_loader = Loader(
-        train_res,
+        nvt.Dataset(train_df),
         batch_size=1,
         transforms=[
             EmbeddingOperator(
@@ -819,9 +820,13 @@ def test_embedding_cat_export_import(tmpdir, cpu):
         shuffle=False,
         device=cpu,
     )
-    origin_df = train_res.compute().merge(emb_res.compute(), on="string_id", how="left")
-    print(train_res.compute())
+    origin_df = train_df.merge(emb_res.compute(), on="string_id", how="left")
+    print("train_df:")
+    print(train_df)
+    print("origin_df:")
     print(origin_df)
+    print("emb_res:")
+    print(emb_res.compute())
     for idx, batch in enumerate(data_loader):
         batch
         b_df = batch[0].to_df()
