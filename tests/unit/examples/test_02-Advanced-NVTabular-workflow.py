@@ -27,6 +27,7 @@ pytest.importorskip("tensorflow")
 nest_asyncio.apply()
 
 
+@pytest.mark.tensorflow
 def test_example_02_advanced_workflow():
     with testbook(
         REPO_ROOT / "examples" / "02-Advanced-NVTabular-workflow.ipynb",
