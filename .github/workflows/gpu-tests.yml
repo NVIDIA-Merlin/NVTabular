@@ -14,7 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   # Multi-GPU tests
 
   gpu-tests:
