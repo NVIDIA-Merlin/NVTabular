@@ -805,13 +805,12 @@ def test_embedding_cat_export_import(tmpdir, cpu):
     df = make_df({"string_id": np.random.choice(string_ids, 30)})
     graph2 = ["string_id"] >> cat_op
     train_res = Workflow(graph2).transform(Dataset(df, cpu=(cpu is not None)))
-    train_df = train_res.compute()
 
     ids = ids_and_embeddings[:, 0].astype(int)
     embeddings = ids_and_embeddings[:, 1:]
 
     data_loader = Loader(
-        nvt.Dataset(train_df),
+        train_res,
         batch_size=1,
         transforms=[
             EmbeddingOperator(
