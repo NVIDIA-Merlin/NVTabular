@@ -819,7 +819,7 @@ def test_embedding_cat_export_import(tmpdir, cpu):
         shuffle=False,
         device=cpu,
     )
-    origin_df = train_res.to_ddf().merge(emb_res.to_ddf(), on="string_id", how="left").compute()
+    origin_df = train_res.compute().merge(emb_res.compute(), on="string_id", how="left")
     for idx, batch in enumerate(data_loader):
         batch
         b_df = batch[0].to_df()
