@@ -177,7 +177,7 @@ def test_addition_nodes_are_combined():
 
     add_node = "c" + node1 + "d"
     workflow = Workflow(add_node).fit_schema(schema)
-    assert set(workflow.output_node.parents) == {node1}
+    assert node1 in set(workflow.output_node.dependencies)
     assert set(workflow.output_node.output_columns.names) == {"a", "b", "c", "d"}
 
     add_node = node1 + "e" + node2
@@ -284,7 +284,6 @@ def test_nested_workflow_node():
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
     cats = country + user + [country + user] >> Categorify(encode_type="combo")
-
     workflow = Workflow(cats)
     workflow.fit_schema(dataset.infer_schema())
 
@@ -301,8 +300,7 @@ def test_nested_workflow_node():
     assert geo_country_user[0] == geo_country_user[1]  # US / userA
     assert geo_country_user[2] != geo_country_user[0]  # same user but in canada
 
-    # make sure we get an exception if we nest too deeply (can't handle arbitrarily deep
-    # nested column groups - and the exceptions we would get in operators like Categorify
-    # are super confusing for users)
+    # make sure we get an exception if we nest column grouping too deeply
+    cats = [country + "user"] + country + "user" >> Categorify(encode_type="combo")
     with pytest.raises(ValueError):
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
