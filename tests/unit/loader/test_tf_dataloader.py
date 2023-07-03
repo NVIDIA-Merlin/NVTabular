@@ -509,3 +509,5 @@ def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device):
 
     num_label_cols = batch[1].shape[1] if len(batch[1].shape) > 1 else 1
     assert num_label_cols == len(label_name)
+
+    data_loader.stop()
