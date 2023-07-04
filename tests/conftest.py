@@ -23,6 +23,7 @@ import socket
 import subprocess
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 import dask
 import pandas as pd
@@ -394,3 +395,19 @@ def pytest_collection_modifyitems(items):
 
         if "test_torch_" in path:
             item.add_marker(getattr(pytest.mark, "torch"))
+
+
+@pytest.fixture(scope="function", autouse=True)
+def cleanup_dataloader():
+    """After each test runs. Call .stop() on any dataloaders created during the test.
+    The avoids issues with background threads hanging around and interfering with subsequent tests.
+    This happens when a dataloader is partially consumed (not all batches are iterated through).
+    """
+    from merlin.dataloader.loader_base import LoaderBase
+
+    with patch.object(
+        LoaderBase, "__iter__", side_effect=LoaderBase.__iter__, autospec=True
+    ) as patched:
+        yield
+        for call in patched.call_args_list:
+            call.args[0].stop()
