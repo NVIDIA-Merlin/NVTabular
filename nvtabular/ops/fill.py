@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
-import numpy as np
 
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.dag.ops.stat_operator import StatOperator
@@ -75,7 +74,7 @@ class FillMissing(Operator):
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
         if col_schema.name.endswith("_filled"):
-            col_schema = col_schema.with_dtype(np.bool)
+            col_schema = col_schema.with_dtype(bool)
         return col_schema
 
     transform.__doc__ = Operator.transform.__doc__
@@ -143,5 +142,5 @@ class FillMedian(StatOperator):
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
         if col_schema.name.endswith("_filled"):
-            col_schema = col_schema.with_dtype(np.bool)
+            col_schema = col_schema.with_dtype(bool)
         return col_schema
