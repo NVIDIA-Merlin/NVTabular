@@ -1,0 +1,11 @@
+name: cu12-env
+channels:
+  - conda-forge
+  - rapidsai-nightly
+  - nvidia
+dependencies:
+  - python=3.10
+  - cuda-version=12.1
+  - cuda-nvcc=12.1
+  - cudf=23.08
+  - dask-cudf=23.08
