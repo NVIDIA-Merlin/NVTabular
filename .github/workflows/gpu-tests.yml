@@ -61,7 +61,7 @@ jobs:
           python -m pip install --upgrade pip tox
       - name: Get Branch name
         id: get-branch-name
-        uses: NVIDIA-Merlin/.github/actions/branch-name@branch-name-pull-request
+        uses: NVIDIA-Merlin/.github/actions/branch-name@9f82e25a18e2b4a3f4350e9f287c2c31e906d89e
       - name: Run tests
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
@@ -91,7 +91,7 @@ jobs:
           python -m pip install --upgrade pip tox
       - name: Get Branch name
         id: get-branch-name
-        uses: NVIDIA-Merlin/.github/actions/branch-name@branch-name-pull-request
+        uses: NVIDIA-Merlin/.github/actions/branch-name@9f82e25a18e2b4a3f4350e9f287c2c31e906d89e
       - name: Run tests
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
@@ -120,7 +120,7 @@ jobs:
           python -m pip install --upgrade pip tox
       - name: Get Branch name
         id: get-branch-name
-        uses: NVIDIA-Merlin/.github/actions/branch-name@branch-name-pull-request
+        uses: NVIDIA-Merlin/.github/actions/branch-name@9f82e25a18e2b4a3f4350e9f287c2c31e906d89e
       - name: Run tests
         run: |
           merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
