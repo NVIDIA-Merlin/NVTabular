@@ -105,7 +105,7 @@
 <dl class="py class">
 <dt id="nvtabular.ops.Rename">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">Rename</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">postfix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/ops/rename.html#Rename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Rename" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nvtabular.ops.operator.Operator</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.operator.Operator</span></code></p>
 <p>This operation renames columns by one of several methods:</p>
 <blockquote>
 <div><ul class="simple">
@@ -162,8 +162,8 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_node</span></code>(selector)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">inference_initialize</span></code>(col_selector, model_config)</p></td>
-<td><p>Configures this operator for use in inference.</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">export</span></code>(path, input_schema, output_schema, …)</p></td>
+<td><p>Export the class object as a config and all related files to the user defined path.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_artifacts</span></code>([artifact_path])</p></td>
 <td><p>Load artifacts from disk required for operator function.</p></td>
@@ -195,25 +195,28 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_dtypes</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_subgraph</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">export_name</span></code></p></td>
+<td><p>Provides a clear common english identifier for this operator.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_subgraph</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supported_formats</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supported_formats</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports</span></code></p></td>
 <td><p>Returns what kind of data representation this operator supports</p></td>
 </tr>
 </tbody>
@@ -225,15 +228,15 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> (<em>list of str</em><em> or </em><em>list of list of str</em>) – The columns to apply this operator to</p></li>
-<li><p><strong>df</strong> (<em>Dataframe</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
+<li><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – The columns to apply this operator to</p></li>
+<li><p><strong>transformable</strong> (<em>Transformable</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Returns a transformed dataframe for this operator</p>
+<dd class="field-even"><p>Returns a transformed dataframe or dictarray for this operator</p>
 </dd>
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>DataFrame</p>
+<dd class="field-odd"><p>Transformable</p>
 </dd>
 </dl>
 </dd></dl>
@@ -281,12 +284,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

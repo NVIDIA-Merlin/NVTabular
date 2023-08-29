@@ -137,16 +137,19 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">construct_from</span></code>(nodable)</p></td>
 <td><p>Convert Node-like objects to a Node or list of Nodes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">exportable</span></code>([backend])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">export</span></code>(output_path[, node_id, version])</p></td>
+<td><p>Export a directory for this node, containing the required artifacts to run in the target context.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">exportable</span></code>([backend])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_child</span></code>(child)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_child</span></code>(child)</p></td>
 <td><p>Removing a child node from this node</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_inputs</span></code>(input_cols)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_inputs</span></code>(input_cols)</p></td>
 <td><p>Remove input columns and all output columns that depend on them.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(root_schema[, strict_dtypes])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(root_schema[, strict_dtypes])</p></td>
 <td><p>Check if this Node’s input schema matches the output schemas of parents and dependencies</p></td>
 </tr>
 </tbody>
@@ -164,25 +167,28 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dependency_columns</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">graph</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">export_name</span></code></p></td>
+<td><p>Name for the exported node directory.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">graph</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">grouped_parents_with_dependencies</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">grouped_parents_with_dependencies</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">input_columns</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">input_columns</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_columns</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_columns</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parents_with_dependencies</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">parents_with_dependencies</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">selector</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">selector</span></code></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -225,12 +231,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="nvtabular.workflow.workflow.WorkflowNode.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

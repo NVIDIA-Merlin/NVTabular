@@ -106,12 +106,13 @@
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">types</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">singledispatchmethod</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">cloudpickle</span>
 <span class="kn">import</span> <span class="nn">fsspec</span>
@@ -121,9 +122,10 @@
 <span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Graph</span>
 <span class="kn">from</span> <span class="nn">merlin.dag.executors</span> <span class="kn">import</span> <span class="n">DaskExecutor</span><span class="p">,</span> <span class="n">LocalExecutor</span>
 <span class="kn">from</span> <span class="nn">merlin.dag.node</span> <span class="kn">import</span> <span class="n">iter_nodes</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 <span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Dataset</span>
 <span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
-<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">LambdaOp</span><span class="p">,</span> <span class="n">StatOperator</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">LambdaOp</span>
 <span class="kn">from</span> <span class="nn">nvtabular.workflow.node</span> <span class="kn">import</span> <span class="n">WorkflowNode</span>
 
 <span class="n">LOG</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;nvtabular&quot;</span><span class="p">)</span>
@@ -230,6 +232,10 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">subworkflows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">subgraphs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">input_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">input_dtypes</span>
 
@@ -251,6 +257,10 @@
 
     <span class="k">def</span> <span class="nf">_input_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">_input_columns</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Workflow.get_subworkflow"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.get_subworkflow">[docs]</a>    <span class="k">def</span> <span class="nf">get_subworkflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgraph_name</span><span class="p">):</span>
+        <span class="n">subgraph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">subgraph_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Workflow</span><span class="p">(</span><span class="n">subgraph</span><span class="o">.</span><span class="n">output_node</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Workflow.remove_inputs"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.remove_inputs">[docs]</a>    <span class="k">def</span> <span class="nf">remove_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_cols</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes input columns from the workflow.</span>
@@ -289,45 +299,7 @@
 <span class="sd">        Workflow</span>
 <span class="sd">            This Workflow with statistics calculated on it</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">clear_stats</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_schema</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">construct_schema</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
-
-        <span class="n">ddf</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_input_columns</span><span class="p">())</span>
-
-        <span class="c1"># Get a dictionary mapping all StatOperators we need to fit to a set of any dependent</span>
-        <span class="c1"># StatOperators (having StatOperators that depend on the output of other StatOperators</span>
-        <span class="c1"># means that will have multiple phases in the fit cycle here)</span>
-        <span class="n">stat_op_nodes</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">node</span><span class="p">:</span> <span class="n">Graph</span><span class="o">.</span><span class="n">get_nodes_by_op_type</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">parents_with_dependencies</span><span class="p">,</span> <span class="n">StatOperator</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">Graph</span><span class="o">.</span><span class="n">get_nodes_by_op_type</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_node</span><span class="p">],</span> <span class="n">StatOperator</span><span class="p">)</span>
-        <span class="p">}</span>
-
-        <span class="k">while</span> <span class="n">stat_op_nodes</span><span class="p">:</span>
-            <span class="c1"># get all the StatOperators that we can currently call fit on (no outstanding</span>
-            <span class="c1"># dependencies)</span>
-            <span class="n">current_phase</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">node</span> <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">dependencies</span> <span class="ow">in</span> <span class="n">stat_op_nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">dependencies</span>
-            <span class="p">]</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">current_phase</span><span class="p">:</span>
-                <span class="c1"># this shouldn&#39;t happen, but lets not infinite loop just in case</span>
-                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;failed to find dependency-free StatOperator to fit&quot;</span><span class="p">)</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf</span><span class="p">,</span> <span class="n">current_phase</span><span class="p">)</span>
-
-            <span class="c1"># Remove all the operators we processed in this phase, and remove</span>
-            <span class="c1"># from the dependencies of other ops too</span>
-            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">current_phase</span><span class="p">:</span>
-                <span class="n">stat_op_nodes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">dependencies</span> <span class="ow">in</span> <span class="n">stat_op_nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                <span class="n">dependencies</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">current_phase</span><span class="p">)</span>
-
-        <span class="c1"># This captures the output dtypes of operators like LambdaOp where</span>
-        <span class="c1"># the dtype can&#39;t be determined without running the transform</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_transform_impl</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">capture_dtypes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sample_dtypes</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">construct_schema</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="n">preserve_dtypes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
 <div class="viewcode-block" id="Workflow.fit_transform"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit_transform">[docs]</a>    <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
@@ -421,12 +393,12 @@
 
         <span class="k">return</span> <span class="p">[</span><span class="n">mod</span> <span class="k">for</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">result</span> <span class="k">if</span> <span class="n">mod</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclusions</span><span class="p">]</span>
 
-<div class="viewcode-block" id="Workflow.save"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">modules_byvalue</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Workflow.save"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">modules_byvalue</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Save this workflow to disk</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        path: str</span>
+<span class="sd">        path: Union[str, os.PathLike]</span>
 <span class="sd">            The path to save the workflow to</span>
 <span class="sd">        modules_byvalue:</span>
 <span class="sd">            A list of modules that should be serialized by value. This</span>
@@ -439,6 +411,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># avoid a circular import getting the version</span>
         <span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">nvt_version</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
         <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
@@ -511,12 +485,12 @@
                         <span class="n">cloudpickle</span><span class="o">.</span><span class="n">unregister_pickle_by_value</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">m</span><span class="p">])</span></div>
 
 <div class="viewcode-block" id="Workflow.load"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.load">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Load up a saved workflow object from disk</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        path: str</span>
+<span class="sd">        path: Union[str, os.PathLike]</span>
 <span class="sd">            The path to load the workflow from</span>
 <span class="sd">        client: distributed.Client, optional</span>
 <span class="sd">            The Dask distributed client to use for multi-gpu processing and multi-node processing</span>
@@ -528,6 +502,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># avoid a circular import getting the version</span>
         <span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">nvt_version</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
         <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
@@ -609,12 +585,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

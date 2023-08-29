@@ -206,11 +206,15 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
 
 <span class="c1"># Deploy a Single-Machine Multi-GPU Cluster</span>
 <span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;tcp&quot;</span>  <span class="c1"># &quot;tcp&quot; or &quot;ucx&quot;</span>
+
 <span class="k">if</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
     <span class="n">NUM_GPUS</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">gpus</span><span class="p">)))</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="n">NUM_GPUS</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">NUM_GPUS</span><span class="p">])</span>  <span class="c1"># Delect devices to place workers</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">visible_devices</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;CUDA_VISIBLE_DEVICES&quot;</span><span class="p">]</span>
+<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+    <span class="n">visible_devices</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">NUM_GPUS</span><span class="p">])</span>  <span class="c1"># Delect devices to place workers</span>
 <span class="n">device_limit_frac</span> <span class="o">=</span> <span class="mf">0.7</span>  <span class="c1"># Spill GPU-Worker memory to host at this limit.</span>
 <span class="n">device_pool_frac</span> <span class="o">=</span> <span class="mf">0.8</span>
 <span class="n">part_mem_frac</span> <span class="o">=</span> <span class="mf">0.15</span>
@@ -723,12 +727,12 @@ INFO:merlin.datasets.entertainment.movielens.dataset:starting ETL..
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

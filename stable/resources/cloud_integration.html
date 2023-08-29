@@ -249,7 +249,7 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
 <div class="section" id="aws-sagemaker">
 <h2>AWS SageMaker<a class="headerlink" href="#aws-sagemaker" title="Permalink to this headline"></a></h2>
 <p><a class="reference external" href="https://aws.amazon.com/sagemaker/">AWS SageMaker</a> is a service from AWS to “build, train and deploy machine learning” models. It automates and manages the MLOps workflow. It supports jupyter notebook instances enabling users to work directly in jupyter notebook/jupyter lab without any additional configurations. In this section, we will explain how to run NVIDIA Merlin (NVTabular) on AWS SageMaker notebook instances. We adopted the work from <a class="reference external" href="https://twitter.com/eugeneyan/">Eugene</a> from his <a class="reference external" href="https://twitter.com/eugeneyan/status/1470916049604268035">twitter post</a>. We tested the workflow on February, 1st, 2022, but it is not integrated into our CI workflows. Future release of Merlin or Merlin’s dependencies can cause issues.</p>
-<p>To run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens">movielens example</a> on AWS SageMaker, do the following:</p>
+<p>To run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples/getting-started-movielens">movielens example</a> on AWS SageMaker, do the following:</p>
 <ol class="arabic simple">
 <li><p>Login into your AWS console and select AWS SageMaker.</p></li>
 <li><p>Select <code class="docutils literal notranslate"><span class="pre">Notebook</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Notebook</span> <span class="pre">instances</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Create</span> <span class="pre">notebook</span> <span class="pre">instance</span></code>. Give the instance a name and select a notebook instance type with GPUs. For example, we selected <code class="docutils literal notranslate"><span class="pre">ml.p3.2xlarge</span></code>. Please review the associated costs with each instance type. As a platform identifier, select <code class="docutils literal notranslate"><span class="pre">notebook-al2-v1</span></code>. The previous platform identifier runs with TensorFlow 2.1.x and we had more issue to update it to TensorFlow 2.6.x. The <code class="docutils literal notranslate"><span class="pre">volume</span> <span class="pre">size</span></code> can be increased in the section <code class="docutils literal notranslate"><span class="pre">Additional</span> <span class="pre">configuration</span></code>.</p></li>
@@ -292,7 +292,7 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
 </pre></div>
 </div>
 <ol class="arabic simple" start="11">
-<li><p>You can switch in jupyter lab and run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens">movielens example</a>.</p></li>
+<li><p>You can switch in jupyter lab and run the <a class="reference external" href="https://github.com/NVIDIA-Merlin/NVTabular/tree/stable/examples/getting-started-movielens">movielens example</a>.</p></li>
 </ol>
 <p>This workflow enables NVTabular ETL and training with TensorFlow or Pytorch. Deployment with Triton Inference Server will follow soon.</p>
 </div>
@@ -332,12 +332,12 @@ Once the Databricks cluster is up, NVTabular will be running inside of it.</p></
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/resources/cloud_integration.html">v1.8.0</a></dd>
       <dd><a href="../../v1.8.1/resources/cloud_integration.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/resources/cloud_integration.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/resources/cloud_integration.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/resources/cloud_integration.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/resources/cloud_integration.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/resources/cloud_integration.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

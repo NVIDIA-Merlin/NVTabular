@@ -105,7 +105,7 @@
 <dl class="py class">
 <dt id="nvtabular.ops.StatOperator">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">StatOperator</span></code><a class="reference internal" href="../_modules/merlin/dag/ops/stat_operator.html#StatOperator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.StatOperator" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.BaseOperator" title="(in Merlin Core)"><code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.base_operator.BaseOperator</span></code></a></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">merlin.dag.operator.Operator</span></code></p>
 <p>Base class for statistical operator classes. This adds a ‘fit’ and ‘finalize’ method
 on top of the Operator class.</p>
 <dl class="py method">
@@ -145,28 +145,31 @@ on top of the Operator class.</p>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_node</span></code>(selector)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.fit" title="nvtabular.ops.StatOperator.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(col_selector, ddf)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">export</span></code>(path, input_schema, output_schema, …)</p></td>
+<td><p>Export the class object as a config and all related files to the user defined path.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.fit" title="nvtabular.ops.StatOperator.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(col_selector, ddf)</p></td>
 <td><p>Calculate statistics for this operator, and return a dask future to these statistics, which will be computed by the workflow.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.fit_finalize" title="nvtabular.ops.StatOperator.fit_finalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_finalize</span></code></a>(dask_stats)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.fit_finalize" title="nvtabular.ops.StatOperator.fit_finalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_finalize</span></code></a>(dask_stats)</p></td>
 <td><p>Finalize statistics calculation - the workflow calls this function with the computed statistics from the ‘fit’ object’</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_artifacts</span></code>([artifact_path])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_artifacts</span></code>([artifact_path])</p></td>
 <td><p>Load artifacts from disk required for operator function.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_column_names</span></code>(col_selector)</p></td>
 <td><p>Given a set of columns names returns the names of the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_artifacts</span></code>([artifact_path])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_artifacts</span></code>([artifact_path])</p></td>
 <td><p>Save artifacts required to be reload operator state from disk</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.set_storage_path" title="nvtabular.ops.StatOperator.set_storage_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code></a>(new_path[, copy])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.set_storage_path" title="nvtabular.ops.StatOperator.set_storage_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_storage_path</span></code></a>(new_path[, copy])</p></td>
 <td><p>Certain stat operators need external storage - for instance Categorify writes out parquet files containing the categorical mapping.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code>(col_selector, transformable)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code>(col_selector, transformable)</p></td>
 <td><p>Transform the dataframe by applying this operator to the set of input columns</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code>(parents_schema, …[, …])</p></td>
 <td><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p></td>
 </tr>
 </tbody>
@@ -184,28 +187,31 @@ on top of the Operator class.</p>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_dtypes</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.fitted" title="nvtabular.ops.StatOperator.fitted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fitted</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">export_name</span></code></p></td>
+<td><p>Provides a clear common english identifier for this operator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.StatOperator.fitted" title="nvtabular.ops.StatOperator.fitted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fitted</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_subgraph</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_subgraph</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_dtype</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_properties</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_tags</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supported_formats</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supported_formats</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports</span></code></p></td>
 <td><p>Returns what kind of data representation this operator supports</p></td>
 </tr>
 </tbody>
@@ -283,12 +289,12 @@ out (note that this could happen after the operator is created)</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

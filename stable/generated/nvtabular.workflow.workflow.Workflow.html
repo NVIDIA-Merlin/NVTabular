@@ -104,7 +104,7 @@
 <h1>nvtabular.workflow.workflow.Workflow<a class="headerlink" href="#nvtabular-workflow-workflow-workflow" title="Permalink to this headline"></a></h1>
 <dl class="py class">
 <dt id="nvtabular.workflow.workflow.Workflow">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2023.6.1+3.g9b9f948b)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.workflow.workflow.</span></code><code class="sig-name descname"><span class="pre">Workflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.Node" title="(in Merlin Core)"><span class="pre">merlin.dag.node.Node</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2023.8.1+11.g266034f)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>The Workflow class applies a graph of operations onto a dataset, letting you transform
 datasets to do feature engineering and preprocessing operations. This class follows an API
@@ -126,12 +126,12 @@ on the dataset, and then once fit we can <code class="docutils literal notransla
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>output_node</strong> (<a class="reference internal" href="nvtabular.workflow.workflow.WorkflowNode.html#nvtabular.workflow.workflow.WorkflowNode" title="nvtabular.workflow.workflow.WorkflowNode"><em>WorkflowNode</em></a>) – The last node in the graph of operators this workflow should apply</p>
+<dd class="field-odd"><p><strong>output_node</strong> (<em>WorkflowNode</em>) – The last node in the graph of operators this workflow should apply</p>
 </dd>
 </dl>
 <dl class="py method">
 <dt id="nvtabular.workflow.workflow.Workflow.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">nvtabular.workflow.node.WorkflowNode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2023.6.1+3.g9b9f948b)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.__init__" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_node</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.Node" title="(in Merlin Core)"><span class="pre">merlin.dag.node.Node</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2023.8.1+11.g266034f)"><span class="pre">distributed.Client</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -156,16 +156,19 @@ on the dataset, and then once fit we can <code class="docutils literal notransla
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.fit_transform" title="nvtabular.workflow.workflow.Workflow.fit_transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_transform</span></code></a>(dataset)</p></td>
 <td><p>Convenience method to both fit the workflow and transform the dataset in a single call.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.load" title="nvtabular.workflow.workflow.Workflow.load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load</span></code></a>(path[, client])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.get_subworkflow" title="nvtabular.workflow.workflow.Workflow.get_subworkflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_subworkflow</span></code></a>(subgraph_name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.load" title="nvtabular.workflow.workflow.Workflow.load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load</span></code></a>(path[, client])</p></td>
 <td><p>Load up a saved workflow object from disk</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.remove_inputs" title="nvtabular.workflow.workflow.Workflow.remove_inputs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_inputs</span></code></a>(input_cols)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.remove_inputs" title="nvtabular.workflow.workflow.Workflow.remove_inputs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_inputs</span></code></a>(input_cols)</p></td>
 <td><p>Removes input columns from the workflow.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.save" title="nvtabular.workflow.workflow.Workflow.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>(path[, modules_byvalue])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.save" title="nvtabular.workflow.workflow.Workflow.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>(path[, modules_byvalue])</p></td>
 <td><p>Save this workflow to disk</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.transform" title="nvtabular.workflow.workflow.Workflow.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(-&gt; merlin.io.dataset.Dataset)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.transform" title="nvtabular.workflow.workflow.Workflow.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(-&gt; merlin.io.dataset.Dataset)</p></td>
 <td><p>Transforms the data by applying the graph of operators to it.</p></td>
 </tr>
 </tbody>
@@ -190,6 +193,9 @@ on the dataset, and then once fit we can <code class="docutils literal notransla
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.output_schema" title="nvtabular.workflow.workflow.Workflow.output_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_schema</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.workflow.workflow.Workflow.subworkflows" title="nvtabular.workflow.workflow.Workflow.subworkflows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">subworkflows</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -243,6 +249,11 @@ to disk. e.g. with a <cite>dataset.compute()</cite>.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.subworkflows">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">subworkflows</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.subworkflows" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt id="nvtabular.workflow.workflow.Workflow.input_dtypes">
 <em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">input_dtypes</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.input_dtypes" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
@@ -265,6 +276,11 @@ to disk. e.g. with a <cite>dataset.compute()</cite>.</p>
 <dl class="py method">
 <dt id="nvtabular.workflow.workflow.Workflow.output_node">
 <em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_node</span></code><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.output_node" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="nvtabular.workflow.workflow.Workflow.get_subworkflow">
+<code class="sig-name descname"><span class="pre">get_subworkflow</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subgraph_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.get_subworkflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.get_subworkflow" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -333,12 +349,12 @@ call. Equivalent to calling <code class="docutils literal notranslate"><span cla
 
 <dl class="py method">
 <dt id="nvtabular.workflow.workflow.Workflow.save">
-<code class="sig-name descname"><span class="pre">save</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modules_byvalue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.save" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">save</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.11)"><span class="pre">os.PathLike</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modules_byvalue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.save" title="Permalink to this definition"></a></dt>
 <dd><p>Save this workflow to disk</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The path to save the workflow to</p></li>
+<li><p><strong>path</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.11)"><em>os.PathLike</em></a><em>]</em>) – The path to save the workflow to</p></li>
 <li><p><strong>modules_byvalue</strong> – <p>A list of modules that should be serialized by value. This
 should include any modules that will not be available on
 the host where this workflow is ultimately deserialized.</p>
@@ -353,13 +369,13 @@ modules to serialize by value.</p>
 
 <dl class="py method">
 <dt id="nvtabular.workflow.workflow.Workflow.load">
-<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">load</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow"><span class="pre">nvtabular.workflow.workflow.Workflow</span></a><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.load" title="Permalink to this definition"></a></dt>
+<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">load</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.11)"><span class="pre">os.PathLike</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#nvtabular.workflow.workflow.Workflow" title="nvtabular.workflow.workflow.Workflow"><span class="pre">nvtabular.workflow.workflow.Workflow</span></a><a class="reference internal" href="../_modules/nvtabular/workflow/workflow.html#Workflow.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.workflow.workflow.Workflow.load" title="Permalink to this definition"></a></dt>
 <dd><p>Load up a saved workflow object from disk</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The path to load the workflow from</p></li>
-<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2023.6.1+3.g9b9f948b)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
+<li><p><strong>path</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.11)"><em>os.PathLike</em></a><em>]</em>) – The path to load the workflow from</p></li>
+<li><p><strong>client</strong> (<a class="reference external" href="https://distributed.dask.org/en/latest/api.html#distributed.Client" title="(in Dask.distributed v2023.8.1+11.g266034f)"><em>distributed.Client</em></a><em>, </em><em>optional</em>) – The Dask distributed client to use for multi-gpu processing and multi-node processing</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -419,12 +435,12 @@ modules to serialize by value.</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

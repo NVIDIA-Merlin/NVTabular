@@ -112,11 +112,11 @@
     <span class="n">flatten_list_column_values</span><span class="p">,</span>
     <span class="n">is_list_dtype</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Supports</span>
+<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">DataFormats</span><span class="p">,</span> <span class="n">Supports</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 <span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Tags</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops.moments</span> <span class="kn">import</span> <span class="n">_custom_moments</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
-<span class="kn">from</span> <span class="nn">nvtabular.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 
 
 <div class="viewcode-block" id="Normalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize">[docs]</a><span class="k">class</span> <span class="nc">Normalize</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
@@ -185,6 +185,15 @@
             <span class="o">|</span> <span class="n">Supports</span><span class="o">.</span><span class="n">GPU_DICT_ARRAY</span>
             <span class="o">|</span> <span class="n">Supports</span><span class="o">.</span><span class="n">CPU_DATAFRAME</span>
             <span class="o">|</span> <span class="n">Supports</span><span class="o">.</span><span class="n">GPU_DATAFRAME</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">supported_formats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">DataFormats</span><span class="o">.</span><span class="n">PANDAS_DATAFRAME</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">CUDF_DATAFRAME</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">NUMPY_DICT_ARRAY</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">CUPY_DICT_ARRAY</span>
         <span class="p">)</span>
 
 <div class="viewcode-block" id="Normalize.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -271,6 +280,15 @@
         <span class="p">)</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">supported_formats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">DataFormats</span><span class="o">.</span><span class="n">PANDAS_DATAFRAME</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">CUDF_DATAFRAME</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">NUMPY_DICT_ARRAY</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">CUPY_DICT_ARRAY</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">Tags</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">]</span>
 
@@ -313,12 +331,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

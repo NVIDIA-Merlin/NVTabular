@@ -123,7 +123,7 @@ issue</a>.</p>
 </div>
 <div class="section" id="reducing-memory-consumption-for-nvtabular-workflows">
 <h2>Reducing Memory Consumption for NVTabular Workflows<a class="headerlink" href="#reducing-memory-consumption-for-nvtabular-workflows" title="Permalink to this headline"></a></h2>
-<p>NVTabular is designed to scale to larger than GPU or host memory datasets. In our experiments, we are able to <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo">scale to 1.3TB of uncompressed click logs</a>. However, some workflows can result in OOM errors <code class="docutils literal notranslate"><span class="pre">cudaErrorMemoryAllocation</span> <span class="pre">out</span> <span class="pre">of</span> <span class="pre">memory</span></code>, which can be addressed by small configuration changes.</p>
+<p>NVTabular is designed to scale to larger than GPU or host memory datasets. In our experiments, we are able to <a class="reference external" href="https://github.com/NVIDIA/NVTabular/tree/stable/examples/scaling-criteo">scale to 1.3TB of uncompressed click logs</a>. However, some workflows can result in OOM errors <code class="docutils literal notranslate"><span class="pre">cudaErrorMemoryAllocation</span> <span class="pre">out</span> <span class="pre">of</span> <span class="pre">memory</span></code>, which can be addressed by small configuration changes.</p>
 <div class="section" id="setting-the-row-group-size-for-the-parquet-files">
 <h3>Setting the Row Group Size for the Parquet Files<a class="headerlink" href="#setting-the-row-group-size-for-the-parquet-files" title="Permalink to this headline"></a></h3>
 <p>You can use most Data Frame frameworks to set the row group size (number of rows) for your parquet files. In the following Pandas and cuDF examples, the <code class="docutils literal notranslate"><span class="pre">row_group_size</span></code> is the number of rows that will be stored in each row group (internal structure within the parquet file):</p>
@@ -188,7 +188,7 @@ you set for the NVTabular dataset such as <code class="docutils literal notransl
 <h3>Special Considerations for TensorFlow 2.7 and Lower<a class="headerlink" href="#special-considerations-for-tensorflow-2-7-and-lower" title="Permalink to this headline"></a></h3>
 <p>The example notebooks in the repository are developed and tested with the latest <a class="reference external" href="https://catalog.ngc.nvidia.com/containers?filters=&amp;orderBy=dateModifiedDESC&amp;query=merlin">Merlin containers</a> that are available from the NGC Catalog.
 If you run the example notebooks in an environment that has a different version of TensorFlow, you might experience an out-of-memory condition that requires you to perform additional configuration.
-The version of TensorFlow in each Merlin container is available from the <a class="reference external" href="https://nvidia-merlin.github.io/Merlin/main/support_matrix/index.html">support matrix</a> in the Merlin documentation.</p>
+The version of TensorFlow in each Merlin container is available from the <a class="reference external" href="https://nvidia-merlin.github.io/Merlin/stable/support_matrix/index.html">support matrix</a> in the Merlin documentation.</p>
 <p>TensorFlow 2.8 uses <code class="docutils literal notranslate"><span class="pre">cuda_malloc_async</span></code> as the default GPU memory allocation function.
 TensorFlow specifies the function in the <code class="docutils literal notranslate"><span class="pre">TF_GPU_ALLOCATOR</span></code> environment variable.</p>
 <p>In the 2.7 release, the setting was available as an experimental feature and was not activated by default.
@@ -278,12 +278,12 @@ The value indicates the percentage of GPU memory to allocate to TensorFlow.</p>
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.8.0/resources/troubleshooting.html">v1.8.0</a></dd>
       <dd><a href="../../v1.8.1/resources/troubleshooting.html">v1.8.1</a></dd>
       <dd><a href="../../v23.02.00/resources/troubleshooting.html">v23.02.00</a></dd>
       <dd><a href="../../v23.04.00/resources/troubleshooting.html">v23.04.00</a></dd>
       <dd><a href="../../v23.05.00/resources/troubleshooting.html">v23.05.00</a></dd>
       <dd><a href="../../v23.06.00/resources/troubleshooting.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/resources/troubleshooting.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

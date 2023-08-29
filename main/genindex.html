@@ -94,6 +94,7 @@
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
+ | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
@@ -157,6 +158,8 @@
         <li><a href="generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.__init__">(nvtabular.ops.Normalize method)</a>
 </li>
         <li><a href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.__init__">(nvtabular.ops.NormalizeMinMax method)</a>
+</li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.__init__">(nvtabular.ops.Operator method)</a>
 </li>
         <li><a href="generated/nvtabular.ops.ReduceDtypeSize.html#nvtabular.ops.ReduceDtypeSize.__init__">(nvtabular.ops.ReduceDtypeSize method)</a>
 </li>
@@ -252,6 +255,8 @@
 </li>
         <li><a href="generated/nvtabular.ops.JoinGroupby.html#nvtabular.ops.JoinGroupby.column_mapping">(nvtabular.ops.JoinGroupby method)</a>
 </li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.column_mapping">(nvtabular.ops.Operator method)</a>
+</li>
         <li><a href="generated/nvtabular.ops.Rename.html#nvtabular.ops.Rename.column_mapping">(nvtabular.ops.Rename method)</a>
 </li>
         <li><a href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.column_mapping">(nvtabular.ops.TargetEncoding method)</a>
@@ -261,10 +266,16 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.ops.ColumnSimilarity.html#nvtabular.ops.ColumnSimilarity">ColumnSimilarity (class in nvtabular.ops)</a>
 </li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_column_schema">compute_column_schema() (nvtabular.ops.Operator method)</a>
+</li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_input_schema">compute_input_schema() (nvtabular.ops.Operator method)</a>
+</li>
       <li><a href="generated/nvtabular.ops.Groupby.html#nvtabular.ops.Groupby.compute_output_schema">compute_output_schema() (nvtabular.ops.Groupby method)</a>
 
       <ul>
         <li><a href="generated/nvtabular.ops.JoinExternal.html#nvtabular.ops.JoinExternal.compute_output_schema">(nvtabular.ops.JoinExternal method)</a>
+</li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_output_schema">(nvtabular.ops.Operator method)</a>
 </li>
         <li><a href="generated/nvtabular.ops.ReduceDtypeSize.html#nvtabular.ops.ReduceDtypeSize.compute_output_schema">(nvtabular.ops.ReduceDtypeSize method)</a>
 </li>
@@ -280,10 +291,14 @@
 </li>
         <li><a href="generated/nvtabular.ops.JoinGroupby.html#nvtabular.ops.JoinGroupby.compute_selector">(nvtabular.ops.JoinGroupby method)</a>
 </li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_selector">(nvtabular.ops.Operator method)</a>
+</li>
         <li><a href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.compute_selector">(nvtabular.ops.TargetEncoding method)</a>
 </li>
       </ul></li>
       <li><a href="generated/nvtabular.ops.JoinGroupby.html#nvtabular.ops.JoinGroupby.cont_names">cont_names() (nvtabular.ops.JoinGroupby property)</a>
+</li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.create_node">create_node() (nvtabular.ops.Operator method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -298,6 +313,8 @@
 </li>
         <li><a href="generated/nvtabular.ops.JoinGroupby.html#nvtabular.ops.JoinGroupby.dependencies">(nvtabular.ops.JoinGroupby property)</a>
 </li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.dependencies">(nvtabular.ops.Operator property)</a>
+</li>
         <li><a href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.dependencies">(nvtabular.ops.TargetEncoding property)</a>
 </li>
       </ul></li>
@@ -308,6 +325,20 @@
       <li><a href="generated/nvtabular.ops.DropLowCardinality.html#nvtabular.ops.DropLowCardinality">DropLowCardinality (class in nvtabular.ops)</a>
 </li>
       <li><a href="generated/nvtabular.ops.Dropna.html#nvtabular.ops.Dropna">Dropna (class in nvtabular.ops)</a>
+</li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.dynamic_dtypes">dynamic_dtypes() (nvtabular.ops.Operator property)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.export">export() (nvtabular.ops.Operator method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.export_name">export_name() (nvtabular.ops.Operator property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -419,6 +450,8 @@
 </li>
       <li><a href="generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.input_schema">input_schema() (nvtabular.workflow.workflow.Workflow property)</a>
 </li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.is_subgraph">is_subgraph() (nvtabular.ops.Operator property)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -437,6 +470,8 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.label">label() (nvtabular.ops.Operator property)</a>
+</li>
       <li><a href="generated/nvtabular.ops.LambdaOp.html#nvtabular.ops.LambdaOp">LambdaOp (in module nvtabular.ops)</a>
 </li>
       <li><a href="generated/nvtabular.ops.ListSlice.html#nvtabular.ops.ListSlice">ListSlice (class in nvtabular.ops)</a>
@@ -444,6 +479,8 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.load">load() (nvtabular.workflow.workflow.Workflow class method)</a>
+</li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.load_artifacts">load_artifacts() (nvtabular.ops.Operator method)</a>
 </li>
       <li><a href="generated/nvtabular.ops.LogOp.html#nvtabular.ops.LogOp">LogOp (class in nvtabular.ops)</a>
 </li>
@@ -465,7 +502,9 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator">Operator (in module nvtabular.ops)</a>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator">Operator (class in nvtabular.ops)</a>
+</li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.output_column_names">output_column_names() (nvtabular.ops.Operator method)</a>
 </li>
       <li><a href="generated/nvtabular.ops.Bucketize.html#nvtabular.ops.Bucketize.output_dtype">output_dtype() (nvtabular.ops.Bucketize property)</a>
 
@@ -486,6 +525,8 @@
 </li>
         <li><a href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.output_dtype">(nvtabular.ops.NormalizeMinMax property)</a>
 </li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.output_dtype">(nvtabular.ops.Operator property)</a>
+</li>
         <li><a href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.output_dtype">(nvtabular.ops.TargetEncoding property)</a>
 </li>
       </ul></li>
@@ -496,7 +537,11 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.ops.AddMetadata.html#nvtabular.ops.AddMetadata.output_properties">output_properties() (nvtabular.ops.AddMetadata property)</a>
+
+      <ul>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.output_properties">(nvtabular.ops.Operator property)</a>
 </li>
+      </ul></li>
       <li><a href="generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.output_schema">output_schema() (nvtabular.workflow.workflow.Workflow property)</a>
 </li>
       <li><a href="generated/nvtabular.ops.AddMetadata.html#nvtabular.ops.AddMetadata.output_tags">output_tags() (nvtabular.ops.AddMetadata property)</a>
@@ -519,6 +564,8 @@
         <li><a href="generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.output_tags">(nvtabular.ops.Normalize property)</a>
 </li>
         <li><a href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.output_tags">(nvtabular.ops.NormalizeMinMax property)</a>
+</li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.output_tags">(nvtabular.ops.Operator property)</a>
 </li>
         <li><a href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.output_tags">(nvtabular.ops.TargetEncoding property)</a>
 </li>
@@ -553,6 +600,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.save">save() (nvtabular.workflow.workflow.Workflow method)</a>
 </li>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.save_artifacts">save_artifacts() (nvtabular.ops.Operator method)</a>
+</li>
       <li><a href="generated/nvtabular.ops.Categorify.html#nvtabular.ops.Categorify.set_storage_path">set_storage_path() (nvtabular.ops.Categorify method)</a>
 
       <ul>
@@ -563,10 +612,10 @@
         <li><a href="generated/nvtabular.ops.TargetEncoding.html#nvtabular.ops.TargetEncoding.set_storage_path">(nvtabular.ops.TargetEncoding method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.ops.StatOperator.html#nvtabular.ops.StatOperator">StatOperator (class in nvtabular.ops)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.subworkflows">subworkflows() (nvtabular.workflow.workflow.Workflow property)</a>
 </li>
       <li><a href="generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.supported_formats">supported_formats() (nvtabular.ops.Normalize property)</a>
@@ -574,11 +623,15 @@
       <ul>
         <li><a href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.supported_formats">(nvtabular.ops.NormalizeMinMax property)</a>
 </li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.supported_formats">(nvtabular.ops.Operator property)</a>
+</li>
       </ul></li>
       <li><a href="generated/nvtabular.ops.Normalize.html#nvtabular.ops.Normalize.supports">supports() (nvtabular.ops.Normalize property)</a>
 
       <ul>
         <li><a href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.supports">(nvtabular.ops.NormalizeMinMax property)</a>
+</li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.supports">(nvtabular.ops.Operator property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -640,6 +693,8 @@
 </li>
         <li><a href="generated/nvtabular.ops.NormalizeMinMax.html#nvtabular.ops.NormalizeMinMax.transform">(nvtabular.ops.NormalizeMinMax method)</a>
 </li>
+        <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.transform">(nvtabular.ops.Operator method)</a>
+</li>
         <li><a href="generated/nvtabular.ops.ReduceDtypeSize.html#nvtabular.ops.ReduceDtypeSize.transform">(nvtabular.ops.ReduceDtypeSize method)</a>
 </li>
         <li><a href="generated/nvtabular.ops.Rename.html#nvtabular.ops.Rename.transform">(nvtabular.ops.Rename method)</a>
@@ -656,6 +711,10 @@
 
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.validate_schemas">validate_schemas() (nvtabular.ops.Operator method)</a>
+</li>
+  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/nvtabular.ops.ValueCount.html#nvtabular.ops.ValueCount">ValueCount (class in nvtabular.ops)</a>
 </li>
@@ -706,12 +765,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>

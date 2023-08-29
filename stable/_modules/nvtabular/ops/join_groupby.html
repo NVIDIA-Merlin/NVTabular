@@ -102,19 +102,18 @@
 <span class="c1"># See the License for the specific language governing permissions and</span>
 <span class="c1"># limitations under the License.</span>
 <span class="c1">#</span>
-
 <span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">dask.delayed</span> <span class="kn">import</span> <span class="n">Delayed</span>
 
-<span class="kn">import</span> <span class="nn">nvtabular</span> <span class="k">as</span> <span class="nn">nvt</span>
 <span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">arange</span><span class="p">,</span> <span class="n">concat_columns</span><span class="p">,</span> <span class="n">read_parquet_dispatch</span>
+<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Node</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 <span class="kn">from</span> <span class="nn">merlin.dtypes.shape</span> <span class="kn">import</span> <span class="n">DefaultShapes</span>
 <span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">categorify</span> <span class="k">as</span> <span class="n">nvt_cat</span>
 <span class="kn">from</span> <span class="nn">nvtabular.ops.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
-<span class="kn">from</span> <span class="nn">nvtabular.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
 
 <span class="n">AGG_DTYPES</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
@@ -152,12 +151,15 @@
 <span class="sd">        that &quot;count&quot; corresponds to the group itself, while all</span>
 <span class="sd">        other statistics correspond to a specific continuous column.</span>
 <span class="sd">        Supported statistics include [&quot;count&quot;, &quot;sum&quot;, &quot;mean&quot;, &quot;std&quot;, &quot;var&quot;].</span>
-<span class="sd">    tree_width : dict or int, optional</span>
-<span class="sd">        Tree width of the hash-based groupby reduction for each categorical</span>
-<span class="sd">        column. High-cardinality columns may require a large `tree_width`,</span>
-<span class="sd">        while low-cardinality columns can likely use `tree_width=1`.</span>
+<span class="sd">    split_out : dict or int, optional</span>
+<span class="sd">        Number of files needed to store the final result of each groupby</span>
+<span class="sd">        reduction. High-cardinality groups may require a large `split_out`,</span>
+<span class="sd">        while low-cardinality columns can likely use `split_out=1` (default).</span>
 <span class="sd">        If passing a dict, each key and value should correspond to the column</span>
-<span class="sd">        name and width, respectively. The default value is 8 for all columns.</span>
+<span class="sd">        name and value, respectively. The default value is 1 for all columns.</span>
+<span class="sd">    split_every : dict or int, optional</span>
+<span class="sd">        Number of adjacent partitions to aggregate in each tree-reduction</span>
+<span class="sd">        node. The default value is 8 for all columns.</span>
 <span class="sd">    cat_cache: ToDo Describe</span>
 <span class="sd">        TEXT</span>
 <span class="sd">    out_path : str, optional</span>
@@ -177,26 +179,30 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">cont_cols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">stats</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;count&quot;</span><span class="p">,),</span>
-        <span class="n">tree_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">split_out</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">split_every</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">cat_cache</span><span class="o">=</span><span class="s2">&quot;host&quot;</span><span class="p">,</span>
         <span class="n">out_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">on_host</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">name_sep</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span>
+        <span class="n">tree_width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">storage_name</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span> <span class="o">=</span> <span class="n">name_sep</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">stats</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tree_width</span> <span class="o">=</span> <span class="n">tree_width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">split_out</span> <span class="o">=</span> <span class="n">split_out</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">split_every</span> <span class="o">=</span> <span class="n">split_every</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span> <span class="o">=</span> <span class="n">out_path</span> <span class="ow">or</span> <span class="s2">&quot;./&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span> <span class="o">=</span> <span class="n">on_host</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cat_cache</span> <span class="o">=</span> <span class="n">cat_cache</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">nvt_cat</span><span class="o">.</span><span class="n">_deprecate_tree_width</span><span class="p">(</span><span class="n">tree_width</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cont_cols</span><span class="p">,</span> <span class="n">nvt</span><span class="o">.</span><span class="n">WorkflowNode</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cont_cols</span><span class="p">,</span> <span class="n">Node</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span> <span class="o">=</span> <span class="n">cont_cols</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cont_cols</span><span class="p">,</span> <span class="n">ColumnSelector</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cont_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cont_names</span> <span class="o">=</span> <span class="n">cont_cols</span>
@@ -242,10 +248,11 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">out_path</span><span class="p">,</span>
                 <span class="mi">0</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">tree_width</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">split_out</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">on_host</span><span class="p">,</span>
                 <span class="n">concat_groups</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">name_sep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name_sep</span><span class="p">,</span>
+                <span class="n">split_every</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_every</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">Delayed</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">dsk</span><span class="p">)</span></div>
@@ -395,12 +402,12 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../../../v1.8.0/index.html">v1.8.0</a></dd>
       <dd><a href="../../../../v1.8.1/index.html">v1.8.1</a></dd>
       <dd><a href="../../../../v23.02.00/index.html">v23.02.00</a></dd>
       <dd><a href="../../../../v23.04.00/index.html">v23.04.00</a></dd>
       <dd><a href="../../../../v23.05.00/index.html">v23.05.00</a></dd>
       <dd><a href="../../../../v23.06.00/index.html">v23.06.00</a></dd>
+      <dd><a href="../../../../v23.08.00/index.html">v23.08.00</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
