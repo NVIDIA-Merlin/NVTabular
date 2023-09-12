@@ -23,6 +23,7 @@ pytest.importorskip("tensorflow")
 nest_asyncio.apply()
 
 
+@pytest.mark.tensorflow
 def test_example_01_getting_started():
     with testbook(
         REPO_ROOT / "examples" / "01-Getting-started.ipynb",

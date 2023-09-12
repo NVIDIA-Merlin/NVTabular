@@ -19,7 +19,7 @@ s3fs>=2021.4
 aiobotocore>=1.3.3
 
 # required for synthetic data `merlin.datasets` and notebook tests using merlin models
-merlin-models[tensorflow]@git+https://github.com/NVIDIA-Merlin/models.git
+merlin-models[tensorflow]
 
 # needed to run notebook tests
 nest-asyncio

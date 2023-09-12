@@ -3,18 +3,19 @@ name: GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+      - pull-request/*
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, closed]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Multi-GPU tests
+
   gpu-tests:
     runs-on: 2GPU
 
@@ -31,4 +32,94 @@ jobs:
             raw=$(git branch -r --contains ${{ github.ref_name }})
             branch=${raw/origin\/}
           fi
-          cd ${{ github.workspace }}; tox -e test-gpu -- $branch
+          cd ${{ github.workspace }}; MERLIN_BRANCH=$branch tox -e test-gpu
+
+  # Single GPU tests
+
+  gpu-tests-conda-cu12:
+    runs-on: linux-amd64-gpu-p100-latest-1
+    container:
+      image: nvidia/cuda:12.1.1-devel-ubuntu22.04
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install Ubuntu packages
+        run: |
+          apt-get update -y
+          apt-get install -y git lsb-release
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          use-mamba: true
+          activate-environment: cu12-env
+          environment-file: conda/environments/test-cu12.yaml
+          python-version: "3.10"
+      - name: Get Branch name
+        id: get-branch-name
+        uses: NVIDIA-Merlin/.github/actions/branch-name@9f82e25a18e2b4a3f4350e9f287c2c31e906d89e
+      - name: Run tests
+        run: |
+          merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
+          MERLIN_BRANCH=$merlin_branch tox -e test-gpu
+
+  gpu-tests-cu11:
+    runs-on: linux-amd64-gpu-p100-latest-1
+    container:
+      image: nvidia/cuda:11.8.0-devel-ubuntu22.04
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install Ubuntu packages
+        run: |
+          apt-get update -y
+          # libcudnn8 installed for tensorflow GPU support
+          apt-get install -y git lsb-release 'libcudnn8=*cuda11.8'
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+      - name: Install and upgrade python packages
+        run: |
+          python -m pip install --upgrade pip tox
+      - name: Get Branch name
+        id: get-branch-name
+        uses: NVIDIA-Merlin/.github/actions/branch-name@9f82e25a18e2b4a3f4350e9f287c2c31e906d89e
+      - name: Run tests
+        run: |
+          merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
+          RAPIDS_VERSION=23.04 MERLIN_BRANCH=$merlin_branch tox -e test-gpu-cu11
+
+  gpu-tests-cu12:
+    runs-on: linux-amd64-gpu-p100-latest-1
+    container:
+      image: nvidia/cuda:12.1.1-devel-ubuntu22.04
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install Ubuntu packages
+        run: |
+          apt-get update -y
+          apt-get install -y git lsb-release
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install and upgrade python packages
+        run: |
+          python -m pip install --upgrade pip tox
+      - name: Get Branch name
+        id: get-branch-name
+        uses: NVIDIA-Merlin/.github/actions/branch-name@9f82e25a18e2b4a3f4350e9f287c2c31e906d89e
+      - name: Run tests
+        run: |
+          merlin_branch="${{ steps.get-branch-name.outputs.branch }}"
+          RAPIDS_VERSION=23.06 MERLIN_BRANCH=$merlin_branch tox -e test-gpu-cu12
