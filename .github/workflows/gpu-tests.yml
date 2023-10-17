@@ -1,22 +1,25 @@
-name: GPU Tests
+name: GPU CI
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+      - "pull-request/[0-9]+"
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, closed]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   gpu-tests:
-    runs-on: 2GPU
+    runs-on: linux-amd64-gpu-p100-latest-1
+    container:
+      image: nvcr.io/nvstaging/merlin/merlin-ci-runner:latest
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+      options: --shm-size=1G
+      credentials:
+        username: $oauthtoken
+        password: ${{ secrets.NGC_TOKEN }}
 
     steps:
       - uses: actions/checkout@v3
@@ -31,4 +34,4 @@ jobs:
             raw=$(git branch -r --contains ${{ github.ref_name }})
             branch=${raw/origin\/}
           fi
-          cd ${{ github.workspace }}; tox -e test-gpu -- $branch
+          tox -e test-gpu -- $branch
