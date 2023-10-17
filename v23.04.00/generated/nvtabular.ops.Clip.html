@@ -117,9 +117,9 @@ This is helpful in cases where you want to log normalize values:</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>min_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>, </em><em>default None</em>) – The minimum value to clip values to: values less than this will be replaced with
+<li><p><strong>min_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><em>float</em></a><em>, </em><em>default None</em>) – The minimum value to clip values to: values less than this will be replaced with
 this value. Specifying <code class="docutils literal notranslate"><span class="pre">None</span></code> means don’t apply a minimum threshold.</p></li>
-<li><p><strong>max_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em>, </em><em>default None</em>) – The maximum value to clip values to: values greater than this will be replaced with
+<li><p><strong>max_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><em>float</em></a><em>, </em><em>default None</em>) – The maximum value to clip values to: values greater than this will be replaced with
 this value. Specifying <code class="docutils literal notranslate"><span class="pre">None</span></code> means don’t apply a maximum threshold.</p></li>
 </ul>
 </dd>
@@ -221,7 +221,7 @@ this value. Specifying <code class="docutils literal notranslate"><span class="p
 </table>
 <dl class="py method">
 <dt id="nvtabular.ops.Clip.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/merlin.dag.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../_modules/nvtabular/ops/clip.html#Clip.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Clip.transform" title="Permalink to this definition"></a></dt>
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="reference internal" href="../_modules/nvtabular/ops/clip.html#Clip.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Clip.transform" title="Permalink to this definition"></a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
