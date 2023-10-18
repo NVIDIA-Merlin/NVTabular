@@ -734,3 +734,17 @@ def test_categorify_inference():
     output_tensors = inference_op.transform(cats.input_columns, input_tensors)
     for key in input_tensors:
         assert output_tensors[key].dtype == np.dtype("int64")
+
+
+def test_categorify_transform_only_nans_column():
+    train_df = make_df({"cat_column": ["a", "a", "b", "c", np.nan]})
+    cat_features = ["cat_column"] >> nvt.ops.Categorify(max_size=4)
+    train_dataset = nvt.Dataset(train_df)
+
+    workflow = nvt.Workflow(cat_features)
+    workflow.fit(train_dataset)
+
+    inference_df = make_df({"cat_column": [np.nan] * 10})
+    inference_dataset = nvt.Dataset(inference_df)
+
+    workflow.transform(inference_dataset).compute()
