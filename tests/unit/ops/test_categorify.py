@@ -734,3 +734,8 @@ def test_categorify_inference():
     output_tensors = inference_op.transform(cats.input_columns, input_tensors)
     for key in input_tensors:
         assert output_tensors[key].dtype == np.dtype("int64")
+
+    # Check results are consistent with python code path
+    expect = workflow.transform(df)
+    got = pd.DataFrame(output_tensors)
+    assert_eq(expect, got)
