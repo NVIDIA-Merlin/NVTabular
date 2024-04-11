@@ -109,8 +109,11 @@ class Groupby(Operator):
                 self.list_aggs[col] = list(_list_aggs)
 
         self.name_sep = name_sep
-        self.supported_formats = DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
         super().__init__()
+
+    @property
+    def supported_formats(self):
+        return DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
