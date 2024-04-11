@@ -337,12 +337,12 @@ namespace nvtabular
           // this operator currently only supports CPU arrays
           .def_property_readonly("supports", [](py::object self)
                                  {
-                                   py::object supports = py::module_::import("nvtabular").attr("graph").attr("base_operator").attr("Supports");
+                                   py::object supports = py::module_::import("nvtabular").attr("graph").attr("operator").attr("Supports");
                                    return supports.attr("CPU_DICT_ARRAY");
                                  })
           .def_property_readonly("supported_formats", [](py::object self)
                                  {
-                                   py::object supported = py::module_::import("nvtabular").attr("graph").attr("base_operator").attr("DataFormats");
+                                   py::object supported = py::module_::import("nvtabular").attr("graph").attr("operator").attr("DataFormats");
                                    return supported.attr("NUMPY_DICT_ARRAY");
                                  });
     }
