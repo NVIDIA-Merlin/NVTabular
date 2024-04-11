@@ -20,7 +20,7 @@ from dask.dataframe.utils import meta_nonempty
 from merlin.core.dispatch import DataFrameType, annotate
 from merlin.dtypes.shape import DefaultShapes
 from merlin.schema import Schema
-from nvtabular.ops.operator import ColumnSelector, Operator
+from nvtabular.ops.operator import ColumnSelector, DataFormats, Operator
 
 
 class Groupby(Operator):
@@ -109,6 +109,7 @@ class Groupby(Operator):
                 self.list_aggs[col] = list(_list_aggs)
 
         self.name_sep = name_sep
+        self.supported_formats = DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
