@@ -19,4 +19,9 @@ from merlin.dag import (  # noqa pylint: disable=unused-import
     DataFormats,
 )
 
-Operator = BaseOperator
+
+# Avoid TENSOR_TABLE by default (for now)
+class Operator(BaseOperator):
+    @property
+    def supported_formats(self):
+        return DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
