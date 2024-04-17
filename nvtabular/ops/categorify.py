@@ -1251,13 +1251,7 @@ def _write_uniques(
             if has_size:
                 # Avoid using dask_cudf to calculate divisions
                 # (since it may produce too-few partitions)
-                df = df.sort_values(
-                    name_size,
-                    ascending=False,
-                    divisions=dd.shuffle._calculate_divisions(
-                        df, df[name_size], False, df.npartitions
-                    )[0][::-1],
-                )
+                df = df.sort_values(name_size, ascending=False)
 
             unique_path = _save_encodings(
                 df,
