@@ -45,7 +45,6 @@ extensions = [
     "sphinx_design",
     "sphinx_external_toc",
     "sphinx_multiversion",
-    "sphinx_rtd_theme",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.coverage",
@@ -87,7 +86,7 @@ exclude_patterns = [
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx-book-theme"
+html_theme = "sphinx_book_theme"
 html_title = "NVTabular"
 html_theme_options = {
     "repository_url": "https://github.com/NVIDIA-Merlin/NVTabular",
@@ -95,6 +94,16 @@ html_theme_options = {
     "footer_content_items": ["copyright.html", "last-updated.html"],
     "extra_footer": "",
     "logo": {"text": "NVIDIA Merlin NVTabular", "alt_text": "NVIDIA Merlin NVTabular"},
+}
+html_sidebars = {
+    "**": [
+        "navbar-logo.html",
+        "search-field.html",
+        "icon-links.html",
+        "sbt-sidebar-nav.html",
+        "merlin-ecosystem.html",
+        "versions.html",
+    ]
 }
 html_favicon = "_static/favicon.png"
 html_copy_source = True
