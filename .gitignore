@@ -61,6 +61,7 @@ cover/
 
 # Sphinx documentation
 docs/build/
+docs/source/LICENSE
 docs/source/examples/
 docs/jupyter_execute/
 docs/source/generated/
