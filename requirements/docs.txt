@@ -3,7 +3,7 @@ markupsafe==2.0.1
 sphinx-multiversion@git+https://github.com/mikemckiernan/sphinx-multiversion.git
 sphinxcontrib-copydirs@git+https://github.com/mikemckiernan/sphinxcontrib-copydirs.git
 sphinx-external-toc~=1.0.1
-sphinx-book-theme~=1.1.2
+sphinx-book-theme~=1.0.1
 natsort~=8.4.0
 myst-nb~=1.1.0
 linkify-it-py~=2.0.3
