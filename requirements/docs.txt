@@ -5,7 +5,7 @@ sphinxcontrib-copydirs@git+https://github.com/mikemckiernan/sphinxcontrib-copydi
 sphinx-external-toc~=0.3.1
 sphinx-book-theme~=1.0.1
 natsort~=8.4.0
-myst-nb~=1.1.0
+myst-nb~=0.17.2
 linkify-it-py~=2.0.3
 sphinx_design~=0.5.0
 
