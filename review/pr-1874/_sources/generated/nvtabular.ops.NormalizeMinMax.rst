@@ -1,0 +1,54 @@
+﻿nvtabular.ops.NormalizeMinMax
+=============================
+
+.. currentmodule:: nvtabular.ops
+
+.. autoclass:: NormalizeMinMax
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NormalizeMinMax.__init__
+      ~NormalizeMinMax.clear
+      ~NormalizeMinMax.column_mapping
+      ~NormalizeMinMax.compute_column_schema
+      ~NormalizeMinMax.compute_input_schema
+      ~NormalizeMinMax.compute_output_schema
+      ~NormalizeMinMax.compute_selector
+      ~NormalizeMinMax.create_node
+      ~NormalizeMinMax.export
+      ~NormalizeMinMax.fit
+      ~NormalizeMinMax.fit_finalize
+      ~NormalizeMinMax.load_artifacts
+      ~NormalizeMinMax.output_column_names
+      ~NormalizeMinMax.save_artifacts
+      ~NormalizeMinMax.set_storage_path
+      ~NormalizeMinMax.transform
+      ~NormalizeMinMax.validate_schemas
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NormalizeMinMax.dependencies
+      ~NormalizeMinMax.dynamic_dtypes
+      ~NormalizeMinMax.export_name
+      ~NormalizeMinMax.fitted
+      ~NormalizeMinMax.is_subgraph
+      ~NormalizeMinMax.label
+      ~NormalizeMinMax.output_dtype
+      ~NormalizeMinMax.output_properties
+      ~NormalizeMinMax.output_tags
+      ~NormalizeMinMax.supported_formats
+      ~NormalizeMinMax.supports
+   
+   

@@ -1,0 +1,897 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nvtabular.workflow.workflow &#8212; NVTabular</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/versions.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../../../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script src="../../../_static/js/rtd-version-switcher.js"></script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/nvtabular/workflow/workflow';</script>
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/_modules/nvtabular/workflow/workflow.html" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-NVJ1Y1YJHK', {
+        'anonymize_ip': false,
+    });
+  </script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,300&display=swap" rel="stylesheet">
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NVIDIA Merlin NVTabular</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/tensorflow.html">TensorFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/pytorch.html">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/hugectr.html">HugeCTR</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api.html">API Documentation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.workflow.workflow.Workflow.html">nvtabular.workflow.workflow.Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.workflow.workflow.WorkflowNode.html">nvtabular.workflow.workflow.WorkflowNode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Bucketize.html">nvtabular.ops.Bucketize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Categorify.html">nvtabular.ops.Categorify</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.DropLowCardinality.html">nvtabular.ops.DropLowCardinality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.HashBucket.html">nvtabular.ops.HashBucket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.HashedCross.html">nvtabular.ops.HashedCross</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TargetEncoding.html">nvtabular.ops.TargetEncoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Clip.html">nvtabular.ops.Clip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.LogOp.html">nvtabular.ops.LogOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Normalize.html">nvtabular.ops.Normalize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.NormalizeMinMax.html">nvtabular.ops.NormalizeMinMax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Dropna.html">nvtabular.ops.Dropna</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.FillMissing.html">nvtabular.ops.FillMissing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.FillMedian.html">nvtabular.ops.FillMedian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.DifferenceLag.html">nvtabular.ops.DifferenceLag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Filter.html">nvtabular.ops.Filter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Groupby.html">nvtabular.ops.Groupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.JoinExternal.html">nvtabular.ops.JoinExternal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.JoinGroupby.html">nvtabular.ops.JoinGroupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddMetadata.html">nvtabular.ops.AddMetadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddProperties.html">nvtabular.ops.AddProperties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddTags.html">nvtabular.ops.AddTags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Rename.html">nvtabular.ops.Rename</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ReduceDtypeSize.html">nvtabular.ops.ReduceDtypeSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsItemFeatures.html">nvtabular.ops.TagAsItemFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsItemID.html">nvtabular.ops.TagAsItemID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsUserFeatures.html">nvtabular.ops.TagAsUserFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsUserID.html">nvtabular.ops.TagAsUserID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ListSlice.html">nvtabular.ops.ListSlice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ValueCount.html">nvtabular.ops.ValueCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ColumnSimilarity.html">nvtabular.ops.ColumnSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.LambdaOp.html">nvtabular.ops.LambdaOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Operator.html">nvtabular.ops.Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.StatOperator.html">nvtabular.ops.StatOperator</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/cloud_integration.html">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://developer.nvidia.com/nvidia-merlin/nvtabular">developer.nvidia.com page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/links.html">Presentations and Blog Posts</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+</nav></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-merlin-ecosystem-nav" aria-label="Merlin Ecosystem Nav">
+  <div class="bd-toc-item navbar-nav">
+    <p aria-level="2" class="caption" role="heading"><span class="caption-text">Ecosystem</span></p>
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference external" href="/models/">Models</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/systems/">Systems</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/core/">Core</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Transformers4Rec/">Transformers4Rec</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/dataloader/">Dataloader</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Merlin/">Merlin</a></li>
+    </ul>
+  </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/NVIDIA-Merlin/NVTabular" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for nvtabular.workflow.workflow</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">singledispatchmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">cloudpickle</span>
+<span class="kn">import</span> <span class="nn">fsspec</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">merlin.core.compat</span> <span class="kn">import</span> <span class="n">cudf</span>
+<span class="kn">from</span> <span class="nn">merlin.dag</span> <span class="kn">import</span> <span class="n">Graph</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.executors</span> <span class="kn">import</span> <span class="n">DaskExecutor</span><span class="p">,</span> <span class="n">LocalExecutor</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.node</span> <span class="kn">import</span> <span class="n">iter_nodes</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
+<span class="kn">from</span> <span class="nn">merlin.io</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops</span> <span class="kn">import</span> <span class="n">LambdaOp</span>
+<span class="kn">from</span> <span class="nn">nvtabular.workflow.node</span> <span class="kn">import</span> <span class="n">WorkflowNode</span>
+
+<span class="n">LOG</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;nvtabular&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">distributed</span>
+
+
+<div class="viewcode-block" id="Workflow"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow">[docs]</a><span class="k">class</span> <span class="nc">Workflow</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Workflow class applies a graph of operations onto a dataset, letting you transform</span>
+<span class="sd">    datasets to do feature engineering and preprocessing operations. This class follows an API</span>
+<span class="sd">    similar to Transformers in sklearn: we first ``fit`` the workflow by calculating statistics</span>
+<span class="sd">    on the dataset, and then once fit we can ``transform`` datasets by applying these statistics.</span>
+
+<span class="sd">    Example usage::</span>
+
+<span class="sd">        # define a graph of operations</span>
+<span class="sd">        cat_features = CAT_COLUMNS &gt;&gt; nvtabular.ops.Categorify()</span>
+<span class="sd">        cont_features = CONT_COLUMNS &gt;&gt; nvtabular.ops.FillMissing() &gt;&gt; nvtabular.ops.Normalize()</span>
+<span class="sd">        workflow = nvtabular.Workflow(cat_features + cont_features + &quot;label&quot;)</span>
+
+<span class="sd">        # calculate statistics on the training dataset</span>
+<span class="sd">        workflow.fit(merlin.io.Dataset(TRAIN_PATH))</span>
+
+<span class="sd">        # transform the training and validation datasets and write out as parquet</span>
+<span class="sd">        workflow.transform(merlin.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)</span>
+<span class="sd">        workflow.transform(merlin.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    output_node: WorkflowNode</span>
+<span class="sd">        The last node in the graph of operators this workflow should apply</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Workflow.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_node</span><span class="p">:</span> <span class="n">WorkflowNode</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;distributed.Client&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">(</span><span class="n">output_node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">DaskExecutor</span><span class="p">(</span><span class="n">client</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Workflow.transform"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.transform">[docs]</a>    <span class="nd">@singledispatchmethod</span>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transforms the data by applying the graph of operators to it.</span>
+
+<span class="sd">        Requires the ``fit`` method to have already been called, or</span>
+<span class="sd">        using a Workflow that has already beeen fit and re-loaded from</span>
+<span class="sd">        disk (using the ``load`` method).</span>
+
+<span class="sd">        This method returns data of the same type.</span>
+
+<span class="sd">        In the case of a `Dataset`. The computation is lazy. It won&#39;t</span>
+<span class="sd">        happen until the produced Dataset is consumed, or written out</span>
+<span class="sd">        to disk. e.g. with a `dataset.compute()`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        data: Union[Dataset, DataFrameType]</span>
+<span class="sd">            Input Dataset or DataFrame to transform</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dataset or DataFrame</span>
+<span class="sd">            Transformed Dataset or DataFrame with the workflow graph applied to it</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If passed an unsupoprted data type to transform.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Workflow.transform received an unsupported type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="s2">&quot;Supported types are a `merlin.io.Dataset` or DataFrame (pandas or cudf)&quot;</span>
+        <span class="p">)</span></div>
+
+    <span class="nd">@transform</span><span class="o">.</span><span class="n">register</span>
+    <span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_impl</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+
+    <span class="nd">@transform</span><span class="o">.</span><span class="n">register</span>
+    <span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_df</span><span class="p">(</span><span class="n">dataframe</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cudf</span><span class="p">:</span>
+
+        <span class="nd">@transform</span><span class="o">.</span><span class="n">register</span>
+        <span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">:</span> <span class="n">cudf</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">cudf</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform_df</span><span class="p">(</span><span class="n">dataframe</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Workflow.fit_schema"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit_schema">[docs]</a>    <span class="k">def</span> <span class="nf">fit_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes input and output schemas for each node in the Workflow graph</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_schema : Schema</span>
+<span class="sd">            The input schema to use</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Workflow</span>
+<span class="sd">            This workflow where each node in the graph has a fitted schema</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">construct_schema</span><span class="p">(</span><span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">subworkflows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">subgraphs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">input_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">input_dtypes</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">input_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">input_schema</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_schema</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_dtypes</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_node</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_node</span>
+
+    <span class="k">def</span> <span class="nf">_input_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">_input_columns</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Workflow.get_subworkflow"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.get_subworkflow">[docs]</a>    <span class="k">def</span> <span class="nf">get_subworkflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgraph_name</span><span class="p">):</span>
+        <span class="n">subgraph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">subgraph_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Workflow</span><span class="p">(</span><span class="n">subgraph</span><span class="o">.</span><span class="n">output_node</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Workflow.remove_inputs"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.remove_inputs">[docs]</a>    <span class="k">def</span> <span class="nf">remove_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_cols</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes input columns from the workflow.</span>
+
+<span class="sd">        This is useful for the case of inference where you might need to remove label columns</span>
+<span class="sd">        from the processed set.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_cols : list of str</span>
+<span class="sd">            List of column names to</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Workflow</span>
+<span class="sd">            This workflow with the input columns removed from it</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        merlin.dag.Graph.remove_inputs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">remove_inputs</span><span class="p">(</span><span class="n">input_cols</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Workflow.fit"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates statistics for this workflow on the input dataset</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        dataset: Dataset</span>
+<span class="sd">            The input dataset to calculate statistics for. If there is a train/test split this</span>
+<span class="sd">            data should be the training dataset only.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Workflow</span>
+<span class="sd">            This Workflow with statistics calculated on it</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Workflow.fit_transform"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.fit_transform">[docs]</a>    <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convenience method to both fit the workflow and transform the dataset in a single</span>
+<span class="sd">        call. Equivalent to calling ``workflow.fit(dataset)`` followed by</span>
+<span class="sd">        ``workflow.transform(dataset)``</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        dataset: Dataset</span>
+<span class="sd">            Input dataset to calculate statistics on, and transform results</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dataset</span>
+<span class="sd">            Transformed Dataset with the workflow graph applied to it</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        fit</span>
+<span class="sd">        transform</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_transform_impl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">capture_dtypes</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_schema</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">construct_schema</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+
+        <span class="n">ddf</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">to_ddf</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_input_columns</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span>
+                <span class="n">ddf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_node</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_dtypes</span><span class="p">,</span> <span class="n">capture_dtypes</span><span class="o">=</span><span class="n">capture_dtypes</span>
+            <span class="p">),</span>
+            <span class="n">cpu</span><span class="o">=</span><span class="n">dataset</span><span class="o">.</span><span class="n">cpu</span><span class="p">,</span>
+            <span class="n">base_dataset</span><span class="o">=</span><span class="n">dataset</span><span class="o">.</span><span class="n">base_dataset</span><span class="p">,</span>
+            <span class="n">schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_schema</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_transform_df</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_schema</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;no output schema&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">LocalExecutor</span><span class="p">()</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_node</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_dtypes</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_getmodules</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns an imprecise but useful approximation of the list of modules</span>
+<span class="sd">        necessary to execute a given list of functions.  This approximation is</span>
+<span class="sd">        sound (all modules listed are required by the supplied functions) but not</span>
+<span class="sd">        necessarily complete (not all modules required will necessarily be returned).</span>
+
+<span class="sd">        For function literals (lambda expressions), this returns</span>
+<span class="sd">            1. the names of every module referenced in the lambda expression, e.g.,</span>
+<span class="sd">               `m` for `lambda x: m.f(x)` and</span>
+<span class="sd">            2. the names of the declaring module for every function referenced in</span>
+<span class="sd">               the lambda expression, e.g. `m` for `import m.f; lambda x: f(x)`</span>
+
+<span class="sd">        For declared functions, this returns the names of their declaring modules.</span>
+
+<span class="sd">        The return value will exclude all built-in modules and (on Python 3.10 or later)</span>
+<span class="sd">        all standard library modules.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="n">exclusions</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">builtin_module_names</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s2">&quot;stdlib_module_names&quot;</span><span class="p">):</span>
+            <span class="c1"># sys.stdlib_module_names is only available in Python 3.10 and beyond</span>
+            <span class="n">exclusions</span> <span class="o">=</span> <span class="n">exclusions</span> <span class="o">|</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdlib_module_names</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;&lt;lambda&gt;&quot;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">closurevars</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="n">inspect</span><span class="o">.</span><span class="n">getclosurevars</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">globals</span><span class="p">,</span>
+                    <span class="n">inspect</span><span class="o">.</span><span class="n">getclosurevars</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">nonlocals</span><span class="p">,</span>
+                <span class="p">]:</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">closurevars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
+                            <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">):</span>
+                            <span class="n">mod</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmodule</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">mod</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mod</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmodule</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">mod</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">mod</span> <span class="k">for</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">result</span> <span class="k">if</span> <span class="n">mod</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclusions</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Workflow.save"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">modules_byvalue</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save this workflow to disk</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path: Union[str, os.PathLike]</span>
+<span class="sd">            The path to save the workflow to</span>
+<span class="sd">        modules_byvalue:</span>
+<span class="sd">            A list of modules that should be serialized by value. This</span>
+<span class="sd">            should include any modules that will not be available on</span>
+<span class="sd">            the host where this workflow is ultimately deserialized.</span>
+
+<span class="sd">            In lieu of an explicit list, pass None to serialize all modules</span>
+<span class="sd">            by reference or pass &quot;auto&quot; to use a heuristic to infer which</span>
+<span class="sd">            modules to serialize by value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># avoid a circular import getting the version</span>
+        <span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">nvt_version</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">fs</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># point all stat ops to store intermediate output (parquet etc) at the path</span>
+        <span class="c1"># this lets us easily bundle</span>
+        <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">Graph</span><span class="o">.</span><span class="n">get_nodes_by_op_type</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">output_node</span><span class="p">],</span> <span class="n">StatOperator</span><span class="p">):</span>
+            <span class="n">stat</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">set_storage_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># generate a file of all versions used to generate this bundle</span>
+        <span class="n">lib</span> <span class="o">=</span> <span class="n">cudf</span> <span class="k">if</span> <span class="n">cudf</span> <span class="k">else</span> <span class="n">pd</span>
+        <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;metadata.json&quot;</span><span class="p">]),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">o</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;versions&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;nvtabular&quot;</span><span class="p">:</span> <span class="n">nvt_version</span><span class="p">,</span>
+                        <span class="n">lib</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">lib</span><span class="o">.</span><span class="n">__version__</span><span class="p">,</span>
+                        <span class="s2">&quot;python&quot;</span><span class="p">:</span> <span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+                    <span class="p">},</span>
+                    <span class="s2">&quot;generated_timestamp&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()),</span>
+                <span class="p">},</span>
+                <span class="n">o</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># track existing by-value modules</span>
+        <span class="n">preexisting_modules_byvalue</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">cloudpickle</span><span class="o">.</span><span class="n">list_registry_pickle_by_value</span><span class="p">())</span>
+
+        <span class="c1"># direct cloudpickle to serialize selected modules by value</span>
+        <span class="k">if</span> <span class="n">modules_byvalue</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">modules_byvalue</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">elif</span> <span class="n">modules_byvalue</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+            <span class="n">l_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">get_nodes_by_op_type</span><span class="p">(</span>
+                <span class="nb">list</span><span class="p">(</span><span class="n">iter_nodes</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_node</span><span class="p">])),</span> <span class="n">LambdaOp</span>
+            <span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">modules_byvalue</span> <span class="o">=</span> <span class="n">Workflow</span><span class="o">.</span><span class="n">_getmodules</span><span class="p">([</span><span class="n">ln</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">f</span> <span class="k">for</span> <span class="n">ln</span> <span class="ow">in</span> <span class="n">l_nodes</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s2">&quot;Failed to automatically infer modules to serialize by value. &quot;</span>
+                    <span class="sa">f</span><span class="s1">&#39;Reason given was &quot;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+                <span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules_byvalue</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
+                    <span class="n">cloudpickle</span><span class="o">.</span><span class="n">register_pickle_by_value</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
+                    <span class="n">cloudpickle</span><span class="o">.</span><span class="n">register_pickle_by_value</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">m</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Failed to register modules to serialize by value.  Reason given was &quot;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># dump out the full workflow (graph/stats/operators etc) using cloudpickle</span>
+            <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;workflow.pkl&quot;</span><span class="p">]),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">cloudpickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># return all modules that we set to serialize by value to by-reference</span>
+            <span class="c1"># (i.e., retain modules that were set to serialize by value before this invocation)</span>
+
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules_byvalue</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">preexisting_modules_byvalue</span><span class="p">:</span>
+                        <span class="n">cloudpickle</span><span class="o">.</span><span class="n">unregister_pickle_by_value</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">m</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">preexisting_modules_byvalue</span><span class="p">:</span>
+                        <span class="n">cloudpickle</span><span class="o">.</span><span class="n">unregister_pickle_by_value</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">m</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="Workflow.load"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.load">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Workflow&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load up a saved workflow object from disk</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path: Union[str, os.PathLike]</span>
+<span class="sd">            The path to load the workflow from</span>
+<span class="sd">        client: distributed.Client, optional</span>
+<span class="sd">            The Dask distributed client to use for multi-gpu processing and multi-node processing</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Workflow</span>
+<span class="sd">            The Workflow loaded from disk</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># avoid a circular import getting the version</span>
+        <span class="kn">from</span> <span class="nn">nvtabular</span> <span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">nvt_version</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">get_fs_token_paths</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># check version information from the metadata blob, and warn if we have a mismatch</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;metadata.json&quot;</span><span class="p">])))</span>
+
+        <span class="k">def</span> <span class="nf">parse_version</span><span class="p">(</span><span class="n">version</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">version</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">check_version</span><span class="p">(</span><span class="n">stored</span><span class="p">,</span> <span class="n">current</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">parse_version</span><span class="p">(</span><span class="n">stored</span><span class="p">)</span> <span class="o">!=</span> <span class="n">parse_version</span><span class="p">(</span><span class="n">current</span><span class="p">):</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Loading workflow generated with </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> version </span><span class="si">{</span><span class="n">stored</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;- but we are running </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">current</span><span class="si">}</span><span class="s2">. This might cause issues&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># make sure we don&#39;t have any major/minor version conflicts between the stored worklflow</span>
+        <span class="c1"># and the current environment</span>
+        <span class="n">lib</span> <span class="o">=</span> <span class="n">cudf</span> <span class="k">if</span> <span class="n">cudf</span> <span class="k">else</span> <span class="n">pd</span>
+        <span class="n">versions</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;versions&quot;</span><span class="p">]</span>
+        <span class="n">check_version</span><span class="p">(</span><span class="n">versions</span><span class="p">[</span><span class="s2">&quot;nvtabular&quot;</span><span class="p">],</span> <span class="n">nvt_version</span><span class="p">,</span> <span class="s2">&quot;nvtabular&quot;</span><span class="p">)</span>
+        <span class="n">check_version</span><span class="p">(</span><span class="n">versions</span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span> <span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">lib</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+            <span class="n">check_version</span><span class="p">(</span><span class="n">versions</span><span class="p">[</span><span class="n">lib</span><span class="o">.</span><span class="vm">__name__</span><span class="p">],</span> <span class="n">lib</span><span class="o">.</span><span class="n">__version__</span><span class="p">,</span> <span class="n">lib</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="s2">&quot;GPU&quot;</span> <span class="k">if</span> <span class="s2">&quot;cudf&quot;</span> <span class="ow">in</span> <span class="n">versions</span> <span class="k">else</span> <span class="s2">&quot;CPU&quot;</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading workflow generated on </span><span class="si">{</span><span class="n">expected</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># load up the workflow object di</span>
+        <span class="n">workflow</span> <span class="o">=</span> <span class="n">cloudpickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;workflow.pkl&quot;</span><span class="p">]),</span> <span class="s2">&quot;rb&quot;</span><span class="p">))</span>
+        <span class="n">workflow</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
+
+        <span class="c1"># we might have been copied since saving, update all the stat ops</span>
+        <span class="c1"># with the new path to their storage locations</span>
+        <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">Graph</span><span class="o">.</span><span class="n">get_nodes_by_op_type</span><span class="p">([</span><span class="n">workflow</span><span class="o">.</span><span class="n">output_node</span><span class="p">],</span> <span class="n">StatOperator</span><span class="p">):</span>
+            <span class="n">stat</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">set_storage_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">workflow</span></div>
+
+<div class="viewcode-block" id="Workflow.clear_stats"><a class="viewcode-back" href="../../../generated/nvtabular.workflow.workflow.Workflow.html#nvtabular.workflow.workflow.Workflow.clear_stats">[docs]</a>    <span class="k">def</span> <span class="nf">clear_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Removes calculated statistics from each node in the workflow graph</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        nvtabular.ops.stat_operator.StatOperator.clear</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">Graph</span><span class="o">.</span><span class="n">get_nodes_by_op_type</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">output_node</span><span class="p">],</span> <span class="n">StatOperator</span><span class="p">):</span>
+            <span class="n">stat</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div></div>
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, NVIDIA.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
