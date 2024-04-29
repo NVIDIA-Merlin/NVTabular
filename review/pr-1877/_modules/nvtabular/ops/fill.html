@@ -1,0 +1,580 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nvtabular.ops.fill &#8212; NVTabular</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/versions.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script src="../../../_static/js/rtd-version-switcher.js"></script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/nvtabular/ops/fill';</script>
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/_modules/nvtabular/ops/fill.html" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-NVJ1Y1YJHK', {
+        'anonymize_ip': false,
+    });
+  </script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,300&display=swap" rel="stylesheet">
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NVIDIA Merlin NVTabular</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/tensorflow.html">TensorFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/pytorch.html">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/hugectr.html">HugeCTR</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api.html">API Documentation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.workflow.workflow.Workflow.html">nvtabular.workflow.workflow.Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.workflow.workflow.WorkflowNode.html">nvtabular.workflow.workflow.WorkflowNode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Bucketize.html">nvtabular.ops.Bucketize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Categorify.html">nvtabular.ops.Categorify</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.DropLowCardinality.html">nvtabular.ops.DropLowCardinality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.HashBucket.html">nvtabular.ops.HashBucket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.HashedCross.html">nvtabular.ops.HashedCross</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TargetEncoding.html">nvtabular.ops.TargetEncoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Clip.html">nvtabular.ops.Clip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.LogOp.html">nvtabular.ops.LogOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Normalize.html">nvtabular.ops.Normalize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.NormalizeMinMax.html">nvtabular.ops.NormalizeMinMax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Dropna.html">nvtabular.ops.Dropna</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.FillMissing.html">nvtabular.ops.FillMissing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.FillMedian.html">nvtabular.ops.FillMedian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.DifferenceLag.html">nvtabular.ops.DifferenceLag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Filter.html">nvtabular.ops.Filter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Groupby.html">nvtabular.ops.Groupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.JoinExternal.html">nvtabular.ops.JoinExternal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.JoinGroupby.html">nvtabular.ops.JoinGroupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddMetadata.html">nvtabular.ops.AddMetadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddProperties.html">nvtabular.ops.AddProperties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddTags.html">nvtabular.ops.AddTags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Rename.html">nvtabular.ops.Rename</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ReduceDtypeSize.html">nvtabular.ops.ReduceDtypeSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsItemFeatures.html">nvtabular.ops.TagAsItemFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsItemID.html">nvtabular.ops.TagAsItemID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsUserFeatures.html">nvtabular.ops.TagAsUserFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsUserID.html">nvtabular.ops.TagAsUserID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ListSlice.html">nvtabular.ops.ListSlice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ValueCount.html">nvtabular.ops.ValueCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ColumnSimilarity.html">nvtabular.ops.ColumnSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.LambdaOp.html">nvtabular.ops.LambdaOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Operator.html">nvtabular.ops.Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.StatOperator.html">nvtabular.ops.StatOperator</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/cloud_integration.html">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://developer.nvidia.com/nvidia-merlin/nvtabular">developer.nvidia.com page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/links.html">Presentations and Blog Posts</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+</nav></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-merlin-ecosystem-nav" aria-label="Merlin Ecosystem Nav">
+  <div class="bd-toc-item navbar-nav">
+    <p aria-level="2" class="caption" role="heading"><span class="caption-text">Ecosystem</span></p>
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference external" href="/models/">Models</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/systems/">Systems</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/core/">Core</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Transformers4Rec/">Transformers4Rec</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/dataloader/">Dataloader</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Merlin/">Merlin</a></li>
+    </ul>
+  </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/NVIDIA-Merlin/NVTabular" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for nvtabular.ops.fill</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2021, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
+
+<span class="kn">from</span> <span class="nn">merlin.core.dispatch</span> <span class="kn">import</span> <span class="n">DataFrameType</span><span class="p">,</span> <span class="n">annotate</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.ops.stat_operator</span> <span class="kn">import</span> <span class="n">StatOperator</span>
+<span class="kn">from</span> <span class="nn">nvtabular.ops.operator</span> <span class="kn">import</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">Operator</span>
+
+
+<div class="viewcode-block" id="FillMissing"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing">[docs]</a><span class="k">class</span> <span class="nc">FillMissing</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This operation replaces missing values with a constant pre-defined value</span>
+
+<span class="sd">    Example usage::</span>
+
+<span class="sd">        # Use FillMissing to define a workflow for continuous columns and specify the fill value</span>
+<span class="sd">        # Default is 0</span>
+<span class="sd">        cont_features = [&#39;cont1&#39;, &#39;cont2&#39;, &#39;cont3&#39;] &gt;&gt; ops.FillMissing() &gt;&gt; ...</span>
+<span class="sd">        processor = nvtabular.Workflow(cont_features)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    fill_val : float, default 0</span>
+<span class="sd">        The constant value to replace missing values with.</span>
+<span class="sd">    add_binary_cols : boolean, default False</span>
+<span class="sd">        When True, adds binary columns that indicate whether cells in each column were filled</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="FillMissing.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fill_val</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">add_binary_cols</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_val</span> <span class="o">=</span> <span class="n">fill_val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span> <span class="o">=</span> <span class="n">add_binary_cols</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inference_transform</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="FillMissing.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;FillMissing_op&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+                <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fill_val</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fill_val</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="FillMissing.inference_initialize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing.inference_initialize">[docs]</a>    <span class="k">def</span> <span class="nf">inference_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="n">inference_config</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;load up extra configuration about this op.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="kn">import</span> <span class="nn">nvtabular_cpp</span>
+
+        <span class="k">return</span> <span class="n">nvtabular_cpp</span><span class="o">.</span><span class="n">inference</span><span class="o">.</span><span class="n">FillTransform</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FillMissing.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMissing.html#nvtabular.ops.FillMissing.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
+                <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_filled&quot;</span><span class="p">):</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">col_schema</span>
+
+    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span></div>
+
+
+<div class="viewcode-block" id="FillMedian"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian">[docs]</a><span class="k">class</span> <span class="nc">FillMedian</span><span class="p">(</span><span class="n">StatOperator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This operation replaces missing values with the median value for the column.</span>
+
+<span class="sd">    Example usage::</span>
+
+<span class="sd">        # Use FillMedian in a workflow for continuous columns</span>
+<span class="sd">        cont_features = [&#39;cont1&#39;, &#39;cont2&#39;, &#39;cont3&#39;] &gt;&gt; ops.FillMedian()</span>
+<span class="sd">        processor = nvtabular.Workflow(cont_features)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    add_binary_cols : boolean, default False</span>
+<span class="sd">        When True, adds binary columns that indicate whether cells in each column were filled</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="FillMedian.__init__"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">add_binary_cols</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span> <span class="o">=</span> <span class="n">add_binary_cols</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">medians</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+<div class="viewcode-block" id="FillMedian.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian.transform">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;FillMedian_transform&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">DataFrameType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrameType</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">medians</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;need to call &#39;fit&#39; before running transform&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
+                <span class="n">df</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">medians</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="FillMedian.fit"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian.fit">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;FillMedian_fit&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">ddf</span><span class="p">:</span> <span class="n">dd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="c1"># TODO: Use `method=&quot;tidigest&quot;` when crick supports device</span>
+        <span class="n">dask_stats</span> <span class="o">=</span> <span class="n">ddf</span><span class="p">[</span><span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">q</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;dask&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dask_stats</span></div>
+
+<div class="viewcode-block" id="FillMedian.fit_finalize"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian.fit_finalize">[docs]</a>    <span class="nd">@annotate</span><span class="p">(</span><span class="s2">&quot;FillMedian_finalize&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;nvt_python&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">fit_finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dask_stats</span><span class="p">):</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">dask_stats</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">values_host</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;values_host&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">index</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">medians</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dask_stats</span><span class="p">[</span><span class="n">col</span><span class="p">])</span></div>
+
+    <span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">Operator</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="vm">__doc__</span>
+    <span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit</span><span class="o">.</span><span class="vm">__doc__</span>
+    <span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">StatOperator</span><span class="o">.</span><span class="n">fit_finalize</span><span class="o">.</span><span class="vm">__doc__</span>
+
+<div class="viewcode-block" id="FillMedian.clear"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">medians</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+<div class="viewcode-block" id="FillMedian.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.FillMedian.html#nvtabular.ops.FillMedian.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_binary_cols</span><span class="p">:</span>
+                <span class="n">column_mapping</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col_name</span><span class="si">}</span><span class="s2">_filled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_filled&quot;</span><span class="p">):</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">col_schema</span></div>
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2021–2024, NVIDIA.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    <p>
+<a href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/" target="_blank">Privacy Policy</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/" target="_blank">Manage My Privacy</a> |
+<a href="https://www.nvidia.com/en-us/preferences/start/" target="_blank">Do Not Sell or Share My Data</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/" target="_blank">Terms of Service</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/accessibility/" target="_blank">Accessibility</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/company-policies/" target="_blank">Corporate Policies</a> |
+<a href="https://www.nvidia.com/en-us/product-security/" target="_blank">Product Security</a> |
+<a href="https://www.nvidia.com/en-us/contact/" target="_blank">Contact</a>
+</p>
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

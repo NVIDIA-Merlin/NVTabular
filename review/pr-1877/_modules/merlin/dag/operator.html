@@ -1,0 +1,884 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>merlin.dag.operator &#8212; NVTabular</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/versions.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <script src="../../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script src="../../../_static/js/rtd-version-switcher.js"></script>
+    <script src="../../../_static/design-tabs.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/merlin/dag/operator';</script>
+    <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/_modules/merlin/dag/operator.html" />
+    <link rel="shortcut icon" href="../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-NVJ1Y1YJHK', {
+        'anonymize_ip': false,
+    });
+  </script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,300&display=swap" rel="stylesheet">
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NVIDIA Merlin NVTabular</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../Introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../core_features.html">Core Features</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../training/index.html">Accelerated Training</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/tensorflow.html">TensorFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/pytorch.html">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../training/hugectr.html">HugeCTR</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../examples/index.html">Example Notebooks</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api.html">API Documentation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.workflow.workflow.Workflow.html">nvtabular.workflow.workflow.Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.workflow.workflow.WorkflowNode.html">nvtabular.workflow.workflow.WorkflowNode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Bucketize.html">nvtabular.ops.Bucketize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Categorify.html">nvtabular.ops.Categorify</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.DropLowCardinality.html">nvtabular.ops.DropLowCardinality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.HashBucket.html">nvtabular.ops.HashBucket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.HashedCross.html">nvtabular.ops.HashedCross</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TargetEncoding.html">nvtabular.ops.TargetEncoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Clip.html">nvtabular.ops.Clip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.LogOp.html">nvtabular.ops.LogOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Normalize.html">nvtabular.ops.Normalize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.NormalizeMinMax.html">nvtabular.ops.NormalizeMinMax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Dropna.html">nvtabular.ops.Dropna</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.FillMissing.html">nvtabular.ops.FillMissing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.FillMedian.html">nvtabular.ops.FillMedian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.DifferenceLag.html">nvtabular.ops.DifferenceLag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Filter.html">nvtabular.ops.Filter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Groupby.html">nvtabular.ops.Groupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.JoinExternal.html">nvtabular.ops.JoinExternal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.JoinGroupby.html">nvtabular.ops.JoinGroupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddMetadata.html">nvtabular.ops.AddMetadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddProperties.html">nvtabular.ops.AddProperties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.AddTags.html">nvtabular.ops.AddTags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Rename.html">nvtabular.ops.Rename</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ReduceDtypeSize.html">nvtabular.ops.ReduceDtypeSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsItemFeatures.html">nvtabular.ops.TagAsItemFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsItemID.html">nvtabular.ops.TagAsItemID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsUserFeatures.html">nvtabular.ops.TagAsUserFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.TagAsUserID.html">nvtabular.ops.TagAsUserID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ListSlice.html">nvtabular.ops.ListSlice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ValueCount.html">nvtabular.ops.ValueCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.ColumnSimilarity.html">nvtabular.ops.ColumnSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.LambdaOp.html">nvtabular.ops.LambdaOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.Operator.html">nvtabular.ops.Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/nvtabular.ops.StatOperator.html">nvtabular.ops.StatOperator</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../resources/index.html">Additional Resources</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/cloud_integration.html">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://developer.nvidia.com/nvidia-merlin/nvtabular">developer.nvidia.com page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../resources/links.html">Presentations and Blog Posts</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+</nav></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-merlin-ecosystem-nav" aria-label="Merlin Ecosystem Nav">
+  <div class="bd-toc-item navbar-nav">
+    <p aria-level="2" class="caption" role="heading"><span class="caption-text">Ecosystem</span></p>
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference external" href="/models/">Models</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/systems/">Systems</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/core/">Core</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Transformers4Rec/">Transformers4Rec</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/dataloader/">Dataloader</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Merlin/">Merlin</a></li>
+    </ul>
+  </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/NVIDIA-Merlin/NVTabular" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for merlin.dag.operator</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright (c) 2022, NVIDIA CORPORATION.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Flag</span><span class="p">,</span> <span class="n">auto</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">merlin.dag</span>
+<span class="kn">import</span> <span class="nn">merlin.dag.utils</span>
+<span class="kn">from</span> <span class="nn">merlin.core.protocols</span> <span class="kn">import</span> <span class="n">Transformable</span>
+<span class="kn">from</span> <span class="nn">merlin.dag.selector</span> <span class="kn">import</span> <span class="n">ColumnSelector</span>
+<span class="kn">from</span> <span class="nn">merlin.schema</span> <span class="kn">import</span> <span class="n">ColumnSchema</span><span class="p">,</span> <span class="n">Schema</span>
+
+
+<span class="k">class</span> <span class="nc">Supports</span><span class="p">(</span><span class="n">Flag</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Indicates what type of data representation this operator supports for transformations</span>
+
+<span class="sd">    (Deprecated)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># cudf dataframe</span>
+    <span class="n">CPU_DATAFRAME</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="c1"># pandas dataframe</span>
+    <span class="n">GPU_DATAFRAME</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="c1"># dict of column name to numpy array</span>
+    <span class="n">CPU_DICT_ARRAY</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="c1"># dict of column name to cupy array</span>
+    <span class="n">GPU_DICT_ARRAY</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">DataFormats</span><span class="p">(</span><span class="n">Flag</span><span class="p">):</span>
+    <span class="n">CUDF_DATAFRAME</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">PANDAS_DATAFRAME</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="n">NUMPY_TENSOR_TABLE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CUPY_TENSOR_TABLE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">TF_TENSOR_TABLE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">TORCH_TENSOR_TABLE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="n">NUMPY_DICT_ARRAY</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CUPY_DICT_ARRAY</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+
+<span class="c1"># pylint: disable=too-many-public-methods</span>
+<div class="viewcode-block" id="Operator"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator">[docs]</a><span class="k">class</span> <span class="nc">Operator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all operator classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Operator.compute_selector"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_selector">[docs]</a>    <span class="k">def</span> <span class="nf">compute_selector</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">parents_selector</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ColumnSelector</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependencies_selector</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ColumnSelector</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provides a hook method for sub-classes to override to implement</span>
+<span class="sd">        custom column selection logic.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_schema : Schema</span>
+<span class="sd">            Schemas of the columns to apply this operator to</span>
+<span class="sd">        selector : ColumnSelector</span>
+<span class="sd">            Column selector to apply to the input schema</span>
+<span class="sd">        parents_selector : ColumnSelector</span>
+<span class="sd">            Combined selectors of the upstream parents feeding into this operator</span>
+<span class="sd">        dependencies_selector : ColumnSelector</span>
+<span class="sd">            Combined selectors of the upstream dependencies feeding into this operator</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ColumnSelector</span>
+<span class="sd">            Revised column selector to apply to the input schema</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">selector</span> <span class="o">=</span> <span class="n">selector</span> <span class="ow">or</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span><span class="n">input_schema</span><span class="p">,</span> <span class="n">selector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_selector</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">selector</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">input_schema</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Operator.compute_input_schema"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_input_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_input_schema</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">root_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">parents_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">deps_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Given the schemas coming from upstream sources and a column selector for the</span>
+<span class="sd">        input columns, returns a set of schemas for the input columns this operator will use</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        root_schema: Schema</span>
+<span class="sd">            Base schema of the dataset before running any operators.</span>
+<span class="sd">        parents_schema: Schema</span>
+<span class="sd">            The combined schemas of the upstream parents feeding into this operator</span>
+<span class="sd">        deps_schema: Schema</span>
+<span class="sd">            The combined schemas of the upstream dependencies feeding into this operator</span>
+<span class="sd">        col_selector: ColumnSelector</span>
+<span class="sd">            The column selector to apply to the input schema</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Schema</span>
+<span class="sd">            The schemas of the columns used by this operator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span>
+            <span class="n">parents_schema</span> <span class="o">+</span> <span class="n">deps_schema</span><span class="p">,</span> <span class="n">selector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_input_schema</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">parents_schema</span> <span class="o">+</span> <span class="n">deps_schema</span></div>
+
+<div class="viewcode-block" id="Operator.compute_output_schema"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_output_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_output_schema</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span>
+        <span class="n">prev_output_schema</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Schema</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schema</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given a set of schemas and a column selector for the input columns,</span>
+<span class="sd">        returns a set of schemas for the transformed columns this operator will produce</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        input_schema: Schema</span>
+<span class="sd">            The schemas of the columns to apply this operator to</span>
+<span class="sd">        col_selector: ColumnSelector</span>
+<span class="sd">            The column selector to apply to the input schema</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Schema</span>
+<span class="sd">            The schemas of the columns produced by this operator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">col_selector</span><span class="p">:</span>
+            <span class="n">col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+            <span class="n">tags_col_selector</span> <span class="o">=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="n">col_selector</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+            <span class="n">filtered_schema</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">tags_col_selector</span><span class="p">)</span>
+            <span class="n">col_selector</span> <span class="o">+=</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">filtered_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">)</span>
+
+            <span class="c1"># zero tags because already filtered</span>
+            <span class="n">col_selector</span><span class="o">.</span><span class="n">_tags</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_matching_cols</span><span class="p">(</span>
+            <span class="n">input_schema</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_output_schema</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="p">)</span>
+
+        <span class="n">output_schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">output_col_name</span><span class="p">,</span> <span class="n">input_col_names</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">input_schema_fragment</span> <span class="o">=</span> <span class="n">input_schema</span><span class="p">[</span><span class="n">input_col_names</span><span class="p">]</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_column_schema</span><span class="p">(</span><span class="n">output_col_name</span><span class="p">,</span> <span class="n">input_schema_fragment</span><span class="p">)</span>
+            <span class="n">output_schema</span> <span class="o">+=</span> <span class="n">Schema</span><span class="p">([</span><span class="n">col_schema</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_dtypes</span> <span class="ow">and</span> <span class="n">prev_output_schema</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col_name</span><span class="p">,</span> <span class="n">col_schema</span> <span class="ow">in</span> <span class="n">output_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">dtype</span> <span class="o">=</span> <span class="n">prev_output_schema</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="n">output_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output_schema</span></div>
+
+<div class="viewcode-block" id="Operator.validate_schemas"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.validate_schemas">[docs]</a>    <span class="k">def</span> <span class="nf">validate_schemas</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parents_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">deps_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">output_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span>
+        <span class="n">strict_dtypes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provides a hook method that sub-classes can override to implement schema validation logic.</span>
+
+<span class="sd">        Sub-class implementations should raise an exception if the schemas are not valid for the</span>
+<span class="sd">        operations they implement.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        parents_schema : Schema</span>
+<span class="sd">            The combined schemas of the upstream parents feeding into this operator</span>
+<span class="sd">        deps_schema : Schema</span>
+<span class="sd">            The combined schemas of the upstream dependencies feeding into this operator</span>
+<span class="sd">        input_schema : Schema</span>
+<span class="sd">            The schemas of the columns to apply this operator to</span>
+<span class="sd">        output_schema : Schema</span>
+<span class="sd">            The schemas of the columns produced by this operator</span>
+<span class="sd">        strict_dtypes : Boolean, optional</span>
+<span class="sd">            Enables strict checking for column dtype matching if True, by default False</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="Operator.transform"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">,</span> <span class="n">transformable</span><span class="p">:</span> <span class="n">Transformable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Transformable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transform the dataframe by applying this operator to the set of input columns</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        col_selector: ColumnSelector</span>
+<span class="sd">            The columns to apply this operator to</span>
+<span class="sd">        transformable: Transformable</span>
+<span class="sd">            A pandas or cudf dataframe that this operator will work on</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Transformable</span>
+<span class="sd">            Returns a transformed dataframe or dictarray for this operator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">transformable</span></div>
+
+<div class="viewcode-block" id="Operator.column_mapping"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.column_mapping">[docs]</a>    <span class="k">def</span> <span class="nf">column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute which output columns depend on which input columns</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        col_selector : ColumnSelector</span>
+<span class="sd">            A selector containing a list of column names</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dict[str, List[str]]</span>
+<span class="sd">            Mapping from output column names to list of the input columns they rely on</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">col_selector</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="n">column_mapping</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">column_mapping</span></div>
+
+<div class="viewcode-block" id="Operator.load_artifacts"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.load_artifacts">[docs]</a>    <span class="k">def</span> <span class="nf">load_artifacts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">artifact_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load artifacts from disk required for operator function.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        artifact_path : str</span>
+<span class="sd">            The path where artifacts are loaded from</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="Operator.save_artifacts"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.save_artifacts">[docs]</a>    <span class="k">def</span> <span class="nf">save_artifacts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">artifact_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save artifacts required to be reload operator state from disk</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        artifact_path : str</span>
+<span class="sd">            The path where artifacts are to be saved</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="Operator.compute_column_schema"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.compute_column_schema">[docs]</a>    <span class="k">def</span> <span class="nf">compute_column_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_name</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">methods</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_dtype</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_tags</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_properties</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_shape</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_column_schema</span><span class="p">(</span><span class="n">col_name</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="n">methods</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_compute_column_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_name</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">col_schema</span> <span class="o">=</span> <span class="n">ColumnSchema</span><span class="p">(</span><span class="n">col_name</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
+            <span class="n">col_schema</span> <span class="o">=</span> <span class="n">method</span><span class="p">(</span><span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span>
+
+    <span class="k">def</span> <span class="nf">_compute_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
+            <span class="n">source_col_name</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">input_schema</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_dtype</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
+            <span class="n">source_col_name</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">input_schema</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_shape</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dynamic_dtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_subgraph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">_compute_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
+            <span class="n">source_col_name</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="n">input_schema</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span>
+
+        <span class="c1"># Override empty tags with tags from the input schema</span>
+        <span class="c1"># Override input schema tags with the output tags of this operator</span>
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_tags</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span><span class="o">.</span><span class="n">with_tags</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_tags</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_schema</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">):</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">:</span>
+            <span class="n">source_col_name</span> <span class="o">=</span> <span class="n">input_schema</span><span class="o">.</span><span class="n">column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">input_schema</span><span class="o">.</span><span class="n">column_schemas</span><span class="p">[</span><span class="n">source_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+
+        <span class="n">properties</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_properties</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">col_schema</span><span class="o">.</span><span class="n">with_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_validate_matching_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">selector</span><span class="p">,</span> <span class="n">method_name</span><span class="p">):</span>
+        <span class="n">selector</span> <span class="o">=</span> <span class="n">selector</span> <span class="ow">or</span> <span class="n">ColumnSelector</span><span class="p">()</span>
+        <span class="n">resolved_selector</span> <span class="o">=</span> <span class="n">selector</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+
+        <span class="n">missing_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">selector</span><span class="o">.</span><span class="n">names</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">resolved_selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing_cols</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing columns </span><span class="si">{</span><span class="n">missing_cols</span><span class="si">}</span><span class="s2"> found in operator&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> during </span><span class="si">{</span><span class="n">method_name</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="c1"># TODO: Update instructions for how to define custom</span>
+    <span class="c1"># operators to reflect constructing the column mapping</span>
+    <span class="c1"># (They should no longer override this method)</span>
+<div class="viewcode-block" id="Operator.output_column_names"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.output_column_names">[docs]</a>    <span class="k">def</span> <span class="nf">output_column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col_selector</span><span class="p">:</span> <span class="n">ColumnSelector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnSelector</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Given a set of columns names returns the names of the transformed columns this</span>
+<span class="sd">        operator will produce</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -----------</span>
+<span class="sd">        columns: list of str, or list of list of str</span>
+<span class="sd">            The columns to apply this operator to</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of str, or list of list of str</span>
+<span class="sd">            The names of columns produced by this operator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_mapping</span><span class="p">(</span><span class="n">col_selector</span><span class="p">)</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Defines an optional list of column dependencies for this operator.</span>
+<span class="sd">        This lets you consume columns that aren&#39;t part of the main transformation workflow.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str, list of str or ColumnSelector, optional</span>
+<span class="sd">            Extra dependencies of this operator. Defaults to None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="fm">__rrshift__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ColumnSelector</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="bp">self</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+
+<div class="viewcode-block" id="Operator.create_node"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.create_node">[docs]</a>    <span class="k">def</span> <span class="nf">create_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">merlin</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">supports</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Supports</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns what kind of data representation this operator supports&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Supports</span><span class="o">.</span><span class="n">CPU_DATAFRAME</span> <span class="o">|</span> <span class="n">Supports</span><span class="o">.</span><span class="n">GPU_DATAFRAME</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">supported_formats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFormats</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">DataFormats</span><span class="o">.</span><span class="n">PANDAS_DATAFRAME</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">CUDF_DATAFRAME</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">NUMPY_TENSOR_TABLE</span>
+            <span class="o">|</span> <span class="n">DataFormats</span><span class="o">.</span><span class="n">CUPY_TENSOR_TABLE</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">col_name</span><span class="p">:</span> <span class="n">df</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span> <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">selector</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">export_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provides a clear common english identifier for this operator.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        String</span>
+<span class="sd">            Name of the current class as spelled in module.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Operator.export"><a class="viewcode-back" href="../../../generated/nvtabular.ops.Operator.html#nvtabular.ops.Operator.export">[docs]</a>    <span class="k">def</span> <span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">output_schema</span><span class="p">:</span> <span class="n">Schema</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Export the class object as a config and all related files to the user defined path.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Artifact export path</span>
+<span class="sd">        input_schema : Schema</span>
+<span class="sd">            A schema with information about the inputs to this operator.</span>
+<span class="sd">        output_schema : Schema</span>
+<span class="sd">            A schema with information about the outputs of this operator.</span>
+<span class="sd">        params : dict, optional</span>
+<span class="sd">            Parameters dictionary of key, value pairs stored in exported config, by default None.</span>
+<span class="sd">        node_id : int, optional</span>
+<span class="sd">            The placement of the node in the graph (starts at 1), by default None.</span>
+<span class="sd">        version : int, optional</span>
+<span class="sd">            The version of the operator, by default 1.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        model_config: dict</span>
+<span class="sd">            The config for the exported operator.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2021–2024, NVIDIA.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    <p>
+<a href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/" target="_blank">Privacy Policy</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/" target="_blank">Manage My Privacy</a> |
+<a href="https://www.nvidia.com/en-us/preferences/start/" target="_blank">Do Not Sell or Share My Data</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/" target="_blank">Terms of Service</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/accessibility/" target="_blank">Accessibility</a> |
+<a href="https://www.nvidia.com/en-us/about-nvidia/company-policies/" target="_blank">Corporate Policies</a> |
+<a href="https://www.nvidia.com/en-us/product-security/" target="_blank">Product Security</a> |
+<a href="https://www.nvidia.com/en-us/contact/" target="_blank">Contact</a>
+</p>
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
