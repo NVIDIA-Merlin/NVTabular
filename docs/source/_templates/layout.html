@@ -1,9 +1,21 @@
-{% extends "!layout.html" %}
-{% block extrabody %}
-  <div class="banner">
-    <p class="banner">
-      Beginning in January 2023, versions for all NVIDIA Merlin projects
-      will change from semantic versioning like <code>4.0</code>
-      to calendar versioning like <code>23.01</code>.</p>
-  </div>
-{% endblock %}
+{%- extends "!layout.html" %}
+
+{%- block extrahead %}
+  {%- if analytics_id %}
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics_id }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '{{ analytics_id }}', {
+        'anonymize_ip': {{ 'true' if analytics_anonymize_ip|tobool else 'false' }},
+    });
+  </script>
+  {% endif %}
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,300&display=swap" rel="stylesheet">
+{%- endblock %}

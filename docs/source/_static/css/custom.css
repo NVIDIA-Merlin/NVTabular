@@ -1,34 +1,472 @@
-.wy-nav-content {
-    margin: 0;
-    background: #fcfcfc;
-    padding-top: 40px;
+/*
+# Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#  * Neither the name of NVIDIA CORPORATION nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/* Parts of this are adapted from the NVIDIA Omniverse Docs Sphinx Theme */
+
+/* Set up for old browsers*/
+@supports not (font-variation-settings: normal) {
+  @font-face {
+    font-family: "NVIDIA";
+    src: url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Lt.woff") format("woff"),
+    url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Lt.woff2") format("woff2");
+    font-weight: 300;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "NVIDIA";
+    src: url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Rg.woff") format("woff"),
+    url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Rg.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "NVIDIA";
+    src: url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Md.woff") format("woff"),
+    url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Md.woff2") format("woff2");
+    font-weight: 500;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "NVIDIA";
+    src: url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Bd.woff") format("woff"),
+    url("https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/NVIDIASans_W_Bd.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+  }
 }
 
-.wy-side-nav-search {
+/* Set up for modern browsers, all weights */
+@supports (font-variation-settings: normal) {
+  @font-face {
+    font-family: 'NVIDIA';
+    src: url('https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/var/NVIDIASansVF_W_Wght.woff2') format('woff2 supports variations'),
+    url('https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/var/NVIDIASansVF_W_Wght.woff2') format('woff2-variations');
+    font-weight: 100 1000;
+    font-stretch: 25% 151%;
+    font-style: normal;
+  }
+  @font-face{
+    font-family:'NVIDIA';
+    src:url('https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/var/NVIDIASansVF_Wght_W_Italic.woff2') format('woff2 supports variations'),
+    url('https://images.nvidia.com/etc/designs/nvidiaGDC/clientlibs_base/fonts/nvidia-sans/GLOBAL/var/NVIDIASansVF_Wght_W_Italic.woff2') format('woff2-variations');
+    font-weight:100 1000;
+    font-stretch:25% 151%;
+    font-style:italic;
+  }
+}
+
+:root
+{
+    /* nv branding */
+    --nv-green: #76b900;
+    --nv-green-illuminate: #76d300; /* button state - hover */
+    --nv-black: #000000;
+    --nv-white: #ffffff;
+    --nv-green-2: #004831;
+
+    --nv-success: var(--nv-green);
+    --nv-error: #f44336;
+
+    --nv-font-face: NVIDIA,Arial,Helvetica,Sans-Serif;
+    --nv-font-face-mono: SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,Courier,monospace;
+
+    /* nv branding: light theme */
+    --text: #1a1a1a;
+    --background-default: #ffffff;
+    --background-alternate: #eeeeee;
+    --ui-and-graphics: #999999;
+
+    --white: #ffffff;
+    --gray-1: #f7f7f7;
+    --gray-2: #eeeeee;
+    --gray-3: #dddddd;
+    --gray-4: #cccccc;
+
+    /* nv branding: light theme mobile (closely matches our old font sizes) */
+    --h1-color: var(--nv-green);
+    --h1-font-weight: 100;
+    --h1-letter-spacing: -0.02em;
+    --h1-font-size: 36px;
+    --h1-line-height: 1em;
+    --h1-text-transform: uppercase;
+
+    --h2-color: var(--nv-green);
+    --h2-font-weight: 100;
+    --h2-letter-spacing: -0.02em;
+    --h2-font-size: 24px;
+    --h2-line-height: 1em;
+    --h2-text-transform: uppercase;
+
+    --h3-color: var(--nv-green);
+    --h3-font-weight: 100;
+    --h3-letter-spacing: -0.02em;
+    --h3-font-size: 21px;
+    --h3-line-height: 1em;
+    --h3-text-transform: uppercase;
+
+    --h4-color: var(--nv-green);
+    --h4-font-weight: 100;
+    --h4-letter-spacing: -0.02em;
+    --h4-font-size: 18px;
+    --h4-line-height: 1em;
+    --h4-text-transform: uppercase;
+
+    --h5-color: var(--nv-green);
+    --h5-font-size: var(--body-font-size);
+
+    --h6-color: var(--nv-green);
+    --h6-font-weight: 400;
+
+    --body-font-color: var(--text);
+    --body-font-weight: normal;
+    --body-font-size: 16px;
+    --body-line-height: 1.5em;
+
+    --small-font-color: var(--ui-and-graphics);
+    --small-font-weight: normal;
+    --small-font-size: 12px;
+    --small-line-height: 1.25em;
+
+    --ul-font-color: var(--text);
+    --ul-font-weight: normal;
+    --ul-font-size: 16px;
+    --ul-line-height: 2em;
+    --ul-marker-font-face: FontAwesome;
+    --ul-marker-content: '\f105 \00a0 \00a0';
+
+    --ol-font-color: var(--text);
+    --ol-font-weight: normal;
+    --ol-font-size: 16px;
+    --ol-line-height: 2em;
+    --ol-list-style-type: decimal;
+    --ol-ol-list-style-type: upper-alpha;
+    --ol-ol-ol-list-style-type: decimal; /* not specified in style guide */
+
+    --disabled-font-color: var(--gray-4);
+    --disabled-font-weight: normal;
+    --disabled-font-size: 16px;
+    --disabled-line-height: 1em; /* style guide says 16px */
+
+    --error-font-color: var(--nv-error);
+    --error-font-weight: normal;
+    --error-font-size: 16px;
+    --error-line-height: 1em; /* style guide says 16px */
+
+    --success-font-color: var(--nv-success);
+    --success-font-weight: normal;
+    --success-font-size: 16px;
+    --success-line-height: 1em; /* style guide says 16px */
+
+    /* omni-style */
+    --sidebar-color: #000000;
+    --sidebar-alt-color: #333333;
+    --sidebar-headline-color: var(--nv-green);
+    --sidebar-text-color: #cccccc;
+
+    --table-background-header: var(--nv-black);
+    --table-background-alternate: var(--background-alternate); /* for alternating rows */
+    --table-text: var(--text);
+    --table-border: var(--ui-and-graphics);
+    --table-border-header: var(--gray-3);
+
+    /* this is off-brand, but `uppercase` makes headings with source code look bad. */
+    --h1-text-transform: none;
+    --h2-text-transform: none;
+    --h3-text-transform: none;
+    --h4-text-transform: none;
+
+    --h3-font-weight: normal; /* this is off-brand and overrides the above definition */
+
+    --note-background-color: var(--nv-green);
+    --note-background-alt-color: #cccccc;
+
+    --important-background-color: #f44336;
+    --important-background-alt-color: #cccccc;
+
+    --link-color: var(--nv-green);
+    --link-visited-color: var(--nv-green);
+    --link-hover-color: var(--nv-green-illuminate);
+
+    --background-color: var(--background-default);
+
+    /* template<typenameT> T* tryAcquireInterface(const void* pluginInterface) */
+    --api-member-header-background-color: var(--gray-2);
+    --api-member-header-border-color: var(--sidebar-headline-color);
+    --api-member-header-text-color: var(--text);
+    --api-member-header-link-color: var(--link-color);
+
+    --api-member-background-color: var(--gray-1);
+
+    /* struct carb::Framework */
+    --api-header-text-color: var(--nv-green);
+    --api-header-border-color: var(--ui-and-graphics);
+
+    /* sphinx-design color modifications */
+    --sd-color-tabs-label-active: var(--nv-green);
+    --sd-color-tabs-underline-active: var(--nv-green);
+
+    --sd-color-tabs-label-hover: var(--nv-green-illuminate);
+    --sd-color-tabs-underline-hover: var(--nv-green-illuminate);
+}
+
+/* Custom Styles */
+:root {
+  --pst-font-size-base: none;
+  --pst-color-admonition-note: var(--pst-color-primary);
+  --pst-color-admonition-default: var(--pst-color-primary);
+  --pst-color-info: 255, 193, 7;
+  --pst-color-admonition-tip: var(--pst-color-info);
+  --pst-color-admonition-hint: var(--pst-color-info);
+  --pst-color-admonition-important: var(--pst-color-info);
+  --pst-color-warning: 245, 162, 82;
+  --pst-color-danger: 230, 101, 129;
+  --pst-color-admonition-warning: var(--pst-color-danger);
+  --pst-color-link: 118, 185, 0;
+  --pst-color-inline-code: 92, 22, 130;
+  --font-family-sans-serif: NVIDIA Sans, Helvetica, Arial, var(--pst-font-family-base-system);
+  --pst-font-family-heading: NVIDIA Sans, Helvetica, Arial, var(--pst-font-family-base-system);
+  --pst-font-family-monospace: Roboto Mono, var(--pst-font-family-monospace-system);
+  font-family: NVIDIA Sans, Helvetica, Arial,Sans-serif;
+}
+
+
+html[data-theme="light"] {
+    --pst-color-primary: var(--nv-green);
+}
+html[data-theme="dark"] {
+    --pst-color-primary: var(--nv-green);
+}
+
+/**********************************************************************************************************************/
+/*                                         Standard Text Formatting                                                   */
+/**********************************************************************************************************************/
+
+/* Headline Formatting */
+.bd-container h1
+{
+    color: var(--h1-color);
+
+    font-weight: var(--h1-font-weight);
+    font-size: var(--h1-font-size);
+    font-style: normal;
+
+    line-height: var(--h1-line-height);
+    margin-top: 0.75em;
+    margin-bottom: 0.75em !important; /* override RTD theme */
+
+    text-transform: var(--h1-text-transform);
+}
+
+.bd-container h2
+{
+    color: var(--h2-color);
+
+    font-weight: var(--h2-font-weight);
+    font-size: var(--h2-font-size);
+    font-style: normal;
+
+    line-height: var(--h2-line-height);
+    margin-top: 1.25em;
+    margin-bottom: 0.5em !important; /* override RTD theme */
+
+    text-transform: var(--h2-text-transform);
+}
+
+.bd-container h3
+{
+    color: var(--h3-color);
+
+    font-weight: var(--h3-font-weight);
+    font-size: var(--h3-font-size);
+    font-style: normal;
+
+    line-height: var(--h3-line-height);
+    margin-top: 1.25em;
+    margin-bottom: 0.5em !important; /* override RTD theme */
+
+    text-transform: var(--h3-text-transform);
+}
+
+.bd-container h4
+{
+    color: var(--h4-color);
+
+    font-weight: var(--h4-font-weight);
+    font-size: var(--h4-font-size);
+    font-style: normal;
+
+    line-height: var(--h4-line-height);
+    margin-top: 1.25em;
+    margin-bottom: 0.5em !important; /* override RTD theme */
+
+    text-transform: var(--h4-text-transform);
+}
+
+.bd-container h5
+{
+    color: var(--h5-color);
+
+    font-size: var(--h5-font-size);
+}
+
+.bd-container h6
+{
+    color: var(--h6-color);
+
+    font-weight: var(--h6-font-weight);
+}
+
+/* Math should inherit its color */
+span[id*=MathJax-Span]
+{
+    color: inherit;
+}
+
+/* text highlighted by search */
+.rst-content .highlighted
+{
+    background: #f1c40f3b;
+    box-shadow: 0 0 0 1px #f1c40f;
+    display: inline;
+    font-weight: inherit;
+}
+
+/* a local table-of-contents messes with heading colors.  make sure to use the regular heading colors */
+.rst-content .toc-backref
+{
+    color: inherit;
+}
+
+/* make links to function looks like other literals */
+.rst-content code.xref,
+.rst-content tt.xref,
+a .rst-content code,
+a .rst-content tt
+{
+    color: #e74c3c;
+    font-weight: inherit;
+}
+
+/* Link Colors */
+a
+{
+    color: var(--link-color);
+}
+
+a:visited
+{
+    color: var(--link-visited-color);
+}
+
+a:hover
+{
+    color: var(--link-hover-color);
+}
+
+/* follow branding guide for small footer text */
+footer p
+{
+    color: var(--small-font-color);
+    font-weight: var(--small-font-weight);
+    font-size: var(--small-font-size);
+    line-height: var(--small-line-height);
+}
+
+/* add nvidia logo (like www.nvidia.com) */
+html[data-theme="light"] footer.bd-footer-content p.copyright::before
+{
+    content: url(../NVIDIA-LogoBlack.svg);
     display: block;
-    width: 300px;
-    padding: .809em;
-    padding-top: 0.809em;
-    margin-bottom: .809em;
-    z-index: 200;
-    background-color: #2980b9;
-    text-align: center;
-    color: #fcfcfc;
-    padding-top: 40px;
+    width: 110px;
+    margin: 0px;
+    position: relative;
+    left: -9px;
 }
 
-div.banner {
-    position: fixed;
-    top: 10px;
-    left: 20px;
-    margin: 0;
-    z-index: 1000;
-    width: 1050px;
-    text-align: center;
+/* add nvidia logo (like www.nvidia.com) */
+html[data-theme="dark"] footer.bd-footer-content p.copyright::before
+{
+    content: url(../NVIDIA-LogoWhite.svg);
+    display: block;
+    width: 110px;
+    margin: 0px;
+    position: relative;
+    left: -9px;
 }
 
-p.banner {
-  border-radius: 4px;
-  color: #004831;
-  background: #76b900;
+
+/**********************************************************************************************************************/
+/*                                         Lists                                                                      */
+/**********************************************************************************************************************/
+
+/* unordered list should have a nv-green > */
+.rst-content section ul:not(.treeView):not(.collapsibleList) li:not(.collapsibleListClosed):not(.collapsibleListOpen):not(.lastChild)::marker,
+.rst-content .toctree-wrapper ul li::marker,
+.wy-plain-list-disc li::marker,
+article ul li::marker
+{
+    font-family: var(--ul-marker-font-face);
+    content: var(--ul-marker-content);
+    color: var(--nv-green);
+    font-weight: 600;
+}
+
+/* top-level ordered list should have a nv-green number */
+.rst-content section ol li::marker,
+.rst-content ol.arabic li::marker,
+.wy-plain-list-decimal li::marker,
+article ol li::marker
+{
+    color: var(--nv-green);
+    font-weight: 600;
+    list-style: var(--ol-list-style-type);
+}
+
+/* second-level ordered list should have a nv-green uppercase letter */
+.rst-content section ol ol li,
+.rst-content ol.arabic ol.arabic li,
+.wy-plain-list-decimal ol ol li,
+article ol ol li
+{
+    list-style: var(--ol-ol-list-style-type);
+}
+
+/* third-level ordered lists aren't in the branding guide.  let's use numbers. */
+.rst-content section ol ol ol li,
+.rst-content ol.arabic ol.arabic ol li,
+.wy-plain-list-decimal ol ol ol li,
+article ol ol ol li
+{
+    list-style: var(--ol-ol-ol-list-style-type);
+}
+
+/* start the first paragraph immediately (don't add space at the top) */
+dd p:first-child
+{
+    margin-top: 0px;
 }

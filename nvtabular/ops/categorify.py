@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
+from dask import config
 from dask.base import tokenize
 from dask.blockwise import BlockIndex
 from dask.core import flatten
@@ -1251,13 +1252,8 @@ def _write_uniques(
             if has_size:
                 # Avoid using dask_cudf to calculate divisions
                 # (since it may produce too-few partitions)
-                df = df.sort_values(
-                    name_size,
-                    ascending=False,
-                    divisions=dd.shuffle._calculate_divisions(
-                        df, df[name_size], False, df.npartitions
-                    )[0][::-1],
-                )
+                with config.set({"dataframe.shuffle.method": "tasks"}):
+                    df = df.sort_values(name_size, ascending=False)
 
             unique_path = _save_encodings(
                 df,
