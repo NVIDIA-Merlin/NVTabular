@@ -1,127 +1,499 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>nvtabular.ops.Operator &mdash; NVTabular 2021 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/mystnb.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/togglebutton.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>nvtabular.ops.Operator &#8212; NVTabular</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" href="../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/versions.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script src="../_static/js/rtd-version-switcher.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/nvtabular.ops.Operator';</script>
     <link rel="canonical" href="https://nvidia-merlin.github.io/NVTabular/stable/generated/nvtabular.ops.Operator.html" />
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/underscore.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script >let toggleHintShow = 'Click to show';</script>
-        <script >let toggleHintHide = 'Click to hide';</script>
-        <script >let toggleOpenOnPrint = 'true';</script>
-        <script src="../_static/togglebutton.js"></script>
-        <script >var togglebuttonSelector = '.toggle, .admonition.dropdown, .tag_hide_input div.cell_input, .tag_hide-input div.cell_input, .tag_hide_output div.cell_output, .tag_hide-output div.cell_output, .tag_hide_cell.cell, .tag_hide-cell.cell';</script>
-    <script src="../_static/js/theme.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="nvtabular.ops.StatOperator" href="nvtabular.ops.StatOperator.html" />
-    <link rel="prev" title="nvtabular.ops.LambdaOp" href="nvtabular.ops.LambdaOp.html" /> 
-</head>
+    <link rel="prev" title="nvtabular.ops.LambdaOp" href="nvtabular.ops.LambdaOp.html" />
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
 
-<body class="wy-body-for-nav">
-  <div class="banner">
-    <p class="banner">
-      Beginning in January 2023, versions for all NVIDIA Merlin projects
-      will change from semantic versioning like <code>4.0</code>
-      to calendar versioning like <code>23.01</code>.</p>
+    gtag('config', 'G-NVJ1Y1YJHK', {
+        'anonymize_ip': false,
+    });
+  </script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,300&display=swap" rel="stylesheet">
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
   </div>
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    </header>
+  
 
-  <div class="wy-grid-for-nav">
-    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
 
-          
-          
-          <a href="../index.html" class="icon icon-home">
-            NVTabular
-          </a>
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
-</div>
-        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents</span></p>
-<ul class="current">
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NVIDIA Merlin NVTabular</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../Introduction.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../core_features.html">Core Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Accelerated Training</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Example Notebooks</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Documentation</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../api.html#workflow-constructors">Workflow Constructors</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#categorical-operators">Categorical Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#continuous-operators">Continuous Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#missing-value-operators">Missing Value Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#row-manipulation-operators">Row Manipulation Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#schema-operators">Schema Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#list-operators">List Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#vector-operators">Vector Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#user-defined-function-operators">User-Defined Function Operators</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="../api.html#operator-base-classes">Operator Base Classes</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../training/index.html">Accelerated Training</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../training/tensorflow.html">TensorFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../training/pytorch.html">PyTorch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../training/hugectr.html">HugeCTR</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../resources/index.html">Additional Resources</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../examples/index.html">Example Notebooks</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../examples/01-Getting-started.html">Getting Started with NVTabular</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../examples/02-Advanced-NVTabular-workflow.html">Advanced NVTabular Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../examples/03-Running-on-multiple-GPUs-or-on-CPU.html">Run on multi-GPU or CPU-only</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../api.html">API Documentation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.workflow.workflow.Workflow.html">nvtabular.workflow.workflow.Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.workflow.workflow.WorkflowNode.html">nvtabular.workflow.workflow.WorkflowNode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Bucketize.html">nvtabular.ops.Bucketize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Categorify.html">nvtabular.ops.Categorify</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.DropLowCardinality.html">nvtabular.ops.DropLowCardinality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.HashBucket.html">nvtabular.ops.HashBucket</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.HashedCross.html">nvtabular.ops.HashedCross</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.TargetEncoding.html">nvtabular.ops.TargetEncoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Clip.html">nvtabular.ops.Clip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.LogOp.html">nvtabular.ops.LogOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Normalize.html">nvtabular.ops.Normalize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.NormalizeMinMax.html">nvtabular.ops.NormalizeMinMax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Dropna.html">nvtabular.ops.Dropna</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.FillMissing.html">nvtabular.ops.FillMissing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.FillMedian.html">nvtabular.ops.FillMedian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.DifferenceLag.html">nvtabular.ops.DifferenceLag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Filter.html">nvtabular.ops.Filter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Groupby.html">nvtabular.ops.Groupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.JoinExternal.html">nvtabular.ops.JoinExternal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.JoinGroupby.html">nvtabular.ops.JoinGroupby</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.AddMetadata.html">nvtabular.ops.AddMetadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.AddProperties.html">nvtabular.ops.AddProperties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.AddTags.html">nvtabular.ops.AddTags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.Rename.html">nvtabular.ops.Rename</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.ReduceDtypeSize.html">nvtabular.ops.ReduceDtypeSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.TagAsItemFeatures.html">nvtabular.ops.TagAsItemFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.TagAsItemID.html">nvtabular.ops.TagAsItemID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.TagAsUserFeatures.html">nvtabular.ops.TagAsUserFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.TagAsUserID.html">nvtabular.ops.TagAsUserID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.ListSlice.html">nvtabular.ops.ListSlice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.ValueCount.html">nvtabular.ops.ValueCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.ColumnSimilarity.html">nvtabular.ops.ColumnSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.LambdaOp.html">nvtabular.ops.LambdaOp</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">nvtabular.ops.Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nvtabular.ops.StatOperator.html">nvtabular.ops.StatOperator</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../resources/index.html">Additional Resources</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../resources/architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/cloud_integration.html">Cloud Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://developer.nvidia.com/nvidia-merlin/nvtabular">developer.nvidia.com page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/links.html">Presentations and Blog Posts</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://github.com/NVIDIA/NVTabular">Github Repo</a></li>
+</ul>
+</li>
 </ul>
 
-        </div>
+    </div>
+</nav></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-merlin-ecosystem-nav" aria-label="Merlin Ecosystem Nav">
+  <div class="bd-toc-item navbar-nav">
+    <p aria-level="2" class="caption" role="heading"><span class="caption-text">Ecosystem</span></p>
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference external" href="/models/v23.06.00">Models</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/systems/v23.06.00">Systems</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/core/v23.06.00">Core</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Transformers4Rec/v23.06.00">Transformers4Rec</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/dataloader/v23.06.00">Dataloader</a></li>
+      <li class="toctree-l1"><a class="reference external" href="/Merlin/v23.06.00">Merlin</a></li>
+    </ul>
+  </div>
+</nav></div>
+        <div class="sidebar-primary-item">
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"></span>
+    v: v23.06.00
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
+      <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
+      <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
+      <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
+      <dd><a href="nvtabular.ops.Operator.html">v23.06.00</a></dd>
+      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../main/index.html">main</a></dd>
+      <dd><a href="../../stable/index.html">stable</a></dd>
+    </dl>
+  </div>
+</div></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
       </div>
-    </nav>
+      
+      <main id="main-content" class="bd-main">
+        
+        
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">NVTabular</a>
-      </nav>
+<div class="sbt-scroll-pixel-helper"></div>
 
-      <div class="wy-nav-content">
-        <div class="rst-content">
-          <div role="navigation" aria-label="Page navigation">
-  <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="../api.html">API Documentation</a></li>
-      <li class="breadcrumb-item active">nvtabular.ops.Operator</li>
-      <li class="wy-breadcrumbs-aside">
-      </li>
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/NVIDIA-Merlin/NVTabular" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/generated/nvtabular.ops.Operator.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
   </ul>
-  <hr/>
 </div>
-          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
-           <div itemprop="articleBody">
-             
-  <div class="section" id="nvtabular-ops-operator">
-<h1>nvtabular.ops.Operator<a class="headerlink" href="#nvtabular-ops-operator" title="Permalink to this headline"></a></h1>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<label class="sidebar-toggle secondary-toggle btn btn-sm" for="__secondary"title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</label>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>nvtabular.ops.Operator</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator"><code class="docutils literal notranslate"><span class="pre">Operator</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.__init__"><code class="docutils literal notranslate"><span class="pre">Operator.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_selector"><code class="docutils literal notranslate"><span class="pre">Operator.compute_selector()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_input_schema"><code class="docutils literal notranslate"><span class="pre">Operator.compute_input_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_output_schema"><code class="docutils literal notranslate"><span class="pre">Operator.compute_output_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.validate_schemas"><code class="docutils literal notranslate"><span class="pre">Operator.validate_schemas()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.transform"><code class="docutils literal notranslate"><span class="pre">Operator.transform()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.column_mapping"><code class="docutils literal notranslate"><span class="pre">Operator.column_mapping()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.load_artifacts"><code class="docutils literal notranslate"><span class="pre">Operator.load_artifacts()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.save_artifacts"><code class="docutils literal notranslate"><span class="pre">Operator.save_artifacts()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_column_schema"><code class="docutils literal notranslate"><span class="pre">Operator.compute_column_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.dynamic_dtypes"><code class="docutils literal notranslate"><span class="pre">Operator.dynamic_dtypes</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.is_subgraph"><code class="docutils literal notranslate"><span class="pre">Operator.is_subgraph</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_column_names"><code class="docutils literal notranslate"><span class="pre">Operator.output_column_names()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.dependencies"><code class="docutils literal notranslate"><span class="pre">Operator.dependencies</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_dtype"><code class="docutils literal notranslate"><span class="pre">Operator.output_dtype</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_tags"><code class="docutils literal notranslate"><span class="pre">Operator.output_tags</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_properties"><code class="docutils literal notranslate"><span class="pre">Operator.output_properties</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.label"><code class="docutils literal notranslate"><span class="pre">Operator.label</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.create_node"><code class="docutils literal notranslate"><span class="pre">Operator.create_node()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.supports"><code class="docutils literal notranslate"><span class="pre">Operator.supports</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.supported_formats"><code class="docutils literal notranslate"><span class="pre">Operator.supported_formats</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.export_name"><code class="docutils literal notranslate"><span class="pre">Operator.export_name</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.export"><code class="docutils literal notranslate"><span class="pre">Operator.export()</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="nvtabular-ops-operator">
+<h1>nvtabular.ops.Operator<a class="headerlink" href="#nvtabular-ops-operator" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
-<dt id="nvtabular.ops.Operator">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></code><code class="sig-name descname"><span class="pre">Operator</span></code><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nvtabular.ops.</span></span><span class="sig-name descname"><span class="pre">Operator</span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Base class for all operator classes.</p>
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.__init__">
-<code class="sig-name descname"><span class="pre">__init__</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.ops.Operator.__init__" title="Permalink to this definition"></a></dt>
-<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
-</dd></dl>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nvtabular.ops.Operator.__init__" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
 
 <p class="rubric">Methods</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.__init__" title="nvtabular.ops.Operator.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
-<td><p>Initialize self.</p></td>
+<td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.column_mapping" title="nvtabular.ops.Operator.column_mapping"><code class="xref py py-obj docutils literal notranslate"><span class="pre">column_mapping</span></code></a>(col_selector)</p></td>
 <td><p>Compute which output columns depend on which input columns</p></td>
@@ -129,19 +501,19 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.compute_column_schema" title="nvtabular.ops.Operator.compute_column_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_column_schema</span></code></a>(col_name, input_schema)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.compute_input_schema" title="nvtabular.ops.Operator.compute_input_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_input_schema</span></code></a>(root_schema, …)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.compute_input_schema" title="nvtabular.ops.Operator.compute_input_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_input_schema</span></code></a>(root_schema, ...)</p></td>
 <td><p>Given the schemas coming from upstream sources and a column selector for the input columns, returns a set of schemas for the input columns this operator will use</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.compute_output_schema" title="nvtabular.ops.Operator.compute_output_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_output_schema</span></code></a>(input_schema, col_selector)</p></td>
 <td><p>Given a set of schemas and a column selector for the input columns, returns a set of schemas for the transformed columns this operator will produce</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.compute_selector" title="nvtabular.ops.Operator.compute_selector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code></a>(input_schema, selector[, …])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.compute_selector" title="nvtabular.ops.Operator.compute_selector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_selector</span></code></a>(input_schema, selector[, ...])</p></td>
 <td><p>Provides a hook method for sub-classes to override to implement custom column selection logic.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.create_node" title="nvtabular.ops.Operator.create_node"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_node</span></code></a>(selector)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.export" title="nvtabular.ops.Operator.export"><code class="xref py py-obj docutils literal notranslate"><span class="pre">export</span></code></a>(path, input_schema, output_schema, …)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.export" title="nvtabular.ops.Operator.export"><code class="xref py py-obj docutils literal notranslate"><span class="pre">export</span></code></a>(path, input_schema, output_schema, ...)</p></td>
 <td><p>Export the class object as a config and all related files to the user defined path.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.load_artifacts" title="nvtabular.ops.Operator.load_artifacts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_artifacts</span></code></a>([artifact_path])</p></td>
@@ -156,17 +528,13 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.transform" title="nvtabular.ops.Operator.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a>(col_selector, transformable)</p></td>
 <td><p>Transform the dataframe by applying this operator to the set of input columns</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.validate_schemas" title="nvtabular.ops.Operator.validate_schemas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code></a>(parents_schema, …[, …])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.validate_schemas" title="nvtabular.ops.Operator.validate_schemas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_schemas</span></code></a>(parents_schema, ...[, ...])</p></td>
 <td><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p></td>
 </tr>
 </tbody>
 </table>
 <p class="rubric">Attributes</p>
-<table class="longtable docutils align-default">
-<colgroup>
-<col style="width: 10%" />
-<col style="width: 90%" />
-</colgroup>
+<table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#nvtabular.ops.Operator.dependencies" title="nvtabular.ops.Operator.dependencies"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dependencies</span></code></a></p></td>
 <td><p>Defines an optional list of column dependencies for this operator.</p></td>
@@ -201,12 +569,12 @@
 </tbody>
 </table>
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.compute_selector">
-<code class="sig-name descname"><span class="pre">compute_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_selector" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.compute_selector">
+<span class="sig-name descname"><span class="pre">compute_selector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies_selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_selector" title="Permalink to this definition">#</a></dt>
 <dd><p>Provides a hook method for sub-classes to override to implement
 custom column selection logic.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>input_schema</strong> (<em>Schema</em>) – Schemas of the columns to apply this operator to</p></li>
 <li><p><strong>selector</strong> (<em>ColumnSelector</em>) – Column selector to apply to the input schema</p></li>
@@ -214,22 +582,22 @@ custom column selection logic.</p>
 <li><p><strong>dependencies_selector</strong> (<em>ColumnSelector</em>) – Combined selectors of the upstream dependencies feeding into this operator</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Revised column selector to apply to the input schema</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>ColumnSelector</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.compute_input_schema">
-<code class="sig-name descname"><span class="pre">compute_input_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">deps_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_input_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_input_schema" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.compute_input_schema">
+<span class="sig-name descname"><span class="pre">compute_input_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parents_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">deps_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_input_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_input_schema" title="Permalink to this definition">#</a></dt>
 <dd><p>Given the schemas coming from upstream sources and a column selector for the
 input columns, returns a set of schemas for the input columns this operator will use</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>root_schema</strong> (<em>Schema</em>) – Base schema of the dataset before running any operators.</p></li>
 <li><p><strong>parents_schema</strong> (<em>Schema</em>) – The combined schemas of the upstream parents feeding into this operator</p></li>
@@ -237,44 +605,44 @@ input columns, returns a set of schemas for the input columns this operator will
 <li><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – The column selector to apply to the input schema</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The schemas of the columns used by this operator</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Schema</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.compute_output_schema">
-<code class="sig-name descname"><span class="pre">compute_output_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_output_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_output_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_output_schema" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.compute_output_schema">
+<span class="sig-name descname"><span class="pre">compute_output_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">prev_output_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_output_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_output_schema" title="Permalink to this definition">#</a></dt>
 <dd><p>Given a set of schemas and a column selector for the input columns,
 returns a set of schemas for the transformed columns this operator will produce</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>input_schema</strong> (<em>Schema</em>) – The schemas of the columns to apply this operator to</p></li>
 <li><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – The column selector to apply to the input schema</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The schemas of the columns produced by this operator</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Schema</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.validate_schemas">
-<code class="sig-name descname"><span class="pre">validate_schemas</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parents_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">deps_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict_dtypes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.validate_schemas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.validate_schemas" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.validate_schemas">
+<span class="sig-name descname"><span class="pre">validate_schemas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parents_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">deps_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict_dtypes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.validate_schemas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.validate_schemas" title="Permalink to this definition">#</a></dt>
 <dd><p>Provides a hook method that sub-classes can override to implement schema validation logic.</p>
 <p>Sub-class implementations should raise an exception if the schemas are not valid for the
 operations they implement.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>parents_schema</strong> (<em>Schema</em>) – The combined schemas of the upstream parents feeding into this operator</p></li>
 <li><p><strong>deps_schema</strong> (<em>Schema</em>) – The combined schemas of the upstream dependencies feeding into this operator</p></li>
@@ -287,168 +655,168 @@ operations they implement.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.transform">
-<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">transformable</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">merlin.core.protocols.Transformable</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">merlin.core.protocols.Transformable</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.transform" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">transformable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Transformable</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Transformable</span></span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.transform" title="Permalink to this definition">#</a></dt>
 <dd><p>Transform the dataframe by applying this operator to the set of input columns</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – The columns to apply this operator to</p></li>
 <li><p><strong>transformable</strong> (<em>Transformable</em>) – A pandas or cudf dataframe that this operator will work on</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Returns a transformed dataframe or dictarray for this operator</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Transformable</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.column_mapping">
-<code class="sig-name descname"><span class="pre">column_mapping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.column_mapping" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.column_mapping">
+<span class="sig-name descname"><span class="pre">column_mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.column_mapping" title="Permalink to this definition">#</a></dt>
 <dd><p>Compute which output columns depend on which input columns</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>col_selector</strong> (<em>ColumnSelector</em>) – A selector containing a list of column names</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Mapping from output column names to list of the input columns they rely on</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a>, List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a>]]</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.load_artifacts">
-<code class="sig-name descname"><span class="pre">load_artifacts</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.12)"><span class="pre">os.PathLike</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.load_artifacts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.load_artifacts" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.load_artifacts">
+<span class="sig-name descname"><span class="pre">load_artifacts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.12)"><span class="pre">PathLike</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.load_artifacts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.load_artifacts" title="Permalink to this definition">#</a></dt>
 <dd><p>Load artifacts from disk required for operator function.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>artifact_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – The path where artifacts are loaded from</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.save_artifacts">
-<code class="sig-name descname"><span class="pre">save_artifacts</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.12)"><span class="pre">os.PathLike</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.save_artifacts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.save_artifacts" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.save_artifacts">
+<span class="sig-name descname"><span class="pre">save_artifacts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.12)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.12)"><span class="pre">PathLike</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.save_artifacts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.save_artifacts" title="Permalink to this definition">#</a></dt>
 <dd><p>Save artifacts required to be reload operator state from disk</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>artifact_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – The path where artifacts are to be saved</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.compute_column_schema">
-<code class="sig-name descname"><span class="pre">compute_column_schema</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_column_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_column_schema" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.compute_column_schema">
+<span class="sig-name descname"><span class="pre">compute_column_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.compute_column_schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.compute_column_schema" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.dynamic_dtypes">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dynamic_dtypes</span></span><a class="headerlink" href="#nvtabular.ops.Operator.dynamic_dtypes" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.is_subgraph">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_subgraph</span></span><a class="headerlink" href="#nvtabular.ops.Operator.is_subgraph" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.dynamic_dtypes">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dynamic_dtypes</span></code><a class="headerlink" href="#nvtabular.ops.Operator.dynamic_dtypes" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.is_subgraph">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">is_subgraph</span></code><a class="headerlink" href="#nvtabular.ops.Operator.is_subgraph" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.output_column_names">
-<code class="sig-name descname"><span class="pre">output_column_names</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">merlin.dag.selector.ColumnSelector</span></a><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.output_column_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.output_column_names" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.output_column_names">
+<span class="sig-name descname"><span class="pre">output_column_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.dag.ColumnSelector.html#merlin.dag.ColumnSelector" title="(in Merlin Core)"><span class="pre">ColumnSelector</span></a></span></span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.output_column_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.output_column_names" title="Permalink to this definition">#</a></dt>
 <dd><p>Given a set of columns names returns the names of the transformed columns this
 operator will produce</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>columns</strong> (<em>list of str</em><em>, or </em><em>list of list of str</em>) – The columns to apply this operator to</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a><em>, or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – The columns to apply this operator to</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The names of columns produced by this operator</p>
 </dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>list of str, or list of list of str</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a>, or <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.dependencies">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dependencies</span></code><a class="headerlink" href="#nvtabular.ops.Operator.dependencies" title="Permalink to this definition"></a></dt>
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.dependencies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dependencies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.12)"><span class="pre">Union</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nvtabular.ops.Operator.dependencies" title="Permalink to this definition">#</a></dt>
 <dd><p>Defines an optional list of column dependencies for this operator.
 This lets you consume columns that aren’t part of the main transformation workflow.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Extra dependencies of this operator. Defaults to None</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a>, list of str or ColumnSelector, optional</p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)">str</a> or ColumnSelector, optional</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.output_dtype">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_dtype</span></code><a class="headerlink" href="#nvtabular.ops.Operator.output_dtype" title="Permalink to this definition"></a></dt>
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.output_dtype">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_dtype</span></span><a class="headerlink" href="#nvtabular.ops.Operator.output_dtype" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.output_tags">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_tags</span></span><a class="headerlink" href="#nvtabular.ops.Operator.output_tags" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.output_properties">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_properties</span></span><a class="headerlink" href="#nvtabular.ops.Operator.output_properties" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.label">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#nvtabular.ops.Operator.label" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.output_tags">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_tags</span></code><a class="headerlink" href="#nvtabular.ops.Operator.output_tags" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.create_node">
+<span class="sig-name descname"><span class="pre">create_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.create_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.create_node" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.output_properties">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">output_properties</span></code><a class="headerlink" href="#nvtabular.ops.Operator.output_properties" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.label">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">label</span></code><a class="headerlink" href="#nvtabular.ops.Operator.label" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.create_node">
-<code class="sig-name descname"><span class="pre">create_node</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.create_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.create_node" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.supports">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">supports</span></code><a class="headerlink" href="#nvtabular.ops.Operator.supports" title="Permalink to this definition"></a></dt>
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.supports">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">supports</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Supports</span></em><a class="headerlink" href="#nvtabular.ops.Operator.supports" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns what kind of data representation this operator supports</p>
 </dd></dl>
 
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.supported_formats">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">supported_formats</span></code><a class="headerlink" href="#nvtabular.ops.Operator.supported_formats" title="Permalink to this definition"></a></dt>
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.supported_formats">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">supported_formats</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">DataFormats</span></em><a class="headerlink" href="#nvtabular.ops.Operator.supported_formats" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
-<dl class="py method">
-<dt id="nvtabular.ops.Operator.export_name">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">export_name</span></code><a class="headerlink" href="#nvtabular.ops.Operator.export_name" title="Permalink to this definition"></a></dt>
+<dl class="py property">
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.export_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">export_name</span></span><a class="headerlink" href="#nvtabular.ops.Operator.export_name" title="Permalink to this definition">#</a></dt>
 <dd><p>Provides a clear common english identifier for this operator.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Name of the current class as spelled in module.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>String</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt id="nvtabular.ops.Operator.export">
-<code class="sig-name descname"><span class="pre">export</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_schema</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">merlin.schema.schema.Schema</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.export"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.export" title="Permalink to this definition"></a></dt>
+<dt class="sig sig-object py" id="nvtabular.ops.Operator.export">
+<span class="sig-name descname"><span class="pre">export</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://nvidia-merlin.github.io/core/stable/api/generated/merlin.schema.Schema.html#merlin.schema.Schema" title="(in Merlin Core)"><span class="pre">Schema</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/merlin/dag/operator.html#Operator.export"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nvtabular.ops.Operator.export" title="Permalink to this definition">#</a></dt>
 <dd><p>Export the class object as a config and all related files to the user defined path.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><em>str</em></a>) – Artifact export path</p></li>
 <li><p><strong>input_schema</strong> (<em>Schema</em>) – A schema with information about the inputs to this operator.</p></li>
@@ -458,10 +826,10 @@ This lets you consume columns that aren’t part of the main transformation work
 <li><p><strong>version</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><em>int</em></a><em>, </em><em>optional</em>) – The version of the operator, by default 1.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>model_config</strong> – The config for the exported operator.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)">dict</a></p>
 </dd>
 </dl>
@@ -469,71 +837,119 @@ This lets you consume columns that aren’t part of the main transformation work
 
 </dd></dl>
 
-</div>
+</section>
 
 
-           </div>
-          </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="nvtabular.ops.LambdaOp.html" class="btn btn-neutral float-left" title="nvtabular.ops.LambdaOp" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="nvtabular.ops.StatOperator.html" class="btn btn-neutral float-right" title="nvtabular.ops.StatOperator" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+                </article>
+              
 
-  <hr/>
-
-  <div role="contentinfo">
-    <p>&#169; Copyright 2021, NVIDIA.</p>
-  </div>
-
-  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
-
-</footer>
-        </div>
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="nvtabular.ops.LambdaOp.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">nvtabular.ops.LambdaOp</p>
       </div>
-    </section>
+    </a>
+    <a class="right-next"
+       href="nvtabular.ops.StatOperator.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">nvtabular.ops.StatOperator</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator"><code class="docutils literal notranslate"><span class="pre">Operator</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.__init__"><code class="docutils literal notranslate"><span class="pre">Operator.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_selector"><code class="docutils literal notranslate"><span class="pre">Operator.compute_selector()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_input_schema"><code class="docutils literal notranslate"><span class="pre">Operator.compute_input_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_output_schema"><code class="docutils literal notranslate"><span class="pre">Operator.compute_output_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.validate_schemas"><code class="docutils literal notranslate"><span class="pre">Operator.validate_schemas()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.transform"><code class="docutils literal notranslate"><span class="pre">Operator.transform()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.column_mapping"><code class="docutils literal notranslate"><span class="pre">Operator.column_mapping()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.load_artifacts"><code class="docutils literal notranslate"><span class="pre">Operator.load_artifacts()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.save_artifacts"><code class="docutils literal notranslate"><span class="pre">Operator.save_artifacts()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.compute_column_schema"><code class="docutils literal notranslate"><span class="pre">Operator.compute_column_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.dynamic_dtypes"><code class="docutils literal notranslate"><span class="pre">Operator.dynamic_dtypes</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.is_subgraph"><code class="docutils literal notranslate"><span class="pre">Operator.is_subgraph</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_column_names"><code class="docutils literal notranslate"><span class="pre">Operator.output_column_names()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.dependencies"><code class="docutils literal notranslate"><span class="pre">Operator.dependencies</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_dtype"><code class="docutils literal notranslate"><span class="pre">Operator.output_dtype</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_tags"><code class="docutils literal notranslate"><span class="pre">Operator.output_tags</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.output_properties"><code class="docutils literal notranslate"><span class="pre">Operator.output_properties</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.label"><code class="docutils literal notranslate"><span class="pre">Operator.label</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.create_node"><code class="docutils literal notranslate"><span class="pre">Operator.create_node()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.supports"><code class="docutils literal notranslate"><span class="pre">Operator.supports</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.supported_formats"><code class="docutils literal notranslate"><span class="pre">Operator.supported_formats</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.export_name"><code class="docutils literal notranslate"><span class="pre">Operator.export_name</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nvtabular.ops.Operator.export"><code class="docutils literal notranslate"><span class="pre">Operator.export()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, NVIDIA.
+      <br/>
+    
+  </p>
+
   </div>
   
-<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
-  <span class="rst-current-version" data-toggle="rst-current-version">
-    <span class="fa fa-book"> Other Versions</span>
-    v: v23.06.00
-    <span class="fa fa-caret-down"></span>
-  </span>
-  <div class="rst-other-versions">
-    <dl>
-      <dt>Tags</dt>
-      <dd><a href="../../v1.8.1/index.html">v1.8.1</a></dd>
-      <dd><a href="../../v23.02.00/index.html">v23.02.00</a></dd>
-      <dd><a href="../../v23.04.00/index.html">v23.04.00</a></dd>
-      <dd><a href="../../v23.05.00/index.html">v23.05.00</a></dd>
-      <dd><a href="nvtabular.ops.Operator.html">v23.06.00</a></dd>
-      <dd><a href="../../v23.08.00/index.html">v23.08.00</a></dd>
-    </dl>
-    <dl>
-      <dt>Branches</dt>
-      <dd><a href="../../main/index.html">main</a></dd>
-      <dd><a href="../../stable/index.html">stable</a></dd>
-    </dl>
+  <div class="footer-item">
+    
   </div>
-</div><script>
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script>
-    <!-- Theme Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NVJ1Y1YJHK"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+  
+</div>
+          </footer>
+        
 
-      gtag('config', 'G-NVJ1Y1YJHK', {
-          'anonymize_ip': false,
-      });
-    </script> 
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
 
-</body>
+  <footer class="bd-footer">
+  </footer>
+  </body>
 </html>
