@@ -13,6 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.dag import BaseOperator, ColumnSelector  # noqa pylint: disable=unused-import
+from merlin.dag import (  # noqa pylint: disable=unused-import
+    BaseOperator,
+    ColumnSelector,
+    DataFormats,
+)
 
-Operator = BaseOperator
+
+# Avoid TENSOR_TABLE by default (for now)
+class Operator(BaseOperator):
+    @property
+    def supported_formats(self):
+        return DataFormats.PANDAS_DATAFRAME | DataFormats.CUDF_DATAFRAME
