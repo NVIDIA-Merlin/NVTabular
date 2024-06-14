@@ -13,60 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.core.dispatch import DataFrameType
-from merlin.schema.tags import Tags
-from nvtabular.ops.operator import ColumnSelector, Operator
-
-
-class AddMetadata(Operator):
-    """
-    This operator will add user defined tags and properties
-    to a Schema.
-    """
-
-    def __init__(self, tags=None, properties=None):
-        super().__init__()
-        self.tags = tags or []
-        self.properties = properties or {}
-
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        return df
-
-    @property
-    def output_tags(self):
-        return self.tags
-
-    @property
-    def output_properties(self):
-        return self.properties
-
-
-class AddTags(AddMetadata):
-    def __init__(self, tags=None):
-        super().__init__(tags=tags)
-
-
-class AddProperties(AddMetadata):
-    def __init__(self, properties=None):
-        super().__init__(properties=properties)
-
-
-# Wrappers for common features
-class TagAsUserID(AddTags):
-    def __init__(self, tags=None):
-        super().__init__(tags=[Tags.ID, Tags.USER])
-
-
-class TagAsItemID(AddTags):
-    def __init__(self, tags=None):
-        super().__init__(tags=[Tags.ID, Tags.ITEM])
-
-
-class TagAsUserFeatures(AddTags):
-    def __init__(self, tags=None):
-        super().__init__(tags=[Tags.USER])
-
-
-class TagAsItemFeatures(AddTags):
-    def __init__(self, tags=None):
-        super().__init__(tags=[Tags.ITEM])
+# keep this file as alias, users may be apply import from here
+from merlin.dag.ops.add_metadata import (  # noqa pylint: disable=unused-import
+    AddMetadata,
+    AddProperties,
+    AddTags,
+    TagAsItemFeatures,
+    TagAsItemID,
+    TagAsUserFeatures,
+    TagAsUserID,
+)
