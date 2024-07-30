@@ -54,7 +54,7 @@ from nvtabular.ops.operator import ColumnSelector, Operator
 PAD_OFFSET = 0
 NULL_OFFSET = 1
 OOV_OFFSET = 2
-PA_GE_14 = Version(pa.__version__) >= Version("14.0")
+PYARROW_GE_14 = Version(pa.__version__) >= Version("14.0")
 
 
 class Categorify(StatOperator):
@@ -909,7 +909,7 @@ def _general_concat(
 ):
     # Concatenate DataFrame or pa.Table objects
     if isinstance(frames[0], pa.Table):
-        if PA_GE_14:
+        if PYARROW_GE_14:
             df = pa.concat_tables(frames, promote_options="default")
         else:
             df = pa.concat_tables(frames, promote=True)
