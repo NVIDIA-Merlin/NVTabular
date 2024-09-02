@@ -39,6 +39,7 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
+from packaging.version import Version
 
 from merlin.core import dispatch
 from merlin.core.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
@@ -53,6 +54,7 @@ from nvtabular.ops.operator import ColumnSelector, Operator
 PAD_OFFSET = 0
 NULL_OFFSET = 1
 OOV_OFFSET = 2
+PYARROW_GE_14 = Version(pa.__version__) >= Version("14.0")
 
 
 class Categorify(StatOperator):
@@ -907,7 +909,11 @@ def _general_concat(
 ):
     # Concatenate DataFrame or pa.Table objects
     if isinstance(frames[0], pa.Table):
-        df = pa.concat_tables(frames, promote=True)
+        if PYARROW_GE_14:
+            df = pa.concat_tables(frames, promote_options="default")
+        else:
+            df = pa.concat_tables(frames, promote=True)
+
         if (
             cardinality_memory_limit
             and col_selector is not None
