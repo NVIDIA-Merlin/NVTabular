@@ -1,9 +1,11 @@
 name: Test conda env creation
 
 on:
-  schedule:
-    # * is a special character in YAML so you have to quote this string
-    - cron: "30 14 * * *"
+  # schedule:
+  #   # * is a special character in YAML so you have to quote this string
+  #   - cron: "30 14 * * *"
+  workflow_call:
+
   workflow_dispatch:
     inputs:
       logLevel:
