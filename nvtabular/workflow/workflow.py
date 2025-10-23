@@ -38,6 +38,7 @@ from merlin.io import Dataset
 from merlin.schema import Schema
 from nvtabular.ops import LambdaOp
 from nvtabular.workflow.node import WorkflowNode
+from nvtabular.tools.serialization import load as load_safe
 
 LOG = logging.getLogger("nvtabular")
 
@@ -445,7 +446,7 @@ class Workflow:
             warnings.warn(f"Loading workflow generated on {expected}")
 
         # load up the workflow object di
-        workflow = cloudpickle.load(fs.open(fs.sep.join([path, "workflow.pkl"]), "rb"))
+        workflow = load_safe(fs.open(fs.sep.join([path, "workflow.pkl"]), "rb"))
         workflow.client = client
 
         # we might have been copied since saving, update all the stat ops
