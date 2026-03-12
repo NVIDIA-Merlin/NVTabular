@@ -15,6 +15,7 @@
 #
 
 import glob
+import json
 import math
 import os
 import shutil
@@ -34,7 +35,21 @@ from merlin.dataloader.loader_base import LoaderBase as Loader
 from merlin.dataloader.ops.embeddings import EmbeddingOperator
 from merlin.schema import Tags
 from nvtabular import Dataset, Workflow, ops
+from nvtabular.workflow.graph_serializer import WorkflowSerializationError
 from tests.conftest import assert_eq, get_cats, mycols_csv
+
+
+# Module-level named functions used in save/load tests (lambdas are not serializable)
+def _geo_slice_5(col):
+    return col.str.slice(0, 5)
+
+
+def _geo_slice_2(col):
+    return col.str.slice(0, 2)
+
+
+def _identity(col):
+    return col
 
 
 def test_workflow_double_fit():
@@ -571,12 +586,12 @@ def test_workflow_move_saved(tmpdir):
     geo_location = ColumnSelector(["geo"])
     state = (
         geo_location
-        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.LambdaOp(_geo_slice_5)
         >> ops.Rename(postfix="_state")
     )
     country = (
         geo_location
-        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.LambdaOp(_geo_slice_2)
         >> ops.Rename(postfix="_country")
     )
     geo_features = state + country + geo_location >> ops.Categorify()
@@ -642,12 +657,12 @@ def test_workflow_saved_schema(tmpdir):
     geo_location = ColumnSelector(["geo"])
     state = (
         geo_location
-        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.LambdaOp(_geo_slice_5)
         >> ops.Rename(postfix="_state")
     )
     country = (
         geo_location
-        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.LambdaOp(_geo_slice_2)
         >> ops.Rename(postfix="_country")
     )
     geo_features = state + country + geo_location >> ops.Categorify()
@@ -710,72 +725,116 @@ def test_stat_op_workflow_roundtrip(tmpdir):
     assert_eq(transformed, expected)
 
 
-def test_workflow_infer_modules_byvalue(tmp_path):
-    module_fn = tmp_path / "not_a_real_module.py"
-    sys.path.append(str(tmp_path))
+def test_workflow_save_load_json_normalize(tmpdir):
+    """Round-trip a workflow containing Normalize via the JSON serializer."""
+    df = make_df({"x": [1.0, 2.0, 3.0, 4.0, 5.0], "y": [10.0, 20.0, 30.0, 40.0, 50.0]})
+    dataset = nvt.Dataset(df)
 
-    with open(module_fn, "w") as module_f:
-        module_f.write("def identity(col):\n    return col")
+    cont_features = ["x", "y"] >> ops.Normalize()
+    workflow = nvt.Workflow(cont_features)
+    workflow.fit(dataset)
+    expected = workflow.transform(dataset).to_ddf().compute()
 
-    import not_a_real_module
+    workflow.save(str(tmpdir / "wf"))
+    wf2 = Workflow.load(str(tmpdir / "wf"))
+    result = wf2.transform(dataset).to_ddf().compute()
 
-    f_0 = not_a_real_module.identity
-    f_1 = lambda x: not_a_real_module.identity(x)  # noqa
-    f_2 = lambda x: f_0(x)  # noqa
-
-    try:
-        for fn, f in {
-            "not_a_real_module.identity": f_0,
-            "lambda x: not_a_real_module.identity(x)": f_1,
-            "lambda x: f_0(x)": f_2,
-        }.items():
-            assert not_a_real_module in Workflow._getmodules(
-                [f]
-            ), f"inferred module dependencies from {fn}"
-
-    finally:
-        sys.path.pop()
-        del sys.modules["not_a_real_module"]
+    assert_eq(expected, result)
 
 
-def test_workflow_explicit_modules_byvalue(tmp_path):
-    module_fn = tmp_path / "not_a_real_module.py"
-    sys.path.append(str(tmp_path))
+def test_workflow_save_load_json_categorify(tmpdir):
+    """Round-trip a workflow containing Categorify (file-based artifacts) via JSON."""
+    df = make_df({"cat": ["a", "b", "a", "c", "b"]})
+    dataset = nvt.Dataset(df)
 
-    with open(module_fn, "w") as module_f:
-        module_f.write("def identity(col):\n    return col")
+    cat_features = ["cat"] >> ops.Categorify()
+    workflow = nvt.Workflow(cat_features)
+    workflow.fit(dataset)
+    expected = workflow.transform(dataset).to_ddf().compute()
 
-    import not_a_real_module
+    workflow.save(str(tmpdir / "wf"))
+    wf2 = Workflow.load(str(tmpdir / "wf"))
+    result = wf2.transform(dataset).to_ddf().compute()
 
-    wf = nvt.Workflow(["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity))
-
-    wf.save(str(tmp_path / "identity-workflow"), modules_byvalue=[not_a_real_module])
-
-    del not_a_real_module
-    del sys.modules["not_a_real_module"]
-    os.unlink(str(tmp_path / "not_a_real_module.py"))
-
-    Workflow.load(str(tmp_path / "identity-workflow"))
+    assert_eq(expected, result)
 
 
-def test_workflow_auto_infer_modules_byvalue(tmp_path):
-    module_fn = tmp_path / "not_a_real_module.py"
-    sys.path.append(str(tmp_path))
+def test_workflow_save_load_json_named_function(tmpdir):
+    """LambdaOp with a named (importable) function should save and load correctly."""
+    df = make_df({"geo": ["US>CA>510", "US>MI>505", "CA>NB"]})
+    dataset = nvt.Dataset(df)
 
-    with open(module_fn, "w") as module_f:
-        module_f.write("def identity(col):\n    return col")
+    features = ["geo"] >> ops.LambdaOp(_geo_slice_5) >> ops.Rename(postfix="_state")
+    workflow = nvt.Workflow(features)
+    workflow.fit(dataset)
+    expected = workflow.transform(dataset).to_ddf().compute()
 
-    import not_a_real_module
+    workflow.save(str(tmpdir / "wf"))
+    wf2 = Workflow.load(str(tmpdir / "wf"))
+    result = wf2.transform(dataset).to_ddf().compute()
 
-    wf = nvt.Workflow(["col_a"] >> nvt.ops.LambdaOp(not_a_real_module.identity))
+    assert_eq(expected, result)
 
-    wf.save(str(tmp_path / "identity-workflow"), modules_byvalue="auto")
 
-    del not_a_real_module
-    del sys.modules["not_a_real_module"]
-    os.unlink(str(tmp_path / "not_a_real_module.py"))
+def test_workflow_save_load_json_lambda_raises(tmpdir):
+    """LambdaOp with a lambda function should raise WorkflowSerializationError at save time."""
+    df = make_df({"x": [1.0, 2.0, 3.0]})
+    dataset = nvt.Dataset(df)
 
-    Workflow.load(str(tmp_path / "identity-workflow"))
+    features = ["x"] >> ops.LambdaOp(lambda x: x * 2)
+    workflow = nvt.Workflow(features)
+    workflow.fit(dataset)
+
+    with pytest.raises(WorkflowSerializationError, match="[Ll]ambda"):
+        workflow.save(str(tmpdir / "wf"))
+
+
+def test_workflow_save_load_json_multi_branch(tmpdir):
+    """Round-trip a multi-branch workflow (ConcatColumns / + operator)."""
+    df = make_df({"x": [1.0, 2.0, 3.0], "cat": ["a", "b", "a"]})
+    dataset = nvt.Dataset(df)
+
+    cont = ["x"] >> ops.Normalize()
+    cats = ["cat"] >> ops.Categorify()
+    workflow = nvt.Workflow(cont + cats)
+    workflow.fit(dataset)
+    expected = workflow.transform(dataset).to_ddf().compute()
+
+    workflow.save(str(tmpdir / "wf"))
+    wf2 = Workflow.load(str(tmpdir / "wf"))
+    result = wf2.transform(dataset).to_ddf().compute()
+
+    assert_eq(expected, result)
+
+
+def test_graph_json_is_human_readable(tmpdir):
+    """graph.json must be valid JSON and contain the expected top-level keys."""
+    df = make_df({"x": [1.0, 2.0, 3.0]})
+    dataset = nvt.Dataset(df)
+
+    workflow = nvt.Workflow(["x"] >> ops.Normalize())
+    workflow.fit(dataset)
+    workflow.save(str(tmpdir / "wf"))
+
+    graph_path = os.path.join(str(tmpdir / "wf"), "graph.json")
+    assert os.path.exists(graph_path)
+
+    with open(graph_path) as f:
+        data = json.load(f)
+
+    assert "format_version" in data
+    assert "output_node_id" in data
+    assert "nodes" in data
+    assert isinstance(data["nodes"], list)
+    assert len(data["nodes"]) > 0
+
+    for node in data["nodes"]:
+        assert "id" in node
+        assert "op_class" in node
+        assert "op_params" in node
+        assert "op_state" in node
+        assert "parent_ids" in node
+        assert "dependency_ids" in node
 
 
 @pytest.mark.parametrize("cpu", [None, "cpu"] if HAS_GPU else ["cpu"])

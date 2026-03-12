@@ -52,6 +52,13 @@ class Bucketize(Operator):
             # Assume cpu-backed data (since cupy is not even installed)
             self.use_digitize = True
 
+        # Preserve the original boundaries for JSON serialization before converting
+        # to a lookup function (lists/dicts are JSON-safe; arbitrary callables are not).
+        if isinstance(boundaries, (list, tuple, dict)):
+            self._original_boundaries = boundaries
+        else:
+            self._original_boundaries = None  # callable — not JSON-serializable
+
         # transform boundaries into a lookup function on column names
         if isinstance(boundaries, (list, tuple)):
             self.boundaries = lambda col: boundaries
