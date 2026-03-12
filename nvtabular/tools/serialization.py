@@ -68,8 +68,6 @@ BASE_SERIALIZATION_CLASSES = {
     "merlin.dag.ops.concat_columns": ["ConcatColumns"],
     "merlin.dag.executors": ["DaskExecutor", "LocalExecutor", "Device"],
     "merlin.dag.operator": ["DataFormats"],
-    "cloudpickle.cloudpickle": ["_make_function", "_builtin_type", "_function_setstate"],
-
 }
 
 
