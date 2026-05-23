@@ -227,7 +227,7 @@ def test_lambdaop_dtype_multi_op_propagation(cpu):
         {
             "a": np.arange(size),
             "b": np.random.choice(["apple", "banana", "orange"], size),
-            "c": np.random.choice([0, 1], size).astype(np.float16),
+            "c": np.random.choice([0, 1], size),
         }
     )
     ddf0 = dd.from_pandas(df0, npartitions=4)
