@@ -91,11 +91,11 @@ class ListSlice(Operator):
 
                 # pad out to so each row has self.max_elements if asked
                 if self.pad:
-                    for v in values:
+                    for i, v in enumerate(values):
                         if len(v) < self.max_elements:
                             padding = [self.pad_value] * (self.max_elements - len(v))
                             if isinstance(v, xp.ndarray):
-                                xp.append(v, padding)
+                                values[i] = xp.append(v, padding)
                             else:
                                 v.extend(padding)
 

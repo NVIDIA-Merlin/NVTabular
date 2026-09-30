@@ -104,6 +104,13 @@ def test_list_slice_pad(cpu):
     assert_eq(transformed, expected)
 
 
+def test_list_slice_pads_ndarray_cells():
+    df = pandas.DataFrame({"y": [numpy.asarray([1, 2, 3], dtype="int32")]})
+    op = ops.ListSlice(5, pad=True)
+    transformed = op.transform(ColumnSelector(["y"]), df)
+    assert list(transformed["y"].iloc[0]) == [1, 2, 3, 0, 0]
+
+
 def test_slice_ndarrays():
     out = ["test"] >> nvt.ops.ListSlice(10, pad=True)
     workflow = nvt.Workflow(out)
